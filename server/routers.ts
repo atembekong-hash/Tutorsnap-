@@ -232,12 +232,17 @@ const academicRouter = router({
         role: z.enum(["user", "assistant"]),
         content: z.string(),
       })),
+      subject: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
+      const subjectContext = input.subject
+        ? `\nThe student is currently focused on: ${input.subject}. Tailor your explanations to this subject when relevant.`
+        : "";
+      const systemPrompt = CHAT_SYSTEM_PROMPT + subjectContext;
       const result = await invokeLLM({
         model: "gpt-4o-mini",
         messages: [
-          { role: "system", content: CHAT_SYSTEM_PROMPT },
+          { role: "system", content: systemPrompt },
           ...input.messages.map((m) => ({
             role: m.role as "user" | "assistant",
             content: m.content,

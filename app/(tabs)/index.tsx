@@ -22,7 +22,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getProgress, getStreakEmoji, getDailyGoalPercent, type ProgressData } from "@/lib/progress";
 import type { HistoryItem, MathSubject } from "@/shared/types";
 import { SubjectPicker } from "@/components/subject-picker";
-import { type SubjectId, getSubjectDef } from "@/lib/subjects";
+import { type SubjectId, getSubjectDef, isMathSubject, getSubjectPlaceholder } from "@/lib/subjects";
 
 // Subject examples per category — shown dynamically based on selected subject
 const SUBJECT_EXAMPLES: Record<string, string[]> = {
@@ -80,6 +80,14 @@ export default function SolveScreen() {
   const [problem, setProblem] = useState("");
   const [selectedSubject, setSelectedSubject] = useState<SubjectId | null>(null);
   const [showMathKeyboard, setShowMathKeyboard] = useState(false);
+
+  // Auto-hide math keyboard when a non-math subject is selected
+  const handleSubjectChange = useCallback((id: SubjectId | null) => {
+    setSelectedSubject(id);
+    if (!isMathSubject(id)) {
+      setShowMathKeyboard(false);
+    }
+  }, []);
   const [progress, setProgress] = useState<ProgressData | null>(null);
   const inputRef = useRef<TextInput>(null);
   const cursorPosRef = useRef<number>(0);
@@ -255,7 +263,7 @@ export default function SolveScreen() {
             <View style={{ marginTop: 10 }}>
               <SubjectPicker
                 value={selectedSubject}
-                onChange={(id) => setSelectedSubject(id)}
+                onChange={handleSubjectChange}
                 showAll
               />
             </View>
@@ -275,7 +283,7 @@ export default function SolveScreen() {
               <TextInput
                 ref={inputRef}
                 style={[styles.input, { color: colors.foreground }]}
-                placeholder="Type your question or problem here..."
+                placeholder={getSubjectPlaceholder(selectedSubject)}
                 placeholderTextColor={colors.muted}
                 multiline
                 value={problem}
@@ -295,27 +303,29 @@ export default function SolveScreen() {
               >
                 <Text style={[styles.charCount, { color: colors.muted }]}>{problem.length} / 5000</Text>
                 <View style={styles.inputActionBtns}>
-                  {/* Math Keyboard Toggle */}
-                  <TouchableOpacity
-                    onPress={() => {
-                      Keyboard.dismiss();
-                      setShowMathKeyboard((v) => !v);
-                      if (Platform.OS !== "web") {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      }
-                    }}
-                    style={[
-                      styles.keyboardToggleBtn,
-                      {
-                        backgroundColor: showMathKeyboard ? `${colors.primary}20` : "transparent",
-                        borderColor: showMathKeyboard ? colors.primary : colors.border,
-                      },
-                    ]}
-                  >
-                    <Text style={[styles.keyboardToggleText, { color: showMathKeyboard ? colors.primary : colors.muted }]}>
-                      ∑ Math
-                    </Text>
-                  </TouchableOpacity>
+                  {/* Math Keyboard Toggle — only shown for math subjects */}
+                  {isMathSubject(selectedSubject) && (
+                    <TouchableOpacity
+                      onPress={() => {
+                        Keyboard.dismiss();
+                        setShowMathKeyboard((v) => !v);
+                        if (Platform.OS !== "web") {
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        }
+                      }}
+                      style={[
+                        styles.keyboardToggleBtn,
+                        {
+                          backgroundColor: showMathKeyboard ? `${colors.primary}20` : "transparent",
+                          borderColor: showMathKeyboard ? colors.primary : colors.border,
+                        },
+                      ]}
+                    >
+                      <Text style={[styles.keyboardToggleText, { color: showMathKeyboard ? colors.primary : colors.muted }]}>
+                        ∑ Math
+                      </Text>
+                    </TouchableOpacity>
+                  )}
                   {problem.length > 0 && (
                     <TouchableOpacity onPress={() => setProblem("")} style={styles.clearBtn}>
                       <IconSymbol size={18} name="xmark.circle.fill" color={colors.muted} />

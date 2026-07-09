@@ -17,6 +17,8 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { trpc } from "@/lib/trpc";
 import type { ChatMessage } from "@/shared/types";
+import { SubjectPicker } from "@/components/subject-picker";
+import { type SubjectId, getSubjectLabel } from "@/lib/subjects";
 
 const QUICK_PROMPTS = [
   "Explain the quadratic formula",
@@ -69,6 +71,7 @@ function MessageBubble({ message, colors }: { message: ChatMessage; colors: any 
 
 export default function ChatScreen() {
   const colors = useColors();
+  const [selectedSubject, setSelectedSubject] = useState<SubjectId | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: "welcome",
@@ -120,15 +123,16 @@ export default function ChatScreen() {
       .filter((m) => m.id !== "welcome")
       .map((m) => ({ role: m.role, content: m.content }));
 
-    chatMutation.mutate({ messages: contextMessages });
+    chatMutation.mutate({ messages: contextMessages, subject: selectedSubject ?? undefined });
   };
 
   const handleClearChat = () => {
+    const subjectName = selectedSubject ? getSubjectLabel(selectedSubject) : "any subject";
     setMessages([
       {
         id: "welcome-" + Date.now(),
         role: "assistant",
-        content: "Chat cleared! Ask me anything about mathematics. 🧮",
+        content: `Chat cleared! I'm ready to help with ${subjectName}. What would you like to explore? 📚`,
         timestamp: Date.now(),
       },
     ]);
@@ -158,6 +162,28 @@ export default function ChatScreen() {
           <TouchableOpacity onPress={handleClearChat} style={styles.clearBtn}>
             <IconSymbol size={20} name="trash.fill" color={colors.muted} />
           </TouchableOpacity>
+        </View>
+
+        {/* Subject Context Row */}
+        <View style={[styles.subjectRow, { borderBottomColor: colors.border, backgroundColor: colors.background }]}>
+          <Text style={[styles.subjectRowLabel, { color: colors.muted }]}>Focus:</Text>
+          <SubjectPicker
+            value={selectedSubject}
+            onChange={(id) => {
+              setSelectedSubject(id);
+              if (id && messages.length <= 1) {
+                setMessages([
+                  {
+                    id: "welcome-" + Date.now(),
+                    role: "assistant",
+                    content: `I'm ready to help with ${getSubjectLabel(id)}! Ask me anything — I'll explain concepts, help with problems, and guide you step by step. 📚`,
+                    timestamp: Date.now(),
+                  },
+                ]);
+              }
+            }}
+            showAll
+          />
         </View>
 
         {/* Messages */}
@@ -242,6 +268,21 @@ export default function ChatScreen() {
 }
 
 const styles = StyleSheet.create({
+  subjectRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    gap: 10,
+    borderBottomWidth: 0.5,
+  },
+  subjectRowLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+    minWidth: 40,
+  },
   header: {
     flexDirection: "row",
     alignItems: "center",

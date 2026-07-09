@@ -16,7 +16,7 @@ import { useColors } from "@/hooks/use-colors";
 import { trpc } from "@/lib/trpc";
 import type { PracticeQuestion, MathSubject, Difficulty } from "@/shared/types";
 import { SubjectPicker } from "@/components/subject-picker";
-import { type SubjectId } from "@/lib/subjects";
+import { type SubjectId, getSubjectColor, getSubjectLabel } from "@/lib/subjects";
 
 const DIFFICULTIES: { id: Difficulty; label: string; color: string; desc: string }[] = [
   { id: "easy", label: "Easy", color: "#10B981", desc: "Basic concepts" },
@@ -177,9 +177,11 @@ export default function PracticeScreen() {
                     {currentQuestion.difficulty.toUpperCase()}
                   </Text>
                 </View>
-                <Text style={[styles.subjectTag, { color: colors.muted }]}>
-                  {currentQuestion.subject.replace(/_/g, " ")}
-                </Text>
+                <View style={[styles.subjectBadge, { backgroundColor: `${getSubjectColor(currentQuestion.subject)}20` }]}>
+                  <Text style={[styles.subjectBadgeText, { color: getSubjectColor(currentQuestion.subject) }]}>
+                    {getSubjectLabel(currentQuestion.subject)}
+                  </Text>
+                </View>
               </View>
               <Text style={[styles.questionText, { color: colors.foreground }]}>
                 {currentQuestion.problem}
@@ -301,6 +303,8 @@ const styles = StyleSheet.create({
   difficultyBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
   difficultyBadgeText: { fontSize: 11, fontWeight: "700", letterSpacing: 0.5 },
   subjectTag: { fontSize: 13, fontWeight: "500", textTransform: "capitalize" },
+  subjectBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
+  subjectBadgeText: { fontSize: 11, fontWeight: "700", letterSpacing: 0.5 },
   questionText: { fontSize: 17, lineHeight: 26, fontWeight: "500" },
   hintsCard: { padding: 16, borderRadius: 16, borderWidth: 1, marginBottom: 12 },
   hintsTitle: { fontSize: 14, fontWeight: "700", marginBottom: 10 },
