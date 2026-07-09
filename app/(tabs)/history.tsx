@@ -17,32 +17,7 @@ import { useColors } from "@/hooks/use-colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { toggleBookmark, getBookmarks } from "@/lib/bookmarks";
 import type { HistoryItem, MathSubject } from "@/shared/types";
-
-const SUBJECT_COLORS: Record<string, string> = {
-  algebra: "#6C3CE1",
-  calculus: "#3B82F6",
-  geometry: "#10B981",
-  trigonometry: "#F97316",
-  statistics: "#EC4899",
-  arithmetic: "#8B5CF6",
-  linear_algebra: "#06B6D4",
-  differential_equations: "#EF4444",
-  number_theory: "#F59E0B",
-  other: "#6B7280",
-};
-
-const SUBJECT_LABELS: Record<string, string> = {
-  algebra: "Algebra",
-  calculus: "Calculus",
-  geometry: "Geometry",
-  trigonometry: "Trig",
-  statistics: "Stats",
-  arithmetic: "Arithmetic",
-  linear_algebra: "Lin. Algebra",
-  differential_equations: "Diff. Eq.",
-  number_theory: "Number Theory",
-  other: "Math",
-};
+import { getSubjectColor, getSubjectLabel } from "@/lib/subjects";
 
 function formatTime(timestamp: number): string {
   const now = Date.now();
@@ -154,8 +129,8 @@ export default function HistoryScreen() {
   const uniqueSubjects = Array.from(new Set(history.map((h) => h.subject)));
 
   const renderItem = ({ item }: { item: HistoryItem }) => {
-    const subjectColor = SUBJECT_COLORS[item.subject] || SUBJECT_COLORS.other;
-    const subjectLabel = SUBJECT_LABELS[item.subject] || "Math";
+    const subjectColor = getSubjectColor(item.subject);
+    const subjectLabel = getSubjectLabel(item.subject);
 
     return (
       <TouchableOpacity
@@ -263,7 +238,7 @@ export default function HistoryScreen() {
               </TouchableOpacity>
               {uniqueSubjects.map((subject) => {
                 const isSelected = filterSubject === subject;
-                const color = SUBJECT_COLORS[subject] || SUBJECT_COLORS.other;
+                const color = getSubjectColor(subject);
                 return (
                   <TouchableOpacity
                     key={subject}
@@ -282,7 +257,7 @@ export default function HistoryScreen() {
                         { color: isSelected ? color : colors.foreground },
                       ]}
                     >
-                      {SUBJECT_LABELS[subject] || subject}
+                      {getSubjectLabel(subject)}
                     </Text>
                   </TouchableOpacity>
                 );
@@ -302,7 +277,7 @@ export default function HistoryScreen() {
           </Text>
           <Text style={[styles.emptySubtitle, { color: colors.muted }]}>
             {history.length === 0
-              ? "Solve your first math problem to see it here"
+              ? "Solve your first problem to see it here"
               : "Try a different search or filter"}
           </Text>
         </View>

@@ -20,10 +20,11 @@ import type { ChatMessage } from "@/shared/types";
 
 const QUICK_PROMPTS = [
   "Explain the quadratic formula",
-  "What is integration by parts?",
-  "How do I find the derivative?",
-  "Explain Pythagorean theorem",
-  "What is a matrix determinant?",
+  "What is photosynthesis?",
+  "Summarize Romeo and Juliet",
+  "What caused World War I?",
+  "Explain Newton's laws of motion",
+  "What is supply and demand?",
 ];
 
 function MessageBubble({ message, colors }: { message: ChatMessage; colors: any }) {
@@ -72,14 +73,14 @@ export default function ChatScreen() {
     {
       id: "welcome",
       role: "assistant",
-      content: "Hi! I'm MathGenius AI, your personal math tutor. Ask me anything about mathematics — from basic arithmetic to advanced calculus. I'm here to help you understand concepts and solve problems! 🧮",
+      content: "Hi! I'm StudyGenius AI, your personal academic tutor. Ask me anything — Math, Science, English, History, and more. I'll explain concepts, help with homework, and guide you step by step! 📚",
       timestamp: Date.now(),
     },
   ]);
   const [inputText, setInputText] = useState("");
   const flatListRef = useRef<FlatList>(null);
 
-  const chatMutation = trpc.math.chat.useMutation({
+  const chatMutation = trpc.academic.chat.useMutation({
     onSuccess: (data) => {
       const aiMessage: ChatMessage = {
         id: `ai-${Date.now()}`,
@@ -172,7 +173,7 @@ export default function ChatScreen() {
             chatMutation.isPending ? (
               <View style={[styles.typingIndicator, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <ActivityIndicator size="small" color={colors.primary} />
-                <Text style={[styles.typingText, { color: colors.muted }]}>MathGenius is thinking...</Text>
+                <Text style={[styles.typingText, { color: colors.muted }]}>StudyGenius is thinking...</Text>
               </View>
             ) : null
           }
@@ -213,7 +214,7 @@ export default function ChatScreen() {
           >
             <TextInput
               style={[styles.input, { color: colors.foreground }]}
-              placeholder="Ask about any math topic..."
+              placeholder="Ask about any subject..."
               placeholderTextColor={colors.muted}
               value={inputText}
               onChangeText={setInputText}

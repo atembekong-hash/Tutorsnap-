@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { MathSubject } from "@/shared/types";
+import { getSubjectColor, getSubjectLabel } from "@/lib/subjects";
 
 export type StreakData = {
   currentStreak: number;
@@ -152,15 +153,10 @@ export function getDailyGoalPercent(todaySolved: number, dailyGoal: number): num
   return Math.min(100, Math.round((todaySolved / dailyGoal) * 100));
 }
 
-export const SUBJECT_DISPLAY: Partial<Record<MathSubject, { label: string; color: string }>> = {
-  algebra: { label: "Algebra", color: "#6C3CE1" },
-  calculus: { label: "Calculus", color: "#3B82F6" },
-  geometry: { label: "Geometry", color: "#10B981" },
-  trigonometry: { label: "Trigonometry", color: "#F97316" },
-  statistics: { label: "Statistics", color: "#EC4899" },
-  arithmetic: { label: "Arithmetic", color: "#8B5CF6" },
-  linear_algebra: { label: "Linear Algebra", color: "#06B6D4" },
-  differential_equations: { label: "Diff. Equations", color: "#EF4444" },
-  number_theory: { label: "Number Theory", color: "#F59E0B" },
-  other: { label: "Other", color: "#6B7280" },
-};
+/** Returns display info for any subject ID, using centralized subjects lib */
+export function getSubjectDisplay(subject: string): { label: string; color: string } {
+  return { label: getSubjectLabel(subject), color: getSubjectColor(subject) };
+}
+
+/** @deprecated Use getSubjectDisplay() instead */
+export const SUBJECT_DISPLAY: Partial<Record<MathSubject, { label: string; color: string }>> = {};

@@ -17,7 +17,7 @@ import {
   setDailyGoal,
   getStreakEmoji,
   getDailyGoalPercent,
-  SUBJECT_DISPLAY,
+  getSubjectDisplay,
   type ProgressData,
 } from "@/lib/progress";
 
@@ -223,9 +223,9 @@ export default function ProgressScreen() {
               Based on {streak.totalSolved} problems solved
             </Text>
             {subjectEntries.map(([subject, count]) => {
-              const info = SUBJECT_DISPLAY[subject as keyof typeof SUBJECT_DISPLAY];
-              const label = info?.label || subject;
-              const color = info?.color || colors.primary;
+              const info = getSubjectDisplay(subject);
+              const label = info.label;
+              const color = info.color;
               const pct = Math.round((count / totalSolved) * 100);
               return (
                 <View key={subject} style={styles.subjectRow}>

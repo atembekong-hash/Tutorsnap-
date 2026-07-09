@@ -4,81 +4,169 @@ import { invokeLLM } from "./_core/llm";
 import { systemRouter } from "./_core/systemRouter";
 import { COOKIE_NAME } from "../shared/const";
 
-const SOLVE_SYSTEM_PROMPT = `You are MathGenius AI, an expert mathematics tutor and solver. 
-When given a math problem, you must:
-1. Identify the subject area
+// ─── Subject-aware prompt builder ────────────────────────────────────────────
+
+function buildSolveSystemPrompt(subject: string): string {
+  const subjectGuides: Record<string, string> = {
+    // Math
+    algebra:                "Solve algebraically. Show each manipulation step. Identify the type of equation.",
+    calculus:               "Apply calculus rules (limits, derivatives, integrals). State the theorem used at each step.",
+    geometry:               "Use geometric theorems and formulas. Include diagrams described in text if helpful.",
+    trigonometry:           "Apply trig identities and the unit circle. Show angle conversions if needed.",
+    statistics:             "Apply statistical formulas. Interpret the result in context.",
+    arithmetic:             "Compute step by step. Show order of operations clearly.",
+    precalculus:            "Bridge algebra and calculus concepts. Show function analysis.",
+    linear_algebra:         "Use matrix operations and vector space properties. Show row operations.",
+    differential_equations: "Identify equation type (separable, linear, etc.). Show the solution method.",
+    number_theory:          "Apply number theory theorems (divisibility, primes, modular arithmetic).",
+    // English / Language Arts
+    american_literature:    "Analyze the text using literary devices, historical context, and American literary traditions. Provide textual evidence.",
+    british_literature:     "Analyze the text using British literary traditions, historical context, and literary devices. Provide textual evidence.",
+    world_literature:       "Analyze the text in its cultural and historical context. Discuss universal themes and literary devices.",
+    composition:            "Provide structured writing guidance: thesis, evidence, argument flow, and revision tips.",
+    creative_writing:       "Offer creative feedback: voice, imagery, structure, character, and narrative techniques.",
+    debate:                 "Construct logical arguments with evidence. Address counterarguments. Use rhetorical strategies.",
+    journalism:             "Apply journalistic principles: who/what/when/where/why/how, inverted pyramid, objectivity.",
+    grammar:                "Identify the grammatical rule. Explain the correct usage with examples and common mistakes.",
+    poetry:                 "Analyze meter, rhyme scheme, imagery, tone, and literary devices. Discuss the poem's meaning.",
+    // Science
+    biology:                "Apply biological concepts and processes. Reference cell biology, genetics, ecology, or physiology as needed.",
+    chemistry:              "Balance equations, apply stoichiometry, and explain chemical principles. Show unit conversions.",
+    physics:                "Apply physics laws and formulas. Define variables, show unit analysis, and interpret results.",
+    earth_science:          "Apply earth science concepts: geology, meteorology, oceanography, or environmental systems.",
+    space_science:          "Apply astronomy and astrophysics concepts. Reference celestial mechanics, cosmology, or space exploration.",
+    environmental_science:  "Apply environmental science principles: ecosystems, climate, pollution, sustainability.",
+    anatomy:                "Describe anatomical structures, physiological processes, and body systems accurately.",
+    forensics:              "Apply forensic science methods: evidence analysis, chain of custody, scientific reasoning.",
+    general_science:        "Apply the scientific method. Explain concepts clearly with real-world examples.",
+    // Social Studies
+    us_history:             "Provide historical context, key figures, causes and effects. Reference primary sources when relevant.",
+    world_history:          "Provide global historical context, compare civilizations, and analyze cause and effect.",
+    government:             "Explain governmental structures, constitutional principles, and civic processes accurately.",
+    economics:              "Apply economic theories, models, and concepts. Use supply/demand, fiscal/monetary policy as needed.",
+    geography:              "Describe physical and human geography. Explain spatial relationships and regional characteristics.",
+    psychology:             "Apply psychological theories and research. Reference key studies and explain behavior/cognition.",
+    sociology:              "Apply sociological theories and concepts. Analyze social structures, institutions, and behavior.",
+    civics:                 "Explain civic rights, responsibilities, and democratic processes accurately.",
+  };
+
+  const guide = subjectGuides[subject] ?? "Provide a clear, accurate, and educational answer.";
+
+  return `You are StudyGenius AI, an expert academic tutor covering all school subjects.
+Subject: ${subject}
+Guidance: ${guide}
+
+When answering, you must:
+1. Identify exactly what is being asked
 2. Provide a clear, correct answer
-3. Break down the solution into clear numbered steps
-4. Explain the key concept
-5. Provide helpful tips
-6. Suggest related topics
+3. Break the solution/explanation into numbered steps
+4. Explain the key concept involved
+5. Provide 2-3 helpful tips for this type of problem
+6. Suggest 2-3 related topics to study
 
 Always respond with valid JSON in this exact format:
 {
-  "problem": "the original problem statement",
-  "subject": "one of: algebra, calculus, geometry, trigonometry, statistics, arithmetic, linear_algebra, differential_equations, number_theory, other",
-  "answer": "the final answer, clear and concise",
+  "problem": "the original question or problem",
+  "subject": "${subject}",
+  "answer": "the final answer or conclusion, clear and concise",
   "steps": [
     {
       "stepNumber": 1,
       "title": "Step title",
       "explanation": "Detailed explanation of this step",
-      "expression": "Optional: mathematical expression or equation for this step"
+      "expression": "Optional: formula, equation, or key phrase for this step"
     }
   ],
-  "conceptExplained": "A brief explanation of the key mathematical concept used",
+  "conceptExplained": "A brief explanation of the key concept used",
   "tips": ["Tip 1", "Tip 2", "Tip 3"],
   "relatedTopics": ["Topic 1", "Topic 2", "Topic 3"]
 }`;
+}
 
-const IMAGE_SOLVE_SYSTEM_PROMPT = `You are MathGenius AI, an expert mathematics tutor and solver.
-Analyze the image and identify any math problem in it.
-Then solve it completely.
-
+const IMAGE_SOLVE_SYSTEM_PROMPT = `You are StudyGenius AI, an expert academic tutor.
+Analyze the image and identify any question, problem, or text in it.
+Determine the subject area automatically, then solve or answer it completely.
 Always respond with valid JSON in this exact format:
 {
-  "problem": "the math problem you found in the image",
-  "subject": "one of: algebra, calculus, geometry, trigonometry, statistics, arithmetic, linear_algebra, differential_equations, number_theory, other",
+  "problem": "the question or problem you found in the image",
+  "subject": "the detected subject id (e.g. algebra, biology, us_history, composition, etc.)",
   "answer": "the final answer, clear and concise",
   "steps": [
     {
       "stepNumber": 1,
       "title": "Step title",
       "explanation": "Detailed explanation of this step",
-      "expression": "Optional: mathematical expression or equation for this step"
+      "expression": "Optional: formula, equation, or key phrase"
     }
   ],
-  "conceptExplained": "A brief explanation of the key mathematical concept used",
+  "conceptExplained": "A brief explanation of the key concept used",
   "tips": ["Tip 1", "Tip 2"],
   "relatedTopics": ["Topic 1", "Topic 2"]
 }`;
 
-const CHAT_SYSTEM_PROMPT = `You are MathGenius AI, a friendly and expert mathematics tutor.
-You help students understand mathematical concepts, solve problems, and learn math effectively.
+const CHAT_SYSTEM_PROMPT = `You are StudyGenius AI, a friendly and expert academic tutor covering all school subjects.
+You help students understand concepts across Mathematics, English/Language Arts, Science, and Social Studies.
 Be encouraging, clear, and pedagogical. Use examples when helpful.
-Format mathematical expressions clearly. Keep responses concise but complete.`;
+Format mathematical expressions clearly. Keep responses concise but complete.
+Adapt your tone and vocabulary to the subject — precise for math/science, analytical for literature/history.`;
 
-function extractJsonFromContent(content: string | unknown): string {
-  const text = typeof content === "string" ? content : JSON.stringify(content);
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error("No JSON found in response");
-  return jsonMatch[0];
+function buildPracticePrompt(subject: string, difficulty: string): string {
+  const isEnglish = ["american_literature","british_literature","world_literature","composition","creative_writing","debate","journalism","grammar","poetry"].includes(subject);
+  const isSocial = ["us_history","world_history","government","economics","geography","psychology","sociology","civics"].includes(subject);
+
+  let taskType = "problem";
+  if (isEnglish) taskType = "question or short writing prompt";
+  if (isSocial) taskType = "question or analysis prompt";
+
+  return `You are StudyGenius AI, an expert academic tutor.
+Generate a ${difficulty} ${taskType} for the subject: ${subject}.
+The question should be appropriate for a high school or early college student.
+Always respond with valid JSON in this exact format:
+{
+  "id": "practice-${Date.now()}",
+  "subject": "${subject}",
+  "difficulty": "${difficulty}",
+  "problem": "The practice question or prompt",
+  "answer": "The correct answer or a model answer",
+  "steps": [
+    {
+      "stepNumber": 1,
+      "title": "Step or point title",
+      "explanation": "Explanation",
+      "expression": "Optional: formula, quote, or key phrase"
+    }
+  ],
+  "hints": ["Hint 1", "Hint 2", "Hint 3"]
+}`;
 }
 
-const mathRouter = router({
+// ─── Helper ───────────────────────────────────────────────────────────────────
+
+function extractJsonFromContent(content: string): string {
+  const jsonMatch = content.match(/\{[\s\S]*\}/);
+  if (jsonMatch) return jsonMatch[0];
+  return content;
+}
+
+// ─── Academic router ──────────────────────────────────────────────────────────
+
+const academicRouter = router({
   solve: publicProcedure
-    .input(z.object({ problem: z.string().min(1).max(5000) }))
+    .input(z.object({
+      problem: z.string().min(1),
+      subject: z.string().default("other"),
+    }))
     .mutation(async ({ input }) => {
+      const systemPrompt = buildSolveSystemPrompt(input.subject);
       const result = await invokeLLM({
         model: "gpt-4o-mini",
         messages: [
-          { role: "system", content: SOLVE_SYSTEM_PROMPT },
-          { role: "user", content: `Solve this math problem: ${input.problem}` },
+          { role: "system", content: systemPrompt },
+          { role: "user", content: input.problem },
         ],
         max_tokens: 2000,
         response_format: { type: "json_object" },
       });
-
       const rawContent = result.choices[0]?.message?.content ?? "";
       const text = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
       const jsonStr = extractJsonFromContent(text);
@@ -89,6 +177,7 @@ const mathRouter = router({
     .input(z.object({
       imageBase64: z.string(),
       mimeType: z.string().default("image/jpeg"),
+      subject: z.string().default("other"),
     }))
     .mutation(async ({ input }) => {
       const result = await invokeLLM({
@@ -98,7 +187,7 @@ const mathRouter = router({
           {
             role: "user",
             content: [
-              { type: "text", text: "Please identify and solve the math problem in this image." },
+              { type: "text", text: `Please identify and answer the question in this image. Subject hint: ${input.subject}` },
               {
                 type: "image_url",
                 image_url: { url: `data:${input.mimeType};base64,${input.imageBase64}` },
@@ -109,7 +198,6 @@ const mathRouter = router({
         max_tokens: 2000,
         response_format: { type: "json_object" },
       });
-
       const rawContent = result.choices[0]?.message?.content ?? "";
       const text = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
       const jsonStr = extractJsonFromContent(text);
@@ -122,37 +210,16 @@ const mathRouter = router({
       difficulty: z.enum(["easy", "medium", "hard"]),
     }))
     .mutation(async ({ input }) => {
-      const practicePrompt = `You are MathGenius AI, an expert mathematics tutor.
-Generate a practice problem for the given subject and difficulty level.
-
-Always respond with valid JSON in this exact format:
-{
-  "id": "practice-${Date.now()}",
-  "subject": "${input.subject}",
-  "difficulty": "${input.difficulty}",
-  "problem": "The practice problem statement",
-  "answer": "The correct answer",
-  "steps": [
-    {
-      "stepNumber": 1,
-      "title": "Step title",
-      "explanation": "Explanation",
-      "expression": "Optional expression"
-    }
-  ],
-  "hints": ["Hint 1", "Hint 2", "Hint 3"]
-}`;
-
+      const practicePrompt = buildPracticePrompt(input.subject, input.difficulty);
       const result = await invokeLLM({
         model: "gpt-4o-mini",
         messages: [
           { role: "system", content: practicePrompt },
-          { role: "user", content: `Generate a ${input.difficulty} ${input.subject} practice problem.` },
+          { role: "user", content: `Generate a ${input.difficulty} ${input.subject} practice question.` },
         ],
         max_tokens: 1500,
         response_format: { type: "json_object" },
       });
-
       const rawContent = result.choices[0]?.message?.content ?? "";
       const text = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
       const jsonStr = extractJsonFromContent(text);
@@ -178,12 +245,14 @@ Always respond with valid JSON in this exact format:
         ],
         max_tokens: 1000,
       });
-
       const rawContent = result.choices[0]?.message?.content ?? "";
       const text = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
       return { content: text || "I apologize, I couldn't process your request." };
     }),
 });
+
+// Keep math router as alias for backward compatibility
+const mathRouter = academicRouter;
 
 // Auth router stub (required by tests)
 const authRouter = router({
@@ -201,6 +270,7 @@ const authRouter = router({
 
 export const appRouter = router({
   math: mathRouter,
+  academic: academicRouter,
   auth: authRouter,
   system: systemRouter,
 });

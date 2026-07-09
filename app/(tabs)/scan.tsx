@@ -20,14 +20,17 @@ import { useColors } from "@/hooks/use-colors";
 import { trpc } from "@/lib/trpc";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { HistoryItem, MathSubject } from "@/shared/types";
+import { SubjectPicker } from "@/components/subject-picker";
+import { type SubjectId } from "@/lib/subjects";
 
 export default function ScanScreen() {
   const colors = useColors();
   const router = useRouter();
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [selectedSubject, setSelectedSubject] = useState<SubjectId | null>(null);
 
-  const solveMutation = trpc.math.solveFromImage.useMutation({
+  const solveMutation = trpc.academic.solveFromImage.useMutation({
     onSuccess: async (data) => {
       if (Platform.OS !== "web") {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -72,7 +75,7 @@ export default function ScanScreen() {
     }
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("Permission Required", "Camera access is needed to scan math problems.");
+      Alert.alert("Permission Required", "Camera access is needed to scan problems.");
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
@@ -127,7 +130,7 @@ export default function ScanScreen() {
           encoding: FileSystem.EncodingType.Base64,
         });
       }
-      solveMutation.mutate({ imageBase64: base64, mimeType: "image/jpeg" });
+      solveMutation.mutate({ imageBase64: base64, mimeType: "image/jpeg", subject: selectedSubject ?? "other" });
     } catch (e) {
       setIsProcessing(false);
       Alert.alert("Error", "Failed to process image. Please try again.");
@@ -216,16 +219,11 @@ export default function ScanScreen() {
               ))}
             </View>
 
-            {/* Supported Types */}
-            <View style={styles.supportedRow}>
-              {["Algebra", "Calculus", "Geometry", "Statistics", "Trigonometry"].map((type) => (
-                <View
-                  key={type}
-                  style={[styles.supportedChip, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                >
-                  <Text style={[styles.supportedText, { color: colors.muted }]}>{type}</Text>
-                </View>
-              ))}
+            {/* Subject Hint */}
+            <View style={{ marginTop: 16 }}>
+              <Text style={[{ fontSize: 12, fontWeight: '600', color: colors.muted, marginBottom: 8, letterSpacing: 0.5 }]}>SUBJECT HINT (OPTIONAL)</Text>
+              <Text style={[{ fontSize: 13, color: colors.muted, marginBottom: 10, lineHeight: 18 }]}>Helps the AI give a more accurate answer. Leave blank for auto-detect.</Text>
+              <SubjectPicker value={selectedSubject} onChange={setSelectedSubject} showAll />
             </View>
           </>
         ) : (

@@ -21,30 +21,64 @@ import { trpc } from "@/lib/trpc";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getProgress, getStreakEmoji, getDailyGoalPercent, type ProgressData } from "@/lib/progress";
 import type { HistoryItem, MathSubject } from "@/shared/types";
+import { SubjectPicker } from "@/components/subject-picker";
+import { type SubjectId, getSubjectDef } from "@/lib/subjects";
 
-const SUBJECTS = [
-  { id: "algebra", label: "Algebra", icon: "function" as const },
-  { id: "calculus", label: "Calculus", icon: "chart.line.uptrend.xyaxis" as const },
-  { id: "geometry", label: "Geometry", icon: "triangle" as const },
-  { id: "trigonometry", label: "Trig", icon: "x.squareroot" as const },
-  { id: "statistics", label: "Statistics", icon: "chart.bar.fill" as const },
-  { id: "arithmetic", label: "Arithmetic", icon: "sum" as const },
-] as const;
-
-const EXAMPLE_PROBLEMS = [
+// Subject examples per category — shown dynamically based on selected subject
+const SUBJECT_EXAMPLES: Record<string, string[]> = {
+  // Math
+  algebra:                ["Solve: 2x² + 5x - 3 = 0", "Factor: x² - 9", "Simplify: (3x + 2)(x - 4)", "Solve: |2x - 1| = 7"],
+  calculus:               ["Find the derivative of f(x) = x³ + 2x²", "Evaluate ∫sin(x)dx", "Find the limit as x→0 of sin(x)/x", "Use the chain rule on f(x) = (x²+1)⁵"],
+  geometry:               ["Find the area of a triangle with base 8 and height 6", "Calculate the circumference of a circle with radius 5", "Find the hypotenuse of a right triangle with legs 3 and 4", "What is the sum of interior angles of a hexagon?"],
+  trigonometry:           ["Solve: sin(x) = 0.5 for 0 ≤ x ≤ 2π", "Simplify: sin²(x) + cos²(x)", "Find cos(75°) using sum formula", "Solve: 2cos(x) - 1 = 0"],
+  statistics:             ["Find the mean, median, and mode of: 4, 7, 7, 9, 11", "What is the standard deviation of: 2, 4, 4, 4, 5, 5, 7, 9?", "A coin is flipped 3 times. What is P(exactly 2 heads)?", "Calculate the z-score for x=75, μ=70, σ=5"],
+  arithmetic:             ["Simplify: 3 + 4 × 2 - 1", "What is 15% of 240?", "Convert 3/4 to a decimal", "Find the GCF of 48 and 72"],
+  // English
+  american_literature:    ["Analyze the symbolism of the green light in The Great Gatsby", "Compare Hester Prynne and Huck Finn as outsiders", "What is the theme of self-reliance in Emerson's essays?", "Analyze the use of irony in The Catcher in the Rye"],
+  british_literature:     ["Analyze Hamlet's 'To be or not to be' soliloquy", "What is the significance of the moors in Wuthering Heights?", "Discuss the social critique in Pride and Prejudice", "Analyze the symbolism in 1984 by George Orwell"],
+  world_literature:       ["Analyze the theme of alienation in Kafka's The Metamorphosis", "What is magical realism in One Hundred Years of Solitude?", "Discuss the role of fate in Oedipus Rex", "Analyze the theme of honor in Don Quixote"],
+  composition:            ["Write a thesis statement for an essay on climate change", "How do I write a strong introduction paragraph?", "What is the difference between a claim and evidence?", "How do I improve the flow of my essay?"],
+  creative_writing:       ["How do I write a compelling opening line for a short story?", "What is 'show, don't tell' and how do I use it?", "How do I develop a believable antagonist?", "Write a metaphor for loneliness"],
+  debate:                 ["What are the strongest arguments for renewable energy?", "How do I rebut the argument that social media is harmful?", "What is the Toulmin model of argumentation?", "Build an argument for universal basic income"],
+  journalism:             ["Write a lead sentence for a story about a school fire", "What is the inverted pyramid structure?", "How do I write an objective news report?", "What questions should I ask in an interview?"],
+  grammar:                ["When do I use 'who' vs 'whom'?", "What is a dangling modifier? Give an example", "Explain the difference between active and passive voice", "When should I use a semicolon?"],
+  poetry:                 ["Analyze the meter of Shakespeare's Sonnet 18", "What is the effect of enjambment in a poem?", "Identify the literary devices in 'The Road Not Taken'", "What is the difference between a simile and a metaphor?"],
+  // Science
+  biology:                ["Explain the process of mitosis", "What is the difference between DNA and RNA?", "How does natural selection work?", "Explain the role of ATP in cellular respiration"],
+  chemistry:              ["Balance: Fe + O₂ → Fe₂O₃", "What is the pH of a 0.01 M HCl solution?", "Explain covalent vs ionic bonding", "Calculate the molar mass of H₂SO₄"],
+  physics:                ["A car accelerates from 0 to 60 m/s in 10 seconds. Find the acceleration.", "Calculate the force needed to accelerate a 5 kg object at 3 m/s²", "What is the kinetic energy of a 2 kg object moving at 4 m/s?", "Explain Newton's Third Law with an example"],
+  earth_science:          ["Explain the rock cycle", "What causes earthquakes?", "Describe the layers of the Earth", "How do tectonic plates move?"],
+  space_science:          ["Why do planets orbit the sun?", "What is the difference between a star and a planet?", "Explain the life cycle of a star", "What causes lunar phases?"],
+  environmental_science:  ["Explain the greenhouse effect", "What is the difference between weather and climate?", "How does deforestation affect biodiversity?", "Explain the nitrogen cycle"],
+  anatomy:                ["Describe the function of the mitral valve", "What is the role of the hypothalamus?", "Explain how the immune system responds to infection", "Describe the structure of a neuron"],
+  forensics:              ["How is DNA evidence collected and analyzed?", "What is the chain of custody in forensic science?", "Explain how fingerprint analysis works", "What is the difference between primary and secondary crime scenes?"],
+  general_science:        ["What is the scientific method?", "Explain the difference between a hypothesis and a theory", "What is the difference between physical and chemical changes?", "Explain the law of conservation of energy"],
+  // Social Studies
+  us_history:             ["What caused the Civil War?", "Explain the significance of the New Deal", "What were the main causes of the American Revolution?", "How did the Civil Rights Movement change American law?"],
+  world_history:          ["What caused World War I?", "Explain the significance of the French Revolution", "How did the Industrial Revolution change society?", "What were the causes and effects of the Cold War?"],
+  government:             ["Explain the system of checks and balances", "What is the difference between a democracy and a republic?", "How does a bill become a law?", "What are the three branches of the U.S. government?"],
+  economics:              ["Explain supply and demand with an example", "What is the difference between GDP and GNP?", "What causes inflation?", "Explain the concept of opportunity cost"],
+  geography:              ["What is the difference between latitude and longitude?", "Explain how mountains affect climate", "What is the Ring of Fire?", "How do river deltas form?"],
+  psychology:             ["Explain Maslow's hierarchy of needs", "What is cognitive dissonance?", "Describe the stages of Piaget's cognitive development theory", "What is the difference between classical and operant conditioning?"],
+  sociology:              ["What is social stratification?", "Explain Durkheim's concept of anomie", "What is the difference between a primary and secondary group?", "How does socialization shape identity?"],
+  civics:                 ["What rights are protected by the First Amendment?", "Explain the Electoral College", "What is the role of the Supreme Court?", "What is the difference between civil and criminal law?"],
+  other:                  ["Explain this concept to me", "Help me understand this topic", "What are the key ideas here?", "Give me an overview of this subject"],
+};
+const DEFAULT_EXAMPLES = [
   "Solve: 2x² + 5x - 3 = 0",
-  "Find the derivative of f(x) = x³ + 2x² - 5x + 1",
-  "Calculate the area of a triangle with base 8 and height 6",
-  "Simplify: (3x + 2)(x - 4)",
-  "Find the integral of sin(x)dx",
-  "Solve the system: 2x + y = 7, x - y = 2",
+  "Find the derivative of f(x) = x³ + 2x²",
+  "Analyze the symbolism in The Great Gatsby",
+  "Explain the process of mitosis",
+  "What caused World War I?",
+  "Balance: Fe + O₂ → Fe₂O₃",
 ];
+
 
 export default function SolveScreen() {
   const colors = useColors();
   const router = useRouter();
   const [problem, setProblem] = useState("");
-  const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
+  const [selectedSubject, setSelectedSubject] = useState<SubjectId | null>(null);
   const [showMathKeyboard, setShowMathKeyboard] = useState(false);
   const [progress, setProgress] = useState<ProgressData | null>(null);
   const inputRef = useRef<TextInput>(null);
@@ -61,7 +95,7 @@ export default function SolveScreen() {
     }, [])
   );
 
-  const solveMutation = trpc.math.solve.useMutation({
+  const solveMutation = trpc.academic.solve.useMutation({
     onSuccess: async (data) => {
       if (Platform.OS !== "web") {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -108,10 +142,8 @@ export default function SolveScreen() {
     if (Platform.OS !== "web") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
-    const fullProblem = selectedSubject
-      ? `[${selectedSubject}] ${problem.trim()}`
-      : problem.trim();
-    solveMutation.mutate({ problem: fullProblem });
+    const fullProblem = problem.trim();
+    solveMutation.mutate({ problem: fullProblem, subject: selectedSubject ?? "other" });
   };
 
   const handleExample = (example: string) => {
@@ -161,10 +193,10 @@ export default function SolveScreen() {
           {/* Header */}
           <View style={styles.header}>
             <View>
-              <Text style={[styles.greeting, { color: colors.muted }]}>MathGenius AI</Text>
+              <Text style={[styles.greeting, { color: colors.muted }]}>StudyGenius AI</Text>
               <Text style={[styles.title, { color: colors.foreground }]}>
                 Solve Any{" "}
-                <Text style={{ color: colors.primary }}>Math Problem</Text>
+                <Text style={{ color: colors.primary }}>Problem</Text>
               </Text>
             </View>
             {streak && streak.currentStreak > 0 && (
@@ -217,46 +249,16 @@ export default function SolveScreen() {
             </TouchableOpacity>
           )}
 
-          {/* Subject Filter */}
+          {/* Subject Picker */}
           <View style={styles.subjectRow}>
             <Text style={[styles.sectionLabel, { color: colors.muted }]}>SUBJECT</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
-              {SUBJECTS.map((subject) => {
-                const isSelected = selectedSubject === subject.id;
-                return (
-                  <TouchableOpacity
-                    key={subject.id}
-                    onPress={() => {
-                      setSelectedSubject(isSelected ? null : subject.id);
-                      if (Platform.OS !== "web") {
-                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      }
-                    }}
-                    style={[
-                      styles.subjectChip,
-                      {
-                        backgroundColor: isSelected ? colors.primary : colors.surface,
-                        borderColor: isSelected ? colors.primary : colors.border,
-                      },
-                    ]}
-                  >
-                    <IconSymbol
-                      size={14}
-                      name={subject.icon}
-                      color={isSelected ? "#FFFFFF" : colors.muted}
-                    />
-                    <Text
-                      style={[
-                        styles.subjectChipText,
-                        { color: isSelected ? "#FFFFFF" : colors.foreground },
-                      ]}
-                    >
-                      {subject.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
+            <View style={{ marginTop: 10 }}>
+              <SubjectPicker
+                value={selectedSubject}
+                onChange={(id) => setSelectedSubject(id)}
+                showAll
+              />
+            </View>
           </View>
 
           {/* Input */}
@@ -273,7 +275,7 @@ export default function SolveScreen() {
               <TextInput
                 ref={inputRef}
                 style={[styles.input, { color: colors.foreground }]}
-                placeholder="Type your math problem here..."
+                placeholder="Type your question or problem here..."
                 placeholderTextColor={colors.muted}
                 multiline
                 value={problem}
@@ -412,7 +414,7 @@ export default function SolveScreen() {
               <IconSymbol size={16} name="lightbulb.fill" color={colors.warning} />
               <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Try an Example</Text>
             </View>
-            {EXAMPLE_PROBLEMS.map((example, index) => (
+            {(selectedSubject && SUBJECT_EXAMPLES[selectedSubject] ? SUBJECT_EXAMPLES[selectedSubject] : DEFAULT_EXAMPLES).map((example, index) => (
               <TouchableOpacity
                 key={index}
                 onPress={() => handleExample(example)}

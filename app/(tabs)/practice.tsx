@@ -15,17 +15,8 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { trpc } from "@/lib/trpc";
 import type { PracticeQuestion, MathSubject, Difficulty } from "@/shared/types";
-
-const SUBJECTS = [
-  { id: "arithmetic" as MathSubject, label: "Arithmetic", emoji: "🔢", color: "#8B5CF6" },
-  { id: "algebra" as MathSubject, label: "Algebra", emoji: "✖️", color: "#6C3CE1" },
-  { id: "geometry" as MathSubject, label: "Geometry", emoji: "📐", color: "#10B981" },
-  { id: "trigonometry" as MathSubject, label: "Trigonometry", emoji: "📊", color: "#F97316" },
-  { id: "calculus" as MathSubject, label: "Calculus", emoji: "∫", color: "#3B82F6" },
-  { id: "statistics" as MathSubject, label: "Statistics", emoji: "📈", color: "#EC4899" },
-  { id: "linear_algebra" as MathSubject, label: "Linear Algebra", emoji: "🔢", color: "#06B6D4" },
-  { id: "number_theory" as MathSubject, label: "Number Theory", emoji: "🔍", color: "#F59E0B" },
-];
+import { SubjectPicker } from "@/components/subject-picker";
+import { type SubjectId } from "@/lib/subjects";
 
 const DIFFICULTIES: { id: Difficulty; label: string; color: string; desc: string }[] = [
   { id: "easy", label: "Easy", color: "#10B981", desc: "Basic concepts" },
@@ -36,13 +27,13 @@ const DIFFICULTIES: { id: Difficulty; label: string; color: string; desc: string
 export default function PracticeScreen() {
   const colors = useColors();
   const router = useRouter();
-  const [selectedSubject, setSelectedSubject] = useState<MathSubject>("algebra");
+  const [selectedSubject, setSelectedSubject] = useState<SubjectId>("algebra");
   const [selectedDifficulty, setSelectedDifficulty] = useState<Difficulty>("medium");
   const [currentQuestion, setCurrentQuestion] = useState<PracticeQuestion | null>(null);
   const [showAnswer, setShowAnswer] = useState(false);
   const [hintsShown, setHintsShown] = useState(0);
 
-  const generateMutation = trpc.math.generatePractice.useMutation({
+  const generateMutation = trpc.academic.generatePractice.useMutation({
     onSuccess: (data) => {
       setCurrentQuestion(data as PracticeQuestion);
       setShowAnswer(false);
@@ -105,41 +96,12 @@ export default function PracticeScreen() {
         {/* Subject Selection */}
         <View style={styles.section}>
           <Text style={[styles.sectionLabel, { color: colors.muted }]}>SUBJECT</Text>
-          <View style={styles.subjectGrid}>
-            {SUBJECTS.map((subject) => {
-              const isSelected = selectedSubject === subject.id;
-              return (
-                <TouchableOpacity
-                  key={subject.id}
-                  onPress={() => {
-                    setSelectedSubject(subject.id);
-                    if (Platform.OS !== "web") {
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    }
-                  }}
-                  style={[
-                    styles.subjectCard,
-                    {
-                      backgroundColor: isSelected ? `${subject.color}20` : colors.surface,
-                      borderColor: isSelected ? subject.color : colors.border,
-                      borderWidth: isSelected ? 2 : 1,
-                    },
-                  ]}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.subjectEmoji}>{subject.emoji}</Text>
-                  <Text
-                    style={[
-                      styles.subjectLabel,
-                      { color: isSelected ? subject.color : colors.foreground },
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {subject.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
+          <View style={{ marginTop: 10 }}>
+            <SubjectPicker
+              value={selectedSubject}
+              onChange={(id) => setSelectedSubject(id ?? "algebra")}
+              showAll={false}
+            />
           </View>
         </View>
 
