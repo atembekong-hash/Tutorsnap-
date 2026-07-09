@@ -53,3 +53,8 @@
 ## New Features (Round 4)
 - [x] Subject-specific formula cheat sheet bottom sheet on Solve screen
 - [x] Offline mode indicator banner and graceful AI feature disabling
+
+## New Features (Round 5)
+- [x] Extend cheat sheets: Biology, Chemistry (organic), Grammar
+- [x] Copy/Share-as-Image on Solution screen
+- [x] Timed Practice Quiz mode with AI questions and scoring

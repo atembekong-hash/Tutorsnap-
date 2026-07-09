@@ -389,6 +389,142 @@ const CHEAT_SHEETS: Record<string, CheatSheet> = {
     ],
   },
 
+  biology: {
+    subjectId: "biology",
+    title: "Biology Reference",
+    sections: [
+      {
+        heading: "Cell Biology",
+        items: [
+          { label: "Cell Theory", formula: "All life = cells; cells from cells; cell = basic unit" },
+          { label: "Prokaryote", formula: "No nucleus, no membrane-bound organelles" },
+          { label: "Eukaryote", formula: "Has nucleus + membrane-bound organelles" },
+          { label: "ATP", formula: "Adenosine triphosphate — energy currency of the cell" },
+          { label: "Mitosis phases", formula: "PMAT: Prophase → Metaphase → Anaphase → Telophase" },
+          { label: "Meiosis", formula: "2 divisions → 4 haploid gametes" },
+        ],
+      },
+      {
+        heading: "Genetics",
+        items: [
+          { label: "DNA base pairs", formula: "A–T (2 H-bonds), G–C (3 H-bonds)" },
+          { label: "Central Dogma", formula: "DNA → mRNA → Protein" },
+          { label: "Transcription", formula: "DNA → mRNA (in nucleus)" },
+          { label: "Translation", formula: "mRNA → Protein (at ribosome)" },
+          { label: "Mendelian ratio", formula: "Monohybrid cross: 3:1 (dominant:recessive)" },
+          { label: "Hardy-Weinberg", formula: "p² + 2pq + q² = 1; p + q = 1" },
+        ],
+      },
+      {
+        heading: "Ecology",
+        items: [
+          { label: "Trophic levels", formula: "Producer → Primary → Secondary → Tertiary consumer" },
+          { label: "10% Rule", formula: "Only ~10% of energy transfers to next trophic level" },
+          { label: "Biotic", formula: "Living components (organisms)" },
+          { label: "Abiotic", formula: "Non-living components (water, sunlight, temp)" },
+        ],
+      },
+      {
+        heading: "Photosynthesis & Respiration",
+        items: [
+          { label: "Photosynthesis", formula: "6CO₂ + 6H₂O + light → C₆H₁₂O₆ + 6O₂" },
+          { label: "Aerobic resp.", formula: "C₆H₁₂O₆ + 6O₂ → 6CO₂ + 6H₂O + 36–38 ATP" },
+          { label: "Anaerobic resp.", formula: "Glucose → Lactic acid (animals) or Ethanol + CO₂ (yeast)" },
+        ],
+      },
+    ],
+  },
+
+  organic_chemistry: {
+    subjectId: "organic_chemistry",
+    title: "Organic Chemistry",
+    sections: [
+      {
+        heading: "Functional Groups",
+        items: [
+          { label: "Alkane", formula: "CₙH₂ₙ₊₂ — single bonds only" },
+          { label: "Alkene", formula: "CₙH₂ₙ — one C=C double bond" },
+          { label: "Alkyne", formula: "CₙH₂ₙ₋₂ — one C≡C triple bond" },
+          { label: "Alcohol", formula: "R–OH" },
+          { label: "Aldehyde", formula: "R–CHO" },
+          { label: "Ketone", formula: "R–CO–R'" },
+          { label: "Carboxylic acid", formula: "R–COOH" },
+          { label: "Ester", formula: "R–COO–R'" },
+          { label: "Amine", formula: "R–NH₂" },
+          { label: "Amide", formula: "R–CO–NH₂" },
+        ],
+      },
+      {
+        heading: "Reaction Types",
+        items: [
+          { label: "Addition", formula: "Alkene + X₂ → dihalide (breaks π bond)" },
+          { label: "Substitution (SN1)", formula: "Unimolecular; carbocation intermediate" },
+          { label: "Substitution (SN2)", formula: "Bimolecular; backside attack; inversion" },
+          { label: "Elimination (E2)", formula: "Base removes H; forms alkene" },
+          { label: "Esterification", formula: "R-COOH + R'-OH ⇌ R-COO-R' + H₂O" },
+        ],
+      },
+      {
+        heading: "Isomers",
+        items: [
+          { label: "Structural", formula: "Same formula, different connectivity" },
+          { label: "Stereoisomers", formula: "Same connectivity, different 3D arrangement" },
+          { label: "Enantiomers", formula: "Non-superimposable mirror images" },
+          { label: "Diastereomers", formula: "Stereoisomers that are NOT mirror images" },
+        ],
+      },
+    ],
+  },
+
+  grammar: {
+    subjectId: "grammar",
+    title: "Grammar & Writing",
+    sections: [
+      {
+        heading: "Parts of Speech",
+        items: [
+          { label: "Noun", formula: "Person, place, thing, or idea" },
+          { label: "Pronoun", formula: "Replaces a noun (he, she, it, they…)" },
+          { label: "Verb", formula: "Action or state of being" },
+          { label: "Adjective", formula: "Modifies a noun" },
+          { label: "Adverb", formula: "Modifies a verb, adjective, or adverb" },
+          { label: "Preposition", formula: "Shows relationship (in, on, at, by, for…)" },
+          { label: "Conjunction", formula: "Joins clauses (FANBOYS: for, and, nor, but, or, yet, so)" },
+          { label: "Interjection", formula: "Expresses emotion (Oh! Wow! Hey!)" },
+        ],
+      },
+      {
+        heading: "Sentence Structure",
+        items: [
+          { label: "Simple", formula: "One independent clause" },
+          { label: "Compound", formula: "Two independent clauses joined by conjunction" },
+          { label: "Complex", formula: "Independent + dependent clause" },
+          { label: "Compound-Complex", formula: "2+ independent + 1+ dependent clause" },
+          { label: "Subject", formula: "Who/what the sentence is about" },
+          { label: "Predicate", formula: "What the subject does or is" },
+        ],
+      },
+      {
+        heading: "Punctuation",
+        items: [
+          { label: "Comma splice", formula: "WRONG: I ran, I fell → Fix: I ran, and I fell" },
+          { label: "Semicolon", formula: "Joins two related independent clauses" },
+          { label: "Colon", formula: "Introduces a list or explanation" },
+          { label: "Apostrophe", formula: "Possession (John's) or contraction (don't)" },
+        ],
+      },
+      {
+        heading: "Common Errors",
+        items: [
+          { label: "Their/There/They're", formula: "Possession / Place / They are" },
+          { label: "Its/It's", formula: "Possession / It is" },
+          { label: "Your/You're", formula: "Possession / You are" },
+          { label: "Affect/Effect", formula: "Verb (to influence) / Noun (result)" },
+        ],
+      },
+    ],
+  },
+
   economics: {
     subjectId: "economics",
     title: "Economics Formulas",

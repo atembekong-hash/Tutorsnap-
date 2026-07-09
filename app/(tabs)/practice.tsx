@@ -167,6 +167,20 @@ export default function PracticeScreen() {
           )}
         </TouchableOpacity>
 
+        {/* Start Quiz Button */}
+        <TouchableOpacity
+          onPress={() => router.push({ pathname: "/quiz", params: { subject: selectedSubject, difficulty: selectedDifficulty, count: "5" } })}
+          style={[styles.quizBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+          activeOpacity={0.85}
+        >
+          <Text style={{ fontSize: 18 }}>🎯</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.quizBtnTitle, { color: colors.foreground }]}>Timed Quiz Mode</Text>
+            <Text style={[styles.quizBtnSub, { color: colors.muted }]}>5 questions · 30s each · scored</Text>
+          </View>
+          <IconSymbol size={18} name="chevron.right" color={colors.muted} />
+        </TouchableOpacity>
+
         {/* Current Question */}
         {currentQuestion && (
           <View style={styles.questionSection}>
@@ -347,4 +361,16 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   solutionBtnText: { fontSize: 14, fontWeight: "700", color: "#FFFFFF" },
+  quizBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+    marginHorizontal: 16,
+    marginTop: 12,
+    gap: 12,
+  },
+  quizBtnTitle: { fontSize: 15, fontWeight: "700" },
+  quizBtnSub: { fontSize: 12, marginTop: 2 },
 });

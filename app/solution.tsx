@@ -350,6 +350,20 @@ export default function SolutionScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
+            onPress={handleShare}
+            disabled={shareLoading}
+            style={[styles.actionBtn, { backgroundColor: colors.surface, borderColor: colors.border, flex: 1 }]}
+            activeOpacity={0.8}
+          >
+            {shareLoading ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <IconSymbol size={18} name="square.and.arrow.up" color={colors.primary} />
+            )}
+            <Text style={[styles.actionBtnText, { color: colors.primary }]}>Share PDF</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
             onPress={() => router.push("/(tabs)/practice" as any)}
             style={[styles.actionBtn, { backgroundColor: colors.primary, borderColor: colors.primary, flex: 2 }]}
             activeOpacity={0.85}

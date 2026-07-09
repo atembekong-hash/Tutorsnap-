@@ -229,6 +229,51 @@ const academicRouter = router({
       return JSON.parse(jsonStr);
     }),
 
+  generateQuiz: publicProcedure
+    .input(z.object({
+      subject: z.string(),
+      difficulty: z.enum(["easy", "medium", "hard"]),
+      count: z.number().min(3).max(10).default(5),
+    }))
+    .mutation(async ({ input }) => {
+      const isEnglish = ["american_literature","british_literature","world_literature","composition","creative_writing","debate","journalism","grammar","poetry"].includes(input.subject);
+      const isSocial = ["us_history","world_history","government","economics","geography","psychology","sociology","civics"].includes(input.subject);
+      let taskType = "problem";
+      if (isEnglish) taskType = "question";
+      if (isSocial) taskType = "question";
+
+      const quizPrompt = `You are TutorSnap, an expert academic tutor.
+Generate exactly ${input.count} ${input.difficulty} ${taskType}s for the subject: ${input.subject}.
+Each question must have 4 multiple-choice options (A, B, C, D) with exactly one correct answer.
+Respond ONLY with valid JSON in this exact format:
+{
+  "questions": [
+    {
+      "id": "q1",
+      "problem": "The question text",
+      "options": { "A": "Option A", "B": "Option B", "C": "Option C", "D": "Option D" },
+      "correctAnswer": "A",
+      "explanation": "Why this answer is correct"
+    }
+  ]
+}`;
+
+      const result = await invokeLLM({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: quizPrompt },
+          { role: "user", content: `Generate ${input.count} ${input.difficulty} multiple-choice questions for ${input.subject}.` },
+        ],
+        max_tokens: 3000,
+        response_format: { type: "json_object" },
+      });
+      const rawContent = result.choices[0]?.message?.content ?? "";
+      const text = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
+      const jsonStr = extractJsonFromContent(text);
+      const parsed = JSON.parse(jsonStr);
+      return parsed.questions ?? [];
+    }),
+
   chat: publicProcedure
     .input(z.object({
       messages: z.array(z.object({
