@@ -27,6 +27,8 @@ import { VoiceButton } from "@/components/voice-button";
 import { CheatSheetBottomSheet } from "@/components/cheat-sheet-bottom-sheet";
 import { hasCheatSheet } from "@/lib/cheat-sheets";
 import { useNetworkStatus } from "@/hooks/use-network-status";
+import { WeeklyGoalsCard } from "@/components/weekly-goals-card";
+import { getWeeklyData, type WeeklyData } from "@/lib/weekly-goals";
 
 // Subject examples per category — shown dynamically based on selected subject
 const SUBJECT_EXAMPLES: Record<string, string[]> = {
@@ -95,6 +97,7 @@ export default function SolveScreen() {
     }
   }, []);
   const [progress, setProgress] = useState<ProgressData | null>(null);
+  const [weeklyData, setWeeklyData] = useState<WeeklyData | null>(null);
   const inputRef = useRef<TextInput>(null);
   const cursorPosRef = useRef<number>(0);
 
@@ -103,9 +106,15 @@ export default function SolveScreen() {
     setProgress(p);
   };
 
+  const loadWeeklyData = async () => {
+    const w = await getWeeklyData();
+    setWeeklyData(w);
+  };
+
   useFocusEffect(
     useCallback(() => {
       loadProgress();
+      loadWeeklyData();
       // Check if onboarding has been completed
       AsyncStorage.getItem("@tutorsnap/onboardingDone").then((done) => {
         if (!done) {
@@ -275,6 +284,14 @@ export default function SolveScreen() {
                 </Text>
               </View>
             </TouchableOpacity>
+          )}
+
+          {/* Weekly Goals Card */}
+          {weeklyData && (
+            <WeeklyGoalsCard
+              data={weeklyData}
+              onGoalChanged={() => loadWeeklyData()}
+            />
           )}
 
           {/* Subject Picker */}

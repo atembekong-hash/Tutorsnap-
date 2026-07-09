@@ -61,3 +61,4 @@
 - [x] Quiz history saved to AsyncStorage with stats card on Practice screen
 - [x] Configurable quiz length picker (3/5/10 questions)
 - [x] Streak bonus on home screen for 80%+ quiz score
+- [x] This Week section on home screen: 7-day activity grid, weekly quiz goal, progress ring
