@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -17,7 +17,7 @@ import { trpc } from "@/lib/trpc";
 import type { PracticeQuestion, MathSubject, Difficulty } from "@/shared/types";
 import { SubjectPicker } from "@/components/subject-picker";
 import { type SubjectId, getSubjectColor, getSubjectLabel } from "@/lib/subjects";
-import { loadQuizStats, type QuizStats } from "@/lib/quiz-history";
+import { loadQuizStats, getAdaptiveDifficultySuggestion, type QuizStats, type DifficultyUpSuggestion } from "@/lib/quiz-history";
 import { useFocusEffect } from "expo-router";
 import { useNetworkStatus } from "@/hooks/use-network-status";
 
@@ -39,13 +39,22 @@ export default function PracticeScreen() {
   const [hintsShown, setHintsShown] = useState(0);
   const [quizCount, setQuizCount] = useState(5);
   const [quizStats, setQuizStats] = useState<QuizStats | null>(null);
+  const [diffSuggestion, setDiffSuggestion] = useState<DifficultyUpSuggestion | null>(null);
+  const [suggestionDismissed, setSuggestionDismissed] = useState(false);
   const { isOnline } = useNetworkStatus();
 
   useFocusEffect(
     useCallback(() => {
       loadQuizStats().then(setQuizStats);
+      setSuggestionDismissed(false);
     }, [])
   );
+
+  // Re-check adaptive suggestion whenever subject or difficulty changes
+  useEffect(() => {
+    setSuggestionDismissed(false);
+    getAdaptiveDifficultySuggestion(selectedSubject, selectedDifficulty).then(setDiffSuggestion);
+  }, [selectedSubject, selectedDifficulty]);
 
   const generateMutation = trpc.academic.generatePractice.useMutation({
     onSuccess: (data) => {
@@ -180,6 +189,39 @@ export default function PracticeScreen() {
             </>
           )}
         </TouchableOpacity>
+
+        {/* Adaptive Difficulty Suggestion Banner */}
+        {diffSuggestion && !suggestionDismissed && (
+          <View style={[styles.suggestionBanner, { backgroundColor: `${colors.success}15`, borderColor: `${colors.success}40` }]}>
+            <View style={styles.suggestionLeft}>
+              <Text style={styles.suggestionEmoji}>🚀</Text>
+              <View style={styles.suggestionText}>
+                <Text style={[styles.suggestionTitle, { color: colors.foreground }]}>
+                  Ready for a challenge?
+                </Text>
+                <Text style={[styles.suggestionSub, { color: colors.muted }]}>
+                  You averaged {diffSuggestion.avgPct}% on your last 3 {diffSuggestion.currentDifficulty} quizzes.
+                  Try <Text style={{ fontWeight: "700", color: colors.success }}>{diffSuggestion.suggestedDifficulty}</Text>!
+                </Text>
+              </View>
+            </View>
+            <View style={styles.suggestionActions}>
+              <TouchableOpacity
+                onPress={() => {
+                  setSelectedDifficulty(diffSuggestion.suggestedDifficulty);
+                  setSuggestionDismissed(true);
+                  if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                }}
+                style={[styles.suggestionAccept, { backgroundColor: colors.success }]}
+              >
+                <Text style={styles.suggestionAcceptText}>Switch</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setSuggestionDismissed(true)} style={styles.suggestionDismiss}>
+                <IconSymbol size={16} name="xmark.circle.fill" color={colors.muted} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
 
         {/* Quiz Count Picker + Start Quiz */}
         <View style={[styles.quizSection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -475,4 +517,22 @@ const styles = StyleSheet.create({
   statDivider: { width: 1, height: 36 },
   statValue: { fontSize: 22, fontWeight: "800" },
   statLabel: { fontSize: 12 },
+  suggestionBanner: {
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+  suggestionLeft: { flex: 1, flexDirection: "row", alignItems: "flex-start", gap: 10 },
+  suggestionEmoji: { fontSize: 22, marginTop: 2 },
+  suggestionText: { flex: 1 },
+  suggestionTitle: { fontSize: 14, fontWeight: "700", marginBottom: 2 },
+  suggestionSub: { fontSize: 12, lineHeight: 17 },
+  suggestionActions: { flexDirection: "row", alignItems: "center", gap: 6 },
+  suggestionAccept: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10 },
+  suggestionAcceptText: { color: "#fff", fontWeight: "700", fontSize: 13 },
+  suggestionDismiss: { padding: 4 },
 });

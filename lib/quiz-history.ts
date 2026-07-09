@@ -38,6 +38,39 @@ export interface QuizStats {
   bySubject: Record<string, { total: number; best: number; avg: number }>;
 }
 
+export interface DifficultyUpSuggestion {
+  subject: string;
+  currentDifficulty: "easy" | "medium";
+  suggestedDifficulty: "medium" | "hard";
+  avgPct: number;
+  quizCount: number;
+}
+
+/**
+ * Returns a suggestion to bump difficulty if the last 3 quizzes on the same
+ * subject at the current difficulty all scored >= 85%.
+ */
+export async function getAdaptiveDifficultySuggestion(
+  subject: string,
+  currentDifficulty: "easy" | "medium" | "hard"
+): Promise<DifficultyUpSuggestion | null> {
+  if (currentDifficulty === "hard") return null;
+  const history = await loadQuizHistory();
+  const relevant = history
+    .filter((h) => h.subject === subject && h.difficulty === currentDifficulty)
+    .slice(0, 3);
+  if (relevant.length < 3) return null;
+  const avgPct = Math.round(relevant.reduce((s, h) => s + h.pct, 0) / relevant.length);
+  if (avgPct < 85) return null;
+  return {
+    subject,
+    currentDifficulty,
+    suggestedDifficulty: currentDifficulty === "easy" ? "medium" : "hard",
+    avgPct,
+    quizCount: relevant.length,
+  };
+}
+
 export async function loadQuizStats(): Promise<QuizStats> {
   const history = await loadQuizHistory();
   if (history.length === 0) {
