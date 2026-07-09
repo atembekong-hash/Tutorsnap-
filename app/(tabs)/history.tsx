@@ -15,6 +15,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { toggleBookmark, getBookmarks } from "@/lib/bookmarks";
 import type { HistoryItem, MathSubject } from "@/shared/types";
 
 const SUBJECT_COLORS: Record<string, string> = {
@@ -61,6 +62,7 @@ export default function HistoryScreen() {
   const colors = useColors();
   const router = useRouter();
   const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState("");
   const [filterSubject, setFilterSubject] = useState<MathSubject | "all">("all");
 
@@ -70,9 +72,20 @@ export default function HistoryScreen() {
       if (stored) {
         setHistory(JSON.parse(stored));
       }
+      const bm = await getBookmarks();
+      setBookmarkedIds(new Set(bm.map((b) => b.problem)));
     } catch (e) {
       // ignore
     }
+  };
+
+  const handleQuickBookmark = async (item: HistoryItem) => {
+    if (Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    await toggleBookmark(item);
+    const bm = await getBookmarks();
+    setBookmarkedIds(new Set(bm.map((b) => b.problem)));
   };
 
   useFocusEffect(
@@ -169,6 +182,16 @@ export default function HistoryScreen() {
           </Text>
         </View>
         <View style={styles.cardRight}>
+          <TouchableOpacity
+            onPress={() => handleQuickBookmark(item)}
+            style={{ padding: 6, marginBottom: 4 }}
+          >
+            <IconSymbol
+              size={18}
+              name={bookmarkedIds.has(item.problem) ? "bookmark.fill" : "bookmark"}
+              color={bookmarkedIds.has(item.problem) ? colors.warning : colors.muted}
+            />
+          </TouchableOpacity>
           <IconSymbol size={18} name="chevron.right" color={colors.muted} />
         </View>
       </TouchableOpacity>
@@ -182,9 +205,14 @@ export default function HistoryScreen() {
         <View style={styles.headerTop}>
           <Text style={[styles.title, { color: colors.foreground }]}>History</Text>
           {history.length > 0 && (
-            <TouchableOpacity onPress={handleClearAll} style={styles.clearAllBtn}>
-              <Text style={[styles.clearAllText, { color: colors.error }]}>Clear All</Text>
-            </TouchableOpacity>
+            <View style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
+              <TouchableOpacity onPress={() => router.push("/bookmarks" as any)} style={styles.clearAllBtn}>
+                <IconSymbol size={20} name="bookmark.fill" color={colors.warning} />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleClearAll} style={styles.clearAllBtn}>
+                <Text style={[styles.clearAllText, { color: colors.error }]}>Clear All</Text>
+              </TouchableOpacity>
+            </View>
           )}
         </View>
         <Text style={[styles.subtitle, { color: colors.muted }]}>

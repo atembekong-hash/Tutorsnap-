@@ -43,6 +43,21 @@ const MAPPING = {
   "pencil.and.list.clipboard": "assignment",
   "bubble.left.fill": "chat-bubble",
   "eye.fill": "visibility",
+  // Bookmarks & Progress
+  "bookmark": "bookmark-border",
+  "bookmark.fill": "bookmark",
+  "star.fill": "star",
+  "star": "star-border",
+  "trophy.fill": "emoji-events",
+  "flame.fill": "local-fire-department",
+  "chart.xyaxis.line": "show-chart",
+  "arrow.up.right": "north-east",
+  "person.fill": "person",
+  "gear": "settings",
+  "plus.circle.fill": "add-circle",
+  "minus.circle.fill": "remove-circle",
+  "info.circle": "info",
+  "questionmark.circle": "help",
   // Code
   "chevron.left.forwardslash.chevron.right": "code",
 } as IconMapping;

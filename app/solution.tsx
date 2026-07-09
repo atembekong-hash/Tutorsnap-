@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -14,7 +14,8 @@ import * as Haptics from "expo-haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
-import type { MathSolution, SolutionStep } from "@/shared/types";
+import { toggleBookmark, isBookmarked } from "@/lib/bookmarks";
+import type { MathSolution, SolutionStep, HistoryItem, MathSubject } from "@/shared/types";
 
 const SUBJECT_COLORS: Record<string, string> = {
   algebra: "#6C3CE1",
@@ -42,7 +43,7 @@ const SUBJECT_LABELS: Record<string, string> = {
   other: "Mathematics",
 };
 
-function StepCard({ step, index, colors }: { step: SolutionStep; index: number; colors: any }) {
+function StepCard({ step, colors }: { step: SolutionStep; colors: any }) {
   const [expanded, setExpanded] = useState(true);
 
   return (
@@ -82,6 +83,8 @@ export default function SolutionScreen() {
   const colors = useColors();
   const router = useRouter();
   const params = useLocalSearchParams();
+  const [bookmarked, setBookmarked] = useState(false);
+  const [copyFeedback, setCopyFeedback] = useState(false);
 
   let solution: MathSolution | null = null;
   try {
@@ -89,6 +92,12 @@ export default function SolutionScreen() {
   } catch {
     solution = null;
   }
+
+  useEffect(() => {
+    if (solution?.problem) {
+      isBookmarked(solution.problem).then(setBookmarked);
+    }
+  }, [solution?.problem]);
 
   if (!solution) {
     return (
@@ -115,15 +124,37 @@ export default function SolutionScreen() {
     }
   };
 
-  const handleCopyAnswer = () => {
+  const handleCopyAnswer = async () => {
     if (Platform.OS !== "web") {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
-    // Copy to clipboard
     try {
-      Clipboard.setStringAsync(solution!.answer);
+      await Clipboard.setStringAsync(solution!.answer);
+      setCopyFeedback(true);
+      setTimeout(() => setCopyFeedback(false), 1500);
     } catch (e) {
       // ignore
+    }
+  };
+
+  const handleBookmark = async () => {
+    if (Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+    const historyItem: HistoryItem = {
+      id: `bm-${Date.now()}`,
+      problem: solution!.problem,
+      answer: solution!.answer,
+      subject: solution!.subject as MathSubject,
+      steps: solution!.steps || [],
+      conceptExplained: solution!.conceptExplained,
+      tips: solution!.tips,
+      solvedAt: Date.now(),
+    };
+    const added = await toggleBookmark(historyItem);
+    setBookmarked(added);
+    if (added && Platform.OS !== "web") {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
   };
 
@@ -135,18 +166,35 @@ export default function SolutionScreen() {
           <IconSymbol size={22} name="arrow.left" color={colors.foreground} />
         </TouchableOpacity>
         <Text style={[styles.navTitle, { color: colors.foreground }]}>Solution</Text>
-        <TouchableOpacity onPress={handleShare} style={styles.shareBtn}>
-          <IconSymbol size={22} name="square.and.arrow.up" color={colors.primary} />
-        </TouchableOpacity>
+        <View style={styles.navActions}>
+          {/* Bookmark Button */}
+          <TouchableOpacity onPress={handleBookmark} style={styles.navActionBtn}>
+            <IconSymbol
+              size={22}
+              name={bookmarked ? "bookmark.fill" : "bookmark"}
+              color={bookmarked ? colors.warning : colors.muted}
+            />
+          </TouchableOpacity>
+          {/* Share Button */}
+          <TouchableOpacity onPress={handleShare} style={styles.navActionBtn}>
+            <IconSymbol size={22} name="square.and.arrow.up" color={colors.primary} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
-        {/* Subject Badge */}
+        {/* Subject Badge + Bookmark indicator */}
         <View style={styles.badgeRow}>
           <View style={[styles.subjectBadge, { backgroundColor: `${subjectColor}20` }]}>
             <View style={[styles.subjectDot, { backgroundColor: subjectColor }]} />
             <Text style={[styles.subjectBadgeText, { color: subjectColor }]}>{subjectLabel}</Text>
           </View>
+          {bookmarked && (
+            <View style={[styles.bookmarkedBadge, { backgroundColor: `${colors.warning}20`, borderColor: `${colors.warning}40` }]}>
+              <Text style={{ fontSize: 12 }}>🔖</Text>
+              <Text style={[styles.bookmarkedText, { color: colors.warning }]}>Bookmarked</Text>
+            </View>
+          )}
         </View>
 
         {/* Problem */}
@@ -162,9 +210,11 @@ export default function SolutionScreen() {
               <IconSymbol size={16} name="checkmark.circle.fill" color={colors.success} />
               <Text style={[styles.answerLabel, { color: colors.success }]}>ANSWER</Text>
             </View>
-            <TouchableOpacity onPress={handleCopyAnswer} style={styles.copyBtn}>
-              <IconSymbol size={16} name="doc.on.doc" color={colors.muted} />
-              <Text style={[styles.copyText, { color: colors.muted }]}>Copy</Text>
+            <TouchableOpacity onPress={handleCopyAnswer} style={[styles.copyBtn, { backgroundColor: copyFeedback ? `${colors.success}20` : "transparent" }]}>
+              <IconSymbol size={16} name="doc.on.doc" color={copyFeedback ? colors.success : colors.muted} />
+              <Text style={[styles.copyText, { color: copyFeedback ? colors.success : colors.muted }]}>
+                {copyFeedback ? "Copied!" : "Copy"}
+              </Text>
             </TouchableOpacity>
           </View>
           <Text style={[styles.answerText, { color: colors.foreground }]}>{solution.answer}</Text>
@@ -179,7 +229,7 @@ export default function SolutionScreen() {
             </Text>
           </View>
           {solution.steps?.map((step, index) => (
-            <StepCard key={index} step={step} index={index} colors={colors} />
+            <StepCard key={index} step={step} colors={colors} />
           ))}
         </View>
 
@@ -227,15 +277,35 @@ export default function SolutionScreen() {
           </View>
         )}
 
-        {/* Practice Button */}
-        <TouchableOpacity
-          onPress={() => router.push("/practice" as any)}
-          style={[styles.practiceBtn, { backgroundColor: colors.primary }]}
-          activeOpacity={0.85}
-        >
-          <IconSymbol size={18} name="pencil.and.list.clipboard" color="#FFFFFF" />
-          <Text style={styles.practiceBtnText}>Practice Similar Problems</Text>
-        </TouchableOpacity>
+        {/* Action Buttons */}
+        <View style={styles.actionRow}>
+          <TouchableOpacity
+            onPress={handleBookmark}
+            style={[
+              styles.actionBtn,
+              {
+                backgroundColor: bookmarked ? `${colors.warning}20` : colors.surface,
+                borderColor: bookmarked ? colors.warning : colors.border,
+                flex: 1,
+              },
+            ]}
+            activeOpacity={0.8}
+          >
+            <IconSymbol size={18} name={bookmarked ? "bookmark.fill" : "bookmark"} color={bookmarked ? colors.warning : colors.muted} />
+            <Text style={[styles.actionBtnText, { color: bookmarked ? colors.warning : colors.muted }]}>
+              {bookmarked ? "Bookmarked" : "Bookmark"}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => router.push("/(tabs)/practice" as any)}
+            style={[styles.actionBtn, { backgroundColor: colors.primary, borderColor: colors.primary, flex: 2 }]}
+            activeOpacity={0.85}
+          >
+            <IconSymbol size={18} name="pencil.and.list.clipboard" color="#FFFFFF" />
+            <Text style={[styles.actionBtnText, { color: "#FFFFFF" }]}>Practice Similar</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </ScreenContainer>
   );
@@ -252,12 +322,20 @@ const styles = StyleSheet.create({
   },
   backBtn: { padding: 4 },
   navTitle: { fontSize: 17, fontWeight: "700" },
-  shareBtn: { padding: 4 },
-  badgeRow: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
+  navActions: { flexDirection: "row", alignItems: "center", gap: 4 },
+  navActionBtn: { padding: 4 },
+  badgeRow: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    flexWrap: "wrap",
+  },
   subjectBadge: {
     flexDirection: "row",
     alignItems: "center",
-    alignSelf: "flex-start",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
@@ -265,6 +343,16 @@ const styles = StyleSheet.create({
   },
   subjectDot: { width: 8, height: 8, borderRadius: 4 },
   subjectBadgeText: { fontSize: 13, fontWeight: "700", letterSpacing: 0.5 },
+  bookmarkedBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 5,
+  },
+  bookmarkedText: { fontSize: 12, fontWeight: "600" },
   problemCard: {
     marginHorizontal: 16,
     marginBottom: 12,
@@ -284,7 +372,7 @@ const styles = StyleSheet.create({
   answerHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 },
   answerLabelRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   answerLabel: { fontSize: 11, fontWeight: "700", letterSpacing: 1 },
-  copyBtn: { flexDirection: "row", alignItems: "center", gap: 4 },
+  copyBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
   copyText: { fontSize: 13, fontWeight: "600" },
   answerText: { fontSize: 22, fontWeight: "800", letterSpacing: -0.5 },
   stepsSection: { paddingHorizontal: 16, marginBottom: 16 },
@@ -349,15 +437,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   relatedChipText: { fontSize: 13, fontWeight: "500" },
-  practiceBtn: {
+  actionRow: {
+    flexDirection: "row",
     marginHorizontal: 16,
     marginBottom: 20,
-    padding: 16,
-    borderRadius: 16,
+    gap: 10,
+  },
+  actionBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
     gap: 8,
   },
-  practiceBtnText: { fontSize: 16, fontWeight: "700", color: "#FFFFFF" },
+  actionBtnText: { fontSize: 14, fontWeight: "700" },
 });

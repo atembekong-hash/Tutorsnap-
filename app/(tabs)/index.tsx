@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -11,13 +11,15 @@ import {
   Platform,
   Keyboard,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
+import { MathKeyboard } from "@/components/math-keyboard";
 import { useColors } from "@/hooks/use-colors";
 import { trpc } from "@/lib/trpc";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getProgress, getStreakEmoji, getDailyGoalPercent, type ProgressData } from "@/lib/progress";
 import type { HistoryItem, MathSubject } from "@/shared/types";
 
 const SUBJECTS = [
@@ -43,17 +45,21 @@ export default function SolveScreen() {
   const router = useRouter();
   const [problem, setProblem] = useState("");
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
-  const [solvedCount, setSolvedCount] = useState(0);
+  const [showMathKeyboard, setShowMathKeyboard] = useState(false);
+  const [progress, setProgress] = useState<ProgressData | null>(null);
   const inputRef = useRef<TextInput>(null);
+  const cursorPosRef = useRef<number>(0);
 
-  useEffect(() => {
-    AsyncStorage.getItem("math_history").then((stored) => {
-      if (stored) {
-        const history = JSON.parse(stored);
-        setSolvedCount(history.length);
-      }
-    });
-  }, []);
+  const loadProgress = async () => {
+    const p = await getProgress();
+    setProgress(p);
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      loadProgress();
+    }, [])
+  );
 
   const solveMutation = trpc.math.solve.useMutation({
     onSuccess: async (data) => {
@@ -75,10 +81,14 @@ export default function SolveScreen() {
         const history: HistoryItem[] = existing ? JSON.parse(existing) : [];
         history.unshift(historyItem);
         await AsyncStorage.setItem("math_history", JSON.stringify(history.slice(0, 100)));
-        setSolvedCount(history.length);
       } catch (e) {
         // ignore
       }
+      // Record solve in progress
+      const { recordSolve } = await import("@/lib/progress");
+      await recordSolve(data.subject as MathSubject || "other");
+      await loadProgress();
+
       router.push({
         pathname: "/solution",
         params: { data: JSON.stringify(data) },
@@ -94,6 +104,7 @@ export default function SolveScreen() {
   const handleSolve = () => {
     if (!problem.trim()) return;
     Keyboard.dismiss();
+    setShowMathKeyboard(false);
     if (Platform.OS !== "web") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
@@ -108,11 +119,39 @@ export default function SolveScreen() {
     inputRef.current?.focus();
   };
 
+  const handleInsertSymbol = (symbol: string) => {
+    const pos = cursorPosRef.current;
+    const newText = problem.slice(0, pos) + symbol + problem.slice(pos);
+    setProblem(newText);
+    cursorPosRef.current = pos + symbol.length;
+  };
+
+  const handleKeyboardBackspace = () => {
+    const pos = cursorPosRef.current;
+    if (pos > 0) {
+      const newText = problem.slice(0, pos - 1) + problem.slice(pos);
+      setProblem(newText);
+      cursorPosRef.current = pos - 1;
+    }
+  };
+
+  const handleKeyboardClear = () => {
+    setProblem("");
+    cursorPosRef.current = 0;
+  };
+
+  const streak = progress?.streak;
+  const dailyGoalPct = streak
+    ? getDailyGoalPercent(streak.todaySolved, streak.dailyGoal)
+    : 0;
+  const streakEmoji = streak ? getStreakEmoji(streak.currentStreak) : "🌱";
+
   return (
     <ScreenContainer>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
+        keyboardVerticalOffset={showMathKeyboard ? 0 : undefined}
       >
         <ScrollView
           keyboardShouldPersistTaps="handled"
@@ -128,13 +167,55 @@ export default function SolveScreen() {
                 <Text style={{ color: colors.primary }}>Math Problem</Text>
               </Text>
             </View>
-            {solvedCount > 0 && (
-              <View style={[styles.statsBadge, { backgroundColor: `${colors.primary}15`, borderColor: `${colors.primary}30` }]}>
-                <Text style={[styles.statsNumber, { color: colors.primary }]}>{solvedCount}</Text>
-                <Text style={[styles.statsLabel, { color: colors.muted }]}>solved</Text>
-              </View>
+            {streak && streak.currentStreak > 0 && (
+              <TouchableOpacity
+                onPress={() => router.push("/progress" as any)}
+                style={[styles.streakBadge, { backgroundColor: `${colors.warning}18`, borderColor: `${colors.warning}35` }]}
+              >
+                <Text style={styles.streakEmoji}>{streakEmoji}</Text>
+                <View>
+                  <Text style={[styles.streakNumber, { color: colors.warning }]}>
+                    {streak.currentStreak}
+                  </Text>
+                  <Text style={[styles.streakLabel, { color: colors.muted }]}>day streak</Text>
+                </View>
+              </TouchableOpacity>
             )}
           </View>
+
+          {/* Daily Goal Progress */}
+          {streak && streak.dailyGoal > 0 && (
+            <TouchableOpacity
+              onPress={() => router.push("/progress" as any)}
+              style={[styles.goalBar, { backgroundColor: colors.surface, borderColor: colors.border }]}
+              activeOpacity={0.8}
+            >
+              <View style={styles.goalBarLeft}>
+                <Text style={[styles.goalBarLabel, { color: colors.foreground }]}>
+                  Daily Goal
+                </Text>
+                <Text style={[styles.goalBarCount, { color: colors.muted }]}>
+                  {streak.todaySolved} / {streak.dailyGoal} solved today
+                </Text>
+              </View>
+              <View style={styles.goalBarRight}>
+                <View style={[styles.goalBarTrack, { backgroundColor: `${colors.primary}20` }]}>
+                  <View
+                    style={[
+                      styles.goalBarFill,
+                      {
+                        backgroundColor: dailyGoalPct >= 100 ? colors.success : colors.primary,
+                        width: `${dailyGoalPct}%`,
+                      },
+                    ]}
+                  />
+                </View>
+                <Text style={[styles.goalBarPct, { color: dailyGoalPct >= 100 ? colors.success : colors.primary }]}>
+                  {dailyGoalPct}%
+                </Text>
+              </View>
+            </TouchableOpacity>
+          )}
 
           {/* Subject Filter */}
           <View style={styles.subjectRow}>
@@ -199,6 +280,10 @@ export default function SolveScreen() {
                 onChangeText={setProblem}
                 returnKeyType="done"
                 onSubmitEditing={handleSolve}
+                onSelectionChange={(e) => {
+                  cursorPosRef.current = e.nativeEvent.selection.end;
+                }}
+                onFocus={() => setShowMathKeyboard(false)}
               />
               <View
                 style={[
@@ -207,11 +292,34 @@ export default function SolveScreen() {
                 ]}
               >
                 <Text style={[styles.charCount, { color: colors.muted }]}>{problem.length} / 5000</Text>
-                {problem.length > 0 && (
-                  <TouchableOpacity onPress={() => setProblem("")} style={styles.clearBtn}>
-                    <IconSymbol size={18} name="xmark.circle.fill" color={colors.muted} />
+                <View style={styles.inputActionBtns}>
+                  {/* Math Keyboard Toggle */}
+                  <TouchableOpacity
+                    onPress={() => {
+                      Keyboard.dismiss();
+                      setShowMathKeyboard((v) => !v);
+                      if (Platform.OS !== "web") {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      }
+                    }}
+                    style={[
+                      styles.keyboardToggleBtn,
+                      {
+                        backgroundColor: showMathKeyboard ? `${colors.primary}20` : "transparent",
+                        borderColor: showMathKeyboard ? colors.primary : colors.border,
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.keyboardToggleText, { color: showMathKeyboard ? colors.primary : colors.muted }]}>
+                      ∑ Math
+                    </Text>
                   </TouchableOpacity>
-                )}
+                  {problem.length > 0 && (
+                    <TouchableOpacity onPress={() => setProblem("")} style={styles.clearBtn}>
+                      <IconSymbol size={18} name="xmark.circle.fill" color={colors.muted} />
+                    </TouchableOpacity>
+                  )}
+                </View>
               </View>
             </View>
           </View>
@@ -262,7 +370,7 @@ export default function SolveScreen() {
           {/* Feature Cards Row */}
           <View style={styles.featureRow}>
             <TouchableOpacity
-              onPress={() => router.push("/scan" as any)}
+              onPress={() => router.push("/(tabs)/scan" as any)}
               style={[styles.featureCard, { backgroundColor: `${colors.primary}12`, borderColor: `${colors.primary}25` }]}
               activeOpacity={0.8}
             >
@@ -274,7 +382,7 @@ export default function SolveScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              onPress={() => router.push("/practice" as any)}
+              onPress={() => router.push("/(tabs)/practice" as any)}
               style={[styles.featureCard, { backgroundColor: `${colors.secondary}12`, borderColor: `${colors.secondary}25` }]}
               activeOpacity={0.8}
             >
@@ -286,15 +394,15 @@ export default function SolveScreen() {
             </TouchableOpacity>
 
             <TouchableOpacity
-              onPress={() => router.push("/chat" as any)}
+              onPress={() => router.push("/progress" as any)}
               style={[styles.featureCard, { backgroundColor: `${colors.success}12`, borderColor: `${colors.success}25` }]}
               activeOpacity={0.8}
             >
               <View style={[styles.featureIcon, { backgroundColor: colors.success }]}>
-                <IconSymbol size={20} name="bubble.left.fill" color="#FFFFFF" />
+                <IconSymbol size={20} name="chart.bar.fill" color="#FFFFFF" />
               </View>
-              <Text style={[styles.featureTitle, { color: colors.foreground }]}>AI Tutor</Text>
-              <Text style={[styles.featureDesc, { color: colors.muted }]}>Ask anything</Text>
+              <Text style={[styles.featureTitle, { color: colors.foreground }]}>Progress</Text>
+              <Text style={[styles.featureDesc, { color: colors.muted }]}>Stats & streaks</Text>
             </TouchableOpacity>
           </View>
 
@@ -336,6 +444,15 @@ export default function SolveScreen() {
             ))}
           </View>
         </ScrollView>
+
+        {/* Math Keyboard */}
+        {showMathKeyboard && (
+          <MathKeyboard
+            onInsert={handleInsertSymbol}
+            onBackspace={handleKeyboardBackspace}
+            onClear={handleKeyboardClear}
+          />
+        )}
       </KeyboardAvoidingView>
     </ScreenContainer>
   );
@@ -362,16 +479,44 @@ const styles = StyleSheet.create({
     marginTop: 2,
     letterSpacing: -0.5,
   },
-  statsBadge: {
+  streakBadge: {
+    flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 14,
     borderWidth: 1,
     marginTop: 4,
+    gap: 6,
   },
-  statsNumber: { fontSize: 22, fontWeight: "800" },
-  statsLabel: { fontSize: 11, fontWeight: "600", letterSpacing: 0.5 },
+  streakEmoji: { fontSize: 20 },
+  streakNumber: { fontSize: 20, fontWeight: "800", lineHeight: 24 },
+  streakLabel: { fontSize: 10, fontWeight: "600", letterSpacing: 0.3 },
+  goalBar: {
+    marginHorizontal: 16,
+    marginTop: 12,
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  goalBarLeft: { flex: 1 },
+  goalBarLabel: { fontSize: 13, fontWeight: "700" },
+  goalBarCount: { fontSize: 12, marginTop: 2 },
+  goalBarRight: { alignItems: "flex-end", gap: 4 },
+  goalBarTrack: {
+    width: 80,
+    height: 6,
+    borderRadius: 3,
+    overflow: "hidden",
+  },
+  goalBarFill: {
+    height: "100%",
+    borderRadius: 3,
+  },
+  goalBarPct: { fontSize: 11, fontWeight: "700" },
   subjectRow: {
     paddingHorizontal: 16,
     marginTop: 16,
@@ -407,7 +552,7 @@ const styles = StyleSheet.create({
   input: {
     padding: 16,
     fontSize: 16,
-    minHeight: 120,
+    minHeight: 100,
     textAlignVertical: "top",
     lineHeight: 24,
   },
@@ -416,29 +561,37 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderTopWidth: 1,
+    paddingVertical: 8,
+    borderTopWidth: 0.5,
   },
   charCount: { fontSize: 12 },
-  clearBtn: { padding: 4 },
+  inputActionBtns: { flexDirection: "row", alignItems: "center", gap: 8 },
+  keyboardToggleBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  keyboardToggleText: { fontSize: 13, fontWeight: "700" },
+  clearBtn: { padding: 2 },
   solveBtn: {
     marginHorizontal: 16,
-    marginTop: 16,
-    borderRadius: 16,
+    marginTop: 14,
+    borderRadius: 18,
     overflow: "hidden",
   },
   solveBtnInner: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 16,
-    gap: 8,
+    paddingVertical: 17,
+    gap: 10,
   },
   solveBtnText: {
     fontSize: 17,
-    fontWeight: "700",
+    fontWeight: "800",
     color: "#FFFFFF",
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
   featureRow: {
     flexDirection: "row",
@@ -448,16 +601,16 @@ const styles = StyleSheet.create({
   },
   featureCard: {
     flex: 1,
-    padding: 14,
-    borderRadius: 16,
-    borderWidth: 1,
     alignItems: "center",
+    padding: 14,
+    borderRadius: 18,
+    borderWidth: 1,
     gap: 8,
   },
   featureIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 44,
+    height: 44,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -470,22 +623,18 @@ const styles = StyleSheet.create({
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 8,
     marginBottom: 12,
-    gap: 6,
   },
-  sectionTitle: { fontSize: 15, fontWeight: "700" },
+  sectionTitle: { fontSize: 16, fontWeight: "700" },
   exampleCard: {
-    padding: 14,
-    borderRadius: 14,
-    marginBottom: 8,
-    borderWidth: 1,
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 8,
+    gap: 12,
   },
-  exampleText: {
-    fontSize: 14,
-    flex: 1,
-    lineHeight: 20,
-  },
+  exampleText: { flex: 1, fontSize: 14, lineHeight: 20 },
 });

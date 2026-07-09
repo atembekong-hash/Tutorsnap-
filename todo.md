@@ -38,3 +38,14 @@
 - [x] expo-clipboard installed
 - [x] expo-image-picker installed
 - [x] All icon mappings complete
+
+## New Features (Round 2)
+- [x] Custom math keyboard component with symbols (∫, √, π, ², ³, ÷, ×, ≤, ≥, ≠, ∞, θ, Δ, Σ)
+- [x] Toggle math keyboard on/off in solve screen
+- [x] Streak tracking (daily solve streak counter)
+- [x] Subject mastery progress bars per subject
+- [x] Daily goal tracking (e.g., solve 3 problems/day)
+- [x] Stats screen / progress section on home screen
+- [x] Solution bookmarking (star/bookmark button on solution screen)
+- [x] Bookmarks tab or section to view saved solutions
+- [x] Bookmark indicator on history cards

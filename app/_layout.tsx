@@ -84,6 +84,20 @@ export default function RootLayout() {
                 animation: "slide_from_bottom",
               }}
             />
+            <Stack.Screen
+              name="progress"
+              options={{
+                presentation: "card",
+                animation: "slide_from_right",
+              }}
+            />
+            <Stack.Screen
+              name="bookmarks"
+              options={{
+                presentation: "card",
+                animation: "slide_from_right",
+              }}
+            />
             <Stack.Screen name="oauth/callback" />
           </Stack>
           <StatusBar style="auto" />
