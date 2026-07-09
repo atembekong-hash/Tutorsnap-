@@ -207,6 +207,7 @@ export default function SolveScreen() {
                 <Text style={{ color: colors.primary }}>Problem</Text>
               </Text>
             </View>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             {streak && streak.currentStreak > 0 && (
               <TouchableOpacity
                 onPress={() => router.push("/progress" as any)}
@@ -219,10 +220,17 @@ export default function SolveScreen() {
                   </Text>
                   <Text style={[styles.streakLabel, { color: colors.muted }]}>day streak</Text>
                 </View>
-              </TouchableOpacity>
+                            </TouchableOpacity>
             )}
+              <TouchableOpacity
+                onPress={() => router.push("/settings" as any)}
+                style={{ padding: 6 }}
+                activeOpacity={0.7}
+              >
+                <IconSymbol size={22} name="gear" color={colors.muted} />
+              </TouchableOpacity>
+            </View>
           </View>
-
           {/* Daily Goal Progress */}
           {streak && streak.dailyGoal > 0 && (
             <TouchableOpacity

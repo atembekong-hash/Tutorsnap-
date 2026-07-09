@@ -1,8 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { Appearance, View, useColorScheme as useSystemColorScheme } from "react-native";
 import { colorScheme as nativewindColorScheme, vars } from "nativewind";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { SchemeColors, type ColorScheme } from "@/constants/theme";
+
+const THEME_STORAGE_KEY = "@tutorsnap/colorScheme";
 
 type ThemeContextValue = {
   colorScheme: ColorScheme;
@@ -14,6 +17,7 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const systemScheme = useSystemColorScheme() ?? "light";
   const [colorScheme, setColorSchemeState] = useState<ColorScheme>(systemScheme);
+  const [loaded, setLoaded] = useState(false);
 
   const applyScheme = useCallback((scheme: ColorScheme) => {
     nativewindColorScheme.set(scheme);
@@ -29,14 +33,25 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // Load persisted theme on mount
+  useEffect(() => {
+    AsyncStorage.getItem(THEME_STORAGE_KEY).then((saved) => {
+      const scheme: ColorScheme = saved === "dark" || saved === "light" ? saved : systemScheme;
+      setColorSchemeState(scheme);
+      applyScheme(scheme);
+      setLoaded(true);
+    }).catch(() => {
+      applyScheme(systemScheme);
+      setLoaded(true);
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const setColorScheme = useCallback((scheme: ColorScheme) => {
     setColorSchemeState(scheme);
     applyScheme(scheme);
+    AsyncStorage.setItem(THEME_STORAGE_KEY, scheme).catch(() => {});
   }, [applyScheme]);
-
-  useEffect(() => {
-    applyScheme(colorScheme);
-  }, [applyScheme, colorScheme]);
 
   const themeVariables = useMemo(
     () =>
@@ -61,7 +76,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }),
     [colorScheme, setColorScheme],
   );
-  console.log(value, themeVariables)
+
+  // Don't render children until the persisted theme is loaded to avoid flash
+  if (!loaded) {
+    return (
+      <ThemeContext.Provider value={value}>
+        <View style={[{ flex: 1 }, themeVariables]} />
+      </ThemeContext.Provider>
+    );
+  }
 
   return (
     <ThemeContext.Provider value={value}>
