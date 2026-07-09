@@ -91,7 +91,7 @@ export default function SolutionScreen() {
   const subjectLabel = getSubjectLabel(solution.subject);
 
   const handleShare = async () => {
-    const text = `Math Problem: ${solution!.problem}\n\nAnswer: ${solution!.answer}\n\nSolved with MathGenius AI`;
+    const text = `Question: ${solution!.problem}\n\nAnswer: ${solution!.answer}\n\nSolved with TutorSnap`;
     try {
       await Share.share({ message: text });
     } catch (e) {

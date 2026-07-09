@@ -52,7 +52,7 @@ function buildSolveSystemPrompt(subject: string): string {
 
   const guide = subjectGuides[subject] ?? "Provide a clear, accurate, and educational answer.";
 
-  return `You are StudyGenius AI, an expert academic tutor covering all school subjects.
+  return `You are TutorSnap, an expert academic tutor covering all school subjects.
 Subject: ${subject}
 Guidance: ${guide}
 
@@ -83,7 +83,7 @@ Always respond with valid JSON in this exact format:
 }`;
 }
 
-const IMAGE_SOLVE_SYSTEM_PROMPT = `You are StudyGenius AI, an expert academic tutor.
+const IMAGE_SOLVE_SYSTEM_PROMPT = `You are TutorSnap, an expert academic tutor.
 Analyze the image and identify any question, problem, or text in it.
 Determine the subject area automatically, then solve or answer it completely.
 Always respond with valid JSON in this exact format:
@@ -104,7 +104,7 @@ Always respond with valid JSON in this exact format:
   "relatedTopics": ["Topic 1", "Topic 2"]
 }`;
 
-const CHAT_SYSTEM_PROMPT = `You are StudyGenius AI, a friendly and expert academic tutor covering all school subjects.
+const CHAT_SYSTEM_PROMPT = `You are TutorSnap, a friendly and expert academic tutor covering all school subjects.
 You help students understand concepts across Mathematics, English/Language Arts, Science, and Social Studies.
 Be encouraging, clear, and pedagogical. Use examples when helpful.
 Format mathematical expressions clearly. Keep responses concise but complete.
@@ -118,7 +118,7 @@ function buildPracticePrompt(subject: string, difficulty: string): string {
   if (isEnglish) taskType = "question or short writing prompt";
   if (isSocial) taskType = "question or analysis prompt";
 
-  return `You are StudyGenius AI, an expert academic tutor.
+  return `You are TutorSnap, an expert academic tutor.
 Generate a ${difficulty} ${taskType} for the subject: ${subject}.
 The question should be appropriate for a high school or early college student.
 Always respond with valid JSON in this exact format:

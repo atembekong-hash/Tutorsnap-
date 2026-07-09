@@ -1,5 +1,5 @@
 /**
- * Centralized subject definitions for StudyGenius AI.
+ * Centralized subject definitions for TutorSnap.
  * All subjects are organized into 4 top-level categories.
  * Every screen imports from here — no duplicated subject maps.
  */

@@ -76,7 +76,7 @@ export default function ChatScreen() {
     {
       id: "welcome",
       role: "assistant",
-      content: "Hi! I'm StudyGenius AI, your personal academic tutor. Ask me anything — Math, Science, English, History, and more. I'll explain concepts, help with homework, and guide you step by step! 📚",
+      content: "Hi! I'm TutorSnap, your personal academic tutor. Ask me anything — Math, Science, English, History, and more. I'll explain concepts, help with homework, and guide you step by step! 📚",
       timestamp: Date.now(),
     },
   ]);
@@ -199,7 +199,7 @@ export default function ChatScreen() {
             chatMutation.isPending ? (
               <View style={[styles.typingIndicator, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <ActivityIndicator size="small" color={colors.primary} />
-                <Text style={[styles.typingText, { color: colors.muted }]}>StudyGenius is thinking...</Text>
+                <Text style={[styles.typingText, { color: colors.muted }]}>TutorSnap is thinking...</Text>
               </View>
             ) : null
           }

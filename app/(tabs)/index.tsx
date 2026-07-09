@@ -201,7 +201,7 @@ export default function SolveScreen() {
           {/* Header */}
           <View style={styles.header}>
             <View>
-              <Text style={[styles.greeting, { color: colors.muted }]}>StudyGenius AI</Text>
+              <Text style={[styles.greeting, { color: colors.muted }]}>TutorSnap</Text>
               <Text style={[styles.title, { color: colors.foreground }]}>
                 Solve Any{" "}
                 <Text style={{ color: colors.primary }}>Problem</Text>
