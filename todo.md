@@ -58,3 +58,6 @@
 - [x] Extend cheat sheets: Biology, Chemistry (organic), Grammar
 - [x] Copy/Share-as-Image on Solution screen
 - [x] Timed Practice Quiz mode with AI questions and scoring
+- [x] Quiz history saved to AsyncStorage with stats card on Practice screen
+- [x] Configurable quiz length picker (3/5/10 questions)
+- [x] Streak bonus on home screen for 80%+ quiz score

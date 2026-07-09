@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -17,6 +17,10 @@ import { trpc } from "@/lib/trpc";
 import type { PracticeQuestion, MathSubject, Difficulty } from "@/shared/types";
 import { SubjectPicker } from "@/components/subject-picker";
 import { type SubjectId, getSubjectColor, getSubjectLabel } from "@/lib/subjects";
+import { loadQuizStats, type QuizStats } from "@/lib/quiz-history";
+import { useFocusEffect } from "expo-router";
+
+const QUIZ_COUNTS = [3, 5, 10];
 
 const DIFFICULTIES: { id: Difficulty; label: string; color: string; desc: string }[] = [
   { id: "easy", label: "Easy", color: "#10B981", desc: "Basic concepts" },
@@ -32,6 +36,14 @@ export default function PracticeScreen() {
   const [currentQuestion, setCurrentQuestion] = useState<PracticeQuestion | null>(null);
   const [showAnswer, setShowAnswer] = useState(false);
   const [hintsShown, setHintsShown] = useState(0);
+  const [quizCount, setQuizCount] = useState(5);
+  const [quizStats, setQuizStats] = useState<QuizStats | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadQuizStats().then(setQuizStats);
+    }, [])
+  );
 
   const generateMutation = trpc.academic.generatePractice.useMutation({
     onSuccess: (data) => {
@@ -167,19 +179,59 @@ export default function PracticeScreen() {
           )}
         </TouchableOpacity>
 
-        {/* Start Quiz Button */}
-        <TouchableOpacity
-          onPress={() => router.push({ pathname: "/quiz", params: { subject: selectedSubject, difficulty: selectedDifficulty, count: "5" } })}
-          style={[styles.quizBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
-          activeOpacity={0.85}
-        >
-          <Text style={{ fontSize: 18 }}>🎯</Text>
-          <View style={{ flex: 1 }}>
+        {/* Quiz Count Picker + Start Quiz */}
+        <View style={[styles.quizSection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={styles.quizSectionHeader}>
+            <Text style={{ fontSize: 18 }}>🎯</Text>
             <Text style={[styles.quizBtnTitle, { color: colors.foreground }]}>Timed Quiz Mode</Text>
-            <Text style={[styles.quizBtnSub, { color: colors.muted }]}>5 questions · 30s each · scored</Text>
           </View>
-          <IconSymbol size={18} name="chevron.right" color={colors.muted} />
-        </TouchableOpacity>
+          <Text style={[styles.quizBtnSub, { color: colors.muted, marginBottom: 10 }]}>30s per question · multiple choice · scored</Text>
+          {/* Count picker */}
+          <View style={styles.countPickerRow}>
+            <Text style={[styles.countPickerLabel, { color: colors.muted }]}>Questions:</Text>
+            {QUIZ_COUNTS.map((n) => (
+              <TouchableOpacity
+                key={n}
+                onPress={() => setQuizCount(n)}
+                style={[styles.countChip, { backgroundColor: quizCount === n ? colors.primary : colors.border }]}
+                activeOpacity={0.75}
+              >
+                <Text style={[styles.countChipText, { color: quizCount === n ? "#fff" : colors.foreground }]}>{n}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <TouchableOpacity
+            onPress={() => router.push({ pathname: "/quiz", params: { subject: selectedSubject, difficulty: selectedDifficulty, count: String(quizCount) } })}
+            style={[styles.startQuizBtn, { backgroundColor: colors.primary }]}
+            activeOpacity={0.85}
+          >
+            <IconSymbol size={18} name="bolt.fill" color="#fff" />
+            <Text style={styles.startQuizBtnText}>Start {quizCount}-Question Quiz</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Quiz Stats Card */}
+        {quizStats && quizStats.totalQuizzes > 0 && (
+          <View style={[styles.statsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.statsTitle, { color: colors.foreground }]}>📊 Quiz Stats</Text>
+            <View style={styles.statsRow}>
+              <View style={styles.statItem}>
+                <Text style={[styles.statValue, { color: colors.primary }]}>{quizStats.totalQuizzes}</Text>
+                <Text style={[styles.statLabel, { color: colors.muted }]}>Quizzes</Text>
+              </View>
+              <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
+              <View style={styles.statItem}>
+                <Text style={[styles.statValue, { color: colors.success }]}>{quizStats.bestScore}%</Text>
+                <Text style={[styles.statLabel, { color: colors.muted }]}>Best</Text>
+              </View>
+              <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
+              <View style={styles.statItem}>
+                <Text style={[styles.statValue, { color: colors.warning }]}>{quizStats.averageScore}%</Text>
+                <Text style={[styles.statLabel, { color: colors.muted }]}>Average</Text>
+              </View>
+            </View>
+          </View>
+        )}
 
         {/* Current Question */}
         {currentQuestion && (
@@ -373,4 +425,39 @@ const styles = StyleSheet.create({
   },
   quizBtnTitle: { fontSize: 15, fontWeight: "700" },
   quizBtnSub: { fontSize: 12, marginTop: 2 },
+  quizSection: {
+    marginHorizontal: 16,
+    marginTop: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+    gap: 0,
+  },
+  quizSectionHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 },
+  countPickerRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 },
+  countPickerLabel: { fontSize: 13, fontWeight: "600", marginRight: 4 },
+  countChip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20 },
+  countChipText: { fontSize: 14, fontWeight: "700" },
+  startQuizBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 13,
+    borderRadius: 12,
+  },
+  startQuizBtnText: { color: "#fff", fontSize: 15, fontWeight: "700" },
+  statsCard: {
+    marginHorizontal: 16,
+    marginTop: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+  },
+  statsTitle: { fontSize: 15, fontWeight: "700", marginBottom: 12 },
+  statsRow: { flexDirection: "row", alignItems: "center" },
+  statItem: { flex: 1, alignItems: "center", gap: 4 },
+  statDivider: { width: 1, height: 36 },
+  statValue: { fontSize: 22, fontWeight: "800" },
+  statLabel: { fontSize: 12 },
 });

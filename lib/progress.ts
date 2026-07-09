@@ -134,6 +134,32 @@ export async function recordSolve(subject: MathSubject): Promise<ProgressData> {
   return updated;
 }
 
+/**
+ * Award a bonus streak increment when a quiz is completed with 80%+ score.
+ * Only awards once per day (tracked by a separate key).
+ */
+export async function recordQuizBonus(pct: number): Promise<{ awarded: boolean; newStreak: number }> {
+  if (pct < 80) return { awarded: false, newStreak: 0 };
+  const today = getTodayString();
+  const bonusKey = `${PROGRESS_KEY}_quiz_bonus_${today}`;
+  const alreadyAwarded = await AsyncStorage.getItem(bonusKey);
+  if (alreadyAwarded) return { awarded: false, newStreak: 0 };
+
+  const progress = await getProgress();
+  const streak = { ...progress.streak };
+  streak.currentStreak = Math.max(streak.currentStreak, 1) + 1;
+  streak.longestStreak = Math.max(streak.longestStreak, streak.currentStreak);
+  // Mark today as solved if not already
+  if (!streak.lastSolvedDate || streak.lastSolvedDate !== today) {
+    streak.lastSolvedDate = today;
+    streak.todaySolved = (streak.todaySolved || 0) + 1;
+  }
+  const updated = { ...progress, streak };
+  await AsyncStorage.setItem(PROGRESS_KEY, JSON.stringify(updated));
+  await AsyncStorage.setItem(bonusKey, "1");
+  return { awarded: true, newStreak: streak.currentStreak };
+}
+
 export async function setDailyGoal(goal: number): Promise<void> {
   const progress = await getProgress();
   progress.streak.dailyGoal = goal;

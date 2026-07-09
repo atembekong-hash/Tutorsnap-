@@ -16,6 +16,8 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { trpc } from "@/lib/trpc";
 import { getSubjectColor, getSubjectLabel } from "@/lib/subjects";
+import { saveQuizResult } from "@/lib/quiz-history";
+import { recordQuizBonus } from "@/lib/progress";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -85,6 +87,8 @@ function ScoreSummary({
   questions,
   answers,
   timeTaken,
+  bonusAwarded,
+  bonusStreak,
   onRetry,
   onHome,
   colors,
@@ -92,6 +96,8 @@ function ScoreSummary({
   questions: QuizQuestion[];
   answers: (OptionKey | null)[];
   timeTaken: number;
+  bonusAwarded: boolean;
+  bonusStreak: number;
   onRetry: () => void;
   onHome: () => void;
   colors: any;
@@ -114,6 +120,13 @@ function ScoreSummary({
         <Text style={[styles.timeText, { color: colors.muted }]}>
           ⏱ {mins > 0 ? `${mins}m ` : ""}{secs}s
         </Text>
+        {bonusAwarded && (
+          <View style={[styles.bonusBadge, { backgroundColor: `${colors.warning}20`, borderColor: `${colors.warning}50` }]}>
+            <Text style={[styles.bonusBadgeText, { color: colors.warning }]}>
+              🔥 Streak Bonus! Now {bonusStreak} days
+            </Text>
+          </View>
+        )}
       </View>
 
       {/* Per-question review */}
@@ -171,6 +184,8 @@ export default function QuizScreen() {
   const [finished, setFinished] = useState(false);
   const [timeLeft, setTimeLeft] = useState(SECONDS_PER_QUESTION);
   const [totalTime, setTotalTime] = useState(0);
+  const [bonusAwarded, setBonusAwarded] = useState(false);
+  const [bonusStreak, setBonusStreak] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const progressAnim = useRef(new Animated.Value(1)).current;
 
@@ -239,9 +254,29 @@ export default function QuizScreen() {
     }
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentIdx + 1 >= questions.length) {
       if (timerRef.current) clearInterval(timerRef.current);
+      // Save quiz result to history
+      const finalAnswers = [...answers];
+      finalAnswers[currentIdx] = selectedOption;
+      const correctCount = finalAnswers.filter((a, i) => a === questions[i]?.correctAnswer).length;
+      const pct = Math.round((correctCount / questions.length) * 100);
+      await saveQuizResult({
+        subject,
+        difficulty,
+        score: correctCount,
+        total: questions.length,
+        pct,
+        timeTaken: totalTime,
+        completedAt: Date.now(),
+      });
+      const bonus = await recordQuizBonus(pct);
+      setBonusAwarded(bonus.awarded);
+      setBonusStreak(bonus.newStreak);
+      if (bonus.awarded && Platform.OS !== "web") {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
       setFinished(true);
     } else {
       setCurrentIdx((i) => i + 1);
@@ -294,14 +329,16 @@ export default function QuizScreen() {
       </View>
 
       {finished ? (
-        <ScoreSummary
-          questions={questions}
-          answers={answers}
-          timeTaken={totalTime}
-          onRetry={handleRetry}
-          onHome={() => router.push("/(tabs)/practice" as any)}
-          colors={colors}
-        />
+          <ScoreSummary
+            questions={questions}
+            answers={answers}
+            timeTaken={totalTime}
+            bonusAwarded={bonusAwarded}
+            bonusStreak={bonusStreak}
+            onRetry={handleRetry}
+            onHome={() => router.push("/(tabs)/practice" as any)}
+            colors={colors}
+          />
       ) : (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
           {/* Timer Bar */}
@@ -473,4 +510,13 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   summaryBtnText: { color: "#fff", fontSize: 15, fontWeight: "700" },
+  bonusBadge: {
+    marginTop: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    alignItems: "center",
+  },
+  bonusBadgeText: { fontSize: 14, fontWeight: "700" },
 });
