@@ -19,6 +19,7 @@ import { SubjectPicker } from "@/components/subject-picker";
 import { type SubjectId, getSubjectColor, getSubjectLabel } from "@/lib/subjects";
 import { loadQuizStats, type QuizStats } from "@/lib/quiz-history";
 import { useFocusEffect } from "expo-router";
+import { useNetworkStatus } from "@/hooks/use-network-status";
 
 const QUIZ_COUNTS = [3, 5, 10];
 
@@ -38,6 +39,7 @@ export default function PracticeScreen() {
   const [hintsShown, setHintsShown] = useState(0);
   const [quizCount, setQuizCount] = useState(5);
   const [quizStats, setQuizStats] = useState<QuizStats | null>(null);
+  const { isOnline } = useNetworkStatus();
 
   useFocusEffect(
     useCallback(() => {
@@ -156,11 +158,11 @@ export default function PracticeScreen() {
         {/* Generate Button */}
         <TouchableOpacity
           onPress={handleGenerate}
-          disabled={generateMutation.isPending}
+          disabled={generateMutation.isPending || !isOnline}
           style={[
             styles.generateBtn,
-            { backgroundColor: colors.primary },
-            generateMutation.isPending && { opacity: 0.7 },
+            { backgroundColor: isOnline ? colors.primary : colors.muted },
+            (generateMutation.isPending || !isOnline) && { opacity: 0.7 },
           ]}
           activeOpacity={0.85}
         >
@@ -201,8 +203,9 @@ export default function PracticeScreen() {
             ))}
           </View>
           <TouchableOpacity
-            onPress={() => router.push({ pathname: "/quiz", params: { subject: selectedSubject, difficulty: selectedDifficulty, count: String(quizCount) } })}
-            style={[styles.startQuizBtn, { backgroundColor: colors.primary }]}
+            onPress={() => isOnline && router.push({ pathname: "/quiz", params: { subject: selectedSubject, difficulty: selectedDifficulty, count: String(quizCount) } })}
+            disabled={!isOnline}
+            style={[styles.startQuizBtn, { backgroundColor: isOnline ? colors.primary : colors.muted, opacity: isOnline ? 1 : 0.6 }]}
             activeOpacity={0.85}
           >
             <IconSymbol size={18} name="bolt.fill" color="#fff" />

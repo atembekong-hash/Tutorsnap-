@@ -22,6 +22,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { HistoryItem, MathSubject } from "@/shared/types";
 import { SubjectPicker } from "@/components/subject-picker";
 import { type SubjectId } from "@/lib/subjects";
+import { useNetworkStatus } from "@/hooks/use-network-status";
 
 export default function ScanScreen() {
   const colors = useColors();
@@ -29,6 +30,7 @@ export default function ScanScreen() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedSubject, setSelectedSubject] = useState<SubjectId | null>(null);
+  const { isOnline } = useNetworkStatus();
 
   const solveMutation = trpc.academic.solveFromImage.useMutation({
     onSuccess: async (data) => {
@@ -260,11 +262,11 @@ export default function ScanScreen() {
             {/* Solve Button */}
             <TouchableOpacity
               onPress={handleSolve}
-              disabled={isProcessing || solveMutation.isPending}
+              disabled={isProcessing || solveMutation.isPending || !isOnline}
               style={[
                 styles.solveBtn,
-                { backgroundColor: colors.primary },
-                (isProcessing || solveMutation.isPending) && { opacity: 0.7 },
+                { backgroundColor: isOnline ? colors.primary : colors.muted },
+                (isProcessing || solveMutation.isPending || !isOnline) && { opacity: 0.7 },
               ]}
               activeOpacity={0.85}
             >
@@ -272,6 +274,11 @@ export default function ScanScreen() {
                 <>
                   <ActivityIndicator color="#FFFFFF" size="small" />
                   <Text style={styles.solveBtnText}>Analyzing Image...</Text>
+                </>
+              ) : !isOnline ? (
+                <>
+                  <IconSymbol size={20} name="wifi.slash" color="#FFFFFF" />
+                  <Text style={styles.solveBtnText}>No Internet Connection</Text>
                 </>
               ) : (
                 <>
