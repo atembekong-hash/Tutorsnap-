@@ -51,6 +51,13 @@ export default function ScanScreen() {
       } catch (e) {
         // ignore
       }
+      // Track progress
+      try {
+        const { recordSolve } = await import("@/lib/progress");
+        await recordSolve((data.subject || "other") as any);
+      } catch (_e) {
+        // ignore
+      }
       setIsProcessing(false);
       router.push({
         pathname: "/solution",
