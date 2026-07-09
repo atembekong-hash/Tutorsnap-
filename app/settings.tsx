@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Switch,
   Platform,
+  Modal,
 } from "react-native";
 import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
@@ -15,8 +16,18 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { useThemeContext } from "@/lib/theme-provider";
 import { getProgress, setDailyGoal } from "@/lib/progress";
+import {
+  getReminderSettings,
+  saveReminderSettings,
+  formatReminderTime,
+  type ReminderSettings,
+} from "@/lib/notifications";
 
 const GOAL_OPTIONS = [1, 2, 3, 5, 7, 10];
+
+// Hours available for reminder (6 AM – 11 PM)
+const HOUR_OPTIONS = Array.from({ length: 18 }, (_, i) => i + 6);
+const MINUTE_OPTIONS = [0, 15, 30, 45];
 
 function SectionHeader({ title, colors }: { title: string; colors: any }) {
   return (
@@ -68,6 +79,12 @@ function SettingsRow({
   return content;
 }
 
+function formatHour(hour: number): string {
+  const period = hour >= 12 ? "PM" : "AM";
+  const h = hour % 12 === 0 ? 12 : hour % 12;
+  return `${h} ${period}`;
+}
+
 export default function SettingsScreen() {
   const colors = useColors();
   const router = useRouter();
@@ -79,6 +96,13 @@ export default function SettingsScreen() {
   const [totalSolved, setTotalSolved] = useState(0);
   const [streak, setStreak] = useState(0);
 
+  // Reminder state
+  const [reminder, setReminder] = useState<ReminderSettings>({ enabled: false, hour: 19, minute: 0 });
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [pickerHour, setPickerHour] = useState(19);
+  const [pickerMinute, setPickerMinute] = useState(0);
+  const [reminderSaving, setReminderSaving] = useState(false);
+
   useEffect(() => {
     getProgress().then((p) => {
       setDailyGoalState(p.streak.dailyGoal);
@@ -86,6 +110,7 @@ export default function SettingsScreen() {
       setTotalSolved(p.streak.totalSolved);
       setStreak(p.streak.currentStreak);
     });
+    getReminderSettings().then(setReminder);
   }, []);
 
   const handleToggleTheme = () => {
@@ -101,6 +126,43 @@ export default function SettingsScreen() {
     }
     setDailyGoalState(goal);
     await setDailyGoal(goal);
+  };
+
+  const handleToggleReminder = async (value: boolean) => {
+    if (Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+    if (value) {
+      // Open time picker to choose time before enabling
+      setPickerHour(reminder.hour);
+      setPickerMinute(reminder.minute);
+      setShowTimePicker(true);
+    } else {
+      setReminderSaving(true);
+      const updated = { ...reminder, enabled: false };
+      await saveReminderSettings(updated);
+      setReminder(updated);
+      setReminderSaving(false);
+    }
+  };
+
+  const handleSaveTime = async () => {
+    if (Platform.OS !== "web") {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+    setShowTimePicker(false);
+    setReminderSaving(true);
+    const updated: ReminderSettings = { enabled: true, hour: pickerHour, minute: pickerMinute };
+    await saveReminderSettings(updated);
+    setReminder(updated);
+    setReminderSaving(false);
+  };
+
+  const handleEditTime = () => {
+    if (!reminder.enabled) return;
+    setPickerHour(reminder.hour);
+    setPickerMinute(reminder.minute);
+    setShowTimePicker(true);
   };
 
   return (
@@ -195,6 +257,51 @@ export default function SettingsScreen() {
           </View>
         </View>
 
+        {/* Notifications */}
+        <SectionHeader title="NOTIFICATIONS" colors={colors} />
+        <View style={[styles.row, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={[styles.rowIcon, { backgroundColor: `${colors.primary}15` }]}>
+            <IconSymbol size={18} name="bell.fill" color={colors.primary} />
+          </View>
+          <View style={styles.rowContent}>
+            <Text style={[styles.rowLabel, { color: colors.foreground }]}>Daily Study Reminder</Text>
+            <Text style={[styles.rowSubtitle, { color: colors.muted }]}>
+              {reminder.enabled
+                ? `Reminder set for ${formatReminderTime(reminder.hour, reminder.minute)}`
+                : "Get a daily nudge to keep your streak going"}
+            </Text>
+          </View>
+          <View style={styles.rowRight}>
+            {reminderSaving ? null : (
+              <Switch
+                value={reminder.enabled}
+                onValueChange={handleToggleReminder}
+                trackColor={{ false: colors.border, true: `${colors.primary}80` }}
+                thumbColor={reminder.enabled ? colors.primary : "#FFFFFF"}
+                disabled={Platform.OS === "web"}
+              />
+            )}
+          </View>
+        </View>
+        {reminder.enabled && Platform.OS !== "web" && (
+          <TouchableOpacity
+            onPress={handleEditTime}
+            activeOpacity={0.7}
+            style={[styles.row, { backgroundColor: colors.surface, borderColor: colors.border, marginTop: 2 }]}
+          >
+            <View style={[styles.rowIcon, { backgroundColor: `${colors.primary}15` }]}>
+              <IconSymbol size={18} name="clock.fill" color={colors.primary} />
+            </View>
+            <View style={styles.rowContent}>
+              <Text style={[styles.rowLabel, { color: colors.foreground }]}>Reminder Time</Text>
+              <Text style={[styles.rowSubtitle, { color: colors.muted }]}>
+                {formatReminderTime(reminder.hour, reminder.minute)}
+              </Text>
+            </View>
+            <IconSymbol size={16} name="chevron.right" color={colors.muted} />
+          </TouchableOpacity>
+        )}
+
         {/* Progress & Data */}
         <SectionHeader title="PROGRESS & DATA" colors={colors} />
         <SettingsRow
@@ -249,6 +356,99 @@ export default function SettingsScreen() {
         </View>
 
       </ScrollView>
+
+      {/* Time Picker Modal */}
+      <Modal
+        visible={showTimePicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowTimePicker(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalSheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Set Reminder Time</Text>
+            <Text style={[styles.modalSubtitle, { color: colors.muted }]}>
+              You'll get a daily nudge at this time
+            </Text>
+
+            {/* Hour picker */}
+            <Text style={[styles.pickerLabel, { color: colors.muted }]}>HOUR</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 4, gap: 8, flexDirection: "row" }}
+              style={{ marginBottom: 16 }}
+            >
+              {HOUR_OPTIONS.map((h) => (
+                <TouchableOpacity
+                  key={h}
+                  onPress={() => {
+                    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setPickerHour(h);
+                  }}
+                  style={[
+                    styles.pickerChip,
+                    {
+                      backgroundColor: pickerHour === h ? colors.primary : colors.surface,
+                      borderColor: pickerHour === h ? colors.primary : colors.border,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.pickerChipText, { color: pickerHour === h ? "#FFFFFF" : colors.foreground }]}>
+                    {formatHour(h)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            {/* Minute picker */}
+            <Text style={[styles.pickerLabel, { color: colors.muted }]}>MINUTE</Text>
+            <View style={{ flexDirection: "row", gap: 10, marginBottom: 24 }}>
+              {MINUTE_OPTIONS.map((m) => (
+                <TouchableOpacity
+                  key={m}
+                  onPress={() => {
+                    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setPickerMinute(m);
+                  }}
+                  style={[
+                    styles.pickerChip,
+                    {
+                      backgroundColor: pickerMinute === m ? colors.primary : colors.surface,
+                      borderColor: pickerMinute === m ? colors.primary : colors.border,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.pickerChipText, { color: pickerMinute === m ? "#FFFFFF" : colors.foreground }]}>
+                    :{m.toString().padStart(2, "0")}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={[styles.previewTime, { color: colors.primary }]}>
+              {formatReminderTime(pickerHour, pickerMinute)}
+            </Text>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                onPress={() => setShowTimePicker(false)}
+                style={[styles.modalBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.modalBtnText, { color: colors.foreground }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleSaveTime}
+                style={[styles.modalBtn, { backgroundColor: colors.primary }]}
+                activeOpacity={0.85}
+              >
+                <Text style={[styles.modalBtnText, { color: "#FFFFFF" }]}>Set Reminder</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScreenContainer>
   );
 }
@@ -364,4 +564,48 @@ const styles = StyleSheet.create({
   subjectDot: { width: 7, height: 7, borderRadius: 4 },
   subjectTagText: { fontSize: 13, fontWeight: "600" },
   subjectsCount: { fontSize: 12, marginTop: 4 },
+  // Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "flex-end",
+  },
+  modalSheet: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderWidth: 1,
+    padding: 24,
+    paddingBottom: 40,
+  },
+  modalTitle: { fontSize: 20, fontWeight: "800", marginBottom: 6 },
+  modalSubtitle: { fontSize: 14, marginBottom: 20 },
+  pickerLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 1,
+    marginBottom: 10,
+  },
+  pickerChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1.5,
+  },
+  pickerChipText: { fontSize: 14, fontWeight: "700" },
+  previewTime: {
+    fontSize: 32,
+    fontWeight: "800",
+    textAlign: "center",
+    marginBottom: 24,
+    letterSpacing: -1,
+  },
+  modalButtons: { flexDirection: "row", gap: 12 },
+  modalBtn: {
+    flex: 1,
+    paddingVertical: 16,
+    borderRadius: 14,
+    alignItems: "center",
+    borderWidth: 1,
+  },
+  modalBtnText: { fontSize: 16, fontWeight: "700" },
 });

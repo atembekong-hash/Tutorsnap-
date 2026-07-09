@@ -100,6 +100,12 @@ export default function SolveScreen() {
   useFocusEffect(
     useCallback(() => {
       loadProgress();
+      // Check if onboarding has been completed
+      AsyncStorage.getItem("@tutorsnap/onboardingDone").then((done) => {
+        if (!done) {
+          router.replace("/onboarding" as any);
+        }
+      });
     }, [])
   );
 

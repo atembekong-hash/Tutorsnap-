@@ -54,6 +54,8 @@ const MAPPING = {
   "arrow.up.right": "north-east",
   "person.fill": "person",
   "gear": "settings",
+  "bell.fill": "notifications",
+  "bell.slash.fill": "notifications-off",
   "plus.circle.fill": "add-circle",
   "minus.circle.fill": "remove-circle",
   "info.circle": "info",
