@@ -287,6 +287,57 @@ const academicRouter = router({
       return JSON.parse(jsonStr);
     }),
 
+  generateQuiz: publicProcedure
+    .input(z.object({
+      subject: z.string(),
+      topic: z.string().optional(),
+      difficulty: z.enum(["easy", "medium", "hard"]).default("medium"),
+    }))
+    .mutation(async ({ input }) => {
+      const subjectHint = input.subject.replace(/_/g, " ");
+      const topicHint = input.topic ? ` on the topic of "${input.topic}"` : "";
+      const systemPrompt = `You are an expert ${subjectHint} teacher creating a short quiz.
+Generate exactly 5 quiz questions${topicHint} at ${input.difficulty} difficulty.
+Each question should be clear, educational, and test understanding.
+
+Return ONLY valid JSON in this exact format:
+{
+  "quizTitle": "string (e.g. 'Algebra Basics Quiz')",
+  "subject": "${input.subject}",
+  "difficulty": "${input.difficulty}",
+  "questions": [
+    {
+      "id": 1,
+      "question": "string",
+      "options": ["A) ...", "B) ...", "C) ...", "D) ..."],
+      "correctIndex": 0,
+      "explanation": "string (brief explanation of why this is correct)"
+    }
+  ]
+}
+
+IMPORTANT:
+- correctIndex is 0-based (0=A, 1=B, 2=C, 3=D)
+- All 5 questions must have exactly 4 options
+- Explanations should be 1-2 sentences
+- Questions should vary in type (definition, application, analysis)`;
+
+      const result = await invokeLLM({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `Generate a 5-question ${input.difficulty} ${subjectHint} quiz${topicHint}.` },
+        ],
+        max_tokens: 2000,
+        response_format: { type: "json_object" },
+      });
+
+      const rawContent = result.choices[0]?.message?.content ?? "";
+      const text = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
+      const jsonStr = extractJsonFromContent(text);
+      return JSON.parse(jsonStr);
+    }),
+
   chat: publicProcedure
     .input(z.object({
       messages: z.array(z.object({

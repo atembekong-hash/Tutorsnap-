@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -7,6 +7,8 @@ import {
   StyleSheet,
   Share,
   Platform,
+  TextInput,
+  Keyboard,
 } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -17,6 +19,7 @@ import { useColors } from "@/hooks/use-colors";
 import { toggleBookmark, isBookmarked } from "@/lib/bookmarks";
 import type { MathSolution, SolutionStep, HistoryItem } from "@/shared/types";
 import { getSubjectColor, getSubjectLabel } from "@/lib/subjects";
+import { getNote, saveNote } from "@/lib/notes";
 
 function StepCard({ step, colors }: { step: SolutionStep; colors: any }) {
   const [expanded, setExpanded] = useState(true);
@@ -60,6 +63,10 @@ export default function SolutionScreen() {
   const params = useLocalSearchParams();
   const [bookmarked, setBookmarked] = useState(false);
   const [copyFeedback, setCopyFeedback] = useState(false);
+  const [note, setNote] = useState("");
+  const [noteSaved, setNoteSaved] = useState(false);
+  const [noteEditing, setNoteEditing] = useState(false);
+  const noteInputRef = useRef<TextInput>(null);
 
   let solution: MathSolution | null = null;
   try {
@@ -71,8 +78,23 @@ export default function SolutionScreen() {
   useEffect(() => {
     if (solution?.problem) {
       isBookmarked(solution.problem).then(setBookmarked);
+      getNote(solution.problem).then((n) => {
+        if (n) setNote(n.note);
+      });
     }
   }, [solution?.problem]);
+
+  const handleSaveNote = async () => {
+    if (!solution?.problem) return;
+    Keyboard.dismiss();
+    await saveNote(solution.problem, note);
+    setNoteEditing(false);
+    setNoteSaved(true);
+    if (Platform.OS !== "web") {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+    setTimeout(() => setNoteSaved(false), 2000);
+  };
 
   if (!solution) {
     return (
@@ -252,6 +274,80 @@ export default function SolutionScreen() {
           </View>
         )}
 
+        {/* Study Notes */}
+        <View style={[styles.notesCard, { backgroundColor: noteEditing ? `${colors.primary}08` : colors.surface, borderColor: noteEditing ? colors.primary : colors.border }]}>
+          <View style={styles.notesHeader}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <Text style={{ fontSize: 16 }}>📝</Text>
+              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>My Study Notes</Text>
+            </View>
+            {note.trim().length > 0 && !noteEditing && (
+              <TouchableOpacity
+                onPress={() => {
+                  setNoteEditing(true);
+                  setTimeout(() => noteInputRef.current?.focus(), 100);
+                }}
+                style={[styles.noteEditBtn, { backgroundColor: `${colors.primary}15` }]}
+              >
+                <Text style={[{ fontSize: 12, fontWeight: "700", color: colors.primary }]}>Edit</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {noteEditing || note.trim().length === 0 ? (
+            <>
+              <TextInput
+                ref={noteInputRef}
+                style={[
+                  styles.noteInput,
+                  {
+                    color: colors.foreground,
+                    backgroundColor: colors.background,
+                    borderColor: noteEditing ? colors.primary : colors.border,
+                  },
+                ]}
+                placeholder="Add your own notes, key takeaways, or reminders here..."
+                placeholderTextColor={colors.muted}
+                value={note}
+                onChangeText={setNote}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+                onFocus={() => setNoteEditing(true)}
+                returnKeyType="default"
+              />
+              {noteEditing && (
+                <View style={{ flexDirection: "row", gap: 10, marginTop: 10 }}>
+                  <TouchableOpacity
+                    onPress={() => { setNoteEditing(false); }}
+                    style={[styles.noteCancelBtn, { borderColor: colors.border }]}
+                  >
+                    <Text style={{ color: colors.muted, fontWeight: "600", fontSize: 14 }}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={handleSaveNote}
+                    style={[styles.noteSaveBtn, { backgroundColor: noteSaved ? colors.success : colors.primary }]}
+                  >
+                    <Text style={{ color: "#FFF", fontWeight: "700", fontSize: 14 }}>
+                      {noteSaved ? "✓ Saved!" : "Save Note"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </>
+          ) : (
+            <TouchableOpacity
+              onPress={() => {
+                setNoteEditing(true);
+                setTimeout(() => noteInputRef.current?.focus(), 100);
+              }}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.noteText, { color: colors.foreground }]}>{note}</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
         {/* Action Buttons */}
         <View style={styles.actionRow}>
           <TouchableOpacity
@@ -428,4 +524,49 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   actionBtnText: { fontSize: 14, fontWeight: "700" },
+  notesCard: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  notesHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  noteEditBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  noteInput: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 14,
+    lineHeight: 22,
+    minHeight: 90,
+  },
+  noteCancelBtn: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  noteSaveBtn: {
+    flex: 2,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  noteText: {
+    fontSize: 14,
+    lineHeight: 22,
+  },
 });

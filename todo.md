@@ -58,3 +58,9 @@
 - [x] Settings screen with theme toggle
 - [x] Update all screens to use new subject system
 - [x] Rename/rebrand to reflect multi-subject scope (StudyGenius AI)
+
+## New Features (Round 4)
+- [ ] Study Notes: add/edit personal notes on solution screen, persisted per solution
+- [ ] Dynamic subject-specific example prompts on home screen (change when subject changes)
+- [ ] Quiz Me mode in AI Tutor: 5-question quiz with instant per-answer feedback
+- [ ] Backend endpoint for quiz generation

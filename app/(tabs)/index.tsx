@@ -26,7 +26,178 @@ import { getSubjectColor, type SubjectId } from "@/lib/subjects";
 import type { HistoryItem } from "@/shared/types";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 
-const EXAMPLE_PROBLEMS = [
+// Comprehensive per-subject example problems
+const SUBJECT_EXAMPLES: Record<string, { text: string; subject: string }[]> = {
+  // Math
+  algebra: [
+    { text: "Solve: 2x² + 5x - 3 = 0", subject: "algebra" },
+    { text: "Factor: x² - 9x + 18", subject: "algebra" },
+    { text: "Simplify: (3x² - 2x + 1) + (x² + 4x - 5)", subject: "algebra" },
+    { text: "Solve the system: 2x + y = 7, x - y = 2", subject: "algebra" },
+  ],
+  calculus: [
+    { text: "Find the derivative of f(x) = x³ + 2x² - 5x + 1", subject: "calculus" },
+    { text: "Evaluate: ∫(3x² + 2x - 1)dx", subject: "calculus" },
+    { text: "Find the limit: lim(x→2) (x² - 4)/(x - 2)", subject: "calculus" },
+    { text: "Find the area under f(x) = x² from x=0 to x=3", subject: "calculus" },
+  ],
+  geometry: [
+    { text: "Find the area of a triangle with base 8 and height 5", subject: "geometry" },
+    { text: "A circle has radius 7. Find its circumference and area.", subject: "geometry" },
+    { text: "Prove that the sum of angles in a triangle equals 180°", subject: "geometry" },
+    { text: "Find the hypotenuse of a right triangle with legs 6 and 8", subject: "geometry" },
+  ],
+  trigonometry: [
+    { text: "Solve: sin(x) = 0.5 for 0 ≤ x ≤ 2π", subject: "trigonometry" },
+    { text: "Verify the identity: sin²θ + cos²θ = 1", subject: "trigonometry" },
+    { text: "Find the exact value of cos(45°)", subject: "trigonometry" },
+    { text: "A ladder 10m long leans against a wall at 60°. How high does it reach?", subject: "trigonometry" },
+  ],
+  statistics: [
+    { text: "Find the mean, median, and mode of: 4, 7, 2, 9, 4, 6, 4", subject: "statistics" },
+    { text: "What is the standard deviation of: 2, 4, 4, 4, 5, 5, 7, 9?", subject: "statistics" },
+    { text: "Explain the difference between correlation and causation", subject: "statistics" },
+    { text: "A bag has 3 red and 5 blue marbles. What is P(red)?", subject: "statistics" },
+  ],
+  arithmetic: [
+    { text: "Simplify: 3/4 + 2/5", subject: "arithmetic" },
+    { text: "What is 15% of 240?", subject: "arithmetic" },
+    { text: "Convert 0.375 to a fraction in simplest form", subject: "arithmetic" },
+    { text: "Order from least to greatest: 3/5, 0.58, 7/12", subject: "arithmetic" },
+  ],
+  // English/ELA
+  american_literature: [
+    { text: "Analyze the symbolism of the green light in The Great Gatsby", subject: "american_literature" },
+    { text: "How does Steinbeck use setting in Of Mice and Men?", subject: "american_literature" },
+    { text: "Compare the themes of freedom in Huckleberry Finn and To Kill a Mockingbird", subject: "american_literature" },
+    { text: "What is the significance of the title 'The Catcher in the Rye'?", subject: "american_literature" },
+  ],
+  british_literature: [
+    { text: "Analyze the role of fate vs free will in Macbeth", subject: "british_literature" },
+    { text: "What are the major themes in Jane Austen's Pride and Prejudice?", subject: "british_literature" },
+    { text: "How does Orwell use allegory in Animal Farm?", subject: "british_literature" },
+    { text: "Explain the significance of the conch in Lord of the Flies", subject: "british_literature" },
+  ],
+  world_literature: [
+    { text: "Analyze the theme of isolation in Kafka's The Metamorphosis", subject: "world_literature" },
+    { text: "What is magical realism? Give examples from Gabriel García Márquez", subject: "world_literature" },
+    { text: "Compare Dante's Inferno and Homer's Odyssey as journey narratives", subject: "world_literature" },
+    { text: "How does Dostoevsky explore guilt in Crime and Punishment?", subject: "world_literature" },
+  ],
+  composition: [
+    { text: "Write a thesis statement for an essay about climate change", subject: "composition" },
+    { text: "What is the difference between a topic sentence and a thesis?", subject: "composition" },
+    { text: "How do I write a strong argumentative essay introduction?", subject: "composition" },
+    { text: "Explain the PEEL paragraph structure with an example", subject: "composition" },
+  ],
+  creative_writing: [
+    { text: "Give me 5 creative writing prompts for a short story about identity", subject: "creative_writing" },
+    { text: "How do I write compelling dialogue that reveals character?", subject: "creative_writing" },
+    { text: "What is 'show don't tell' and how do I apply it?", subject: "creative_writing" },
+    { text: "Help me develop a plot outline for a mystery story", subject: "creative_writing" },
+  ],
+  debate: [
+    { text: "What are the strongest arguments for and against social media regulation?", subject: "debate" },
+    { text: "How do I write a rebuttal in a formal debate?", subject: "debate" },
+    { text: "Explain the structure of a Lincoln-Douglas debate", subject: "debate" },
+    { text: "What logical fallacies should I watch out for in debate?", subject: "debate" },
+  ],
+  journalism: [
+    { text: "What is the inverted pyramid structure in news writing?", subject: "journalism" },
+    { text: "How do I write a compelling news headline?", subject: "journalism" },
+    { text: "What is the difference between a news article and an editorial?", subject: "journalism" },
+    { text: "How do I properly cite sources in a journalistic piece?", subject: "journalism" },
+  ],
+  // Science
+  biology: [
+    { text: "What is the difference between mitosis and meiosis?", subject: "biology" },
+    { text: "Explain how DNA replication works step by step", subject: "biology" },
+    { text: "What is natural selection and how does it drive evolution?", subject: "biology" },
+    { text: "Describe the structure and function of the cell membrane", subject: "biology" },
+  ],
+  chemistry: [
+    { text: "Balance the equation: Fe + O₂ → Fe₂O₃", subject: "chemistry" },
+    { text: "What is the difference between ionic and covalent bonds?", subject: "chemistry" },
+    { text: "Calculate the molar mass of H₂SO₄", subject: "chemistry" },
+    { text: "Explain Le Chatelier's Principle with an example", subject: "chemistry" },
+  ],
+  physics: [
+    { text: "Explain Newton's Second Law of Motion with an example", subject: "physics" },
+    { text: "A ball is thrown upward at 20 m/s. How high does it go?", subject: "physics" },
+    { text: "What is the difference between speed and velocity?", subject: "physics" },
+    { text: "Calculate the kinetic energy of a 5 kg object moving at 10 m/s", subject: "physics" },
+  ],
+  earth_science: [
+    { text: "Explain the rock cycle and its three main rock types", subject: "earth_science" },
+    { text: "What causes earthquakes and how are they measured?", subject: "earth_science" },
+    { text: "Describe the layers of Earth's atmosphere", subject: "earth_science" },
+    { text: "How does plate tectonics explain continental drift?", subject: "earth_science" },
+  ],
+  environmental_science: [
+    { text: "What are the main causes and effects of climate change?", subject: "environmental_science" },
+    { text: "Explain the carbon cycle and human impact on it", subject: "environmental_science" },
+    { text: "What is biodiversity and why is it important?", subject: "environmental_science" },
+    { text: "Compare renewable and non-renewable energy sources", subject: "environmental_science" },
+  ],
+  anatomy: [
+    { text: "Describe the structure and function of the human heart", subject: "anatomy" },
+    { text: "What are the main functions of the nervous system?", subject: "anatomy" },
+    { text: "Explain how the respiratory system works", subject: "anatomy" },
+    { text: "What is the difference between tendons and ligaments?", subject: "anatomy" },
+  ],
+  forensics: [
+    { text: "How is DNA fingerprinting used in forensic investigations?", subject: "forensics" },
+    { text: "What is the chain of custody and why is it important?", subject: "forensics" },
+    { text: "Explain how fingerprint analysis works", subject: "forensics" },
+    { text: "What can blood spatter patterns tell investigators?", subject: "forensics" },
+  ],
+  // Social Studies
+  us_history: [
+    { text: "What were the main causes of the American Civil War?", subject: "us_history" },
+    { text: "How did the New Deal respond to the Great Depression?", subject: "us_history" },
+    { text: "Explain the significance of the Civil Rights Act of 1964", subject: "us_history" },
+    { text: "What were the causes and effects of westward expansion?", subject: "us_history" },
+  ],
+  world_history: [
+    { text: "What were the main causes of World War I?", subject: "world_history" },
+    { text: "How did the Industrial Revolution change society?", subject: "world_history" },
+    { text: "Explain the causes and consequences of the French Revolution", subject: "world_history" },
+    { text: "What factors led to the fall of the Roman Empire?", subject: "world_history" },
+  ],
+  government: [
+    { text: "Explain the system of checks and balances in the U.S. government", subject: "government" },
+    { text: "What is the difference between a democracy and a republic?", subject: "government" },
+    { text: "How does a bill become a law in the United States?", subject: "government" },
+    { text: "What are the key rights protected by the First Amendment?", subject: "government" },
+  ],
+  economics: [
+    { text: "Explain supply and demand with a real-world example", subject: "economics" },
+    { text: "What is the difference between fiscal and monetary policy?", subject: "economics" },
+    { text: "Explain the concept of opportunity cost", subject: "economics" },
+    { text: "What causes inflation and how does it affect consumers?", subject: "economics" },
+  ],
+  geography: [
+    { text: "What is the difference between climate and weather?", subject: "geography" },
+    { text: "Explain how physical geography affects human settlement patterns", subject: "geography" },
+    { text: "What are the major biomes of the world?", subject: "geography" },
+    { text: "How do rivers shape the landscape over time?", subject: "geography" },
+  ],
+  psychology: [
+    { text: "Explain Maslow's Hierarchy of Needs", subject: "psychology" },
+    { text: "What is the difference between classical and operant conditioning?", subject: "psychology" },
+    { text: "Describe the stages of Piaget's cognitive development theory", subject: "psychology" },
+    { text: "What is cognitive dissonance and give an example?", subject: "psychology" },
+  ],
+  sociology: [
+    { text: "What is the difference between culture and society?", subject: "sociology" },
+    { text: "Explain the concept of social stratification", subject: "sociology" },
+    { text: "How do social institutions shape individual behavior?", subject: "sociology" },
+    { text: "What is the sociological imagination according to C. Wright Mills?", subject: "sociology" },
+  ],
+};
+
+// Default mixed examples when no subject is selected
+const DEFAULT_EXAMPLES = [
   { text: "Solve: 2x² + 5x - 3 = 0", subject: "algebra" },
   { text: "Find the derivative of f(x) = x³ + 2x² - 5x + 1", subject: "calculus" },
   { text: "Analyze the symbolism in The Great Gatsby", subject: "american_literature" },
@@ -108,7 +279,7 @@ export default function SolveScreen() {
     solveMutation.mutate({ problem: problem.trim(), subject: selectedSubject });
   };
 
-  const handleExample = (example: typeof EXAMPLE_PROBLEMS[0]) => {
+  const handleExample = (example: { text: string; subject: string }) => {
     setProblem(example.text);
     setSelectedSubject(example.subject as SubjectId);
     inputRef.current?.focus();
@@ -405,31 +576,39 @@ export default function SolveScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Example Questions */}
-          <View style={styles.examplesSection}>
-            <Text style={[styles.sectionLabel, { color: colors.muted }]}>
-              💡 TRY AN EXAMPLE
-            </Text>
-            {EXAMPLE_PROBLEMS.map((ex, i) => {
-              const subjectColor = getSubjectColor(ex.subject);
-              return (
-                <TouchableOpacity
-                  key={i}
-                  onPress={() => handleExample(ex)}
-                  style={[styles.exampleItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                  activeOpacity={0.75}
-                >
-                  <View style={[styles.exampleNum, { backgroundColor: `${subjectColor}20` }]}>
-                    <Text style={[styles.exampleNumText, { color: subjectColor }]}>{i + 1}</Text>
-                  </View>
-                  <Text style={[styles.exampleText, { color: colors.foreground }]} numberOfLines={2}>
-                    {ex.text}
-                  </Text>
-                  <MaterialIcons name="chevron-right" size={18} color={colors.muted} />
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+          {/* Example Questions - dynamic based on selected subject */}
+          {(() => {
+            const examples = selectedSubject && SUBJECT_EXAMPLES[selectedSubject]
+              ? SUBJECT_EXAMPLES[selectedSubject]
+              : DEFAULT_EXAMPLES;
+            const label = selectedSubject && SUBJECT_EXAMPLES[selectedSubject]
+              ? `💡 ${selectedSubject.replace(/_/g, " ").toUpperCase()} EXAMPLES`
+              : "💡 TRY AN EXAMPLE";
+            return (
+              <View style={styles.examplesSection}>
+                <Text style={[styles.sectionLabel, { color: colors.muted }]}>{label}</Text>
+                {examples.map((ex, i) => {
+                  const subjectColor = getSubjectColor(ex.subject);
+                  return (
+                    <TouchableOpacity
+                      key={i}
+                      onPress={() => handleExample(ex)}
+                      style={[styles.exampleItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                      activeOpacity={0.75}
+                    >
+                      <View style={[styles.exampleNum, { backgroundColor: `${subjectColor}20` }]}>
+                        <Text style={[styles.exampleNumText, { color: subjectColor }]}>{i + 1}</Text>
+                      </View>
+                      <Text style={[styles.exampleText, { color: colors.foreground }]} numberOfLines={2}>
+                        {ex.text}
+                      </Text>
+                      <MaterialIcons name="chevron-right" size={18} color={colors.muted} />
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            );
+          })()}
         </ScrollView>
       </KeyboardAvoidingView>
     </ScreenContainer>
