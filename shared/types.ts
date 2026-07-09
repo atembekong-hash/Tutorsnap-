@@ -1,16 +1,13 @@
 export type MathSubject =
-  // Math
-  | "algebra" | "calculus" | "geometry" | "trigonometry" | "statistics"
-  | "arithmetic" | "precalculus" | "linear_algebra" | "differential_equations" | "number_theory"
-  // English / ELA
-  | "american_literature" | "british_literature" | "world_literature"
-  | "composition" | "creative_writing" | "debate" | "journalism" | "grammar" | "poetry"
-  // Science
-  | "biology" | "chemistry" | "physics" | "earth_science" | "space_science"
-  | "environmental_science" | "anatomy" | "forensics" | "general_science"
-  // Social Studies
-  | "us_history" | "world_history" | "government" | "economics"
-  | "geography" | "psychology" | "sociology" | "civics"
+  | "algebra"
+  | "calculus"
+  | "geometry"
+  | "trigonometry"
+  | "statistics"
+  | "arithmetic"
+  | "linear_algebra"
+  | "differential_equations"
+  | "number_theory"
   | "other";
 
 export type Difficulty = "easy" | "medium" | "hard";

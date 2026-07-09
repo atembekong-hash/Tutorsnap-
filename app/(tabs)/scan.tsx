@@ -19,7 +19,7 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { trpc } from "@/lib/trpc";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { HistoryItem } from "@/shared/types";
+import type { HistoryItem, MathSubject } from "@/shared/types";
 
 export default function ScanScreen() {
   const colors = useColors();
@@ -27,7 +27,7 @@ export default function ScanScreen() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const solveMutation = trpc.academic.solveFromImage.useMutation({
+  const solveMutation = trpc.math.solveFromImage.useMutation({
     onSuccess: async (data) => {
       if (Platform.OS !== "web") {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -36,7 +36,7 @@ export default function ScanScreen() {
         id: `history-${Date.now()}`,
         problem: data.problem,
         answer: data.answer,
-        subject: data.subject as any,
+        subject: data.subject as MathSubject,
         steps: data.steps || [],
         conceptExplained: data.conceptExplained,
         tips: data.tips,
@@ -49,13 +49,6 @@ export default function ScanScreen() {
         history.unshift(historyItem);
         await AsyncStorage.setItem("math_history", JSON.stringify(history.slice(0, 100)));
       } catch (e) {
-        // ignore
-      }
-      // Track progress
-      try {
-        const { recordSolve } = await import("@/lib/progress");
-        await recordSolve((data.subject || "other") as any);
-      } catch (_e) {
         // ignore
       }
       setIsProcessing(false);
@@ -79,7 +72,7 @@ export default function ScanScreen() {
     }
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("Permission Required", "Camera access is needed to scan problems.");
+      Alert.alert("Permission Required", "Camera access is needed to scan math problems.");
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
@@ -225,7 +218,7 @@ export default function ScanScreen() {
 
             {/* Supported Types */}
             <View style={styles.supportedRow}>
-              {["Math", "English", "Science", "History", "Biology", "Chemistry", "Physics", "Literature"].map((type) => (
+              {["Algebra", "Calculus", "Geometry", "Statistics", "Trigonometry"].map((type) => (
                 <View
                   key={type}
                   style={[styles.supportedChip, { backgroundColor: colors.surface, borderColor: colors.border }]}

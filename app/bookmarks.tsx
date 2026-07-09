@@ -15,7 +15,32 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { getBookmarks, removeBookmark } from "@/lib/bookmarks";
 import type { HistoryItem } from "@/shared/types";
-import { getSubjectColor, getSubjectLabel } from "@/lib/subjects";
+
+const SUBJECT_COLORS: Record<string, string> = {
+  algebra: "#6C3CE1",
+  calculus: "#3B82F6",
+  geometry: "#10B981",
+  trigonometry: "#F97316",
+  statistics: "#EC4899",
+  arithmetic: "#8B5CF6",
+  linear_algebra: "#06B6D4",
+  differential_equations: "#EF4444",
+  number_theory: "#F59E0B",
+  other: "#6B7280",
+};
+
+const SUBJECT_LABELS: Record<string, string> = {
+  algebra: "Algebra",
+  calculus: "Calculus",
+  geometry: "Geometry",
+  trigonometry: "Trig",
+  statistics: "Stats",
+  arithmetic: "Arithmetic",
+  linear_algebra: "Lin. Algebra",
+  differential_equations: "Diff. Eq.",
+  number_theory: "Number Theory",
+  other: "Math",
+};
 
 export default function BookmarksScreen() {
   const colors = useColors();
@@ -67,8 +92,8 @@ export default function BookmarksScreen() {
   };
 
   const renderItem = ({ item }: { item: HistoryItem }) => {
-    const subjectColor = getSubjectColor(item.subject);
-    const subjectLabel = getSubjectLabel(item.subject);
+    const subjectColor = SUBJECT_COLORS[item.subject] || SUBJECT_COLORS.other;
+    const subjectLabel = SUBJECT_LABELS[item.subject] || "Math";
 
     return (
       <TouchableOpacity

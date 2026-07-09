@@ -1,6 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { MathSubject } from "@/shared/types";
-import { SUBJECT_CATEGORIES } from "@/lib/subjects";
 
 export type StreakData = {
   currentStreak: number;
@@ -153,13 +152,15 @@ export function getDailyGoalPercent(todaySolved: number, dailyGoal: number): num
   return Math.min(100, Math.round((todaySolved / dailyGoal) * 100));
 }
 
-// Build SUBJECT_DISPLAY dynamically from centralized subject metadata
 export const SUBJECT_DISPLAY: Partial<Record<MathSubject, { label: string; color: string }>> = {
-  // Dynamically include all subjects from the centralized metadata
-  ...Object.fromEntries(
-    SUBJECT_CATEGORIES.flatMap((cat) =>
-      cat.subjects.map((s) => [s.id, { label: s.label, color: s.color }])
-    )
-  ),
+  algebra: { label: "Algebra", color: "#6C3CE1" },
+  calculus: { label: "Calculus", color: "#3B82F6" },
+  geometry: { label: "Geometry", color: "#10B981" },
+  trigonometry: { label: "Trigonometry", color: "#F97316" },
+  statistics: { label: "Statistics", color: "#EC4899" },
+  arithmetic: { label: "Arithmetic", color: "#8B5CF6" },
+  linear_algebra: { label: "Linear Algebra", color: "#06B6D4" },
+  differential_equations: { label: "Diff. Equations", color: "#EF4444" },
+  number_theory: { label: "Number Theory", color: "#F59E0B" },
   other: { label: "Other", color: "#6B7280" },
-} as Partial<Record<MathSubject, { label: string; color: string }>>;
+};
