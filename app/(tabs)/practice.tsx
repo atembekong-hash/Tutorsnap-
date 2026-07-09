@@ -215,8 +215,17 @@ export default function PracticeScreen() {
 
         {/* Quiz Stats Card */}
         {quizStats && quizStats.totalQuizzes > 0 && (
-          <View style={[styles.statsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.statsTitle, { color: colors.foreground }]}>📊 Quiz Stats</Text>
+            <View style={[styles.statsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={styles.statsHeader}>
+              <Text style={[styles.statsTitle, { color: colors.foreground }]}>📊 Quiz Stats</Text>
+              <TouchableOpacity
+                onPress={() => router.push("/quiz-history")}
+                style={[styles.viewHistoryBtn, { borderColor: colors.primary }]}
+              >
+                <Text style={[styles.viewHistoryText, { color: colors.primary }]}>View History</Text>
+                <IconSymbol size={13} name="chevron.right" color={colors.primary} />
+              </TouchableOpacity>
+            </View>
             <View style={styles.statsRow}>
               <View style={styles.statItem}>
                 <Text style={[styles.statValue, { color: colors.primary }]}>{quizStats.totalQuizzes}</Text>
@@ -457,7 +466,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: 16,
   },
-  statsTitle: { fontSize: 15, fontWeight: "700", marginBottom: 12 },
+  statsHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
+  statsTitle: { fontSize: 15, fontWeight: "700" },
+  viewHistoryBtn: { flexDirection: "row", alignItems: "center", gap: 3, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 1 },
+  viewHistoryText: { fontSize: 12, fontWeight: "600" },
   statsRow: { flexDirection: "row", alignItems: "center" },
   statItem: { flex: 1, alignItems: "center", gap: 4 },
   statDivider: { width: 1, height: 36 },

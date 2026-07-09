@@ -1,7 +1,32 @@
 import type { MathSubject } from "@/shared/types";
 import { getSubjectLabel, getSubjectColor } from "@/lib/subjects";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export type BadgeTier = "bronze" | "silver" | "gold";
+
+const SEEN_BADGES_KEY = "@tutorsnap/seenBadges";
+
+/** Returns the set of badge keys (e.g. "algebra-gold") the user has already seen */
+export async function getSeenBadges(): Promise<Set<string>> {
+  try {
+    const raw = await AsyncStorage.getItem(SEEN_BADGES_KEY);
+    if (!raw) return new Set();
+    return new Set(JSON.parse(raw) as string[]);
+  } catch {
+    return new Set();
+  }
+}
+
+/** Mark a badge as seen so the unlock animation isn't shown again */
+export async function markBadgeSeen(subject: string, tier: BadgeTier): Promise<void> {
+  try {
+    const seen = await getSeenBadges();
+    seen.add(`${subject}-${tier}`);
+    await AsyncStorage.setItem(SEEN_BADGES_KEY, JSON.stringify([...seen]));
+  } catch {
+    // ignore
+  }
+}
 
 export interface MasteryBadge {
   subject: MathSubject;

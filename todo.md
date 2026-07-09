@@ -64,3 +64,5 @@
 - [x] This Week section on home screen: 7-day activity grid, weekly quiz goal, progress ring
 - [x] Subject mastery badges (Bronze/Silver/Gold) on Progress screen
 - [x] AI study tip of the day card on home screen
+- [x] Quiz history detail screen with View History button on Practice stats card
+- [x] Badge unlock confetti/scale animation on first tier earn in mastery badges

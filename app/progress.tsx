@@ -25,8 +25,12 @@ import {
   BADGE_COLORS,
   BADGE_EMOJI,
   BADGE_THRESHOLDS,
+  getSeenBadges,
+  markBadgeSeen,
   type MasteryBadge,
+  type BadgeTier,
 } from "@/lib/mastery-badges";
+import { BadgeUnlockModal } from "@/components/badge-unlock-modal";
 
 const GOAL_OPTIONS = [1, 3, 5, 10];
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -36,16 +40,29 @@ export default function ProgressScreen() {
   const router = useRouter();
   const [progress, setProgress] = useState<ProgressData | null>(null);
   const [showGoalPicker, setShowGoalPicker] = useState(false);
+  const [unlockModal, setUnlockModal] = useState<{ tier: BadgeTier; subjectLabel: string } | null>(null);
 
   const loadProgress = async () => {
     const p = await getProgress();
     setProgress(p);
+    // Check for newly unlocked badges
+    const badges = computeMasteryBadges(p.subjectCounts);
+    const seen = await getSeenBadges();
+    for (const badge of badges) {
+      const key = `${badge.subject}-${badge.tier}`;
+      if (!seen.has(key)) {
+        // Found a new badge — show unlock modal
+        await markBadgeSeen(badge.subject, badge.tier);
+        setUnlockModal({ tier: badge.tier, subjectLabel: badge.label });
+        break; // show one at a time
+      }
+    }
   };
 
   useFocusEffect(
     useCallback(() => {
       loadProgress();
-    }, [])
+    }, [])  // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   const handleSetGoal = async (goal: number) => {
@@ -322,6 +339,13 @@ export default function ProgressScreen() {
           </View>
         )}
       </ScrollView>
+      {/* Badge Unlock Modal */}
+      <BadgeUnlockModal
+        visible={!!unlockModal}
+        tier={unlockModal?.tier ?? "bronze"}
+        subjectLabel={unlockModal?.subjectLabel ?? ""}
+        onClose={() => setUnlockModal(null)}
+      />
     </ScreenContainer>
   );
 }
