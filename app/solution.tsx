@@ -15,33 +15,8 @@ import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { toggleBookmark, isBookmarked } from "@/lib/bookmarks";
-import type { MathSolution, SolutionStep, HistoryItem, MathSubject } from "@/shared/types";
-
-const SUBJECT_COLORS: Record<string, string> = {
-  algebra: "#6C3CE1",
-  calculus: "#3B82F6",
-  geometry: "#10B981",
-  trigonometry: "#F97316",
-  statistics: "#EC4899",
-  arithmetic: "#8B5CF6",
-  linear_algebra: "#06B6D4",
-  differential_equations: "#EF4444",
-  number_theory: "#F59E0B",
-  other: "#6B7280",
-};
-
-const SUBJECT_LABELS: Record<string, string> = {
-  algebra: "Algebra",
-  calculus: "Calculus",
-  geometry: "Geometry",
-  trigonometry: "Trigonometry",
-  statistics: "Statistics",
-  arithmetic: "Arithmetic",
-  linear_algebra: "Linear Algebra",
-  differential_equations: "Differential Equations",
-  number_theory: "Number Theory",
-  other: "Mathematics",
-};
+import type { MathSolution, SolutionStep, HistoryItem } from "@/shared/types";
+import { getSubjectColor, getSubjectLabel } from "@/lib/subjects";
 
 function StepCard({ step, colors }: { step: SolutionStep; colors: any }) {
   const [expanded, setExpanded] = useState(true);
@@ -112,11 +87,11 @@ export default function SolutionScreen() {
     );
   }
 
-  const subjectColor = SUBJECT_COLORS[solution.subject] || SUBJECT_COLORS.other;
-  const subjectLabel = SUBJECT_LABELS[solution.subject] || "Mathematics";
+  const subjectColor = getSubjectColor(solution.subject);
+  const subjectLabel = getSubjectLabel(solution.subject);
 
   const handleShare = async () => {
-    const text = `Math Problem: ${solution!.problem}\n\nAnswer: ${solution!.answer}\n\nSolved with MathGenius AI`;
+    const text = `Question: ${solution!.problem}\n\nAnswer: ${solution!.answer}\n\nSolved with StudyGenius AI`;
     try {
       await Share.share({ message: text });
     } catch (e) {
@@ -145,7 +120,7 @@ export default function SolutionScreen() {
       id: `bm-${Date.now()}`,
       problem: solution!.problem,
       answer: solution!.answer,
-      subject: solution!.subject as MathSubject,
+      subject: solution!.subject as any,
       steps: solution!.steps || [],
       conceptExplained: solution!.conceptExplained,
       tips: solution!.tips,

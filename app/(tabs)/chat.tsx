@@ -14,17 +14,33 @@ import {
 import * as Haptics from "expo-haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
+import { SubjectPicker } from "@/components/subject-picker";
 import { useColors } from "@/hooks/use-colors";
 import { trpc } from "@/lib/trpc";
 import type { ChatMessage } from "@/shared/types";
+import type { SubjectId } from "@/lib/subjects";
 
-const QUICK_PROMPTS = [
-  "Explain the quadratic formula",
-  "What is integration by parts?",
-  "How do I find the derivative?",
-  "Explain Pythagorean theorem",
-  "What is a matrix determinant?",
-];
+const QUICK_PROMPTS: Record<string, string[]> = {
+  default: [
+    "Explain the quadratic formula",
+    "What is integration by parts?",
+    "Explain Newton's Second Law",
+    "What causes World War I?",
+    "Explain photosynthesis",
+    "What is supply and demand?",
+  ],
+  algebra: ["Explain factoring", "How do I solve systems of equations?", "What is the quadratic formula?"],
+  calculus: ["What is a derivative?", "Explain integration by parts", "What is the chain rule?"],
+  biology: ["Explain DNA replication", "What is natural selection?", "Explain cell division"],
+  chemistry: ["What is a mole?", "Explain ionic vs covalent bonds", "What is stoichiometry?"],
+  physics: ["Explain Newton's laws", "What is kinetic energy?", "Explain electromagnetic waves"],
+  us_history: ["What caused the Civil War?", "Explain the New Deal", "What was Manifest Destiny?"],
+  world_history: ["What caused WWI?", "Explain the Cold War", "What was the Renaissance?"],
+  american_literature: ["Analyze The Great Gatsby themes", "Explain symbolism in To Kill a Mockingbird"],
+  composition: ["How do I write a thesis statement?", "Explain the 5-paragraph essay"],
+  economics: ["Explain supply and demand", "What is GDP?", "Explain inflation"],
+  psychology: ["Explain classical conditioning", "What is cognitive dissonance?"],
+};
 
 function MessageBubble({ message, colors }: { message: ChatMessage; colors: any }) {
   const isUser = message.role === "user";
@@ -68,18 +84,19 @@ function MessageBubble({ message, colors }: { message: ChatMessage; colors: any 
 
 export default function ChatScreen() {
   const colors = useColors();
+  const [selectedSubject, setSelectedSubject] = useState<SubjectId | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: "welcome",
       role: "assistant",
-      content: "Hi! I'm MathGenius AI, your personal math tutor. Ask me anything about mathematics — from basic arithmetic to advanced calculus. I'm here to help you understand concepts and solve problems! 🧮",
+      content: "Hi! I'm StudyGenius AI, your personal academic tutor. I can help with Math, English/ELA, Science, Social Studies, and more. Pick a subject or just ask me anything! 📚",
       timestamp: Date.now(),
     },
   ]);
   const [inputText, setInputText] = useState("");
   const flatListRef = useRef<FlatList>(null);
 
-  const chatMutation = trpc.math.chat.useMutation({
+  const chatMutation = trpc.academic.chat.useMutation({
     onSuccess: (data) => {
       const aiMessage: ChatMessage = {
         id: `ai-${Date.now()}`,
@@ -119,7 +136,7 @@ export default function ChatScreen() {
       .filter((m) => m.id !== "welcome")
       .map((m) => ({ role: m.role, content: m.content }));
 
-    chatMutation.mutate({ messages: contextMessages });
+    chatMutation.mutate({ messages: contextMessages, subject: selectedSubject });
   };
 
   const handleClearChat = () => {
@@ -127,7 +144,7 @@ export default function ChatScreen() {
       {
         id: "welcome-" + Date.now(),
         role: "assistant",
-        content: "Chat cleared! Ask me anything about mathematics. 🧮",
+        content: "Chat cleared! Ask me anything — math, science, English, history, and more. 📚",
         timestamp: Date.now(),
       },
     ]);
@@ -144,19 +161,23 @@ export default function ChatScreen() {
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
           <View style={styles.headerLeft}>
             <View style={[styles.aiIcon, { backgroundColor: `${colors.primary}20` }]}>
-              <Text style={{ fontSize: 20 }}>🧮</Text>
+              <Text style={{ fontSize: 20 }}>📚</Text>
             </View>
             <View>
               <Text style={[styles.headerTitle, { color: colors.foreground }]}>AI Tutor</Text>
               <View style={styles.onlineRow}>
                 <View style={[styles.onlineDot, { backgroundColor: colors.success }]} />
-                <Text style={[styles.onlineText, { color: colors.success }]}>Online</Text>
+                <Text style={[styles.onlineText, { color: colors.success }]}>Online · All Subjects</Text>
               </View>
             </View>
           </View>
           <TouchableOpacity onPress={handleClearChat} style={styles.clearBtn}>
             <IconSymbol size={20} name="trash.fill" color={colors.muted} />
           </TouchableOpacity>
+        </View>
+        {/* Subject Picker */}
+        <View style={[styles.subjectRow, { borderBottomColor: colors.border }]}>
+          <SubjectPicker selectedSubject={selectedSubject} onSelect={setSelectedSubject} />
         </View>
 
         {/* Messages */}
@@ -183,7 +204,7 @@ export default function ChatScreen() {
           <View style={styles.quickPromptsContainer}>
             <Text style={[styles.quickPromptsLabel, { color: colors.muted }]}>Try asking:</Text>
             <View style={styles.quickPrompts}>
-              {QUICK_PROMPTS.map((prompt, i) => (
+              {(QUICK_PROMPTS[selectedSubject ?? ""] ?? QUICK_PROMPTS.default).map((prompt, i) => (
                 <TouchableOpacity
                   key={i}
                   onPress={() => handleSend(prompt)}
@@ -213,7 +234,7 @@ export default function ChatScreen() {
           >
             <TextInput
               style={[styles.input, { color: colors.foreground }]}
-              placeholder="Ask about any math topic..."
+              placeholder={selectedSubject ? `Ask about ${selectedSubject.replace(/_/g, " ")}...` : "Ask about any subject..."}
               placeholderTextColor={colors.muted}
               value={inputText}
               onChangeText={setInputText}
@@ -295,6 +316,11 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   typingText: { fontSize: 13 },
+  subjectRow: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 0.5,
+  },
   quickPromptsContainer: { paddingHorizontal: 16, paddingBottom: 8 },
   quickPromptsLabel: { fontSize: 12, fontWeight: "600", marginBottom: 8, letterSpacing: 0.5 },
   quickPrompts: { flexDirection: "row", flexWrap: "wrap", gap: 8 },

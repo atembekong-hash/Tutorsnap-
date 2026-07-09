@@ -19,7 +19,7 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { trpc } from "@/lib/trpc";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { HistoryItem, MathSubject } from "@/shared/types";
+import type { HistoryItem } from "@/shared/types";
 
 export default function ScanScreen() {
   const colors = useColors();
@@ -27,7 +27,7 @@ export default function ScanScreen() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const solveMutation = trpc.math.solveFromImage.useMutation({
+  const solveMutation = trpc.academic.solveFromImage.useMutation({
     onSuccess: async (data) => {
       if (Platform.OS !== "web") {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -36,7 +36,7 @@ export default function ScanScreen() {
         id: `history-${Date.now()}`,
         problem: data.problem,
         answer: data.answer,
-        subject: data.subject as MathSubject,
+        subject: data.subject as any,
         steps: data.steps || [],
         conceptExplained: data.conceptExplained,
         tips: data.tips,
@@ -72,7 +72,7 @@ export default function ScanScreen() {
     }
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("Permission Required", "Camera access is needed to scan math problems.");
+      Alert.alert("Permission Required", "Camera access is needed to scan problems.");
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
@@ -218,7 +218,7 @@ export default function ScanScreen() {
 
             {/* Supported Types */}
             <View style={styles.supportedRow}>
-              {["Algebra", "Calculus", "Geometry", "Statistics", "Trigonometry"].map((type) => (
+              {["Math", "English", "Science", "History", "Biology", "Chemistry", "Physics", "Literature"].map((type) => (
                 <View
                   key={type}
                   style={[styles.supportedChip, { backgroundColor: colors.surface, borderColor: colors.border }]}

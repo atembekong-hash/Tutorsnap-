@@ -49,3 +49,12 @@
 - [x] Solution bookmarking (star/bookmark button on solution screen)
 - [x] Bookmarks tab or section to view saved solutions
 - [x] Bookmark indicator on history cards
+
+## New Features (Round 3)
+- [x] Multi-subject system: Math, English/ELA, Science, Social Studies groups
+- [x] Clean subject picker UI (grouped, not cluttered)
+- [x] Subject-aware AI prompts for all academic subjects
+- [x] Dark/light mode toggle with persistence
+- [x] Settings screen with theme toggle
+- [x] Update all screens to use new subject system
+- [x] Rename/rebrand to reflect multi-subject scope (StudyGenius AI)
