@@ -19,6 +19,7 @@ import { trpc } from "@/lib/trpc";
 import type { ChatMessage } from "@/shared/types";
 import { SubjectPicker } from "@/components/subject-picker";
 import { type SubjectId, getSubjectLabel } from "@/lib/subjects";
+import { useNetworkStatus } from "@/hooks/use-network-status";
 
 const QUICK_PROMPTS = [
   "Explain the quadratic formula",
@@ -82,6 +83,7 @@ export default function ChatScreen() {
   ]);
   const [inputText, setInputText] = useState("");
   const flatListRef = useRef<FlatList>(null);
+  const { isOnline } = useNetworkStatus();
 
   const chatMutation = trpc.academic.chat.useMutation({
     onSuccess: (data) => {
@@ -98,7 +100,7 @@ export default function ChatScreen() {
 
   const handleSend = (text?: string) => {
     const messageText = (text || inputText).trim();
-    if (!messageText) return;
+    if (!messageText || !isOnline) return;
 
     Keyboard.dismiss();
     if (Platform.OS !== "web") {
@@ -252,14 +254,14 @@ export default function ChatScreen() {
           </View>
           <TouchableOpacity
             onPress={() => handleSend()}
-            disabled={!inputText.trim() || chatMutation.isPending}
+            disabled={!inputText.trim() || chatMutation.isPending || !isOnline}
             style={[
               styles.sendBtn,
-              { backgroundColor: colors.primary },
-              (!inputText.trim() || chatMutation.isPending) && { opacity: 0.5 },
+              { backgroundColor: isOnline ? colors.primary : colors.muted },
+              (!inputText.trim() || chatMutation.isPending || !isOnline) && { opacity: 0.5 },
             ]}
           >
-            <IconSymbol size={20} name="paperplane.fill" color="#FFFFFF" />
+            <IconSymbol size={20} name={isOnline ? "paperplane.fill" : "wifi.slash"} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>

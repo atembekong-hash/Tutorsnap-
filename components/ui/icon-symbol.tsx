@@ -65,6 +65,8 @@ const MAPPING = {
   "minus.circle.fill": "remove-circle",
   "info.circle": "info",
   "questionmark.circle": "help",
+  "wifi.slash": "wifi-off",
+  "wifi": "wifi",
   // Code
   "chevron.left.forwardslash.chevron.right": "code",
 } as IconMapping;

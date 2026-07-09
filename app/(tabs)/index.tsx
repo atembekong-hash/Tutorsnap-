@@ -24,6 +24,9 @@ import type { HistoryItem, MathSubject } from "@/shared/types";
 import { SubjectPicker } from "@/components/subject-picker";
 import { type SubjectId, getSubjectDef, isMathSubject, getSubjectPlaceholder } from "@/lib/subjects";
 import { VoiceButton } from "@/components/voice-button";
+import { CheatSheetBottomSheet } from "@/components/cheat-sheet-bottom-sheet";
+import { hasCheatSheet } from "@/lib/cheat-sheets";
+import { useNetworkStatus } from "@/hooks/use-network-status";
 
 // Subject examples per category — shown dynamically based on selected subject
 const SUBJECT_EXAMPLES: Record<string, string[]> = {
@@ -81,6 +84,8 @@ export default function SolveScreen() {
   const [problem, setProblem] = useState("");
   const [selectedSubject, setSelectedSubject] = useState<SubjectId | null>(null);
   const [showMathKeyboard, setShowMathKeyboard] = useState(false);
+  const [showCheatSheet, setShowCheatSheet] = useState(false);
+  const { isOnline } = useNetworkStatus();
 
   // Auto-hide math keyboard when a non-math subject is selected
   const handleSubjectChange = useCallback((id: SubjectId | null) => {
@@ -319,6 +324,18 @@ export default function SolveScreen() {
                 <Text style={[styles.charCount, { color: colors.muted }]}>{problem.length} / 5000</Text>
                 <View style={styles.inputActionBtns}>
                   {/* Math Keyboard Toggle — only shown for math subjects */}
+                  {/* Cheat Sheet Button — shown when a subject with a sheet is selected */}
+                  {selectedSubject && hasCheatSheet(selectedSubject) && (
+                    <TouchableOpacity
+                      onPress={() => {
+                        if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setShowCheatSheet(true);
+                      }}
+                      style={[styles.keyboardToggleBtn, { backgroundColor: "transparent", borderColor: colors.border }]}
+                    >
+                      <Text style={[styles.keyboardToggleText, { color: colors.muted }]}>📋 Formulas</Text>
+                    </TouchableOpacity>
+                  )}
                   {isMathSubject(selectedSubject) && (
                     <TouchableOpacity
                       onPress={() => {
@@ -359,21 +376,41 @@ export default function SolveScreen() {
             </View>
           </View>
 
+          {/* Offline warning above solve button */}
+          {!isOnline && (
+            <View
+              style={[
+                styles.offlineWarning,
+                { backgroundColor: `${colors.warning}15`, borderColor: `${colors.warning}40` },
+              ]}
+            >
+              <Text style={{ fontSize: 14 }}>📡</Text>
+              <Text style={[styles.offlineWarningText, { color: colors.warning }]}>
+                No internet — AI features unavailable
+              </Text>
+            </View>
+          )}
+
           {/* Solve Button */}
           <TouchableOpacity
             onPress={handleSolve}
-            disabled={!problem.trim() || solveMutation.isPending}
+            disabled={!problem.trim() || solveMutation.isPending || !isOnline}
             style={[
               styles.solveBtn,
-              { opacity: !problem.trim() || solveMutation.isPending ? 0.6 : 1 },
+              { opacity: !problem.trim() || solveMutation.isPending || !isOnline ? 0.6 : 1 },
             ]}
             activeOpacity={0.85}
           >
-            <View style={[styles.solveBtnInner, { backgroundColor: colors.primary }]}>
+            <View style={[styles.solveBtnInner, { backgroundColor: isOnline ? colors.primary : colors.muted }]}>
               {solveMutation.isPending ? (
                 <>
                   <ActivityIndicator color="#FFFFFF" size="small" />
                   <Text style={styles.solveBtnText}>Solving...</Text>
+                </>
+              ) : !isOnline ? (
+                <>
+                  <IconSymbol size={20} name="wifi.slash" color="#FFFFFF" />
+                  <Text style={styles.solveBtnText}>No Internet</Text>
                 </>
               ) : (
                 <>
@@ -489,6 +526,13 @@ export default function SolveScreen() {
           />
         )}
       </KeyboardAvoidingView>
+
+      {/* Cheat Sheet Bottom Sheet */}
+      <CheatSheetBottomSheet
+        visible={showCheatSheet}
+        subjectId={selectedSubject ?? ""}
+        onClose={() => setShowCheatSheet(false)}
+      />
     </ScreenContainer>
   );
 }
@@ -672,4 +716,16 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   exampleText: { flex: 1, fontSize: 14, lineHeight: 20 },
+  offlineWarning: {
+    marginHorizontal: 16,
+    marginBottom: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  offlineWarningText: { fontSize: 13, fontWeight: "600", flex: 1 },
 });

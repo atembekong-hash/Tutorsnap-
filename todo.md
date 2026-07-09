@@ -49,3 +49,7 @@
 - [x] Solution bookmarking (star/bookmark button on solution screen)
 - [x] Bookmarks tab or section to view saved solutions
 - [x] Bookmark indicator on history cards
+
+## New Features (Round 4)
+- [x] Subject-specific formula cheat sheet bottom sheet on Solve screen
+- [x] Offline mode indicator banner and graceful AI feature disabling
