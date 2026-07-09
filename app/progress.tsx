@@ -20,6 +20,13 @@ import {
   getSubjectDisplay,
   type ProgressData,
 } from "@/lib/progress";
+import {
+  computeMasteryBadges,
+  BADGE_COLORS,
+  BADGE_EMOJI,
+  BADGE_THRESHOLDS,
+  type MasteryBadge,
+} from "@/lib/mastery-badges";
 
 const GOAL_OPTIONS = [1, 3, 5, 10];
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -252,6 +259,52 @@ export default function ProgressScreen() {
           </View>
         )}
 
+        {/* Mastery Badges */}
+        {(() => {
+          const badges = computeMasteryBadges(subjectCounts);
+          if (badges.length === 0) return null;
+          return (
+            <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Text style={[styles.cardTitle, { color: colors.foreground }]}>🏅 Mastery Badges</Text>
+              <Text style={[styles.cardSubtitle, { color: colors.muted }]}>
+                Earn Bronze at 10 · Silver at 25 · Gold at 50 solves
+              </Text>
+              <View style={styles.badgeGrid}>
+                {badges.map((badge: MasteryBadge) => (
+                  <View
+                    key={badge.subject}
+                    style={[styles.badgeCard, { backgroundColor: `${BADGE_COLORS[badge.tier]}12`, borderColor: `${BADGE_COLORS[badge.tier]}40` }]}
+                  >
+                    <Text style={styles.badgeEmoji}>{BADGE_EMOJI[badge.tier]}</Text>
+                    <Text style={[styles.badgeSubject, { color: colors.foreground }]} numberOfLines={1}>
+                      {badge.label}
+                    </Text>
+                    <Text style={[styles.badgeTier, { color: BADGE_COLORS[badge.tier] }]}>
+                      {badge.tier.charAt(0).toUpperCase() + badge.tier.slice(1)}
+                    </Text>
+                    <Text style={[styles.badgeSolves, { color: colors.muted }]}>{badge.solves} solved</Text>
+                    {badge.nextTier && (
+                      <View style={styles.badgeProgressWrap}>
+                        <View style={[styles.badgeProgressTrack, { backgroundColor: `${BADGE_COLORS[badge.nextTier]}25` }]}>
+                          <View
+                            style={[
+                              styles.badgeProgressFill,
+                              { backgroundColor: BADGE_COLORS[badge.nextTier], width: `${badge.progress}%` },
+                            ]}
+                          />
+                        </View>
+                        <Text style={[styles.badgeProgressLabel, { color: colors.muted }]}>
+                          {badge.nextThreshold! - badge.solves} to {badge.nextTier}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                ))}
+              </View>
+            </View>
+          );
+        })()}
+
         {/* Empty State */}
         {streak.totalSolved === 0 && (
           <View style={styles.emptyState}>
@@ -438,4 +491,26 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   startBtnText: { fontSize: 16, fontWeight: "700", color: "#FFFFFF" },
+  badgeGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    marginTop: 4,
+  },
+  badgeCard: {
+    width: "47%",
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 12,
+    alignItems: "center",
+    gap: 3,
+  },
+  badgeEmoji: { fontSize: 28 },
+  badgeSubject: { fontSize: 13, fontWeight: "700", textAlign: "center" },
+  badgeTier: { fontSize: 12, fontWeight: "600" },
+  badgeSolves: { fontSize: 11, marginTop: 2 },
+  badgeProgressWrap: { width: "100%", marginTop: 6, gap: 3 },
+  badgeProgressTrack: { height: 5, borderRadius: 3, overflow: "hidden", width: "100%" },
+  badgeProgressFill: { height: "100%", borderRadius: 3 },
+  badgeProgressLabel: { fontSize: 10, textAlign: "center" },
 });

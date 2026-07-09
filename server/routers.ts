@@ -274,6 +274,25 @@ Respond ONLY with valid JSON in this exact format:
       return parsed.questions ?? [];
     }),
 
+  studyTip: publicProcedure
+    .input(z.object({
+      subject: z.string(),
+    }))
+    .mutation(async ({ input }) => {
+      const tipPrompt = `You are TutorSnap, a friendly academic tutor. Generate a single, practical, actionable study tip for a student studying ${input.subject}. The tip should be specific, encouraging, and 1-2 sentences long. Respond with ONLY the tip text, no preamble, no quotes.`;
+      const result = await invokeLLM({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: tipPrompt },
+          { role: "user", content: `Give me a study tip for ${input.subject}.` },
+        ],
+        max_tokens: 120,
+      });
+      const rawContent = result.choices[0]?.message?.content ?? "";
+      const tip = typeof rawContent === "string" ? rawContent.trim() : "";
+      return { tip: tip || `Practice ${input.subject} problems daily — consistency is the key to mastery!` };
+    }),
+
   chat: publicProcedure
     .input(z.object({
       messages: z.array(z.object({

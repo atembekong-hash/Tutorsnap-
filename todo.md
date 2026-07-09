@@ -62,3 +62,5 @@
 - [x] Configurable quiz length picker (3/5/10 questions)
 - [x] Streak bonus on home screen for 80%+ quiz score
 - [x] This Week section on home screen: 7-day activity grid, weekly quiz goal, progress ring
+- [x] Subject mastery badges (Bronze/Silver/Gold) on Progress screen
+- [x] AI study tip of the day card on home screen

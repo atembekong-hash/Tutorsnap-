@@ -29,6 +29,7 @@ import { hasCheatSheet } from "@/lib/cheat-sheets";
 import { useNetworkStatus } from "@/hooks/use-network-status";
 import { WeeklyGoalsCard } from "@/components/weekly-goals-card";
 import { getWeeklyData, type WeeklyData } from "@/lib/weekly-goals";
+import { StudyTipCard } from "@/components/study-tip-card";
 
 // Subject examples per category — shown dynamically based on selected subject
 const SUBJECT_EXAMPLES: Record<string, string[]> = {
@@ -292,6 +293,11 @@ export default function SolveScreen() {
               data={weeklyData}
               onGoalChanged={() => loadWeeklyData()}
             />
+          )}
+
+          {/* Study Tip of the Day */}
+          {isOnline && selectedSubject && (
+            <StudyTipCard subject={selectedSubject} />
           )}
 
           {/* Subject Picker */}
