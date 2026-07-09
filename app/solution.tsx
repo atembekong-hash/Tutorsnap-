@@ -7,10 +7,13 @@ import {
   StyleSheet,
   Share,
   Platform,
+  ActivityIndicator,
 } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
+import * as Print from "expo-print";
+import * as Sharing from "expo-sharing";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
@@ -60,6 +63,7 @@ export default function SolutionScreen() {
   const params = useLocalSearchParams();
   const [bookmarked, setBookmarked] = useState(false);
   const [copyFeedback, setCopyFeedback] = useState(false);
+  const [shareLoading, setShareLoading] = useState(false);
 
   let solution: MathSolution | null = null;
   try {
@@ -90,14 +94,83 @@ export default function SolutionScreen() {
   const subjectColor = getSubjectColor(solution.subject);
   const subjectLabel = getSubjectLabel(solution.subject);
 
-  const handleShare = async () => {
-    const text = `Question: ${solution!.problem}\n\nAnswer: ${solution!.answer}\n\nSolved with TutorSnap`;
+  const buildShareHtml = () => {
+    const subjectLbl = getSubjectLabel(solution!.subject);
+    const stepsHtml = (solution!.steps || []).map((s) => `
+      <div style="background:#f8f9fa;border-radius:12px;padding:14px;margin-bottom:10px;border-left:4px solid #4F46E5">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <span style="background:#4F46E520;color:#4F46E5;font-weight:700;font-size:13px;padding:4px 10px;border-radius:6px">Step ${s.stepNumber}</span>
+          <strong style="color:#1a1a1a;font-size:14px">${s.title}</strong>
+        </div>
+        ${s.expression ? `<div style="background:#4F46E510;border:1px solid #4F46E530;border-radius:8px;padding:10px;text-align:center;font-family:monospace;font-size:16px;font-weight:700;color:#4F46E5;margin-bottom:8px">${s.expression}</div>` : ""}
+        <p style="color:#333;font-size:14px;line-height:1.6;margin:0">${s.explanation}</p>
+      </div>
+    `).join("");
+    const tipsHtml = (solution!.tips || []).map((t) => `<li style="color:#555;font-size:14px;line-height:1.6;margin-bottom:6px">${t}</li>`).join("");
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 0; padding: 24px; color: #1a1a1a; background: #fff; }
+          .header { background: linear-gradient(135deg, #4F46E5, #7C3AED); color: #fff; border-radius: 16px; padding: 20px 24px; margin-bottom: 20px; }
+          .app-name { font-size: 12px; font-weight: 700; letter-spacing: 2px; opacity: 0.8; margin-bottom: 4px; }
+          .subject { display: inline-block; background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; margin-bottom: 12px; }
+          .problem { font-size: 18px; font-weight: 700; line-height: 1.5; }
+          .answer-box { background: #F0FDF4; border: 2px solid #22C55E; border-radius: 14px; padding: 16px 20px; margin-bottom: 20px; }
+          .answer-label { color: #16A34A; font-size: 11px; font-weight: 700; letter-spacing: 1px; margin-bottom: 8px; }
+          .answer { font-size: 22px; font-weight: 800; color: #1a1a1a; }
+          .section-title { font-size: 16px; font-weight: 700; color: #1a1a1a; margin: 0 0 12px; }
+          .tips { background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 12px; padding: 14px 18px; margin-top: 16px; }
+          .footer { margin-top: 24px; text-align: center; color: #999; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="app-name">TUTORSNAP</div>
+          <div class="subject">${subjectLbl}</div>
+          <div class="problem">${solution!.problem}</div>
+        </div>
+        <div class="answer-box">
+          <div class="answer-label">ANSWER</div>
+          <div class="answer">${solution!.answer}</div>
+        </div>
+        <h3 class="section-title">Step-by-Step Solution</h3>
+        ${stepsHtml}
+        ${tipsHtml ? `<div class="tips"><h4 style="margin:0 0 10px;color:#92400E;font-size:14px">💡 Pro Tips</h4><ul style="margin:0;padding-left:18px">${tipsHtml}</ul></div>` : ""}
+        <div class="footer">Solved with TutorSnap · ${new Date().toLocaleDateString()}</div>
+      </body>
+      </html>
+    `;
+  };
+
+  const handleSharePdf = async () => {
+    if (Platform.OS === "web") {
+      // Fallback: native text share on web
+      const text = `Question: ${solution!.problem}\n\nAnswer: ${solution!.answer}\n\nSolved with TutorSnap`;
+      try { await Share.share({ message: text }); } catch { /* ignore */ }
+      return;
+    }
+    setShareLoading(true);
     try {
-      await Share.share({ message: text });
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      const html = buildShareHtml();
+      const { uri } = await Print.printToFileAsync({ html });
+      await Sharing.shareAsync(uri, {
+        mimeType: "application/pdf",
+        dialogTitle: "Share Solution",
+        UTI: "com.adobe.pdf",
+      });
     } catch (e) {
-      // ignore
+      // User cancelled or error — ignore
+    } finally {
+      setShareLoading(false);
     }
   };
+
+  const handleShare = handleSharePdf;
 
   const handleCopyAnswer = async () => {
     if (Platform.OS !== "web") {
@@ -150,9 +223,13 @@ export default function SolutionScreen() {
               color={bookmarked ? colors.warning : colors.muted}
             />
           </TouchableOpacity>
-          {/* Share Button */}
-          <TouchableOpacity onPress={handleShare} style={styles.navActionBtn}>
-            <IconSymbol size={22} name="square.and.arrow.up" color={colors.primary} />
+          {/* Share as PDF Button */}
+          <TouchableOpacity onPress={handleShare} style={styles.navActionBtn} disabled={shareLoading}>
+            {shareLoading ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <IconSymbol size={22} name="square.and.arrow.up" color={colors.primary} />
+            )}
           </TouchableOpacity>
         </View>
       </View>

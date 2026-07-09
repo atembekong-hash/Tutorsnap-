@@ -23,6 +23,7 @@ import { getProgress, getStreakEmoji, getDailyGoalPercent, type ProgressData } f
 import type { HistoryItem, MathSubject } from "@/shared/types";
 import { SubjectPicker } from "@/components/subject-picker";
 import { type SubjectId, getSubjectDef, isMathSubject, getSubjectPlaceholder } from "@/lib/subjects";
+import { VoiceButton } from "@/components/voice-button";
 
 // Subject examples per category — shown dynamically based on selected subject
 const SUBJECT_EXAMPLES: Record<string, string[]> = {
@@ -339,6 +340,14 @@ export default function SolveScreen() {
                         ∑ Math
                       </Text>
                     </TouchableOpacity>
+                  )}
+                  {Platform.OS !== "web" && (
+                    <VoiceButton
+                      size={36}
+                      onTranscript={(text) => {
+                        setProblem((prev) => prev ? `${prev} ${text}` : text);
+                      }}
+                    />
                   )}
                   {problem.length > 0 && (
                     <TouchableOpacity onPress={() => setProblem("")} style={styles.clearBtn}>

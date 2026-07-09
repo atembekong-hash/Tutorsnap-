@@ -86,6 +86,13 @@ export default function RootLayout() {
               }}
             />
             <Stack.Screen
+              name="flashcards"
+              options={{
+                presentation: "card",
+                animation: "slide_from_right",
+              }}
+            />
+            <Stack.Screen
               name="solution"
               options={{
                 presentation: "card",

@@ -123,7 +123,13 @@ export default function BookmarksScreen() {
             {bookmarks.length} saved solution{bookmarks.length !== 1 ? "s" : ""}
           </Text>
         </View>
-        <View style={{ width: 40 }} />
+        <TouchableOpacity
+          onPress={() => router.push("/flashcards" as any)}
+          style={[styles.flashcardBtn, { backgroundColor: `${colors.primary}15`, borderColor: `${colors.primary}30` }]}
+          activeOpacity={0.7}
+        >
+          <Text style={{ fontSize: 16 }}>🃏</Text>
+        </TouchableOpacity>
       </View>
 
       {bookmarks.length === 0 ? (
@@ -166,6 +172,14 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0.5,
   },
   backBtn: { padding: 4 },
+  flashcardBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   title: { fontSize: 22, fontWeight: "800", letterSpacing: -0.3 },
   subtitle: { fontSize: 13, marginTop: 2 },
   bookmarkCard: {
