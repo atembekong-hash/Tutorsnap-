@@ -2,6 +2,19 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const QUIZ_HISTORY_KEY = "tutorsnap_quiz_history";
 
+// ─── Per-question snapshot saved with each quiz ────────────────────────────────
+
+export interface QuizQuestionSnapshot {
+  id: string;
+  problem: string;
+  options: { A: string; B: string; C: string; D: string };
+  correctAnswer: "A" | "B" | "C" | "D";
+  explanation: string;
+  userAnswer: "A" | "B" | "C" | "D" | null; // null = timed out
+}
+
+// ─── Full quiz result (summary + per-question detail) ─────────────────────────
+
 export interface QuizResult {
   id: string;
   subject: string;
@@ -11,6 +24,8 @@ export interface QuizResult {
   pct: number;         // 0-100
   timeTaken: number;   // seconds
   completedAt: number; // timestamp
+  /** Per-question detail — may be absent on older records saved before this field was added */
+  questions?: QuizQuestionSnapshot[];
 }
 
 export async function saveQuizResult(result: Omit<QuizResult, "id">): Promise<QuizResult> {

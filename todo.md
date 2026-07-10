@@ -257,3 +257,14 @@
 - [x] Tag filter bar in Chat History: horizontal scrollable chips (All + each tag), filters session list in real time
 - [x] tag.fill icon added to icon-symbol.tsx mapping
 - [x] TypeScript: 0 errors
+
+## Round 27: Quiz History Detail Screen
+- [x] Extended QuizResult model with QuizQuestionSnapshot[] field (id, problem, options, correctAnswer, explanation, userAnswer)
+- [x] quiz.tsx now saves per-question snapshots when a quiz finishes
+- [x] Built app/quiz-history-detail.tsx: summary card, per-question breakdown, expandable explanations, answer summary for wrong answers
+- [x] quiz-history.tsx cards are now tappable and navigate to detail screen with quiz id param
+- [x] Registered quiz-history-detail route in _layout.tsx
+- [x] Share/Copy button on detail screen exports full review as text
+- [x] Practice Again button re-launches same quiz configuration
+- [x] Graceful fallback for older quiz records without question detail
+- [x] TypeScript: 0 errors

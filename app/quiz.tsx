@@ -328,6 +328,14 @@ export default function QuizScreen() {
       const correctCount = finalAnswers.filter((a, i) => a === questions[i]?.correctAnswer).length;
       const pct = Math.round((correctCount / questions.length) * 100);
       try {
+        const questionSnapshots = questions.map((q, i) => ({
+          id: q.id,
+          problem: q.problem,
+          options: q.options,
+          correctAnswer: q.correctAnswer,
+          explanation: q.explanation,
+          userAnswer: finalAnswers[i] ?? null,
+        }));
         await saveQuizResult({
           subject,
           difficulty,
@@ -336,6 +344,7 @@ export default function QuizScreen() {
           pct,
           timeTaken: totalTime,
           completedAt: Date.now(),
+          questions: questionSnapshots,
         });
       } catch { /* history save failure is non-critical */ }
       let bonus = { awarded: false, newStreak: 0 };

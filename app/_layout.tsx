@@ -252,6 +252,13 @@ export default function RootLayout() {
               }}
             />
             <Stack.Screen
+              name="quiz-history-detail"
+              options={{
+                presentation: "card",
+                animation: "slide_from_right",
+              }}
+            />
+            <Stack.Screen
               name="chat-history"
               options={{
                 presentation: "card",

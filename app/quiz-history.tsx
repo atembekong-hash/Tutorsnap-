@@ -39,10 +39,16 @@ function formatDuration(seconds: number): string {
   return `${s}s`;
 }
 
-function QuizResultCard({ item, colors }: { item: QuizResult; colors: ReturnType<typeof useColors> }) {
+function QuizResultCard({ item, colors, onPress }: { item: QuizResult; colors: ReturnType<typeof useColors>; onPress: () => void }) {
   const grade = gradeLabel(item.pct);
   return (
-    <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.8}
+      accessibilityLabel={`View details for ${item.subject} quiz, score ${item.pct}%`}
+      accessibilityRole="button"
+      style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
+    >
       <View style={styles.cardHeader}>
         <View style={styles.cardLeft}>
           <Text style={[styles.cardSubject, { color: colors.foreground }]}>
@@ -84,7 +90,12 @@ function QuizResultCard({ item, colors }: { item: QuizResult; colors: ReturnType
           ]}
         />
       </View>
-    </View>
+      {/* Tap hint */}
+      <View style={styles.tapHintRow}>
+        <Text style={[styles.tapHintText, { color: colors.muted }]}>Tap to review questions</Text>
+        <IconSymbol size={12} name="chevron.right" color={colors.muted} />
+      </View>
+    </TouchableOpacity>
   );
 }
 
@@ -169,7 +180,13 @@ export default function QuizHistoryScreen() {
         <FlatList
           data={history}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <QuizResultCard item={item} colors={colors} />}
+          renderItem={({ item }) => (
+            <QuizResultCard
+              item={item}
+              colors={colors}
+              onPress={() => router.push({ pathname: "/quiz-history-detail", params: { id: item.id } } as any)}
+            />
+          )}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
@@ -223,4 +240,6 @@ const styles = StyleSheet.create({
   diffText: { fontSize: 11, fontWeight: "600", textTransform: "capitalize" },
   barBg: { height: 4, borderRadius: 2, overflow: "hidden" },
   barFill: { height: 4, borderRadius: 2 },
+  tapHintRow: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 3, marginTop: 8 },
+  tapHintText: { fontSize: 11 },
 });
