@@ -533,8 +533,42 @@ export default function FlashcardsScreen() {
           <Text style={styles.emptyEmoji}>🔖</Text>
           <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No Bookmarks Yet</Text>
           <Text style={[styles.emptySubtitle, { color: colors.muted }]}>
-            Bookmark solutions from the solution screen to review them here as flashcards.
+            Solve a problem, then bookmark the solution to review it here as a flashcard.
           </Text>
+
+          {/* Onboarding tip card */}
+          <View style={[styles.tipCard, { backgroundColor: `${colors.primary}10`, borderColor: `${colors.primary}25` }]}>
+            <Text style={[styles.tipHeading, { color: colors.primary }]}>💡 How to build your deck</Text>
+            <View style={styles.tipStep}>
+              <View style={[styles.tipNum, { backgroundColor: colors.primary }]}>
+                <Text style={styles.tipNumText}>1</Text>
+              </View>
+              <Text style={[styles.tipText, { color: colors.foreground }]}>
+                Snap or type any problem on the{" "}
+                <Text style={{ fontWeight: "700" }}>Scan</Text> or{" "}
+                <Text style={{ fontWeight: "700" }}>Chat</Text> tab.
+              </Text>
+            </View>
+            <View style={styles.tipStep}>
+              <View style={[styles.tipNum, { backgroundColor: colors.primary }]}>
+                <Text style={styles.tipNumText}>2</Text>
+              </View>
+              <Text style={[styles.tipText, { color: colors.foreground }]}>
+                On the solution screen, tap the{" "}
+                <Text style={{ fontWeight: "700" }}>🔖 bookmark icon</Text>{" "}
+                in the top-right corner.
+              </Text>
+            </View>
+            <View style={styles.tipStep}>
+              <View style={[styles.tipNum, { backgroundColor: colors.primary }]}>
+                <Text style={styles.tipNumText}>3</Text>
+              </View>
+              <Text style={[styles.tipText, { color: colors.foreground }]}>
+                Come back here to flip through your saved cards and track what you know.
+              </Text>
+            </View>
+          </View>
+
           <TouchableOpacity
             onPress={() => router.back()}
             style={[styles.emptyBtn, { backgroundColor: colors.primary }]}
@@ -911,6 +945,28 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   menuCancelText: { fontSize: 15, fontWeight: "600" },
+  // Onboarding tip card on empty state
+  tipCard: {
+    width: "100%",
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+    marginTop: 20,
+    gap: 12,
+  },
+  tipHeading: { fontSize: 14, fontWeight: "800", letterSpacing: 0.3, marginBottom: 4 },
+  tipStep: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
+  tipNum: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 1,
+    flexShrink: 0,
+  },
+  tipNumText: { color: "#FFFFFF", fontSize: 12, fontWeight: "800" },
+  tipText: { flex: 1, fontSize: 14, lineHeight: 20 },
   // Print / Export button on Session Complete screen
   printBtn: {
     flexDirection: "row",

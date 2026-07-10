@@ -182,3 +182,7 @@
 - [x] useUpdateCheck hook refactored to use getApiBaseUrl() from the mobile architecture — no tutorsnapai.tech dependency
 - [x] Export Deck button added to Session Complete screen (opens same two-option share menu)
 - [x] FUTURE_WEB_SETUP.md created documenting all deferred tutorsnapai.tech tasks (version.json hosting, App Store ID, legal pages, universal links, email setup)
+
+## Round 17: Quiz Share Results + Flashcards Onboarding Tip
+- [x] Share Results button on quiz completion screen (share score, subject, and accuracy via native share sheet)
+- [x] Onboarding tip card on Flashcards empty state explaining how to bookmark solutions to build a deck

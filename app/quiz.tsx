@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
+import { Share } from "react-native";
 import {
   View,
   Text,
@@ -89,6 +90,7 @@ function ScoreSummary({
   timeTaken,
   bonusAwarded,
   bonusStreak,
+  subject,
   onRetry,
   onHome,
   colors,
@@ -98,6 +100,7 @@ function ScoreSummary({
   timeTaken: number;
   bonusAwarded: boolean;
   bonusStreak: number;
+  subject: string;
   onRetry: () => void;
   onHome: () => void;
   colors: any;
@@ -109,6 +112,29 @@ function ScoreSummary({
   const gradeColor = pct >= 80 ? colors.success : pct >= 60 ? colors.warning : colors.error;
   const mins = Math.floor(timeTaken / 60);
   const secs = timeTaken % 60;
+  const subjectLabel = getSubjectLabel(subject);
+
+  const handleShareResults = async () => {
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const timeStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+    const emoji = pct >= 80 ? "🎉" : pct >= 60 ? "👍" : "📚";
+    const message = [
+      `${emoji} TutorSnap Quiz Results`,
+      `Subject: ${subjectLabel}`,
+      `Score: ${correct}/${total} (${pct}%) — Grade ${grade}`,
+      `Time: ${timeStr}`,
+      bonusAwarded ? `🔥 Streak bonus earned! ${bonusStreak}-day streak` : "",
+      "",
+      "Practiced with TutorSnap · tutorsnapai.tech",
+    ]
+      .filter(Boolean)
+      .join("\n");
+    try {
+      await Share.share({ message });
+    } catch {
+      // User cancelled or share not available
+    }
+  };
 
   return (
     <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 48 }}>
@@ -159,6 +185,16 @@ function ScoreSummary({
           <Text style={[styles.summaryBtnText, { color: colors.foreground }]}>Home</Text>
         </TouchableOpacity>
       </View>
+      {/* Share Results */}
+      <TouchableOpacity
+        onPress={handleShareResults}
+        accessibilityLabel="Share quiz results"
+        style={[styles.shareResultsBtn, { borderColor: colors.border }]}
+        activeOpacity={0.75}
+      >
+        <IconSymbol size={16} name="square.and.arrow.up.fill" color={colors.primary} />
+        <Text style={[styles.shareResultsBtnText, { color: colors.primary }]}>Share Results</Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 }
@@ -335,6 +371,7 @@ export default function QuizScreen() {
             timeTaken={totalTime}
             bonusAwarded={bonusAwarded}
             bonusStreak={bonusStreak}
+            subject={subject}
             onRetry={handleRetry}
             onHome={() => router.push("/(tabs)/practice" as any)}
             colors={colors}
@@ -521,4 +558,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   bonusBadgeText: { fontSize: 14, fontWeight: "700" },
+  shareResultsBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginTop: 12,
+    alignSelf: "center",
+  },
+  shareResultsBtnText: { fontSize: 15, fontWeight: "700" },
 });
