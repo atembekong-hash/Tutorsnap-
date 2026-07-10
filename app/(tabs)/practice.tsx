@@ -22,6 +22,8 @@ import { loadQuizStats, getAdaptiveDifficultySuggestion, type QuizStats, type Di
 import { useFocusEffect } from "expo-router";
 import { useNetworkStatus } from "@/hooks/use-network-status";
 import { getSubjectDifficulty, setSubjectDifficulty } from "@/lib/subject-difficulty";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { type SubjectCategory } from "@/lib/subjects";
 
 const QUIZ_COUNTS = [3, 5, 10];
 
@@ -36,6 +38,19 @@ function PracticeScreenContent() {
   const router = useRouter();
   const [selectedSubject, setSelectedSubject] = useState<SubjectId>("algebra");
   const [selectedDifficulty, setSelectedDifficulty] = useState<Difficulty>("medium");
+  const [preferredCategories, setPreferredCategories] = useState<SubjectCategory[]>([]);
+
+  // Load preferred subjects from Settings on mount and pre-select first preferred subject
+  useEffect(() => {
+    AsyncStorage.getItem("@tutorsnap/preferredCategories").then((raw) => {
+      if (raw) {
+        try {
+          const cats: SubjectCategory[] = JSON.parse(raw);
+          setPreferredCategories(cats);
+        } catch { /* ignore */ }
+      }
+    });
+  }, []);
 
   // Load persisted difficulty when subject changes
   const handleSubjectChange = useCallback(async (id: SubjectId) => {
@@ -139,6 +154,7 @@ function PracticeScreenContent() {
               value={selectedSubject}
               onChange={(id) => handleSubjectChange(id ?? "algebra")}
               showAll={false}
+              preferredCategories={preferredCategories}
             />
           </View>
         </View>

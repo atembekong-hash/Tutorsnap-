@@ -72,6 +72,7 @@ const MAPPING = {
   "wifi": "wifi",
   // Settings extras
   "textformat.size": "format-size",
+  "envelope.fill": "email",
   "person.2.fill": "group",
   "hand.raised.fill": "front-hand",
   "doc.text.fill": "description",

@@ -21,6 +21,7 @@ import type { ChatMessage } from "@/shared/types";
 import { SubjectPicker } from "@/components/subject-picker";
 import { type SubjectId, getSubjectLabel } from "@/lib/subjects";
 import { useNetworkStatus } from "@/hooks/use-network-status";
+import { useFontSize } from "@/lib/font-size-provider";
 
 const QUICK_PROMPTS = [
   "Explain the quadratic formula",
@@ -31,7 +32,7 @@ const QUICK_PROMPTS = [
   "What is supply and demand?",
 ];
 
-function MessageBubble({ message, colors }: { message: ChatMessage; colors: any }) {
+function MessageBubble({ message, colors, fs }: { message: ChatMessage; colors: any; fs: (n: number) => number }) {
   const isUser = message.role === "user";
   return (
     <View
@@ -53,7 +54,7 @@ function MessageBubble({ message, colors }: { message: ChatMessage; colors: any 
         <Text
           style={[
             styles.messageText,
-            { color: isUser ? "#FFFFFF" : colors.foreground },
+            { color: isUser ? "#FFFFFF" : colors.foreground, fontSize: fs(15), lineHeight: fs(15) * 1.47 },
           ]}
         >
           {message.content}
@@ -61,7 +62,7 @@ function MessageBubble({ message, colors }: { message: ChatMessage; colors: any 
         <Text
           style={[
             styles.messageTime,
-            { color: isUser ? "rgba(255,255,255,0.6)" : colors.muted },
+            { color: isUser ? "rgba(255,255,255,0.6)" : colors.muted, fontSize: fs(11) },
           ]}
         >
           {new Date(message.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
@@ -73,6 +74,7 @@ function MessageBubble({ message, colors }: { message: ChatMessage; colors: any 
 
 function ChatScreenContent() {
   const colors = useColors();
+  const { fs } = useFontSize();
   const [selectedSubject, setSelectedSubject] = useState<SubjectId | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -121,7 +123,6 @@ function ChatScreenContent() {
 
     setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
 
-    // Send to AI (exclude welcome message for context)
     const contextMessages = updatedMessages
       .filter((m) => m.id !== "welcome")
       .map((m) => ({ role: m.role, content: m.content }));
@@ -155,10 +156,10 @@ function ChatScreenContent() {
               <Text style={{ fontSize: 20 }}>🧮</Text>
             </View>
             <View>
-              <Text style={[styles.headerTitle, { color: colors.foreground }]}>AI Tutor</Text>
+              <Text style={[styles.headerTitle, { color: colors.foreground, fontSize: fs(17) }]}>AI Tutor</Text>
               <View style={styles.onlineRow}>
                 <View style={[styles.onlineDot, { backgroundColor: colors.success }]} />
-                <Text style={[styles.onlineText, { color: colors.success }]}>Online</Text>
+                <Text style={[styles.onlineText, { color: colors.success, fontSize: fs(12) }]}>Online</Text>
               </View>
             </View>
           </View>
@@ -169,7 +170,7 @@ function ChatScreenContent() {
 
         {/* Subject Context Row */}
         <View style={[styles.subjectRow, { borderBottomColor: colors.border, backgroundColor: colors.background }]}>
-          <Text style={[styles.subjectRowLabel, { color: colors.muted }]}>Focus:</Text>
+          <Text style={[styles.subjectRowLabel, { color: colors.muted, fontSize: fs(12) }]}>Focus:</Text>
           <SubjectPicker
             value={selectedSubject}
             onChange={(id) => {
@@ -194,7 +195,7 @@ function ChatScreenContent() {
           ref={flatListRef}
           data={messages}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <MessageBubble message={item} colors={colors} />}
+          renderItem={({ item }) => <MessageBubble message={item} colors={colors} fs={fs} />}
           contentContainerStyle={{ padding: 16, paddingBottom: 8 }}
           showsVerticalScrollIndicator={false}
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
@@ -202,7 +203,7 @@ function ChatScreenContent() {
             chatMutation.isPending ? (
               <View style={[styles.typingIndicator, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <ActivityIndicator size="small" color={colors.primary} />
-                <Text style={[styles.typingText, { color: colors.muted }]}>TutorSnap is thinking...</Text>
+                <Text style={[styles.typingText, { color: colors.muted, fontSize: fs(13) }]}>TutorSnap is thinking...</Text>
               </View>
             ) : null
           }
@@ -211,7 +212,7 @@ function ChatScreenContent() {
         {/* Quick Prompts */}
         {messages.length <= 1 && (
           <View style={styles.quickPromptsContainer}>
-            <Text style={[styles.quickPromptsLabel, { color: colors.muted }]}>Try asking:</Text>
+            <Text style={[styles.quickPromptsLabel, { color: colors.muted, fontSize: fs(12) }]}>Try asking:</Text>
             <View style={styles.quickPrompts}>
               {QUICK_PROMPTS.map((prompt, i) => (
                 <TouchableOpacity
@@ -219,7 +220,7 @@ function ChatScreenContent() {
                   onPress={() => handleSend(prompt)}
                   style={[styles.quickPromptChip, { backgroundColor: `${colors.primary}15`, borderColor: `${colors.primary}30` }]}
                 >
-                  <Text style={[styles.quickPromptText, { color: colors.primary }]} numberOfLines={1}>
+                  <Text style={[styles.quickPromptText, { color: colors.primary, fontSize: fs(13) }]} numberOfLines={1}>
                     {prompt}
                   </Text>
                 </TouchableOpacity>
@@ -242,7 +243,7 @@ function ChatScreenContent() {
             ]}
           >
             <TextInput
-              style={[styles.input, { color: colors.foreground }]}
+              style={[styles.input, { color: colors.foreground, fontSize: fs(15), lineHeight: fs(15) * 1.47 }]}
               placeholder="Ask about any subject..."
               placeholderTextColor={colors.muted}
               value={inputText}
@@ -288,7 +289,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0.5,
   },
   subjectRowLabel: {
-    fontSize: 12,
     fontWeight: "600",
     letterSpacing: 0.5,
     textTransform: "uppercase",
@@ -310,10 +310,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  headerTitle: { fontSize: 17, fontWeight: "700" },
+  headerTitle: { fontWeight: "700" },
   onlineRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 2 },
   onlineDot: { width: 6, height: 6, borderRadius: 3 },
-  onlineText: { fontSize: 12, fontWeight: "600" },
+  onlineText: { fontWeight: "600" },
   clearBtn: { padding: 8 },
   messageBubble: {
     flexDirection: "row",
@@ -335,8 +335,8 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   bubbleContent: { flex: 1 },
-  messageText: { fontSize: 15, lineHeight: 22 },
-  messageTime: { fontSize: 11, marginTop: 4, textAlign: "right" },
+  messageText: {},
+  messageTime: { marginTop: 4, textAlign: "right" },
   typingIndicator: {
     flexDirection: "row",
     alignItems: "center",
@@ -347,9 +347,9 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 12,
   },
-  typingText: { fontSize: 13 },
+  typingText: {},
   quickPromptsContainer: { paddingHorizontal: 16, paddingBottom: 8 },
-  quickPromptsLabel: { fontSize: 12, fontWeight: "600", marginBottom: 8, letterSpacing: 0.5 },
+  quickPromptsLabel: { fontWeight: "600", marginBottom: 8, letterSpacing: 0.5 },
   quickPrompts: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   quickPromptChip: {
     paddingHorizontal: 14,
@@ -358,7 +358,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     maxWidth: "48%",
   },
-  quickPromptText: { fontSize: 13, fontWeight: "500" },
+  quickPromptText: { fontWeight: "500" },
   inputContainer: {
     flexDirection: "row",
     alignItems: "flex-end",
@@ -374,7 +374,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     maxHeight: 120,
   },
-  input: { fontSize: 15, lineHeight: 22 },
+  input: {},
   sendBtn: {
     width: 44,
     height: 44,

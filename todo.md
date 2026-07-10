@@ -89,3 +89,11 @@
 - [x] Privacy Policy row in Settings (opens browser)
 - [x] Terms of Service row in Settings (opens browser)
 - [x] Flashcards link in Settings PROGRESS & DATA section
+- [ ] Wire useFontSize into Chat screen
+- [ ] Wire useFontSize into Solution screen
+- [ ] Add Contact Support row in Settings ABOUT section
+- [ ] Preferred Subjects pre-select in Practice tab
+- [x] Wire useFontSize into Solution screen (all reading-heavy text scales with Text Size setting)
+- [x] Wire useFontSize into Chat screen (all message text scales with Text Size setting)
+- [x] Add Contact Support row in Settings ABOUT section (pre-filled mailto)
+- [x] Preferred Subjects pre-select in Practice tab (SubjectPicker opens to preferred category, starred tabs)

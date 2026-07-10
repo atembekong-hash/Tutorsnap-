@@ -302,6 +302,12 @@ export default function SettingsScreen() {
     Linking.openURL("https://mathgenius-g8jxpbar.manus.space/privacy");
   };
 
+  const handleContactSupport = () => {
+    const subject = encodeURIComponent("TutorSnap Support Request");
+    const body = encodeURIComponent(`Hi TutorSnap team,\n\nApp version: 1.1.0\nPlatform: ${Platform.OS}\n\nIssue / Question:\n`);
+    Linking.openURL(`mailto:support@tutorsnap.app?subject=${subject}&body=${body}`);
+  };
+
   const handleTerms = () => {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     Linking.openURL("https://mathgenius-g8jxpbar.manus.space/terms");
@@ -569,6 +575,13 @@ export default function SettingsScreen() {
           subtitle="Usage terms and conditions"
           colors={colors}
           onPress={handleTerms}
+        />
+        <SettingsRow
+          icon="envelope.fill"
+          label="Contact Support"
+          subtitle="Get help or send feedback"
+          colors={colors}
+          onPress={handleContactSupport}
         />
 
         {/* What's New */}

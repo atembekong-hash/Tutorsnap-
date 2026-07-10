@@ -32,14 +32,18 @@ interface SubjectPickerProps {
   value: SubjectId | null;
   onChange: (id: SubjectId | null) => void;
   showAll?: boolean;
+  /** Categories to highlight as preferred (from Settings). First preferred category becomes the default active tab. */
+  preferredCategories?: SubjectCategory[];
 }
 
 const CATEGORIES: SubjectCategory[] = ["math", "english", "science", "social"];
 
-export function SubjectPicker({ value, onChange, showAll = true }: SubjectPickerProps) {
+export function SubjectPicker({ value, onChange, showAll = true, preferredCategories = [] }: SubjectPickerProps) {
   const colors = useColors();
   const [open, setOpen] = useState(false);
-  const [activeCategory, setActiveCategory] = useState<SubjectCategory>("math");
+  // Default to first preferred category if set, otherwise "math"
+  const defaultCategory: SubjectCategory = (preferredCategories.length > 0 ? preferredCategories[0] : "math") as SubjectCategory;
+  const [activeCategory, setActiveCategory] = useState<SubjectCategory>(defaultCategory);
 
   const grouped = getSubjectsByCategory();
   const selectedDef = value ? ALL_SUBJECTS.find((s) => s.id === value) : null;
@@ -105,10 +109,18 @@ export function SubjectPicker({ value, onChange, showAll = true }: SubjectPicker
             </TouchableOpacity>
           )}
 
+          {preferredCategories.length > 0 && (
+            <View style={[styles.preferredBanner, { backgroundColor: `${colors.primary}12`, borderBottomColor: colors.border }]}>
+              <Text style={[styles.preferredBannerText, { color: colors.primary }]}>
+                ⭐ Preferred: {preferredCategories.map(c => SUBJECT_CATEGORIES[c as SubjectCategory]?.label.split(" /")[0] ?? c).join(" · ")}
+              </Text>
+            </View>
+          )}
           <View style={[styles.tabs, { borderBottomColor: colors.border }]}>
             {CATEGORIES.map((cat) => {
               const meta = SUBJECT_CATEGORIES[cat];
               const isActive = activeCategory === cat;
+              const isPreferred = preferredCategories.includes(cat);
               return (
                 <TouchableOpacity
                   key={cat}
@@ -119,7 +131,7 @@ export function SubjectPicker({ value, onChange, showAll = true }: SubjectPicker
                   onPress={() => setActiveCategory(cat)}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.tabEmoji}>{meta.emoji}</Text>
+                  <Text style={styles.tabEmoji}>{meta.emoji}{isPreferred ? "⭐" : ""}</Text>
                   <Text
                     style={[styles.tabLabel, { color: isActive ? meta.color : colors.muted }]}
                     numberOfLines={1}
@@ -306,5 +318,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
     marginTop: 2,
+  },
+  preferredBanner: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  preferredBannerText: {
+    fontSize: 12,
+    fontWeight: "600",
+    letterSpacing: 0.3,
   },
 });

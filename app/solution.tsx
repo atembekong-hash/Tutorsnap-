@@ -20,8 +20,9 @@ import { useColors } from "@/hooks/use-colors";
 import { toggleBookmark, isBookmarked } from "@/lib/bookmarks";
 import type { MathSolution, SolutionStep, HistoryItem, MathSubject } from "@/shared/types";
 import { getSubjectColor, getSubjectLabel } from "@/lib/subjects";
+import { useFontSize } from "@/lib/font-size-provider";
 
-function StepCard({ step, colors }: { step: SolutionStep; colors: any }) {
+function StepCard({ step, colors, fs }: { step: SolutionStep; colors: any; fs: (n: number) => number }) {
   const [expanded, setExpanded] = useState(true);
 
   return (
@@ -32,9 +33,9 @@ function StepCard({ step, colors }: { step: SolutionStep; colors: any }) {
     >
       <View style={styles.stepHeader}>
         <View style={[styles.stepNumber, { backgroundColor: `${colors.primary}20` }]}>
-          <Text style={[styles.stepNumberText, { color: colors.primary }]}>{step.stepNumber}</Text>
+          <Text style={[styles.stepNumberText, { color: colors.primary, fontSize: fs(13) }]}>{step.stepNumber}</Text>
         </View>
-        <Text style={[styles.stepTitle, { color: colors.foreground }]} numberOfLines={expanded ? undefined : 1}>
+        <Text style={[styles.stepTitle, { color: colors.foreground, fontSize: fs(14) }]} numberOfLines={expanded ? undefined : 1}>
           {step.title}
         </Text>
         <IconSymbol
@@ -47,10 +48,10 @@ function StepCard({ step, colors }: { step: SolutionStep; colors: any }) {
         <View style={styles.stepBody}>
           {step.expression && (
             <View style={[styles.expressionBox, { backgroundColor: `${colors.primary}10`, borderColor: `${colors.primary}30` }]}>
-              <Text style={[styles.expressionText, { color: colors.primary }]}>{step.expression}</Text>
+              <Text style={[styles.expressionText, { color: colors.primary, fontSize: fs(16) }]}>{step.expression}</Text>
             </View>
           )}
-          <Text style={[styles.stepExplanation, { color: colors.foreground }]}>{step.explanation}</Text>
+          <Text style={[styles.stepExplanation, { color: colors.foreground, fontSize: fs(14), lineHeight: fs(14) * 1.57 }]}>{step.explanation}</Text>
         </View>
       )}
     </TouchableOpacity>
@@ -59,6 +60,7 @@ function StepCard({ step, colors }: { step: SolutionStep; colors: any }) {
 
 export default function SolutionScreen() {
   const colors = useColors();
+  const { fs } = useFontSize();
   const router = useRouter();
   const params = useLocalSearchParams();
   const [bookmarked, setBookmarked] = useState(false);
@@ -82,9 +84,9 @@ export default function SolutionScreen() {
     return (
       <ScreenContainer>
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-          <Text style={{ color: colors.foreground, fontSize: 16 }}>No solution data found</Text>
+          <Text style={{ color: colors.foreground, fontSize: fs(16) }}>No solution data found</Text>
           <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 16 }}>
-            <Text style={{ color: colors.primary, fontSize: 16 }}>Go Back</Text>
+            <Text style={{ color: colors.primary, fontSize: fs(16) }}>Go Back</Text>
           </TouchableOpacity>
         </View>
       </ScreenContainer>
@@ -252,7 +254,7 @@ export default function SolutionScreen() {
         {/* Problem */}
         <View style={[styles.problemCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Text style={[styles.problemLabel, { color: colors.muted }]}>PROBLEM</Text>
-          <Text style={[styles.problemText, { color: colors.foreground }]}>{solution.problem}</Text>
+          <Text style={[styles.problemText, { color: colors.foreground, fontSize: fs(16), lineHeight: fs(16) * 1.5 }]}>{solution.problem}</Text>
         </View>
 
         {/* Answer */}
@@ -269,7 +271,7 @@ export default function SolutionScreen() {
               </Text>
             </TouchableOpacity>
           </View>
-          <Text style={[styles.answerText, { color: colors.foreground }]}>{solution.answer}</Text>
+          <Text style={[styles.answerText, { color: colors.foreground, fontSize: fs(22) }]}>{solution.answer}</Text>
         </View>
 
         {/* Steps */}
@@ -281,7 +283,7 @@ export default function SolutionScreen() {
             </Text>
           </View>
           {solution.steps?.map((step, index) => (
-            <StepCard key={index} step={step} colors={colors} />
+            <StepCard key={index} step={step} colors={colors} fs={fs} />
           ))}
         </View>
 
@@ -292,7 +294,7 @@ export default function SolutionScreen() {
               <IconSymbol size={16} name="brain.head.profile" color={colors.secondary} />
               <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Key Concept</Text>
             </View>
-            <Text style={[styles.conceptText, { color: colors.foreground }]}>{solution.conceptExplained}</Text>
+            <Text style={[styles.conceptText, { color: colors.foreground, fontSize: fs(14), lineHeight: fs(14) * 1.57 }]}>{solution.conceptExplained}</Text>
           </View>
         )}
 
@@ -306,7 +308,7 @@ export default function SolutionScreen() {
             {solution.tips.map((tip, index) => (
               <View key={index} style={styles.tipRow}>
                 <View style={[styles.tipDot, { backgroundColor: colors.warning }]} />
-                <Text style={[styles.tipText, { color: colors.foreground }]}>{tip}</Text>
+                <Text style={[styles.tipText, { color: colors.foreground, fontSize: fs(14), lineHeight: fs(14) * 1.57 }]}>{tip}</Text>
               </View>
             ))}
           </View>
@@ -322,7 +324,7 @@ export default function SolutionScreen() {
                   key={index}
                   style={[styles.relatedChip, { backgroundColor: colors.surface, borderColor: colors.border }]}
                 >
-                  <Text style={[styles.relatedChipText, { color: colors.foreground }]}>{topic}</Text>
+                  <Text style={[styles.relatedChipText, { color: colors.foreground, fontSize: fs(13) }]}>{topic}</Text>
                 </View>
               ))}
             </View>
