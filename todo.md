@@ -108,3 +108,7 @@
 - [x] AI-generated similar practice problems on Solution screen
 
 - [x] Dark mode consistency audit — fixed ErrorBoundary, OfflineBanner, StreakShieldCard, and home screen shield toast
+
+- [x] Voice input microphone button on Solve screen
+- [x] Dark mode toggle shortcut in home screen header
+- [x] Auto-show BadgeUnlockModal when new badge earned on home screen

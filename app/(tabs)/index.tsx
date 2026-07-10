@@ -34,7 +34,8 @@ import { getWeeklyData, type WeeklyData } from "@/lib/weekly-goals";
 import { StudyTipCard } from "@/components/study-tip-card";
 import { AlmostThereBanner } from "@/components/almost-there-banner";
 import { StreakShieldCard } from "@/components/streak-shield-card";
-import { getAlmostBadges } from "@/lib/mastery-badges";
+import { getAlmostBadges, computeMasteryBadges, getSeenBadges, markBadgeSeen, type BadgeTier } from "@/lib/mastery-badges";
+import { BadgeUnlockModal } from "@/components/badge-unlock-modal";
 import { TodayStudyWidget } from "@/components/today-study-widget";
 
 // Subject examples per category — shown dynamically based on selected subject
@@ -110,6 +111,7 @@ function SolveScreenContent() {
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [shieldCount, setShieldCount] = useState(0);
   const [shieldUsedToast, setShieldUsedToast] = useState(false);
+  const [pendingBadge, setPendingBadge] = useState<{ tier: BadgeTier; subjectLabel: string } | null>(null);
   const inputRef = useRef<TextInput>(null);
   const cursorPosRef = useRef<number>(0);
 
@@ -180,6 +182,25 @@ function SolveScreenContent() {
       const { recordSolve } = await import("@/lib/progress");
       await recordSolve(data.subject as MathSubject || "other");
       await loadProgress();
+      // Check if a new badge was just earned
+      try {
+        const { getProgress: getP } = await import("@/lib/progress");
+        const freshProgress = await getP();
+        if (freshProgress?.subjectCounts) {
+          const badges = computeMasteryBadges(freshProgress.subjectCounts);
+          const seen = await getSeenBadges();
+          for (const badge of badges) {
+            const key = `${badge.subject}-${badge.tier}`;
+            if (!seen.has(key)) {
+              await markBadgeSeen(badge.subject, badge.tier);
+              setPendingBadge({ tier: badge.tier, subjectLabel: badge.label });
+              break; // show one at a time
+            }
+          }
+        }
+      } catch {
+        // ignore badge check errors
+      }
 
       router.push({
         pathname: "/solution",
@@ -630,6 +651,15 @@ function SolveScreenContent() {
         )}
       </KeyboardAvoidingView>
 
+      {/* Badge Unlock Modal */}
+      {pendingBadge && (
+        <BadgeUnlockModal
+          visible={!!pendingBadge}
+          tier={pendingBadge.tier}
+          subjectLabel={pendingBadge.subjectLabel}
+          onClose={() => setPendingBadge(null)}
+        />
+      )}
       {/* Cheat Sheet Bottom Sheet */}
       <CheatSheetBottomSheet
         visible={showCheatSheet}
