@@ -225,3 +225,6 @@
 - [x] Verified challenge.tsx has no async generation — no error state needed
 - [x] Verified hardcoded colors in practice/settings/quiz-history are semantic (not theme-dependent)
 - [x] TypeScript: 0 errors after all fixes
+
+## Round 23: Quiz Share Web Clipboard Fallback
+- [x] Add Copy Results fallback on quiz share button for web (expo-clipboard when Share.share unavailable)

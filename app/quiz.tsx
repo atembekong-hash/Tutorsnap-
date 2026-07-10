@@ -10,6 +10,7 @@ import {
   Platform,
   Animated,
 } from "react-native";
+import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { ScreenContainer } from "@/components/screen-container";
@@ -118,6 +119,8 @@ function ScoreSummary({
   const secs = timeTaken % 60;
   const subjectLabel = getSubjectLabel(subject);
 
+  const [copied, setCopied] = React.useState(false);
+
   const handleShareResults = async () => {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const timeStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
@@ -133,10 +136,23 @@ function ScoreSummary({
     ]
       .filter(Boolean)
       .join("\n");
+
+    if (Platform.OS === "web") {
+      // Share.share is not available on web — copy to clipboard instead
+      try {
+        await Clipboard.setStringAsync(message);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2500);
+      } catch {
+        // clipboard unavailable — ignore
+      }
+      return;
+    }
+
     try {
       await Share.share({ message });
     } catch {
-      // User cancelled or share not available
+      // User cancelled
     }
   };
 
@@ -189,15 +205,21 @@ function ScoreSummary({
           <Text style={[styles.summaryBtnText, { color: colors.foreground }]}>Home</Text>
         </TouchableOpacity>
       </View>
-      {/* Share Results */}
+      {/* Share Results / Copy Results (web) */}
       <TouchableOpacity
         onPress={handleShareResults}
-        accessibilityLabel="Share quiz results"
-        style={[styles.shareResultsBtn, { borderColor: colors.border }]}
+        accessibilityLabel={Platform.OS === "web" ? (copied ? "Results copied to clipboard" : "Copy quiz results to clipboard") : "Share quiz results"}
+        style={[styles.shareResultsBtn, { borderColor: copied ? colors.success : colors.border }]}
         activeOpacity={0.75}
       >
-        <IconSymbol size={16} name="square.and.arrow.up.fill" color={colors.primary} />
-        <Text style={[styles.shareResultsBtnText, { color: colors.primary }]}>Share Results</Text>
+        <IconSymbol
+          size={16}
+          name={copied ? "checkmark.circle.fill" : "square.and.arrow.up.fill"}
+          color={copied ? colors.success : colors.primary}
+        />
+        <Text style={[styles.shareResultsBtnText, { color: copied ? colors.success : colors.primary }]}>
+          {Platform.OS === "web" ? (copied ? "Copied!" : "Copy Results") : "Share Results"}
+        </Text>
       </TouchableOpacity>
     </ScrollView>
   );
