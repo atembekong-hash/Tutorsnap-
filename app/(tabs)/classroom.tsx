@@ -54,6 +54,11 @@ import {
 } from "@/lib/classroom";
 import { getSubjectColor, getSubjectLabel, getSubjectEmoji } from "@/lib/subjects";
 import * as Clipboard from "expo-clipboard";
+import {
+  scheduleHomeworkReminders,
+  cancelHomeworkReminders,
+  cancelAllHomeworkReminders,
+} from "@/lib/homework-notifications";
 
 type Tab = "feed" | "leaderboard" | "analytics" | "manage";
 
@@ -125,6 +130,12 @@ export default function ClassroomTabScreen() {
 
   // Feed search
   const [feedQuery, setFeedQuery] = useState("");
+
+  // Feed sort and subject filter
+  type FeedSort = "newest" | "oldest" | "homework_first";
+  const [feedSort, setFeedSort] = useState<FeedSort>("newest");
+  const [feedSubjectFilter, setFeedSubjectFilter] = useState<string | null>(null);
+  const [showSortMenu, setShowSortMenu] = useState(false);
 
   // Homework completion (local set of completed problem IDs)
   const [completedHomework, setCompletedHomework] = useState<Set<string>>(new Set());
@@ -237,6 +248,7 @@ export default function ClassroomTabScreen() {
             setJoinedClassroom(null);
             setFeed([]);
             setLeaderboard([]);
+            cancelAllHomeworkReminders().catch(() => {/* ignore */});
           },
         },
       ]
@@ -303,6 +315,9 @@ export default function ClassroomTabScreen() {
           : p
       )
     );
+    // Schedule due-date reminder notifications for students
+    const title = homeworkTitle || homeworkModalItem.problem.slice(0, 60);
+    scheduleHomeworkReminders(homeworkModalItem.id, title, selectedDueDate).catch(() => {/* ignore */});
     setHomeworkModalItem(null);
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
@@ -315,6 +330,8 @@ export default function ClassroomTabScreen() {
         p.id === item.id ? { ...p, isHomework: false, dueDate: undefined, homeworkTitle: undefined } : p
       )
     );
+    // Cancel any scheduled reminders
+    cancelHomeworkReminders(item.id).catch(() => {/* ignore */});
   };
 
   const handleToggleNotifPref = async (key: keyof ClassroomNotifPrefs) => {
@@ -359,18 +376,49 @@ export default function ClassroomTabScreen() {
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
-  // Filtered feed based on search query
+  // Unique subjects in the feed for the filter chip bar
+  const feedSubjects = useMemo(() => {
+    const seen = new Set<string>();
+    feed.forEach((p) => seen.add(p.subject));
+    return Array.from(seen).sort();
+  }, [feed]);
+
+  // Filtered + sorted feed
   const filteredFeed = useMemo(() => {
     const q = feedQuery.trim().toLowerCase();
-    if (!q) return feed;
-    return feed.filter(
-      (p) =>
-        p.problem.toLowerCase().includes(q) ||
-        p.subject.toLowerCase().includes(q) ||
-        (p.sharedBy || "").toLowerCase().includes(q) ||
-        (p.homeworkTitle || "").toLowerCase().includes(q)
-    );
-  }, [feed, feedQuery]);
+    let result = feed;
+
+    // Text search
+    if (q) {
+      result = result.filter(
+        (p) =>
+          p.problem.toLowerCase().includes(q) ||
+          p.subject.toLowerCase().includes(q) ||
+          (p.sharedBy || "").toLowerCase().includes(q) ||
+          (p.homeworkTitle || "").toLowerCase().includes(q)
+      );
+    }
+
+    // Subject filter
+    if (feedSubjectFilter) {
+      result = result.filter((p) => p.subject === feedSubjectFilter);
+    }
+
+    // Sort
+    const sorted = [...result];
+    if (feedSort === "newest") {
+      sorted.sort((a, b) => new Date(b.sharedAt).getTime() - new Date(a.sharedAt).getTime());
+    } else if (feedSort === "oldest") {
+      sorted.sort((a, b) => new Date(a.sharedAt).getTime() - new Date(b.sharedAt).getTime());
+    } else if (feedSort === "homework_first") {
+      sorted.sort((a, b) => {
+        if (a.isHomework && !b.isHomework) return -1;
+        if (!a.isHomework && b.isHomework) return 1;
+        return new Date(b.sharedAt).getTime() - new Date(a.sharedAt).getTime();
+      });
+    }
+    return sorted;
+  }, [feed, feedQuery, feedSubjectFilter, feedSort]);
 
   // Mark a homework item as done (local toggle)
   const handleMarkHomeworkDone = (id: string) => {
@@ -379,8 +427,16 @@ export default function ClassroomTabScreen() {
       const next = new Set(prev);
       if (next.has(id)) {
         next.delete(id);
+        // Homework un-done: re-schedule reminders if due date still in future
+        const item = feed.find((p) => p.id === id);
+        if (item?.dueDate && new Date(item.dueDate).getTime() > Date.now()) {
+          const title = item.homeworkTitle || item.problem.slice(0, 60);
+          scheduleHomeworkReminders(id, title, item.dueDate).catch(() => {/* ignore */});
+        }
       } else {
         next.add(id);
+        // Homework done: cancel pending reminders
+        cancelHomeworkReminders(id).catch(() => {/* ignore */});
       }
       return next;
     });
@@ -704,24 +760,78 @@ export default function ClassroomTabScreen() {
               showsVerticalScrollIndicator={false}
               ListHeaderComponent={
                 <>
-                  {/* Search bar */}
-                  <View style={[styles.searchRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                    <IconSymbol size={16} name="magnifyingglass" color={colors.muted} />
-                    <TextInput
-                      style={[styles.searchInput, { color: colors.foreground }]}
-                      value={feedQuery}
-                      onChangeText={setFeedQuery}
-                      placeholder="Search problems, subjects, or people…"
-                      placeholderTextColor={colors.muted}
-                      returnKeyType="search"
-                      clearButtonMode="while-editing"
-                    />
-                    {feedQuery.length > 0 && (
-                      <TouchableOpacity onPress={() => setFeedQuery("")} accessibilityLabel="Clear search">
-                        <IconSymbol size={16} name="xmark.circle.fill" color={colors.muted} />
-                      </TouchableOpacity>
-                    )}
+                  {/* Search bar + sort button row */}
+                  <View style={styles.searchSortRow}>
+                    <View style={[styles.searchRow, { backgroundColor: colors.surface, borderColor: colors.border, flex: 1 }]}>
+                      <IconSymbol size={16} name="magnifyingglass" color={colors.muted} />
+                      <TextInput
+                        style={[styles.searchInput, { color: colors.foreground }]}
+                        value={feedQuery}
+                        onChangeText={setFeedQuery}
+                        placeholder="Search problems…"
+                        placeholderTextColor={colors.muted}
+                        returnKeyType="search"
+                        clearButtonMode="while-editing"
+                      />
+                      {feedQuery.length > 0 && (
+                        <TouchableOpacity onPress={() => setFeedQuery("")} accessibilityLabel="Clear search">
+                          <IconSymbol size={16} name="xmark.circle.fill" color={colors.muted} />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                    <TouchableOpacity
+                      accessibilityLabel="Sort feed"
+                      style={[styles.sortBtn, { backgroundColor: colors.surface, borderColor: feedSort !== "newest" ? colors.primary : colors.border }]}
+                      onPress={() => setShowSortMenu(true)}
+                      activeOpacity={0.75}
+                    >
+                      <IconSymbol size={16} name="arrow.left.and.right" color={feedSort !== "newest" ? colors.primary : colors.muted} />
+                    </TouchableOpacity>
                   </View>
+
+                  {/* Subject filter chips */}
+                  {feedSubjects.length > 1 && (
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      style={styles.subjectChipsScroll}
+                      contentContainerStyle={styles.subjectChipsContent}
+                    >
+                      <TouchableOpacity
+                        accessibilityLabel="All subjects"
+                        style={[styles.subjectChip, {
+                          backgroundColor: feedSubjectFilter === null ? colors.primary : colors.surface,
+                          borderColor: feedSubjectFilter === null ? colors.primary : colors.border,
+                        }]}
+                        onPress={() => setFeedSubjectFilter(null)}
+                        activeOpacity={0.75}
+                      >
+                        <Text style={[styles.subjectChipText, { color: feedSubjectFilter === null ? "#FFFFFF" : colors.muted }]}>All</Text>
+                      </TouchableOpacity>
+                      {feedSubjects.map((subj) => {
+                        const subjectColor = getSubjectColor(subj as any);
+                        const emoji = getSubjectEmoji(subj as any);
+                        const active = feedSubjectFilter === subj;
+                        return (
+                          <TouchableOpacity
+                            key={subj}
+                            accessibilityLabel={`Filter by ${subj}`}
+                            style={[styles.subjectChip, {
+                              backgroundColor: active ? subjectColor : colors.surface,
+                              borderColor: active ? subjectColor : colors.border,
+                            }]}
+                            onPress={() => setFeedSubjectFilter(active ? null : subj)}
+                            activeOpacity={0.75}
+                          >
+                            <Text style={styles.subjectChipEmoji}>{emoji}</Text>
+                            <Text style={[styles.subjectChipText, { color: active ? "#FFFFFF" : colors.muted }]}>
+                              {getSubjectLabel(subj as any)}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+                  )}
 
                   {/* Homework summary banner */}
                   {homeworkItems.length > 0 && (
@@ -1087,7 +1197,46 @@ export default function ClassroomTabScreen() {
         </View>
       </Modal>
 
-      {/* Edit Display Name Modal (cross-platform, replaces Alert.prompt) */}
+      {/* Sort menu modal */}
+      <Modal
+        visible={showSortMenu}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowSortMenu(false)}
+      >
+        <TouchableOpacity
+          style={styles.sortMenuOverlay}
+          activeOpacity={1}
+          onPress={() => setShowSortMenu(false)}
+        >
+          <View style={[styles.sortMenuSheet, { backgroundColor: colors.background }]}>
+            <Text style={[styles.sortMenuTitle, { color: colors.foreground }]}>Sort Feed</Text>
+            {([
+              { key: "newest", label: "Newest first" },
+              { key: "oldest", label: "Oldest first" },
+              { key: "homework_first", label: "Homework first" },
+            ] as const).map((opt) => (
+              <TouchableOpacity
+                key={opt.key}
+                style={[styles.sortOption, { borderBottomColor: colors.border }]}
+                onPress={() => {
+                  setFeedSort(opt.key);
+                  setShowSortMenu(false);
+                  if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }}
+                activeOpacity={0.75}
+              >
+                <Text style={[styles.sortOptionText, { color: colors.foreground }]}>{opt.label}</Text>
+                {feedSort === opt.key && (
+                  <IconSymbol size={18} name="checkmark.circle.fill" color={colors.primary} />
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Edit display-name modal (cross-platform, replaces Alert.prompt) */}
       <Modal
         visible={showEditNameModal}
         transparent
@@ -1564,4 +1713,70 @@ const styles = StyleSheet.create({
   clearSearchBtnText: { fontSize: 14, fontWeight: "600" },
   // Homework completion
   circle: {},
+  // Feed sort + subject filter
+  searchSortRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 8,
+  },
+  sortBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  subjectChipsScroll: {
+    marginBottom: 8,
+  },
+  subjectChipsContent: {
+    flexDirection: "row",
+    gap: 6,
+    paddingRight: 4,
+  },
+  subjectChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1.5,
+  },
+  subjectChipEmoji: {
+    fontSize: 12,
+  },
+  subjectChipText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  // Sort menu modal
+  sortMenuOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.35)",
+    justifyContent: "flex-end",
+  },
+  sortMenuSheet: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    paddingBottom: 36,
+  },
+  sortMenuTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    marginBottom: 16,
+  },
+  sortOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 14,
+    borderBottomWidth: 0.5,
+  },
+  sortOptionText: {
+    fontSize: 15,
+  },
 });

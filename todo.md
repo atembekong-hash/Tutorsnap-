@@ -303,3 +303,14 @@
 - [x] Homework banner shows remaining count (e.g. "2 of 3 assignments remaining")
 - [x] Empty state shows search icon and "No results found" when query has no matches
 - [x] Clear Search button in empty state
+
+## Round 32: Homework Notifications + Feed Sort/Filter
+- [x] lib/homework-notifications.ts: scheduleHomeworkReminders, cancelHomeworkReminders, cancelAllHomeworkReminders
+- [x] Schedule evening-before (7 PM) and morning-of (8 AM) reminders when homework is assigned
+- [x] Cancel reminders when homework is unassigned or marked done
+- [x] Re-schedule reminders when homework is un-done (toggled back)
+- [x] Cancel all reminders when leaving a classroom
+- [x] Feed sort menu: Newest first / Oldest first / Homework first
+- [x] Feed subject filter chip bar (one chip per subject in feed)
+- [x] Sort button highlights in primary color when non-default sort is active
+- [x] Sort menu modal with checkmark on active option
