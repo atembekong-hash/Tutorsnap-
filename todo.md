@@ -323,3 +323,10 @@
 - [x] Homework completion state persisted to AsyncStorage (survives app restart)
 - [x] Completion state loaded on classroom screen mount
 - [x] Completion state saved on every toggle
+
+## Round 34: Classroom Comment Threads + Offline Banner
+- [x] lib/problem-comments.ts: getComments, addComment, deleteComment, getCommentCount (AsyncStorage)
+- [x] components/problem-comment-sheet.tsx: bottom-sheet comment thread with FlatList, input row, delete own comments
+- [x] Comment button on every feed card (shows count badge when > 0)
+- [x] Comment counts loaded on feed load and refreshed when sheet closes
+- [x] Offline banner already wired into root layout (covers all screens including Solve and Classroom)

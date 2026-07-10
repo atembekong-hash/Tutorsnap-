@@ -60,6 +60,8 @@ import {
   cancelAllHomeworkReminders,
 } from "@/lib/homework-notifications";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { ProblemCommentSheet } from "@/components/problem-comment-sheet";
+import { getCommentCount } from "@/lib/problem-comments";
 
 const HW_DONE_KEY = "@tutorsnap/hw_done";
 
@@ -144,6 +146,10 @@ export default function ClassroomTabScreen() {
   const [completedHomework, setCompletedHomework] = useState<Set<string>>(new Set());
   const [hwDoneLoaded, setHwDoneLoaded] = useState(false);
 
+  // Comment sheet
+  const [commentProblem, setCommentProblem] = useState<ClassroomProblem | null>(null);
+  const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
+
   const dateOptions = useMemo(() => getDateOptions(), []);
 
   // Load persisted homework completion state on mount
@@ -165,6 +171,14 @@ export default function ClassroomTabScreen() {
     AsyncStorage.setItem(HW_DONE_KEY, JSON.stringify(Array.from(completedHomework))).catch(() => { /* ignore */ });
   }, [completedHomework, hwDoneLoaded]);
 
+  // Refresh comment counts whenever the feed changes
+  const refreshCommentCounts = useCallback(async (feed: ClassroomProblem[]) => {
+    const entries = await Promise.all(
+      feed.map(async (item) => [item.id, await getCommentCount(item.id)] as [string, number])
+    );
+    setCommentCounts(Object.fromEntries(entries));
+  }, []);
+
   const loadData = useCallback(async () => {
     setLoading(true);
     const [mine, joined, prefs, savedName] = await Promise.all([
@@ -185,12 +199,13 @@ export default function ClassroomTabScreen() {
       ]);
       setFeed(f);
       setLeaderboard(lb);
+      refreshCommentCounts(f);
     } else {
       setFeed([]);
       setLeaderboard([]);
     }
     setLoading(false);
-  }, []);
+  }, [refreshCommentCounts]);
 
   useFocusEffect(useCallback(() => { loadData(); }, [loadData]));
 
@@ -589,6 +604,24 @@ export default function ClassroomTabScreen() {
               >
                 <IconSymbol size={12} name="timer" color={colors.primary} />
                 <Text style={[styles.challengeBtnText, { color: colors.primary }]}>Challenge</Text>
+              </TouchableOpacity>
+              {/* Comment button */}
+              <TouchableOpacity
+                accessibilityLabel="View comments"
+                style={[styles.challengeBtn, {
+                  backgroundColor: `${colors.muted}12`,
+                  borderColor: `${colors.muted}30`,
+                }]}
+                onPress={(e) => {
+                  e.stopPropagation?.();
+                  setCommentProblem(item);
+                }}
+                activeOpacity={0.75}
+              >
+                <IconSymbol size={12} name="bubble.left.fill" color={colors.muted} />
+                <Text style={[styles.challengeBtnText, { color: colors.muted }]}>
+                  {(commentCounts[item.id] ?? 0) > 0 ? String(commentCounts[item.id]) : "Notes"}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1224,6 +1257,25 @@ export default function ClassroomTabScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Problem comment sheet */}
+      {commentProblem && (
+        <ProblemCommentSheet
+          visible={!!commentProblem}
+          onClose={() => {
+            // Refresh count for this problem after sheet closes
+            if (commentProblem) {
+              getCommentCount(commentProblem.id).then((count) =>
+                setCommentCounts((prev) => ({ ...prev, [commentProblem.id]: count }))
+              );
+            }
+            setCommentProblem(null);
+          }}
+          problemId={commentProblem.id}
+          problemText={commentProblem.problem}
+          displayName={displayName || "Student"}
+        />
+      )}
 
       {/* Sort menu modal */}
       <Modal
