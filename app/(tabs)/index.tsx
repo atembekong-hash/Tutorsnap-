@@ -30,6 +30,8 @@ import { useNetworkStatus } from "@/hooks/use-network-status";
 import { WeeklyGoalsCard } from "@/components/weekly-goals-card";
 import { getWeeklyData, type WeeklyData } from "@/lib/weekly-goals";
 import { StudyTipCard } from "@/components/study-tip-card";
+import { AlmostThereBanner } from "@/components/almost-there-banner";
+import { getAlmostBadges } from "@/lib/mastery-badges";
 
 // Subject examples per category — shown dynamically based on selected subject
 const SUBJECT_EXAMPLES: Record<string, string[]> = {
@@ -99,12 +101,23 @@ export default function SolveScreen() {
   }, []);
   const [progress, setProgress] = useState<ProgressData | null>(null);
   const [weeklyData, setWeeklyData] = useState<WeeklyData | null>(null);
+  const [almostBadge, setAlmostBadge] = useState<{ subject: string; subjectLabel: string; remaining: number; nextTier: "bronze" | "silver" | "gold" } | null>(null);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
   const inputRef = useRef<TextInput>(null);
   const cursorPosRef = useRef<number>(0);
 
   const loadProgress = async () => {
     const p = await getProgress();
     setProgress(p);
+    // Find the closest almost-badge to nudge the user
+    const almosts = getAlmostBadges(p.subjectCounts);
+    if (almosts.length > 0) {
+      const a = almosts[0];
+      setAlmostBadge({ subject: a.subject, subjectLabel: a.label, remaining: a.remaining, nextTier: a.nextTier });
+      setBannerDismissed(false);
+    } else {
+      setAlmostBadge(null);
+    }
   };
 
   const loadWeeklyData = async () => {
@@ -292,6 +305,23 @@ export default function SolveScreen() {
             <WeeklyGoalsCard
               data={weeklyData}
               onGoalChanged={() => loadWeeklyData()}
+            />
+          )}
+
+          {/* Almost-There Badge Nudge */}
+          {almostBadge && !bannerDismissed && (
+            <AlmostThereBanner
+              subject={almostBadge.subject}
+              subjectLabel={almostBadge.subjectLabel}
+              remaining={almostBadge.remaining}
+              nextTier={almostBadge.nextTier}
+              onDismiss={() => setBannerDismissed(true)}
+              onGoSolve={() => {
+                // Switch to the almost-badge subject so user can start solving
+                const subjectId = almostBadge.subject as SubjectId;
+                handleSubjectChange(subjectId);
+                setBannerDismissed(true);
+              }}
             />
           )}
 
