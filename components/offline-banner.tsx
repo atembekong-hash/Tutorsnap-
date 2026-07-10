@@ -63,11 +63,16 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 16,
     paddingTop: Platform.OS === "ios" ? 14 : 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
     elevation: 10,
+    ...Platform.select({
+      native: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 6,
+      },
+      web: { boxShadow: "0 2px 6px rgba(0,0,0,0.25)" },
+    }),
   },
   icon: {
     fontSize: 14,

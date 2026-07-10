@@ -173,11 +173,16 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     padding: 28,
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
-    shadowRadius: 20,
     elevation: 10,
+    ...Platform.select({
+      native: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.2,
+        shadowRadius: 20,
+      },
+      web: { boxShadow: "0 8px 20px rgba(0,0,0,0.2)" },
+    }),
     overflow: "hidden",
   },
   confettiContainer: {

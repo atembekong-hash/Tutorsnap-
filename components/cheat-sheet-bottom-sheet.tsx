@@ -198,11 +198,16 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     borderTopWidth: 0.5,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
     elevation: 16,
+    ...Platform.select({
+      native: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.12,
+        shadowRadius: 16,
+      },
+      web: { boxShadow: "0 -4px 16px rgba(0,0,0,0.12)" },
+    }),
   },
   handleRow: {
     alignItems: "center",
