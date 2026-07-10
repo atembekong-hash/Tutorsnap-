@@ -39,8 +39,12 @@ export default function BookmarksScreen() {
   const [showSortMenu, setShowSortMenu] = useState(false);
 
   const loadBookmarks = async () => {
-    const bm = await getBookmarks();
-    setBookmarks(bm);
+    try {
+      const bm = await getBookmarks();
+      setBookmarks(bm);
+    } catch {
+      // getBookmarks swallows errors internally; this is a safety net
+    }
   };
 
   useFocusEffect(
@@ -95,8 +99,12 @@ export default function BookmarksScreen() {
           if (Platform.OS !== "web") {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
           }
-          await removeBookmark(id);
-          await loadBookmarks();
+          try {
+            await removeBookmark(id);
+            await loadBookmarks();
+          } catch {
+            Alert.alert("Error", "Could not remove bookmark. Please try again.");
+          }
         },
       },
     ]);
@@ -265,7 +273,7 @@ export default function BookmarksScreen() {
             />
             {search.length > 0 && Platform.OS !== "ios" && (
               <TouchableOpacity onPress={() => setSearch("")} activeOpacity={0.7}
-                accessibilityLabel="Toggle search">
+                accessibilityLabel="Clear search">
                 <IconSymbol size={17} name="xmark.circle.fill" color={colors.muted} />
               </TouchableOpacity>
             )}

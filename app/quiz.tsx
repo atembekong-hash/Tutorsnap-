@@ -238,6 +238,9 @@ export default function QuizScreen() {
       setTotalTime(0);
       startTimer();
     },
+    onError: () => {
+      // Error state is shown via generateMutation.isError in render
+    },
   });
 
   const startTimer = useCallback(() => {
@@ -298,16 +301,21 @@ export default function QuizScreen() {
       finalAnswers[currentIdx] = selectedOption;
       const correctCount = finalAnswers.filter((a, i) => a === questions[i]?.correctAnswer).length;
       const pct = Math.round((correctCount / questions.length) * 100);
-      await saveQuizResult({
-        subject,
-        difficulty,
-        score: correctCount,
-        total: questions.length,
-        pct,
-        timeTaken: totalTime,
-        completedAt: Date.now(),
-      });
-      const bonus = await recordQuizBonus(pct);
+      try {
+        await saveQuizResult({
+          subject,
+          difficulty,
+          score: correctCount,
+          total: questions.length,
+          pct,
+          timeTaken: totalTime,
+          completedAt: Date.now(),
+        });
+      } catch { /* history save failure is non-critical */ }
+      let bonus = { awarded: false, newStreak: 0 };
+      try {
+        bonus = await recordQuizBonus(pct);
+      } catch { /* bonus recording failure is non-critical */ }
       setBonusAwarded(bonus.awarded);
       setBonusStreak(bonus.newStreak);
       if (bonus.awarded && Platform.OS !== "web") {
@@ -326,12 +334,40 @@ export default function QuizScreen() {
     generateMutation.mutate({ subject, difficulty, count });
   };
 
+  // Error state
+  if (generateMutation.isError) {
+    return (
+      <ScreenContainer>
+        <View style={[styles.navBar, { borderBottomColor: colors.border }]}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} accessibilityLabel="Go back">
+            <IconSymbol size={22} name="arrow.left" color={colors.foreground} />
+          </TouchableOpacity>
+          <Text style={[styles.navTitle, { color: colors.foreground }]}>Quiz</Text>
+          <View style={{ width: 30 }} />
+        </View>
+        <View style={styles.loadingContainer}>
+          <Text style={{ fontSize: 40 }}>⚠️</Text>
+          <Text style={[styles.loadingText, { color: colors.foreground, fontWeight: "700" }]}>Could not generate quiz</Text>
+          <Text style={[styles.loadingText, { color: colors.muted, textAlign: "center" }]}>Please check your connection and try again.</Text>
+          <TouchableOpacity
+            onPress={() => generateMutation.mutate({ subject, difficulty, count })}
+            style={[styles.actionBtn, { backgroundColor: colors.primary, paddingHorizontal: 32, marginTop: 8 }]}
+            activeOpacity={0.85}
+            accessibilityLabel="Retry quiz generation"
+          >
+            <Text style={[styles.actionBtnText, { color: "#fff" }]}>Try Again</Text>
+          </TouchableOpacity>
+        </View>
+      </ScreenContainer>
+    );
+  }
+
   // Loading state
   if (generateMutation.isPending || questions.length === 0) {
     return (
       <ScreenContainer>
         <View style={[styles.navBar, { borderBottomColor: colors.border }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} accessibilityLabel="Go back">
             <IconSymbol size={22} name="arrow.left" color={colors.foreground} />
           </TouchableOpacity>
           <Text style={[styles.navTitle, { color: colors.foreground }]}>Quiz</Text>

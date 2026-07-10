@@ -177,7 +177,9 @@ export default function SettingsScreen() {
   const handleSetGoal = async (goal: number) => {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setDailyGoalState(goal);
-    await setDailyGoal(goal);
+    try {
+      await setDailyGoal(goal);
+    } catch { /* goal save failure is non-critical */ }
   };
 
   const handleToggleReminder = async (value: boolean) => {
@@ -188,10 +190,13 @@ export default function SettingsScreen() {
       setShowTimePicker(true);
     } else {
       setReminderSaving(true);
-      const updated = { ...reminder, enabled: false };
-      await saveReminderSettings(updated);
-      setReminder(updated);
-      setReminderSaving(false);
+      try {
+        const updated = { ...reminder, enabled: false };
+        await saveReminderSettings(updated);
+        setReminder(updated);
+      } catch { /* reminder save failure is non-critical */ } finally {
+        setReminderSaving(false);
+      }
     }
   };
 
@@ -199,10 +204,13 @@ export default function SettingsScreen() {
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setShowTimePicker(false);
     setReminderSaving(true);
-    const updated: ReminderSettings = { enabled: true, hour: pickerHour, minute: pickerMinute };
-    await saveReminderSettings(updated);
-    setReminder(updated);
-    setReminderSaving(false);
+    try {
+      const updated: ReminderSettings = { enabled: true, hour: pickerHour, minute: pickerMinute };
+      await saveReminderSettings(updated);
+      setReminder(updated);
+    } catch { /* reminder save failure is non-critical */ } finally {
+      setReminderSaving(false);
+    }
   };
 
   const handleEditTime = () => {
@@ -222,7 +230,9 @@ export default function SettingsScreen() {
       next.add(cat);
     }
     setPreferredCategories(next);
-    await AsyncStorage.setItem("@tutorsnap/preferredCategories", JSON.stringify(Array.from(next)));
+    try {
+      await AsyncStorage.setItem("@tutorsnap/preferredCategories", JSON.stringify(Array.from(next)));
+    } catch { /* category save failure is non-critical */ }
   };
 
   const handleClearHistory = () => {
@@ -235,8 +245,12 @@ export default function SettingsScreen() {
           text: "Clear History",
           style: "destructive",
           onPress: async () => {
-            await AsyncStorage.removeItem("math_history");
-            if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            try {
+              await AsyncStorage.removeItem("math_history");
+              if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            } catch {
+              Alert.alert("Error", "Could not clear history. Please try again.");
+            }
           },
         },
       ]
@@ -298,35 +312,37 @@ export default function SettingsScreen() {
 
   const handleRateApp = async () => {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    if (Platform.OS !== "web") {
-      const isAvailable = await StoreReview.isAvailableAsync();
-      if (isAvailable) {
-        await StoreReview.requestReview();
-        return;
+    try {
+      if (Platform.OS !== "web") {
+        const isAvailable = await StoreReview.isAvailableAsync();
+        if (isAvailable) {
+          await StoreReview.requestReview();
+          return;
+        }
       }
-    }
-    // Fallback: open store page
-    const url = Platform.OS === "ios"
-      ? "https://apps.apple.com/app/id0000000000"
-      : "https://play.google.com/store/apps/details?id=com.tutorsnap.app";
-    Linking.openURL(url);
+      // Fallback: open store page
+      const url = Platform.OS === "ios"
+        ? "https://apps.apple.com/app/id0000000000"
+        : "https://play.google.com/store/apps/details?id=com.tutorsnap.app";
+      await Linking.openURL(url);
+    } catch { /* store review or linking failure is non-critical */ }
   };
 
   const handlePrivacyPolicy = () => {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    Linking.openURL("https://tutorsnapai.tech/privacy");
+    Linking.openURL("https://tutorsnapai.tech/privacy").catch(() => {});
   };
 
   const handleContactSupport = () => {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const subject = encodeURIComponent("TutorSnap Support Request");
     const body = encodeURIComponent(`Hi TutorSnap team,\n\nApp version: ${Constants.expoConfig?.version ?? "1.1.0"}\nPlatform: ${Platform.OS}\n\nIssue / Question:\n`);
-    Linking.openURL(`mailto:support@tutorsnapai.tech?subject=${subject}&body=${body}`);
+    Linking.openURL(`mailto:support@tutorsnapai.tech?subject=${subject}&body=${body}`).catch(() => {});
   };
 
   const handleTerms = () => {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    Linking.openURL("https://tutorsnapai.tech/terms");
+    Linking.openURL("https://tutorsnapai.tech/terms").catch(() => {});
   };
 
   const preferredCategoryLabels = Array.from(preferredCategories)

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { AIResponseRenderer, AIResponseErrorBoundary } from "@/components/ai-response-renderer";
 import {
   View,
   Text,
@@ -51,11 +52,39 @@ function StepCard({ step, colors, fs }: { step: SolutionStep; colors: any; fs: (
       {expanded && (
         <View style={styles.stepBody}>
           {step.expression && (
+            // Expression box: render LaTeX/math expressions via pipeline
             <View style={[styles.expressionBox, { backgroundColor: `${colors.primary}10`, borderColor: `${colors.primary}30` }]}>
-              <Text style={[styles.expressionText, { color: colors.primary, fontSize: fs(16) }]}>{step.expression}</Text>
+              <AIResponseErrorBoundary
+                fallbackText={step.expression}
+                fontSize={fs(16)}
+                color={colors.primary}
+              >
+                <AIResponseRenderer
+                  markdown={step.expression}
+                  fontSize={fs(16)}
+                  color={colors.primary}
+                  codeBackground={`${colors.primary}10`}
+                  flavor="github"
+                  stripPreamble={false}
+                />
+              </AIResponseErrorBoundary>
             </View>
           )}
-          <Text style={[styles.stepExplanation, { color: colors.foreground, fontSize: fs(14), lineHeight: fs(14) * 1.57 }]}>{step.explanation}</Text>
+          {/* Step explanation: full Markdown + LaTeX rendering */}
+          <AIResponseErrorBoundary
+            fallbackText={step.explanation}
+            fontSize={fs(14)}
+            color={colors.foreground}
+          >
+            <AIResponseRenderer
+              markdown={step.explanation}
+              fontSize={fs(14)}
+              color={colors.foreground}
+              codeBackground={colors.surface}
+              flavor="github"
+              stripPreamble={false}
+            />
+          </AIResponseErrorBoundary>
         </View>
       )}
     </TouchableOpacity>
@@ -226,26 +255,30 @@ export default function SolutionScreen() {
 
   const handleShareToClassroom = async () => {
     setShowShareMenu(false);
-    const mine = await getMyClassroom();
-    const joined = await getJoinedClassroom();
-    const classroom = mine || joined;
-    if (!classroom) {
-      Alert.alert(
-        "No Classroom",
-        "You haven't joined or created a classroom yet. Go to Settings → Classroom to get started.",
-        [{ text: "OK" }]
-      );
-      return;
+    try {
+      const mine = await getMyClassroom();
+      const joined = await getJoinedClassroom();
+      const classroom = mine || joined;
+      if (!classroom) {
+        Alert.alert(
+          "No Classroom",
+          "You haven't joined or created a classroom yet. Go to Settings → Classroom to get started.",
+          [{ text: "OK" }]
+        );
+        return;
+      }
+      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      await shareToClassroom(classroom.code, {
+        problem: solution!.problem,
+        answer: solution!.answer,
+        subject: solution!.subject,
+        steps: (solution!.steps || []).map((s) => `Step ${s.stepNumber}: ${s.title} — ${s.explanation}`),
+        sharedBy: "You",
+      });
+      Alert.alert("Shared!", `Problem added to "${classroom.name}" feed.`);
+    } catch {
+      Alert.alert("Error", "Could not share to classroom. Please try again.");
     }
-    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    await shareToClassroom(classroom.code, {
-      problem: solution!.problem,
-      answer: solution!.answer,
-      subject: solution!.subject,
-      steps: (solution!.steps || []).map((s) => `Step ${s.stepNumber}: ${s.title} — ${s.explanation}`),
-      sharedBy: "You",
-    });
-    Alert.alert("Shared!", `Problem added to "${classroom.name}" feed.`);
   };
 
   const handleShare = () => setShowShareMenu(true);
@@ -267,20 +300,24 @@ export default function SolutionScreen() {
     if (Platform.OS !== "web") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
-    const historyItem: HistoryItem = {
-      id: `bm-${Date.now()}`,
-      problem: solution!.problem,
-      answer: solution!.answer,
-      subject: solution!.subject as MathSubject,
-      steps: solution!.steps || [],
-      conceptExplained: solution!.conceptExplained,
-      tips: solution!.tips,
-      solvedAt: Date.now(),
-    };
-    const added = await toggleBookmark(historyItem);
-    setBookmarked(added);
-    if (added && Platform.OS !== "web") {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    try {
+      const historyItem: HistoryItem = {
+        id: `bm-${Date.now()}`,
+        problem: solution!.problem,
+        answer: solution!.answer,
+        subject: solution!.subject as MathSubject,
+        steps: solution!.steps || [],
+        conceptExplained: solution!.conceptExplained,
+        tips: solution!.tips,
+        solvedAt: Date.now(),
+      };
+      const added = await toggleBookmark(historyItem);
+      setBookmarked(added);
+      if (added && Platform.OS !== "web") {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+    } catch {
+      Alert.alert("Error", "Could not save bookmark. Please try again.");
     }
   };
 

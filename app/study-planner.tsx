@@ -61,7 +61,9 @@ export default function StudyPlannerScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      loadStudySlots().then(setSlots);
+      loadStudySlots()
+        .then(setSlots)
+        .catch(() => { /* load failure degrades gracefully to empty list */ });
     }, [])
   );
 
@@ -114,11 +116,15 @@ export default function StudyPlannerScreen() {
       label: formLabel.trim() || getSubjectLabel(formSubject),
       notifyEnabled: formNotify,
     };
-    const updated = await upsertStudySlot(slot);
-    setSlots(updated);
-    await syncPlannerNotifications(updated);
-    setShowModal(false);
-    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    try {
+      const updated = await upsertStudySlot(slot);
+      setSlots(updated);
+      await syncPlannerNotifications(updated).catch(() => {});
+      setShowModal(false);
+      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch {
+      Alert.alert("Error", "Could not save study session. Please try again.");
+    }
   };
 
   const handleDelete = (slot: StudySlot) => {
@@ -131,10 +137,14 @@ export default function StudyPlannerScreen() {
           text: "Delete",
           style: "destructive",
           onPress: async () => {
-            const updated = await deleteStudySlot(slot.id);
-            setSlots(updated);
-            await syncPlannerNotifications(updated);
-            if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            try {
+              const updated = await deleteStudySlot(slot.id);
+              setSlots(updated);
+              await syncPlannerNotifications(updated).catch(() => {});
+              if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            } catch {
+              Alert.alert("Error", "Could not delete session. Please try again.");
+            }
           },
         },
       ]

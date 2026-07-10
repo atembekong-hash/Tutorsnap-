@@ -64,17 +64,22 @@ export default function ClassroomScreen() {
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const [mine, joined] = await Promise.all([getMyClassroom(), getJoinedClassroom()]);
-    setMyClassroom(mine);
-    setJoinedClassroom(joined);
-    const activeClassroom = mine || joined;
-    if (activeClassroom) {
-      const f = await getClassroomFeed(activeClassroom.code);
-      setFeed(f);
-    } else {
-      setFeed([]);
+    try {
+      const [mine, joined] = await Promise.all([getMyClassroom(), getJoinedClassroom()]);
+      setMyClassroom(mine);
+      setJoinedClassroom(joined);
+      const activeClassroom = mine || joined;
+      if (activeClassroom) {
+        const f = await getClassroomFeed(activeClassroom.code);
+        setFeed(f);
+      } else {
+        setFeed([]);
+      }
+    } catch {
+      Alert.alert("Error", "Could not load classroom data. Please try again.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }, []);
 
   useFocusEffect(useCallback(() => { loadData(); }, [loadData]));
@@ -85,12 +90,17 @@ export default function ClassroomScreen() {
     if (!classroomName.trim()) return;
     setCreating(true);
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    const info = await createClassroom(classroomName);
-    setMyClassroom(info);
-    setShowCreate(false);
-    setClassroomName("");
-    setCreating(false);
-    setActiveTab("manage");
+    try {
+      const info = await createClassroom(classroomName);
+      setMyClassroom(info);
+      setShowCreate(false);
+      setClassroomName("");
+      setActiveTab("manage");
+    } catch {
+      Alert.alert("Error", "Could not create classroom. Please try again.");
+    } finally {
+      setCreating(false);
+    }
   };
 
   const handleJoinClassroom = async () => {
@@ -101,13 +111,18 @@ export default function ClassroomScreen() {
     }
     setJoining(true);
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    const info = await joinClassroom(code);
-    setJoinedClassroom(info);
-    setShowJoin(false);
-    setJoinCode("");
-    setJoining(false);
-    setActiveTab("feed");
-    await loadData();
+    try {
+      const info = await joinClassroom(code);
+      setJoinedClassroom(info);
+      setShowJoin(false);
+      setJoinCode("");
+      setActiveTab("feed");
+      await loadData();
+    } catch {
+      Alert.alert("Invalid Code", "Could not join classroom. Please check the code and try again.");
+    } finally {
+      setJoining(false);
+    }
   };
 
   const handleDeleteClassroom = () => {
@@ -120,9 +135,13 @@ export default function ClassroomScreen() {
           text: "Delete",
           style: "destructive",
           onPress: async () => {
-            await deleteMyClassroom();
-            setMyClassroom(null);
-            setFeed([]);
+            try {
+              await deleteMyClassroom();
+              setMyClassroom(null);
+              setFeed([]);
+            } catch {
+              Alert.alert("Error", "Could not delete classroom. Please try again.");
+            }
           },
         },
       ]
@@ -139,9 +158,13 @@ export default function ClassroomScreen() {
           text: "Leave",
           style: "destructive",
           onPress: async () => {
-            await leaveClassroom();
-            setJoinedClassroom(null);
-            setFeed([]);
+            try {
+              await leaveClassroom();
+              setJoinedClassroom(null);
+              setFeed([]);
+            } catch {
+              Alert.alert("Error", "Could not leave classroom. Please try again.");
+            }
           },
         },
       ]
@@ -149,7 +172,9 @@ export default function ClassroomScreen() {
   };
 
   const handleCopyCode = async (code: string) => {
-    await Clipboard.setStringAsync(code);
+    try {
+      await Clipboard.setStringAsync(code);
+    } catch { /* clipboard may not be available on all platforms */ }
     setCopiedCode(true);
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setTimeout(() => setCopiedCode(false), 2000);
@@ -172,8 +197,12 @@ export default function ClassroomScreen() {
         text: "Remove",
         style: "destructive",
         onPress: async () => {
-          await removeFromClassroomFeed(activeClassroom.code, id);
-          setFeed((prev) => prev.filter((p) => p.id !== id));
+          try {
+            await removeFromClassroomFeed(activeClassroom.code, id);
+            setFeed((prev) => prev.filter((p) => p.id !== id));
+          } catch {
+            Alert.alert("Error", "Could not remove problem. Please try again.");
+          }
         },
       },
     ]);

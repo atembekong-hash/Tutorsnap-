@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { AIResponseRenderer, AIResponseErrorBoundary } from "@/components/ai-response-renderer";
 import {
   View,
   Text,
@@ -55,14 +56,33 @@ function MessageBubble({ message, colors, fs }: { message: ChatMessage; colors: 
         </View>
       )}
       <View style={styles.bubbleContent}>
-        <Text
-          style={[
-            styles.messageText,
-            { color: isUser ? "#FFFFFF" : colors.foreground, fontSize: fs(15), lineHeight: fs(15) * 1.47 },
-          ]}
-        >
-          {message.content}
-        </Text>
+        {isUser ? (
+          // User messages: plain text (no Markdown/LaTeX needed)
+          <Text
+            style={[
+              styles.messageText,
+              { color: "#FFFFFF", fontSize: fs(15), lineHeight: fs(15) * 1.47 },
+            ]}
+          >
+            {message.content}
+          </Text>
+        ) : (
+          // AI messages: full Markdown + LaTeX rendering pipeline
+          <AIResponseErrorBoundary
+            fallbackText={message.content}
+            fontSize={fs(15)}
+            color={colors.foreground}
+          >
+            <AIResponseRenderer
+              markdown={message.content}
+              fontSize={fs(15)}
+              color={colors.foreground}
+              codeBackground={colors.background}
+              flavor="github"
+              stripPreamble
+            />
+          </AIResponseErrorBoundary>
+        )}
         <Text
           style={[
             styles.messageTime,

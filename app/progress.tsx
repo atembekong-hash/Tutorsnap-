@@ -49,19 +49,25 @@ export default function ProgressScreen() {
   const [unlockModal, setUnlockModal] = useState<{ tier: BadgeTier; subjectLabel: string } | null>(null);
 
   const loadProgress = async () => {
-    const p = await getProgress();
-    setProgress(p);
-    // Check for newly unlocked badges
-    const badges = computeMasteryBadges(p.subjectCounts);
-    const seen = await getSeenBadges();
-    for (const badge of badges) {
-      const key = `${badge.subject}-${badge.tier}`;
-      if (!seen.has(key)) {
-        // Found a new badge — show unlock modal
-        await markBadgeSeen(badge.subject, badge.tier);
-        setUnlockModal({ tier: badge.tier, subjectLabel: badge.label });
-        break; // show one at a time
-      }
+    try {
+      const p = await getProgress();
+      setProgress(p);
+      // Check for newly unlocked badges
+      try {
+        const badges = computeMasteryBadges(p.subjectCounts);
+        const seen = await getSeenBadges();
+        for (const badge of badges) {
+          const key = `${badge.subject}-${badge.tier}`;
+          if (!seen.has(key)) {
+            // Found a new badge — show unlock modal
+            await markBadgeSeen(badge.subject, badge.tier);
+            setUnlockModal({ tier: badge.tier, subjectLabel: badge.label });
+            break; // show one at a time
+          }
+        }
+      } catch { /* badge check failure is non-critical */ }
+    } catch {
+      // getProgress has internal fallbacks; this handles unexpected failures
     }
   };
 
@@ -75,9 +81,12 @@ export default function ProgressScreen() {
     if (Platform.OS !== "web") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
-    await setDailyGoal(goal);
-    await loadProgress();
-    setShowGoalPicker(false);
+    try {
+      await setDailyGoal(goal);
+      await loadProgress();
+    } catch { /* goal save failure is non-critical */ } finally {
+      setShowGoalPicker(false);
+    }
   };
 
   if (!progress) {

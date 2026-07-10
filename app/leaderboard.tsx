@@ -58,17 +58,19 @@ export default function LeaderboardScreen() {
   const [selectedAvatar, setSelectedAvatar] = useState(AVATAR_OPTIONS[1]);
 
   const load = useCallback(async () => {
-    const [progress, storedName, code, storedFriends] = await Promise.all([
-      getProgress(),
-      AsyncStorage.getItem(MY_NAME_KEY),
-      getMyInviteCode(),
-      loadFriends(),
-    ]);
-    setMyStreak(progress.streak.currentStreak);
-    setMyTotal(progress.streak.totalSolved);
-    setMyName(storedName ?? "You");
-    setInviteCode(code);
-    setFriends(storedFriends);
+    try {
+      const [progress, storedName, code, storedFriends] = await Promise.all([
+        getProgress(),
+        AsyncStorage.getItem(MY_NAME_KEY).catch(() => null),
+        getMyInviteCode().catch(() => ""),
+        loadFriends().catch(() => [] as FriendEntry[]),
+      ]);
+      setMyStreak(progress.streak.currentStreak);
+      setMyTotal(progress.streak.totalSolved);
+      setMyName(storedName ?? "You");
+      setInviteCode(code);
+      setFriends(storedFriends);
+    } catch { /* load failure degrades gracefully */ }
   }, []);
 
   useEffect(() => { void load(); }, [load]);
@@ -102,29 +104,35 @@ export default function LeaderboardScreen() {
   };
 
   const handleCopyCode = async () => {
-    await Clipboard.setStringAsync(inviteCode);
-    setCopied(true);
-    if (Platform.OS !== "web") {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    }
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await Clipboard.setStringAsync(inviteCode);
+      setCopied(true);
+      if (Platform.OS !== "web") {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* clipboard failure is non-critical */ }
   };
 
   const handleAddFriend = async () => {
     const name = friendName.trim();
-    const streak = parseInt(friendStreak) || 0;
-    const total = parseInt(friendTotal) || 0;
+    const streak = Math.max(0, parseInt(friendStreak, 10) || 0);
+    const total = Math.max(0, parseInt(friendTotal, 10) || 0);
     if (!name) {
       Alert.alert("Name required", "Please enter your friend's name.");
       return;
     }
-    await addFriend(name, streak, total, selectedAvatar);
-    setShowAddModal(false);
-    setFriendName("");
-    setFriendStreak("");
-    setFriendTotal("");
-    setSelectedAvatar(AVATAR_OPTIONS[1]);
-    void load();
+    try {
+      await addFriend(name, streak, total, selectedAvatar);
+      setShowAddModal(false);
+      setFriendName("");
+      setFriendStreak("");
+      setFriendTotal("");
+      setSelectedAvatar(AVATAR_OPTIONS[1]);
+      void load();
+    } catch {
+      Alert.alert("Error", "Could not add friend. Please try again.");
+    }
   };
 
   const handleRemoveFriend = (id: string, name: string) => {
@@ -134,8 +142,12 @@ export default function LeaderboardScreen() {
         text: "Remove",
         style: "destructive",
         onPress: async () => {
-          await removeFriend(id);
-          void load();
+          try {
+            await removeFriend(id);
+            void load();
+          } catch {
+            Alert.alert("Error", "Could not remove friend. Please try again.");
+          }
         },
       },
     ]);
