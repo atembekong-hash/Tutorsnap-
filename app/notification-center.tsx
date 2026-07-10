@@ -98,6 +98,10 @@ export default function NotificationCenterScreen() {
   useEffect(() => {
     loadPrefs();
     checkPermission();
+    // Clear the app badge and the dashboard bell badge when the screen opens
+    if (Platform.OS !== "web") {
+      Notifications.setBadgeCountAsync(0).catch(() => {});
+    }
   }, []);
 
   const loadPrefs = async () => {

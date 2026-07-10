@@ -66,6 +66,12 @@ export default function RootLayout() {
       if (data?.slotId) {
         // Tapped a study planner notification — open the planner
         router.push("/study-planner" as any);
+      } else if (data?.type === "streak_alert" || data?.type === "weekly_report") {
+        // Tapped a streak alert or weekly progress report — go to Progress
+        router.push("/progress" as any);
+      } else if (data?.type === "homework_reminder") {
+        // Tapped a homework reminder — go to Classroom
+        router.push("/(tabs)/classroom" as any);
       } else if (data?.screen === "whats_new" || data?.type === "update") {
         // Tapped an "update available" or "what's new" notification — open Settings scrolled to What's New
         router.push({ pathname: "/settings", params: { scrollTo: "whats_new" } } as any);

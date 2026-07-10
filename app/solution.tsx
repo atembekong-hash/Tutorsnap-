@@ -356,6 +356,14 @@ export default function SolutionScreen() {
       ? `\n\n💡 Tips:\n${solution!.tips!.map((t) => `• ${t}`).join("\n")}`
       : "";
     const message = `📚 ${getSubjectLabel(solution!.subject)} — TutorSnap\n\n❓ ${solution!.problem}\n\n✅ Answer: ${solution!.answer}\n\n${stepsText}${tipsText}\n\nSolved with TutorSnap · tutorsnapai.tech`;
+    if (Platform.OS === "web") {
+      // Share.share is a no-op on web — use clipboard instead
+      try {
+        await Clipboard.setStringAsync(message);
+        Alert.alert("Copied!", "Solution text copied to clipboard.");
+      } catch { /* ignore */ }
+      return;
+    }
     try {
       await Share.share({ message });
     } catch {

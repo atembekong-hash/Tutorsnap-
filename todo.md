@@ -375,3 +375,9 @@
 - [x] Wire cancelStreakAlert when daily goal is met in index.tsx
 - [x] Add notification bell icon with live badge count to dashboard header
 - [x] Bell taps navigate to Notification Center screen
+
+## Round 39: Notification deep-linking, bell badge clear, solution share clipboard fallback
+- [x] Notification tap deep-linking: streak_alert and weekly_report route to Progress; homework_reminder routes to Classroom
+- [x] Fix streak-notifications.ts data.type payloads to snake_case to match router
+- [x] Clear bell badge (setBadgeCountAsync(0)) when Notification Center screen opens
+- [x] Add expo-clipboard fallback to handleShareText in solution.tsx for web

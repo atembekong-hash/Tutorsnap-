@@ -103,7 +103,7 @@ export async function syncStreakAlert(): Promise<void> {
         title: "🔥 Streak at risk!",
         body: streakMsg,
         sound: true,
-        data: { type: "streakAlert" },
+        data: { type: "streak_alert" },
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DATE,
@@ -179,7 +179,7 @@ export async function syncWeeklyReport(): Promise<void> {
         title: "📊 Your weekly TutorSnap report",
         body,
         sound: true,
-        data: { type: "weeklyReport" },
+        data: { type: "weekly_report" },
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DATE,
