@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from "react";
+import { ErrorBoundary } from "@/components/error-boundary";
 import {
   View,
   Text,
@@ -33,7 +34,7 @@ function formatTime(timestamp: number): string {
   return new Date(timestamp).toLocaleDateString();
 }
 
-export default function HistoryScreen() {
+function HistoryScreenContent() {
   const colors = useColors();
   const router = useRouter();
   const [history, setHistory] = useState<HistoryItem[]>([]);
@@ -292,6 +293,14 @@ export default function HistoryScreen() {
         />
       )}
     </ScreenContainer>
+  );
+}
+
+export default function HistoryScreen() {
+  return (
+    <ErrorBoundary label="History">
+      <HistoryScreenContent />
+    </ErrorBoundary>
   );
 }
 

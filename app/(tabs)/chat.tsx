@@ -1,4 +1,5 @@
 import React, { useState, useRef } from "react";
+import { ErrorBoundary } from "@/components/error-boundary";
 import {
   View,
   Text,
@@ -70,7 +71,7 @@ function MessageBubble({ message, colors }: { message: ChatMessage; colors: any 
   );
 }
 
-export default function ChatScreen() {
+function ChatScreenContent() {
   const colors = useColors();
   const [selectedSubject, setSelectedSubject] = useState<SubjectId | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -266,6 +267,14 @@ export default function ChatScreen() {
         </View>
       </KeyboardAvoidingView>
     </ScreenContainer>
+  );
+}
+
+export default function ChatScreen() {
+  return (
+    <ErrorBoundary label="Chat">
+      <ChatScreenContent />
+    </ErrorBoundary>
   );
 }
 

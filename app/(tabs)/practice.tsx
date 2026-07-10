@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from "react";
+import { ErrorBoundary } from "@/components/error-boundary";
 import {
   View,
   Text,
@@ -30,7 +31,7 @@ const DIFFICULTIES: { id: Difficulty; label: string; color: string; desc: string
   { id: "hard", label: "Hard", color: "#EF4444", desc: "Advanced" },
 ];
 
-export default function PracticeScreen() {
+function PracticeScreenContent() {
   const colors = useColors();
   const router = useRouter();
   const [selectedSubject, setSelectedSubject] = useState<SubjectId>("algebra");
@@ -385,6 +386,14 @@ export default function PracticeScreen() {
         )}
       </ScrollView>
     </ScreenContainer>
+  );
+}
+
+export default function PracticeScreen() {
+  return (
+    <ErrorBoundary label="Practice">
+      <PracticeScreenContent />
+    </ErrorBoundary>
   );
 }
 

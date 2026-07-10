@@ -73,3 +73,7 @@
 - [x] Error boundary on home screen with friendly retry card
 - [x] Offline mode indicator (persistent banner when device is offline)
 - [x] App version display at bottom of Settings screen
+- [x] Fix APK version to 1.1.0 and update android package to com.tutorsnap.app
+- [x] Extend ErrorBoundary to all tab screens (Chat, History, Practice, Scan)
+- [x] Add crash reporting via componentDidCatch persisted to AsyncStorage
+- [x] Add What's New changelog card in Settings under ABOUT

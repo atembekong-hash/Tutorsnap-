@@ -86,6 +86,14 @@ function formatHour(hour: number): string {
   return `${h} ${period}`;
 }
 
+const WHATS_NEW: { title: string; desc: string }[] = [
+  { title: "Error Recovery", desc: "Each screen now catches crashes and shows a friendly retry card instead of going blank." },
+  { title: "Offline Indicator", desc: "A banner appears when you lose connection and confirms when you're back online." },
+  { title: "Camera Scan Fix", desc: "The Scan tab now opens the live camera viewfinder directly on launch." },
+  { title: "Adaptive Difficulty", desc: "Practice mode remembers your difficulty per subject and suggests upgrades based on quiz scores." },
+  { title: "Timed Quiz Mode", desc: "30-second multiple-choice quizzes with scoring, streaks, and history tracking." },
+];
+
 export default function SettingsScreen() {
   const colors = useColors();
   const router = useRouter();
@@ -328,12 +336,32 @@ export default function SettingsScreen() {
           subtitle="Version 1.0.0 — AI-powered academic tutor"
           colors={colors}
         />
-        <SettingsRow
+                <SettingsRow
           icon="questionmark.circle"
           label="How to use TutorSnap"
           subtitle="Type, scan, or speak any question to get instant help"
           colors={colors}
         />
+
+        {/* What's New */}
+        <View style={[styles.whatsNewCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={styles.whatsNewHeader}>
+            <Text style={{ fontSize: 16 }}>🎉</Text>
+            <Text style={[styles.whatsNewTitle, { color: colors.foreground }]}>What's New</Text>
+            <View style={[styles.versionBadge, { backgroundColor: `${colors.primary}20` }]}>
+              <Text style={[styles.versionBadgeText, { color: colors.primary }]}>v1.1.0</Text>
+            </View>
+          </View>
+          {WHATS_NEW.map((item, i) => (
+            <View key={i} style={styles.changelogRow}>
+              <Text style={[styles.changelogDot, { color: colors.primary }]}>•</Text>
+              <View style={styles.changelogContent}>
+                <Text style={[styles.changelogLabel, { color: colors.foreground }]}>{item.title}</Text>
+                <Text style={[styles.changelogDesc, { color: colors.muted }]}>{item.desc}</Text>
+              </View>
+            </View>
+          ))}
+        </View>
 
         {/* Subjects covered */}
         <View style={[styles.subjectsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -631,5 +659,52 @@ const styles = StyleSheet.create({
   versionBuild: {
     fontSize: 11,
     fontWeight: "400",
+  },
+  whatsNewCard: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+  },
+  whatsNewHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 14,
+  },
+  whatsNewTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    flex: 1,
+  },
+  versionBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  versionBadgeText: {
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  changelogRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 10,
+  },
+  changelogDot: {
+    fontSize: 16,
+    lineHeight: 20,
+    marginTop: 1,
+  },
+  changelogContent: { flex: 1 },
+  changelogLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    marginBottom: 2,
+  },
+  changelogDesc: {
+    fontSize: 13,
+    lineHeight: 18,
   },
 });

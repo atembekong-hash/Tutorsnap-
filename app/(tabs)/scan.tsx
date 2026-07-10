@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
+import { ErrorBoundary } from "@/components/error-boundary";
 import {
   View,
   Text,
@@ -27,7 +28,7 @@ import { CameraView, useCameraPermissions } from "@/lib/camera-wrapper";
 
 type ScanMode = "camera" | "preview" | "web-picker";
 
-export default function ScanScreen() {
+function ScanScreenContent() {
   const colors = useColors();
   const router = useRouter();
   const cameraRef = useRef<any>(null);
@@ -404,10 +405,16 @@ export default function ScanScreen() {
           <SubjectPicker value={selectedSubject} onChange={setSelectedSubject} showAll />
         </View>
       </ScrollView>
-    </ScreenContainer>
+        </ScreenContainer>
   );
 }
-
+export default function ScanScreen() {
+  return (
+    <ErrorBoundary label="Scan">
+      <ScanScreenContent />
+    </ErrorBoundary>
+  );
+}
 const styles = StyleSheet.create({
   header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 16, borderBottomWidth: 0.5 },
   title: { fontSize: 26, fontWeight: "800", letterSpacing: -0.5 },
