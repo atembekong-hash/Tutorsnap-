@@ -3,6 +3,7 @@ import {
   View,
   Text,
   FlatList,
+  ScrollView,
   TouchableOpacity,
   StyleSheet,
   TextInput,
@@ -28,6 +29,8 @@ import {
   loadSession,
   renameSession,
   togglePin,
+  updateSessionTags,
+  getAllTags,
   MAX_PINNED,
   type ChatSessionSummary,
 } from "@/lib/chat-sessions";
@@ -57,6 +60,7 @@ function SessionCard({
   onShare,
   onRename,
   onTogglePin,
+  onEditTags,
   pinLimitReached,
 }: {
   session: ChatSessionSummary;
@@ -67,6 +71,7 @@ function SessionCard({
   onShare: () => void;
   onRename: () => void;
   onTogglePin: () => void;
+  onEditTags: () => void;
   pinLimitReached: boolean;
 }) {
   const subjectLabel = session.subject ? getSubjectLabel(session.subject as any) : null;
@@ -147,6 +152,17 @@ function SessionCard({
         </View>
       </View>
 
+      {/* Tags */}
+      {session.tags.length > 0 && (
+        <View style={styles.tagRow}>
+          {session.tags.map((tag) => (
+            <View key={tag} style={[styles.tagChip, { backgroundColor: `${colors.primary}15`, borderColor: `${colors.primary}30` }]}>
+              <Text style={[styles.tagChipText, { color: colors.primary, fontSize: fs(11) }]}>#{tag}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+
       {/* Preview */}
       <Text
         style={[styles.cardPreview, { color: colors.muted, fontSize: fs(13) }]}
@@ -185,6 +201,16 @@ function SessionCard({
         >
           <IconSymbol size={14} name="square.and.arrow.up.fill" color={colors.muted} />
           <Text style={[styles.actionBtnText, { color: colors.muted, fontSize: fs(13) }]}>Share</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={onEditTags}
+          accessibilityLabel="Edit tags for this chat"
+          style={[styles.actionBtn, { backgroundColor: `${colors.surface}` }]}
+          activeOpacity={0.75}
+        >
+          <IconSymbol size={14} name="tag.fill" color={colors.muted} />
+          <Text style={[styles.actionBtnText, { color: colors.muted, fontSize: fs(13) }]}>Tags</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -299,6 +325,146 @@ function RenameModal({
   );
 }
 
+// ─── Tag Edit Modal ──────────────────────────────────────────────────────────
+
+const SUGGESTED_TAGS = ["Exam Prep", "Homework", "Review", "Practice", "Notes", "Project"];
+
+function TagEditModal({
+  session,
+  allTags,
+  colors,
+  fs,
+  onSave,
+  onCancel,
+}: {
+  session: ChatSessionSummary;
+  allTags: string[];
+  colors: any;
+  fs: (n: number) => number;
+  onSave: (sessionId: string, tags: string[]) => void;
+  onCancel: () => void;
+}) {
+  const [tags, setTags] = useState<string[]>(session.tags);
+  const [input, setInput] = useState("");
+  const inputRef = useRef<TextInput>(null);
+
+  useEffect(() => {
+    setTimeout(() => inputRef.current?.focus(), 150);
+  }, []);
+
+  const addTag = (tag: string) => {
+    const clean = tag.trim().toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+    if (!clean || tags.includes(clean) || tags.length >= 5) return;
+    setTags((prev) => [...prev, clean]);
+    setInput("");
+  };
+
+  const removeTag = (tag: string) => setTags((prev) => prev.filter((t) => t !== tag));
+
+  const suggestions = [...new Set([...SUGGESTED_TAGS.map(t => t.toLowerCase().replace(/\s+/g, "-")), ...allTags])]
+    .filter((t) => !tags.includes(t))
+    .slice(0, 8);
+
+  return (
+    <Modal
+      visible
+      transparent
+      animationType="fade"
+      onRequestClose={onCancel}
+      statusBarTranslucent
+    >
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={StyleSheet.absoluteFillObject}
+      >
+        <TouchableOpacity
+          style={[styles.modalBackdrop]}
+          activeOpacity={1}
+          onPress={onCancel}
+        />
+        <View style={[styles.tagSheet, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={[styles.tagSheetTitle, { color: colors.foreground, fontSize: fs(17) }]}>
+            Edit Tags
+          </Text>
+
+          {/* Current tags */}
+          {tags.length > 0 && (
+            <View style={styles.tagSheetCurrentRow}>
+              {tags.map((tag) => (
+                <TouchableOpacity
+                  key={tag}
+                  onPress={() => removeTag(tag)}
+                  accessibilityLabel={`Remove tag ${tag}`}
+                  style={[styles.tagSheetChip, { backgroundColor: `${colors.primary}15`, borderColor: `${colors.primary}30` }]}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.tagSheetChipText, { color: colors.primary, fontSize: fs(12) }]}>#{tag}</Text>
+                  <Text style={{ color: colors.primary, fontSize: fs(12) }}>×</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+
+          {/* Input */}
+          <TextInput
+            ref={inputRef}
+            style={[
+              styles.tagSheetInput,
+              { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background, fontSize: fs(14) },
+            ]}
+            value={input}
+            onChangeText={setInput}
+            placeholder={tags.length >= 5 ? "Max 5 tags" : "Add a tag…"}
+            placeholderTextColor={colors.muted}
+            maxLength={24}
+            returnKeyType="done"
+            editable={tags.length < 5}
+            onSubmitEditing={() => addTag(input)}
+          />
+          <Text style={[styles.tagSheetHint, { color: colors.muted, fontSize: fs(11) }]}>
+            {tags.length}/5 tags
+          </Text>
+
+          {/* Suggestions */}
+          {suggestions.length > 0 && (
+            <View style={styles.tagSheetSuggestions}>
+              {suggestions.map((tag) => (
+                <TouchableOpacity
+                  key={tag}
+                  onPress={() => addTag(tag)}
+                  accessibilityLabel={`Add tag ${tag}`}
+                  style={[styles.tagSuggestionChip, { backgroundColor: `${colors.muted}15`, borderColor: `${colors.muted}30` }]}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.tagSuggestionText, { color: colors.muted, fontSize: fs(12) }]}>+{tag}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+
+          {/* Actions */}
+          <View style={styles.tagSheetActions}>
+            <TouchableOpacity
+              onPress={onCancel}
+              style={[styles.tagSheetBtn, { backgroundColor: `${colors.muted}18` }]}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.tagSheetBtnText, { color: colors.muted, fontSize: fs(15) }]}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => onSave(session.id, tags)}
+              style={[styles.tagSheetBtn, { backgroundColor: colors.primary }]}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.tagSheetBtnText, { color: "#fff", fontSize: fs(15) }]}>Save</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
+
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function ChatHistoryScreen() {
@@ -313,6 +479,11 @@ export default function ChatHistoryScreen() {
 
   // Rename modal state
   const [renameTarget, setRenameTarget] = useState<ChatSessionSummary | null>(null);
+
+  // Tag state
+  const [tagTarget, setTagTarget] = useState<ChatSessionSummary | null>(null);
+  const [allTags, setAllTags] = useState<string[]>([]);
+  const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
 
   const pinnedCount = sessions.filter((s) => s.pinned).length;
 
@@ -332,15 +503,34 @@ export default function ChatHistoryScreen() {
     loadSessions();
   }, [loadSessions]);
 
-  // Filter by search
-  const filtered = search.trim()
-    ? sessions.filter(
-        (s) =>
-          s.title.toLowerCase().includes(search.toLowerCase()) ||
-          s.preview.toLowerCase().includes(search.toLowerCase()) ||
-          (s.subject && getSubjectLabel(s.subject as any).toLowerCase().includes(search.toLowerCase()))
-      )
-    : sessions;
+  // Load all tags for the filter bar
+  useEffect(() => {
+    getAllTags().then(setAllTags).catch(() => setAllTags([]));
+  }, [sessions]);
+
+  // Filter by search and active tag
+  const filtered = sessions.filter((s) => {
+    const matchesSearch = !search.trim() ||
+      s.title.toLowerCase().includes(search.toLowerCase()) ||
+      s.preview.toLowerCase().includes(search.toLowerCase()) ||
+      (s.subject && getSubjectLabel(s.subject as any).toLowerCase().includes(search.toLowerCase()));
+    const matchesTag = !activeTagFilter || s.tags.includes(activeTagFilter);
+    return matchesSearch && matchesTag;
+  });
+
+  const handleEditTags = (session: ChatSessionSummary) => {
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setTagTarget(session);
+  };
+
+  const handleTagSave = async (sessionId: string, tags: string[]) => {
+    await updateSessionTags(sessionId, tags);
+    setSessions((prev) =>
+      prev.map((s) => (s.id === sessionId ? { ...s, tags } : s))
+    );
+    setTagTarget(null);
+    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  };
 
   const handleResume = (sessionId: string) => {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -527,6 +717,52 @@ export default function ChatHistoryScreen() {
         )}
       </View>
 
+      {/* Tag filter bar */}
+      {allTags.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={[styles.tagFilterBar, { borderBottomColor: colors.border, backgroundColor: colors.background }]}
+          contentContainerStyle={{ gap: 8, paddingRight: 12 }}
+        >
+          <TouchableOpacity
+            onPress={() => setActiveTagFilter(null)}
+            accessibilityLabel="Show all chats"
+            style={[
+              styles.tagFilterChip,
+              {
+                backgroundColor: !activeTagFilter ? colors.primary : `${colors.primary}12`,
+                borderColor: colors.primary,
+              },
+            ]}
+            activeOpacity={0.75}
+          >
+            <Text style={[styles.tagFilterChipText, { color: !activeTagFilter ? "#fff" : colors.primary, fontSize: fs(12) }]}>
+              All
+            </Text>
+          </TouchableOpacity>
+          {allTags.map((tag) => (
+            <TouchableOpacity
+              key={tag}
+              onPress={() => setActiveTagFilter(activeTagFilter === tag ? null : tag)}
+              accessibilityLabel={`Filter by tag: ${tag}`}
+              style={[
+                styles.tagFilterChip,
+                {
+                  backgroundColor: activeTagFilter === tag ? colors.primary : `${colors.primary}12`,
+                  borderColor: colors.primary,
+                },
+              ]}
+              activeOpacity={0.75}
+            >
+              <Text style={[styles.tagFilterChipText, { color: activeTagFilter === tag ? "#fff" : colors.primary, fontSize: fs(12) }]}>
+                #{tag}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      )}
+
       {/* Pin hint */}
       {pinnedCount > 0 && !search && (
         <View style={[styles.pinHint, { backgroundColor: `${colors.primary}10`, borderBottomColor: colors.border }]}>
@@ -598,6 +834,7 @@ export default function ChatHistoryScreen() {
                   onShare={() => handleShare(item)}
                   onRename={() => handleRename(item)}
                   onTogglePin={() => handleTogglePin(item)}
+                  onEditTags={() => handleEditTags(item)}
                   pinLimitReached={pinnedCount >= MAX_PINNED}
                 />
               </>
@@ -632,6 +869,18 @@ export default function ChatHistoryScreen() {
         onSave={handleRenameSave}
         onCancel={() => setRenameTarget(null)}
       />
+
+      {/* Tag Edit Modal */}
+      {tagTarget && (
+        <TagEditModal
+          session={tagTarget}
+          allTags={allTags}
+          colors={colors}
+          fs={fs}
+          onSave={handleTagSave}
+          onCancel={() => setTagTarget(null)}
+        />
+      )}
     </ScreenContainer>
   );
 }
@@ -801,4 +1050,82 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   renameBtnText: { fontWeight: "700" },
+  // Tag chips
+  tagRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingBottom: 8,
+  },
+  tagChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  tagChipText: { fontWeight: "600" },
+  // Tag filter bar
+  tagFilterBar: {
+    flexDirection: "row",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 8,
+    borderBottomWidth: 0.5,
+  },
+  tagFilterChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  tagFilterChipText: { fontWeight: "600" },
+  // Tag edit modal
+  tagSheet: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderWidth: 1,
+    padding: 24,
+    paddingBottom: 40,
+    gap: 16,
+  },
+  tagSheetTitle: { fontWeight: "700", textAlign: "center" },
+  tagSheetInput: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  tagSheetHint: { textAlign: "right", marginTop: -8 },
+  tagSheetCurrentRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  tagSheetChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  tagSheetChipText: { fontWeight: "600" },
+  tagSheetSuggestions: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  tagSuggestionChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  tagSuggestionText: { fontWeight: "500" },
+  tagSheetActions: { flexDirection: "row", gap: 12 },
+  tagSheetBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: "center",
+  },
+  tagSheetBtnText: { fontWeight: "700" },
 });

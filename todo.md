@@ -241,3 +241,19 @@
 - [x] Pinned chats: pin/unpin button on cards, pinned sessions always appear at top of history list (max 3)
 - [x] Discuss with Tutor: button on solution screen opens a new chat pre-seeded with the problem and solution
 - [x] TypeScript: 0 errors
+
+## Round 26: Chat Auto-Seed, PDF Export, Tags
+- [ ] Auto-send seed message when chat opened via Discuss with Tutor (AI responds immediately)
+- [ ] Chat session PDF export via expo-print in share menu (Save as PDF option)
+- [ ] Session tags/categories (Exam Prep, Homework, etc.) with filter bar in chat history
+- [ ] TypeScript: 0 errors
+
+## Round 26: Chat Auto-Seed, PDF Export, Tags/Categories
+- [x] Auto-send seed message when chat opened via Discuss with Tutor (useEffect triggers sendMessage with seedMessage param)
+- [x] Chat session PDF export: Share button opens two-option menu (Save as PDF via expo-print, Share as Text)
+- [x] Session tags/categories: ChatSession model gets tags field; updateSessionTags/getAllTags functions added
+- [x] Tag chips displayed on session cards; Tags action button opens TagEditModal
+- [x] TagEditModal: add/remove tags (max 5), type custom tag or pick from suggestions (Exam Prep, Homework, Review, Practice, Notes, Project) plus all existing tags
+- [x] Tag filter bar in Chat History: horizontal scrollable chips (All + each tag), filters session list in real time
+- [x] tag.fill icon added to icon-symbol.tsx mapping
+- [x] TypeScript: 0 errors

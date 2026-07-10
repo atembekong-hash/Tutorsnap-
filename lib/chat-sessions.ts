@@ -23,6 +23,7 @@ export interface ChatSession {
   createdAt: number;
   updatedAt: number;
   messageCount: number;    // Cached for list display
+  tags: string[];          // User-defined tags (e.g. "Exam Prep", "Homework")
 }
 
 export interface ChatSessionSummary {
@@ -34,6 +35,7 @@ export interface ChatSessionSummary {
   messageCount: number;
   preview: string;         // Last AI message snippet
   pinned: boolean;         // Whether this session is pinned to the top
+  tags: string[];          // User-defined tags
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -138,6 +140,7 @@ export async function createSession(subject: string | null = null): Promise<Chat
     createdAt: now,
     updatedAt: now,
     messageCount: 0,
+    tags: [],
   };
   await saveSession(session);
   return session;
@@ -230,6 +233,7 @@ export async function listSessionSummaries(): Promise<ChatSessionSummary[]> {
         messageCount: s.messageCount,
         preview,
         pinned: pinSet.has(s.id),
+        tags: s.tags ?? [],
       });
     } catch { /* skip malformed */ }
   }
@@ -280,6 +284,7 @@ export async function migrateOldChatHistory(): Promise<void> {
           createdAt: messages[0]?.timestamp ?? Date.now(),
           updatedAt: messages[messages.length - 1]?.timestamp ?? Date.now(),
           messageCount: messages.length,
+          tags: [],
         };
         await saveSession(session);
       }
@@ -287,4 +292,29 @@ export async function migrateOldChatHistory(): Promise<void> {
 
     await AsyncStorage.setItem(MIGRATION_DONE_KEY, "1");
   } catch { /* ignore migration errors */ }
+}
+
+// ─── Tag Management ───────────────────────────────────────────────────────────
+
+/** Update the tags on a session. Tags are trimmed, deduplicated, max 5 per session. */
+export async function updateSessionTags(sessionId: string, tags: string[]): Promise<void> {
+  const session = await loadSession(sessionId);
+  if (!session) return;
+  const cleaned = [...new Set(tags.map((t) => t.trim()).filter(Boolean))].slice(0, 5);
+  await saveSession({ ...session, tags: cleaned });
+}
+
+/** Collect all unique tags across all sessions, sorted alphabetically. */
+export async function getAllTags(): Promise<string[]> {
+  const index = await readIndex();
+  const tagSet = new Set<string>();
+  const pairs = await AsyncStorage.multiGet(index.map(SESSION_KEY));
+  for (const [, raw] of pairs) {
+    if (!raw) continue;
+    try {
+      const s = JSON.parse(raw) as ChatSession;
+      for (const tag of s.tags ?? []) tagSet.add(tag);
+    } catch { /* skip */ }
+  }
+  return [...tagSet].sort((a, b) => a.localeCompare(b));
 }

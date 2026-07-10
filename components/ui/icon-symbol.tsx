@@ -7,6 +7,7 @@ type IconMapping = Record<SymbolViewProps["name"], ComponentProps<typeof Materia
 type IconSymbolName = keyof typeof MAPPING;
 
 const MAPPING = {
+  "tag.fill": "label",
   // Navigation
   "house.fill": "home",
   "chevron.right": "chevron-right",

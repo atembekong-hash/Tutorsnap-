@@ -15,6 +15,8 @@ import {
 } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
+import * as Print from "expo-print";
+import * as Sharing from "expo-sharing";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -137,7 +139,8 @@ function ChatScreenContent() {
   const colors = useColors();
   const { fs } = useFontSize();
   const router = useRouter();
-  const params = useLocalSearchParams<{ sessionId?: string; newSession?: string }>();
+  const params = useLocalSearchParams<{ sessionId?: string; newSession?: string; seedMessage?: string }>();
+  const seedSentRef = useRef(false);
 
   const [session, setSession] = useState<ChatSession | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -145,6 +148,8 @@ function ChatScreenContent() {
   const [inputText, setInputText] = useState("");
   const [sessionLoaded, setSessionLoaded] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
+  const [showShareMenu, setShowShareMenu] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
 
   const flatListRef = useRef<FlatList>(null);
   const { isOnline } = useNetworkStatus();
@@ -196,6 +201,19 @@ function ChatScreenContent() {
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ── Auto-send seed message (from Discuss with Tutor) ────────────────────────
+
+  useEffect(() => {
+    if (!sessionLoaded || !session || !isOnline || seedSentRef.current) return;
+    const seed = params.seedMessage;
+    if (!seed || !seed.trim()) return;
+    seedSentRef.current = true;
+    // Small delay so the UI settles before sending
+    const timer = setTimeout(() => handleSend(seed), 600);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionLoaded, session, isOnline]);
 
   // ── Persist helper ──────────────────────────────────────────────────────────
 
@@ -293,30 +311,23 @@ function ChatScreenContent() {
 
   // ── Share chat ──────────────────────────────────────────────────────────────
 
-  const handleShare = useCallback(async () => {
-    if (!session) return;
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  // ── Build share text helper ───────────────────────────────────────────────
 
+  const buildShareText = useCallback(() => {
+    if (!session) return "";
     const subjectLabel = selectedSubject ? getSubjectLabel(selectedSubject) : "General";
     const dateStr = new Date(session.createdAt).toLocaleDateString(undefined, {
-      month: "long",
-      day: "numeric",
-      year: "numeric",
+      month: "long", day: "numeric", year: "numeric",
     });
-
     const lines: string[] = [
       `📚 TutorSnap Chat — ${session.title}`,
       `Subject: ${subjectLabel} · ${dateStr}`,
       "",
     ];
-
     for (const msg of messages) {
       if (msg.id.startsWith("welcome")) continue;
       const role = msg.role === "user" ? "You" : "TutorSnap";
-      const time = new Date(msg.timestamp).toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
+      const time = new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
       const text = msg.content
         .replace(/\$\$[\s\S]*?\$\$/g, "[equation]")
         .replace(/\$[^$\n]+\$/g, "[math]")
@@ -327,10 +338,59 @@ function ChatScreenContent() {
         .trim();
       lines.push(`[${time}] ${role}: ${text}`);
     }
-
     lines.push("", "Shared from TutorSnap · tutorsnapai.tech");
-    const shareText = lines.join("\n");
+    return lines.join("\n");
+  }, [session, messages, selectedSubject]);
 
+  // ── Share as PDF ──────────────────────────────────────────────────────────
+
+  const handleSharePDF = useCallback(async () => {
+    if (!session) return;
+    setShowShareMenu(false);
+    setPdfLoading(true);
+    try {
+      const subjectLabel = selectedSubject ? getSubjectLabel(selectedSubject) : "General";
+      const dateStr = new Date(session.createdAt).toLocaleDateString(undefined, {
+        month: "long", day: "numeric", year: "numeric",
+      });
+      const bubbles = messages
+        .filter((m) => !m.id.startsWith("welcome"))
+        .map((m) => {
+          const isUser = m.role === "user";
+          const time = new Date(m.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+          const text = m.content
+            .replace(/\$\$[\s\S]*?\$\$/g, "[equation]")
+            .replace(/\$[^$\n]+\$/g, "[math]")
+            .replace(/#{1,6}\s/g, "")
+            .replace(/\*\*|__/g, "")
+            .replace(/\*|_/g, "")
+            .replace(/`{1,3}/g, "")
+            .replace(/</g, "&lt;").replace(/>/g, "&gt;")
+            .trim();
+          return `<div class="bubble ${isUser ? "user" : "ai"}"><div class="role">${isUser ? "You" : "TutorSnap AI"} <span class="time">${time}</span></div><div class="text">${text.replace(/\n/g, "<br/>")}</div></div>`;
+        })
+        .join("");
+
+      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:-apple-system,sans-serif;margin:0;padding:32px;background:#fff;color:#1a1a1a}.header{border-bottom:2px solid #6366f1;padding-bottom:16px;margin-bottom:24px}.header h1{margin:0 0 4px;font-size:20px;color:#6366f1}.header p{margin:0;font-size:13px;color:#666}.bubble{margin-bottom:16px;max-width:80%}.bubble.user{margin-left:auto}.role{font-size:11px;font-weight:700;color:#888;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px}.bubble.user .role{text-align:right}.time{font-weight:400;margin-left:6px}.text{background:#f5f5f5;border-radius:12px;padding:12px 16px;font-size:14px;line-height:1.6}.bubble.user .text{background:#6366f1;color:#fff}.footer{margin-top:32px;padding-top:16px;border-top:1px solid #eee;font-size:11px;color:#aaa;text-align:center}</style></head><body><div class="header"><h1>${session.title.replace(/</g, "&lt;")}</h1><p>Subject: ${subjectLabel} &middot; ${dateStr} &middot; ${messages.filter(m => !m.id.startsWith("welcome")).length} messages</p></div>${bubbles || "<p style=\"color:#aaa\">No messages yet.</p>"}<div class="footer">Exported from TutorSnap &middot; tutorsnapai.tech</div></body></html>`;
+
+      const { uri } = await Print.printToFileAsync({ html, base64: false });
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, { mimeType: "application/pdf", dialogTitle: "Save Chat PDF" });
+      } else {
+        Alert.alert("PDF Saved", "Your chat has been saved as a PDF.");
+      }
+    } catch {
+      Alert.alert("Error", "Could not generate PDF. Please try again.");
+    } finally {
+      setPdfLoading(false);
+    }
+  }, [session, messages, selectedSubject]);
+
+  // ── Share as text ──────────────────────────────────────────────────────────
+
+  const handleShareText = useCallback(async () => {
+    setShowShareMenu(false);
+    const shareText = buildShareText();
     if (Platform.OS === "web") {
       try {
         await Clipboard.setStringAsync(shareText);
@@ -339,11 +399,17 @@ function ChatScreenContent() {
       } catch { /* ignore */ }
       return;
     }
-
     try {
       await Share.share({ message: shareText });
     } catch { /* user cancelled */ }
-  }, [session, messages, selectedSubject]);
+  }, [buildShareText]);
+
+  // ── Share chat (opens menu) ───────────────────────────────────────────────
+
+  const handleShare = useCallback(() => {
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setShowShareMenu(true);
+  }, []);
 
   // ── Subject change ──────────────────────────────────────────────────────────
 
@@ -618,6 +684,83 @@ function ChatScreenContent() {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+
+      {/* PDF loading overlay */}
+      {pdfLoading && (
+        <View style={StyleSheet.absoluteFillObject} pointerEvents="box-only"
+          // @ts-ignore — pointerEvents on View is valid RN
+        >
+          <View style={[styles.pdfOverlay, { backgroundColor: "rgba(0,0,0,0.45)" }]}>
+            <View style={[styles.pdfCard, { backgroundColor: colors.surface }]}>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={[styles.pdfCardText, { color: colors.foreground, fontSize: fs(15) }]}>
+                Generating PDF…
+              </Text>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* Share menu bottom sheet */}
+      {showShareMenu && (
+        <View style={StyleSheet.absoluteFillObject}>
+          <TouchableOpacity
+            style={[styles.shareBackdrop, { backgroundColor: "rgba(0,0,0,0.45)" }]}
+            activeOpacity={1}
+            onPress={() => setShowShareMenu(false)}
+          />
+          <View style={[styles.shareSheet, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={[styles.shareHandle, { backgroundColor: colors.border }]} />
+            <Text style={[styles.shareTitle, { color: colors.foreground, fontSize: fs(16) }]}>
+              Share Chat
+            </Text>
+            {Platform.OS !== "web" && (
+              <TouchableOpacity
+                style={[styles.shareOption, { borderColor: colors.border }]}
+                onPress={handleSharePDF}
+                activeOpacity={0.7}
+              >
+                <IconSymbol size={22} name="doc.fill" color={colors.error} />
+                <View style={styles.shareOptionText}>
+                  <Text style={[styles.shareOptionTitle, { color: colors.foreground, fontSize: fs(15) }]}>
+                    Save as PDF
+                  </Text>
+                  <Text style={[styles.shareOptionSub, { color: colors.muted, fontSize: fs(12) }]}>
+                    Export a formatted PDF of this conversation
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              style={[styles.shareOption, { borderColor: colors.border }]}
+              onPress={handleShareText}
+              activeOpacity={0.7}
+            >
+              <IconSymbol size={22} name="square.and.arrow.up.fill" color={colors.primary} />
+              <View style={styles.shareOptionText}>
+                <Text style={[styles.shareOptionTitle, { color: colors.foreground, fontSize: fs(15) }]}>
+                  {Platform.OS === "web" ? "Copy as Text" : "Share as Text"}
+                </Text>
+                <Text style={[styles.shareOptionSub, { color: colors.muted, fontSize: fs(12) }]}>
+                  {Platform.OS === "web" ? "Copy conversation to clipboard" : "Share via messages, email, or notes"}
+                </Text>
+              </View>
+              {shareCopied && (
+                <IconSymbol size={18} name="checkmark.circle.fill" color={colors.success} />
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.shareCancelBtn, { borderColor: colors.border }]}
+              onPress={() => setShowShareMenu(false)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.shareCancelText, { color: colors.muted, fontSize: fs(15) }]}>
+                Cancel
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
     </ScreenContainer>
   );
 }
@@ -745,4 +888,57 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  // Share menu
+  shareBackdrop: { ...StyleSheet.absoluteFillObject },
+  shareSheet: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderTopWidth: 1,
+    paddingTop: 12,
+    paddingBottom: 32,
+    paddingHorizontal: 20,
+  },
+  shareHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: "center",
+    marginBottom: 16,
+  },
+  shareTitle: { fontWeight: "700", marginBottom: 16 },
+  shareOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    paddingVertical: 14,
+    borderBottomWidth: 0.5,
+  },
+  shareOptionText: { flex: 1 },
+  shareOptionTitle: { fontWeight: "600", marginBottom: 2 },
+  shareOptionSub: {},
+  shareCancelBtn: {
+    marginTop: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+    borderTopWidth: 0.5,
+  },
+  shareCancelText: { fontWeight: "500" },
+  // PDF overlay
+  pdfOverlay: {
+    ...StyleSheet.absoluteFillObject as object,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  pdfCard: {
+    borderRadius: 16,
+    padding: 28,
+    alignItems: "center",
+    gap: 14,
+    minWidth: 180,
+  },
+  pdfCardText: { fontWeight: "600" },
 });
