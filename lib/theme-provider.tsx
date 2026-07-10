@@ -65,7 +65,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [loaded, setLoaded] = useState(false);
 
   const applyScheme = useCallback((scheme: ColorScheme) => {
-    nativewindColorScheme.set(scheme);
+    // nativewindColorScheme.set() throws on web when darkMode is 'media'.
+    // On web, CSS variables + data-theme attribute handle everything.
+    if (typeof window === "undefined") {
+      try { nativewindColorScheme.set(scheme); } catch { /* ignore on native */ }
+    }
     Appearance.setColorScheme?.(scheme);
     applySchemeToDOM(scheme);
   }, []);
