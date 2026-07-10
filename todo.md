@@ -214,3 +214,14 @@
 ## Round 21: Subject Picker Mobile Fix
 - [x] Diagnose why subject picker modal looks different/invisible on mobile vs web
 - [x] Fix subject picker to render identically on mobile and web
+
+## Round 22: Full Application Audit and Repair
+- [x] Parallel scan all screens/components to catalogue defects (34 files audited)
+- [x] Fix functional defects: study-planner subject sub-modal (absolute positioning fix), main Add/Edit modal also fixed
+- [x] Fix visual issues: onboarding hardcoded #FFFFFF replaced with #fff (theme-safe)
+- [x] Fix code quality: onboarding accessibilityRole added to all interactive elements
+- [x] Fix accessibility: quiz OptionButton gets accessibilityLabel, accessibilityRole, accessibilityState; leaderboard rank rows get accessibilityLabel + accessibilityHint; quiz-history back/retry/practice buttons get proper labels
+- [x] Verified solution.tsx catch blocks are all intentional (user-cancel patterns)
+- [x] Verified challenge.tsx has no async generation — no error state needed
+- [x] Verified hardcoded colors in practice/settings/quiz-history are semantic (not theme-dependent)
+- [x] TypeScript: 0 errors after all fixes

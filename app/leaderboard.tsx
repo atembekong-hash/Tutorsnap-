@@ -239,6 +239,9 @@ export default function LeaderboardScreen() {
           <TouchableOpacity
             onLongPress={() => !item.isMe && handleRemoveFriend(item.id, item.name)}
             activeOpacity={item.isMe ? 1 : 0.7}
+            accessibilityLabel={`${item.name}${item.isMe ? " (You)" : ""}, rank ${item.rank}, ${item.streak} day streak, ${item.totalSolved} problems solved`}
+            accessibilityHint={item.isMe ? undefined : "Long press to remove from leaderboard"}
+            accessibilityRole="button"
             style={[
               styles.rankRow,
               {

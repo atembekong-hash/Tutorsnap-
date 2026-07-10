@@ -306,10 +306,13 @@ export default function StudyPlannerScreen() {
       </ScrollView>
 
       {/* Add/Edit Modal */}
-      <Modal visible={showModal} transparent animationType="slide" onRequestClose={() => setShowModal(false)}>
-        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
-        <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setShowModal(false)} accessibilityLabel="Close modal" />
-        <View style={[styles.modalSheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
+      <Modal visible={showModal} transparent animationType="slide" statusBarTranslucent onRequestClose={() => setShowModal(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={StyleSheet.absoluteFillObject as object}>
+          {/* absoluteFillObject backdrop */}
+          <TouchableOpacity style={StyleSheet.absoluteFillObject as object} activeOpacity={1} onPress={() => setShowModal(false)} accessibilityLabel="Close modal">
+            <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.45)" }} />
+          </TouchableOpacity>
+          <View style={[styles.modalSheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
           <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
             <Text style={[styles.modalTitle, { color: colors.foreground }]}>
               {editingSlot ? "Edit Session" : `Add Session · ${WEEKDAY_FULL[selectedDay]}`}
@@ -462,9 +465,14 @@ export default function StudyPlannerScreen() {
           visible={showSubjectPicker}
           transparent
           animationType="slide"
+          statusBarTranslucent
           onRequestClose={() => setShowSubjectPicker(false)}
         >
-          <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setShowSubjectPicker(false)} accessibilityLabel="Close subject picker" />
+          {/* absoluteFillObject backdrop — does not consume flex space, so the sheet stays visible on native */}
+          <TouchableOpacity style={StyleSheet.absoluteFillObject as object} onPress={() => setShowSubjectPicker(false)} accessibilityLabel="Close subject picker">
+            <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.45)" }} />
+          </TouchableOpacity>
+          {/* Absolutely anchored sheet — always at the bottom on all platforms */}
           <View style={[styles.subjectSheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
             <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
               <Text style={[styles.modalTitle, { color: colors.foreground }]}>Choose Subject</Text>
@@ -545,7 +553,7 @@ const styles = StyleSheet.create({
   slotSubject: { fontSize: 12, fontWeight: "500" },
   slotDeleteBtn: { padding: 16 },
   modalBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)" },
-  modalSheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, borderTopWidth: 1, borderLeftWidth: 1, borderRightWidth: 1, maxHeight: "85%" },
+  modalSheet: { position: "absolute", bottom: 0, left: 0, right: 0, borderTopLeftRadius: 24, borderTopRightRadius: 24, borderTopWidth: 1, borderLeftWidth: 1, borderRightWidth: 1, maxHeight: "85%" },
   modalHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingVertical: 16, borderBottomWidth: StyleSheet.hairlineWidth },
   modalTitle: { fontSize: 17, fontWeight: "700" },
   modalClose: { fontSize: 18, padding: 4 },
@@ -574,7 +582,7 @@ const styles = StyleSheet.create({
   previewText: { fontSize: 14, fontWeight: "600" },
   saveBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderRadius: 16, paddingVertical: 16, marginTop: 16 },
   saveBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
-  subjectSheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, borderTopWidth: 1, borderLeftWidth: 1, borderRightWidth: 1, maxHeight: "60%" },
+  subjectSheet: { position: "absolute", bottom: 0, left: 0, right: 0, borderTopLeftRadius: 24, borderTopRightRadius: 24, borderTopWidth: 1, borderLeftWidth: 1, borderRightWidth: 1, maxHeight: "60%" },
   subjectCell: { flex: 1, margin: 4, padding: 12, borderRadius: 12, borderWidth: 1.5, alignItems: "center", minHeight: 72, justifyContent: "center", gap: 4 },
   subjectCellLabel: { fontSize: 12, fontWeight: "600", textAlign: "center", lineHeight: 16 },
 });

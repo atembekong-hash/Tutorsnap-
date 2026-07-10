@@ -104,6 +104,8 @@ export default function OnboardingScreen() {
         style={styles.skipBtn}
         onPress={finishOnboarding}
         activeOpacity={0.7}
+        accessibilityLabel="Skip onboarding"
+        accessibilityRole="button"
       >
         <Text style={[styles.skipText, { color: colors.muted }]}>Skip</Text>
       </TouchableOpacity>
@@ -140,6 +142,9 @@ export default function OnboardingScreen() {
                       key={cat}
                       onPress={() => toggleCategory(cat)}
                       activeOpacity={0.8}
+                      accessibilityLabel={`${selected ? 'Deselect' : 'Select'} ${def.label} category`}
+                      accessibilityRole="checkbox"
+                      accessibilityState={{ checked: selected }}
                       style={[
                         styles.categoryCard,
                         {
@@ -193,6 +198,8 @@ export default function OnboardingScreen() {
         onPress={goNext}
         activeOpacity={0.85}
         style={[styles.ctaButton, { backgroundColor: colors.primary }]}
+        accessibilityLabel={isLastSlide ? "Get Started" : "Next slide"}
+        accessibilityRole="button"
       >
         <Text style={styles.ctaText}>
           {isLastSlide ? "Get Started" : "Next"}
@@ -270,7 +277,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  checkText: { color: "#FFFFFF", fontSize: 12, fontWeight: "800" },
+  checkText: { color: "#fff", fontSize: 12, fontWeight: "800" },
   dotsRow: {
     flexDirection: "row",
     justifyContent: "center",
@@ -289,7 +296,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   ctaText: {
-    color: "#FFFFFF",
+    color: "#fff",
     fontSize: 17,
     fontWeight: "700",
     letterSpacing: 0.3,

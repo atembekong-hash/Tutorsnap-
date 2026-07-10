@@ -115,7 +115,7 @@ export default function QuizHistoryScreen() {
     <ScreenContainer>
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} accessibilityLabel="Go back" accessibilityRole="button">
           <IconSymbol size={24} name="arrow.left" color={colors.foreground} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
@@ -137,7 +137,8 @@ export default function QuizHistoryScreen() {
           <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Could Not Load History</Text>
           <Text style={[styles.emptySub, { color: colors.muted }]}>Something went wrong. Please try again.</Text>
           <TouchableOpacity
-            accessibilityLabel="Toggle loading"
+            accessibilityLabel="Retry loading quiz history"
+            accessibilityRole="button"
             onPress={() => {
               setLoading(true);
               setLoadError(false);
@@ -157,6 +158,8 @@ export default function QuizHistoryScreen() {
           </Text>
           <TouchableOpacity
             onPress={() => router.back()}
+            accessibilityLabel="Go to Practice"
+            accessibilityRole="button"
             style={[styles.startBtn, { backgroundColor: colors.primary }]}
           >
             <Text style={styles.startBtnText}>Go to Practice</Text>

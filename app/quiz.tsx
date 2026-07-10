@@ -66,12 +66,16 @@ function OptionRow({
     textColor = colors.primary;
   }
 
+  const stateLabel = revealed ? (correct ? " — correct" : selected ? " — incorrect" : "") : selected ? " — selected" : "";
   return (
     <TouchableOpacity
       onPress={onPress}
       disabled={revealed}
       style={[styles.optionRow, { backgroundColor: bg, borderColor: border }]}
       activeOpacity={0.75}
+      accessibilityLabel={`Option ${optKey}: ${text}${stateLabel}`}
+      accessibilityRole="radio"
+      accessibilityState={{ selected, disabled: revealed }}
     >
       <View style={[styles.optionBadge, { backgroundColor: revealed && correct ? colors.success : revealed && selected ? colors.error : selected ? colors.primary : colors.border }]}>
         <Text style={[styles.optionBadgeText, { color: revealed || selected ? "#fff" : colors.muted }]}>{optKey}</Text>
