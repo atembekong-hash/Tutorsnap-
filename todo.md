@@ -228,3 +228,10 @@
 
 ## Round 23: Quiz Share Web Clipboard Fallback
 - [x] Add Copy Results fallback on quiz share button for web (expo-clipboard when Share.share unavailable)
+
+## Round 24: Persistent Chat Sessions + History Menu + Share
+- [x] Build lib/chat-sessions.ts: multi-session data model, save/load/delete/list sessions, migration from old single-session storage
+- [x] Build app/chat-history.tsx: full chat history menu (list sessions, resume, delete, search, share, clear all)
+- [x] Refactor chat screen: named sessions, new chat button, resume from history, share chat button, history button, auto-save every message, auto-title from first user message
+- [x] Register chat-history route in _layout.tsx
+- [x] TypeScript: 0 errors
