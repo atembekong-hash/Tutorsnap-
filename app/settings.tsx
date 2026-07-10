@@ -299,18 +299,19 @@ export default function SettingsScreen() {
 
   const handlePrivacyPolicy = () => {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    Linking.openURL("https://mathgenius-g8jxpbar.manus.space/privacy");
+    Linking.openURL("https://tutorsnapai.tech/privacy");
   };
 
   const handleContactSupport = () => {
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const subject = encodeURIComponent("TutorSnap Support Request");
-    const body = encodeURIComponent(`Hi TutorSnap team,\n\nApp version: 1.1.0\nPlatform: ${Platform.OS}\n\nIssue / Question:\n`);
-    Linking.openURL(`mailto:support@tutorsnap.app?subject=${subject}&body=${body}`);
+    const body = encodeURIComponent(`Hi TutorSnap team,\n\nApp version: ${Constants.expoConfig?.version ?? "1.1.0"}\nPlatform: ${Platform.OS}\n\nIssue / Question:\n`);
+    Linking.openURL(`mailto:support@tutorsnapai.tech?subject=${subject}&body=${body}`);
   };
 
   const handleTerms = () => {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    Linking.openURL("https://mathgenius-g8jxpbar.manus.space/terms");
+    Linking.openURL("https://tutorsnapai.tech/terms");
   };
 
   const preferredCategoryLabels = Array.from(preferredCategories)
@@ -485,6 +486,14 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         )}
 
+        <SettingsRow
+          icon="bell.badge.fill"
+          label="Notification Center"
+          subtitle="Manage all notification types"
+          colors={colors}
+          onPress={() => router.push("/notification-center" as any)}
+        />
+
         {/* Progress & Data */}
         <SectionHeader title="PROGRESS & DATA" colors={colors} />
         <SettingsRow
@@ -596,6 +605,30 @@ export default function SettingsScreen() {
           subtitle="Get help or send feedback"
           colors={colors}
           onPress={handleContactSupport}
+        />
+        <SettingsRow
+          icon="bubble.left.and.text.bubble.right.fill"
+          label="Send Feedback"
+          subtitle="Share ideas, suggestions, or compliments"
+          colors={colors}
+          onPress={() => router.push("/feedback" as any)}
+        />
+        <SettingsRow
+          icon="ladybug.fill"
+          label="Report a Bug"
+          subtitle="Found a problem? Let us know"
+          colors={colors}
+          onPress={() => router.push("/report-bug" as any)}
+        />
+
+        {/* Legal */}
+        <SectionHeader title="LEGAL & PRIVACY" colors={colors} />
+        <SettingsRow
+          icon="scale.3d"
+          label="Legal & Privacy Hub"
+          subtitle="Privacy Policy, Terms, Licenses, and more"
+          colors={colors}
+          onPress={() => router.push("/legal" as any)}
         />
 
         {/* What's New */}

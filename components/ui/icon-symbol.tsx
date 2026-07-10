@@ -97,7 +97,23 @@ const MAPPING = {
   "square.and.arrow.up.fill": "ios-share",
   // Code
   "chevron.left.forwardslash.chevron.right": "code",
-} as IconMapping;
+  // New settings pages
+  "bubble.left.and.text.bubble.right.fill": "forum",
+  "ladybug.fill": "bug-report",
+  "bell.badge.fill": "notification-important",
+  "doc.badge.gearshape.fill": "manage-accounts",
+  "cookie.fill": "cookie",
+  "doc.plaintext.fill": "article",
+  "person.3.fill": "groups",
+  "person.badge.minus.fill": "person-remove",
+  "checkmark.shield.fill": "verified-user",
+  "scale.3d": "balance",
+  "globe": "language",
+  "shield.lefthalf.filled": "security",
+  "lock.doc.fill": "lock",
+  "text.badge.checkmark": "fact-check",
+  "waveform.badge.exclamationmark": "report-problem",
+} as unknown as IconMapping;
 
 export function IconSymbol({
   name,

@@ -182,6 +182,34 @@ export default function RootLayout() {
               }}
             />
             <Stack.Screen name="oauth/callback" />
+            <Stack.Screen
+              name="notification-center"
+              options={{
+                presentation: "card",
+                animation: "slide_from_right",
+              }}
+            />
+            <Stack.Screen
+              name="feedback"
+              options={{
+                presentation: "card",
+                animation: "slide_from_right",
+              }}
+            />
+            <Stack.Screen
+              name="report-bug"
+              options={{
+                presentation: "card",
+                animation: "slide_from_right",
+              }}
+            />
+            <Stack.Screen
+              name="legal"
+              options={{
+                presentation: "card",
+                animation: "slide_from_right",
+              }}
+            />
           </Stack>
           <StatusBar style="auto" />
         </QueryClientProvider>

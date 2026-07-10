@@ -112,3 +112,19 @@
 - [x] Voice input microphone button on Solve screen
 - [x] Dark mode toggle shortcut in home screen header
 - [x] Auto-show BadgeUnlockModal when new badge earned on home screen
+
+## Settings Pages (Round 7 — Full 14-Page Implementation)
+- [x] Replace all Manus domain URLs with tutorsnapai.tech (privacy, terms, support email)
+- [x] Notification Center screen — 7 toggles (daily reminder, streak alerts, badges, study reminders, weekly report, practice nudge, achievements), enable/disable all, permission banner
+- [x] Feedback screen — star rating (1-5), category picker (6 types), message form, mailto to feedback@tutorsnapai.tech
+- [x] Report a Bug screen — category (8 types), severity (4 levels), description, steps to reproduce, device info auto-filled, mailto to bugs@tutorsnapai.tech
+- [x] Legal hub screen — links to Privacy Policy, Terms, Cookie Policy, Licenses, Community Guidelines, Consent Management, Data Deletion
+- [x] Cookie Policy modal — full policy text about local storage
+- [x] Open Source Licenses modal — 20 packages listed with version and license type
+- [x] Community Guidelines modal — 7 sections covering academic integrity, privacy, safety
+- [x] Consent Management modal — analytics and marketing toggles with AsyncStorage persistence
+- [x] Data Deletion Request modal — GDPR/CCPA compliant, mailto to privacy@tutorsnapai.tech
+- [x] New settings rows added: Notification Center, Send Feedback, Report a Bug, Legal & Privacy Hub
+- [x] 4 new screens registered in _layout.tsx (notification-center, feedback, report-bug, legal)
+- [x] 15 new icon mappings added to icon-symbol.tsx
+- [x] TypeScript: 0 errors
