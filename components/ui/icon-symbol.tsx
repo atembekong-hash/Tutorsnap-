@@ -71,6 +71,7 @@ const MAPPING = {
   "mic.fill": "mic",
   "mic.slash.fill": "mic-off",
   "stop.fill": "stop",
+  "plus": "add",
   "plus.circle.fill": "add-circle",
   "minus.circle.fill": "remove-circle",
   "info.circle": "info",
