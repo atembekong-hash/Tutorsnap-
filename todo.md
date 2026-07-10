@@ -295,3 +295,11 @@
 - [x] Classroom: challenge result label distinguishes "Incorrect" vs "Timed out"
 - [x] Classroom: joined classroom name set from student display name
 - [x] Classroom: display-name editing uses cross-platform modal (replaces Alert.prompt)
+
+## Round 31: Classroom Feed Search + Homework Completion Tracking
+- [x] Classroom feed search bar (keyword, subject, person)
+- [x] Homework completion: Done button on feed cards (student only)
+- [x] Homework completion: green checkmark badge + green accent strip when done
+- [x] Homework banner shows remaining count (e.g. "2 of 3 assignments remaining")
+- [x] Empty state shows search icon and "No results found" when query has no matches
+- [x] Clear Search button in empty state

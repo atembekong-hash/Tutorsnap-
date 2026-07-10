@@ -123,6 +123,12 @@ export default function ClassroomTabScreen() {
   const [showEditNameModal, setShowEditNameModal] = useState(false);
   const [editNameValue, setEditNameValue] = useState("");
 
+  // Feed search
+  const [feedQuery, setFeedQuery] = useState("");
+
+  // Homework completion (local set of completed problem IDs)
+  const [completedHomework, setCompletedHomework] = useState<Set<string>>(new Set());
+
   const dateOptions = useMemo(() => getDateOptions(), []);
 
   const loadData = useCallback(async () => {
@@ -353,6 +359,33 @@ export default function ClassroomTabScreen() {
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
+  // Filtered feed based on search query
+  const filteredFeed = useMemo(() => {
+    const q = feedQuery.trim().toLowerCase();
+    if (!q) return feed;
+    return feed.filter(
+      (p) =>
+        p.problem.toLowerCase().includes(q) ||
+        p.subject.toLowerCase().includes(q) ||
+        (p.sharedBy || "").toLowerCase().includes(q) ||
+        (p.homeworkTitle || "").toLowerCase().includes(q)
+    );
+  }, [feed, feedQuery]);
+
+  // Mark a homework item as done (local toggle)
+  const handleMarkHomeworkDone = (id: string) => {
+    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setCompletedHomework((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
   // Analytics: compute subject breakdown from feed
   const subjectBreakdown = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -372,10 +405,11 @@ export default function ClassroomTabScreen() {
     const subjectLabel = getSubjectLabel(item.subject);
     const subjectEmoji = getSubjectEmoji(item.subject);
     const date = new Date(item.sharedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    const isDone = completedHomework.has(item.id);
 
     return (
       <TouchableOpacity
-        style={[styles.problemCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+        style={[styles.problemCard, { backgroundColor: colors.surface, borderColor: isDone ? `${colors.success}50` : colors.border, opacity: isDone ? 0.75 : 1 }]}
         onPress={() =>
           router.push({
             pathname: "/solution",
@@ -389,7 +423,7 @@ export default function ClassroomTabScreen() {
         }
         activeOpacity={0.75}
       >
-        <View style={[styles.problemAccent, { backgroundColor: item.isHomework ? colors.warning : subjectColor }]} />
+        <View style={[styles.problemAccent, { backgroundColor: isDone ? colors.success : (item.isHomework ? colors.warning : subjectColor) }]} />
         <View style={styles.problemContent}>
           <View style={styles.problemTop}>
             <View style={styles.problemTopLeft}>
@@ -397,7 +431,13 @@ export default function ClassroomTabScreen() {
                 <Text style={styles.subjectEmoji}>{subjectEmoji}</Text>
                 <Text style={[styles.subjectBadgeText, { color: subjectColor }]}>{subjectLabel}</Text>
               </View>
-              {item.isHomework && item.dueDate && (
+              {isDone && (
+                <View style={[styles.hwBadge, { backgroundColor: `${colors.success}18`, borderColor: `${colors.success}40` }]}>
+                  <IconSymbol size={10} name="checkmark.circle.fill" color={colors.success} />
+                  <Text style={[styles.hwBadgeText, { color: colors.success }]}>Done</Text>
+                </View>
+              )}
+              {!isDone && item.isHomework && item.dueDate && (
                 <View style={[styles.hwBadge, { backgroundColor: `${dueDateColor(item.dueDate, colors)}18`, borderColor: `${dueDateColor(item.dueDate, colors)}40` }]}>
                   <IconSymbol size={10} name="calendar" color={dueDateColor(item.dueDate, colors)} />
                   <Text style={[styles.hwBadgeText, { color: dueDateColor(item.dueDate, colors) }]}>
@@ -424,6 +464,23 @@ export default function ClassroomTabScreen() {
               Shared by {item.sharedBy}
             </Text>
             <View style={styles.problemActions}>
+              {/* Done button for homework items (student only) */}
+              {item.isHomework && !myClassroom && (
+                <TouchableOpacity
+                  accessibilityLabel={isDone ? "Mark as not done" : "Mark as done"}
+                  style={[styles.hwBtn, {
+                    backgroundColor: isDone ? `${colors.success}15` : `${colors.surface}`,
+                    borderColor: isDone ? colors.success : colors.border,
+                  }]}
+                  onPress={() => handleMarkHomeworkDone(item.id)}
+                  activeOpacity={0.75}
+                >
+                  <IconSymbol size={11} name={isDone ? "checkmark.circle.fill" : "circle"} color={isDone ? colors.success : colors.muted} />
+                  <Text style={[styles.hwBtnText, { color: isDone ? colors.success : colors.muted }]}>
+                    {isDone ? "Done" : "Mark Done"}
+                  </Text>
+                </TouchableOpacity>
+              )}
               {myClassroom && (
                 <TouchableOpacity
                   accessibilityLabel="Open"
@@ -640,30 +697,65 @@ export default function ClassroomTabScreen() {
           {/* Feed tab */}
           {activeTab === "feed" && (
             <FlatList
-              data={feed}
+              data={filteredFeed}
               keyExtractor={(item) => item.id}
               renderItem={renderProblemCard}
               contentContainerStyle={styles.feedList}
               showsVerticalScrollIndicator={false}
               ListHeaderComponent={
-                homeworkItems.length > 0 ? (
-                  <View style={[styles.hwBanner, { backgroundColor: `${colors.warning}12`, borderColor: `${colors.warning}30` }]}>
-                    <IconSymbol size={14} name="calendar" color={colors.warning} />
-                    <Text style={[styles.hwBannerText, { color: colors.warning }]}>
-                      {homeworkItems.length} homework assignment{homeworkItems.length !== 1 ? "s" : ""} active
-                    </Text>
+                <>
+                  {/* Search bar */}
+                  <View style={[styles.searchRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <IconSymbol size={16} name="magnifyingglass" color={colors.muted} />
+                    <TextInput
+                      style={[styles.searchInput, { color: colors.foreground }]}
+                      value={feedQuery}
+                      onChangeText={setFeedQuery}
+                      placeholder="Search problems, subjects, or people…"
+                      placeholderTextColor={colors.muted}
+                      returnKeyType="search"
+                      clearButtonMode="while-editing"
+                    />
+                    {feedQuery.length > 0 && (
+                      <TouchableOpacity onPress={() => setFeedQuery("")} accessibilityLabel="Clear search">
+                        <IconSymbol size={16} name="xmark.circle.fill" color={colors.muted} />
+                      </TouchableOpacity>
+                    )}
                   </View>
-                ) : null
+
+                  {/* Homework summary banner */}
+                  {homeworkItems.length > 0 && (
+                    <View style={[styles.hwBanner, { backgroundColor: `${colors.warning}12`, borderColor: `${colors.warning}30` }]}>
+                      <IconSymbol size={14} name="calendar" color={colors.warning} />
+                      <Text style={[styles.hwBannerText, { color: colors.warning }]}>
+                        {homeworkItems.filter((p) => !completedHomework.has(p.id)).length} of {homeworkItems.length} homework assignment{homeworkItems.length !== 1 ? "s" : ""} remaining
+                      </Text>
+                    </View>
+                  )}
+                </>
               }
               ListEmptyComponent={
                 <View style={styles.feedEmpty}>
-                  <Text style={styles.feedEmptyIcon}>📭</Text>
-                  <Text style={[styles.feedEmptyTitle, { color: colors.foreground }]}>No problems shared yet</Text>
+                  <Text style={styles.feedEmptyIcon}>{feedQuery ? "🔍" : "📭"}</Text>
+                  <Text style={[styles.feedEmptyTitle, { color: colors.foreground }]}>
+                    {feedQuery ? "No results found" : "No problems shared yet"}
+                  </Text>
                   <Text style={[styles.feedEmptyText, { color: colors.muted }]}>
-                    {myClassroom
+                    {feedQuery
+                      ? `No problems match "${feedQuery}". Try a different keyword.`
+                      : myClassroom
                       ? "Share a problem from the Solution screen to populate the feed."
                       : "Your teacher hasn't shared any problems yet."}
                   </Text>
+                  {feedQuery.length > 0 && (
+                    <TouchableOpacity
+                      onPress={() => setFeedQuery("")}
+                      style={[styles.clearSearchBtn, { borderColor: colors.border }]}
+                      activeOpacity={0.75}
+                    >
+                      <Text style={[styles.clearSearchBtnText, { color: colors.primary }]}>Clear Search</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               }
             />
@@ -1446,4 +1538,30 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   modalAssignText: { color: "#FFFFFF", fontSize: 14, fontWeight: "700" },
+  // Feed search
+  searchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderWidth: 1.5,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    marginBottom: 10,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    paddingVertical: 0,
+  },
+  clearSearchBtn: {
+    marginTop: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1.5,
+  },
+  clearSearchBtnText: { fontSize: 14, fontWeight: "600" },
+  // Homework completion
+  circle: {},
 });

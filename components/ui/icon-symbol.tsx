@@ -119,6 +119,8 @@ const MAPPING = {
   // Solution screen
   "text.bubble": "chat",
   "doc.fill": "insert-drive-file",
+  // Homework completion
+  "circle": "radio-button-unchecked",
 } as unknown as IconMapping;
 
 export function IconSymbol({
