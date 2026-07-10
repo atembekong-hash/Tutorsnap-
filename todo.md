@@ -68,3 +68,8 @@
 - [x] Badge unlock confetti/scale animation on first tier earn in mastery badges
 - [x] Streak Shield — earn/spend shield to protect streak on missed days
 - [x] Per-subject difficulty persistence — remember last difficulty per subject
+
+## New Features (Round 6)
+- [x] Error boundary on home screen with friendly retry card
+- [x] Offline mode indicator (persistent banner when device is offline)
+- [x] App version display at bottom of Settings screen

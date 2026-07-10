@@ -28,6 +28,7 @@ import { VoiceButton } from "@/components/voice-button";
 import { CheatSheetBottomSheet } from "@/components/cheat-sheet-bottom-sheet";
 import { hasCheatSheet } from "@/lib/cheat-sheets";
 import { useNetworkStatus } from "@/hooks/use-network-status";
+import { ErrorBoundary } from "@/components/error-boundary";
 import { WeeklyGoalsCard } from "@/components/weekly-goals-card";
 import { getWeeklyData, type WeeklyData } from "@/lib/weekly-goals";
 import { StudyTipCard } from "@/components/study-tip-card";
@@ -85,7 +86,7 @@ const DEFAULT_EXAMPLES = [
 ];
 
 
-export default function SolveScreen() {
+function SolveScreenContent() {
   const colors = useColors();
   const router = useRouter();
   const { colorScheme, setColorScheme } = useThemeContext();
@@ -632,6 +633,14 @@ export default function SolveScreen() {
         onClose={() => setShowCheatSheet(false)}
       />
     </ScreenContainer>
+  );
+}
+
+export default function SolveScreen() {
+  return (
+    <ErrorBoundary label="Home">
+      <SolveScreenContent />
+    </ErrorBoundary>
   );
 }
 

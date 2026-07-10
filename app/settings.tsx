@@ -10,6 +10,7 @@ import {
   Modal,
 } from "react-native";
 import { useRouter } from "expo-router";
+import Constants from "expo-constants";
 import * as Haptics from "expo-haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -355,6 +356,16 @@ export default function SettingsScreen() {
           </Text>
         </View>
 
+        {/* App version footer */}
+        <View style={styles.versionFooter}>
+          <Text style={[styles.versionText, { color: colors.muted }]}>
+            TutorSnap v{Constants.expoConfig?.version ?? "1.0.0"}
+          </Text>
+          <Text style={[styles.versionBuild, { color: colors.border }]}>
+            Expo SDK {Constants.expoConfig?.sdkVersion ?? "54"} · {Platform.OS}
+          </Text>
+        </View>
+
       </ScrollView>
 
       {/* Time Picker Modal */}
@@ -608,4 +619,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   modalBtnText: { fontSize: 16, fontWeight: "700" },
+  versionFooter: {
+    alignItems: "center",
+    paddingVertical: 24,
+    gap: 4,
+  },
+  versionText: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  versionBuild: {
+    fontSize: 11,
+    fontWeight: "400",
+  },
 });
