@@ -11,7 +11,7 @@
  *  - Teacher analytics (subject breakdown, activity)
  *  - Classroom notification preferences
  */
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback, useMemo, useEffect } from "react";
 import {
   View,
   Text,
@@ -59,6 +59,9 @@ import {
   cancelHomeworkReminders,
   cancelAllHomeworkReminders,
 } from "@/lib/homework-notifications";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+const HW_DONE_KEY = "@tutorsnap/hw_done";
 
 type Tab = "feed" | "leaderboard" | "analytics" | "manage";
 
@@ -137,10 +140,30 @@ export default function ClassroomTabScreen() {
   const [feedSubjectFilter, setFeedSubjectFilter] = useState<string | null>(null);
   const [showSortMenu, setShowSortMenu] = useState(false);
 
-  // Homework completion (local set of completed problem IDs)
+  // Homework completion — persisted to AsyncStorage
   const [completedHomework, setCompletedHomework] = useState<Set<string>>(new Set());
+  const [hwDoneLoaded, setHwDoneLoaded] = useState(false);
 
   const dateOptions = useMemo(() => getDateOptions(), []);
+
+  // Load persisted homework completion state on mount
+  useEffect(() => {
+    AsyncStorage.getItem(HW_DONE_KEY)
+      .then((raw) => {
+        if (raw) {
+          const ids: string[] = JSON.parse(raw);
+          setCompletedHomework(new Set(ids));
+        }
+      })
+      .catch(() => { /* ignore */ })
+      .finally(() => setHwDoneLoaded(true));
+  }, []);
+
+  // Persist completedHomework whenever it changes (after initial load)
+  useEffect(() => {
+    if (!hwDoneLoaded) return;
+    AsyncStorage.setItem(HW_DONE_KEY, JSON.stringify(Array.from(completedHomework))).catch(() => { /* ignore */ });
+  }, [completedHomework, hwDoneLoaded]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -466,17 +489,22 @@ export default function ClassroomTabScreen() {
     return (
       <TouchableOpacity
         style={[styles.problemCard, { backgroundColor: colors.surface, borderColor: isDone ? `${colors.success}50` : colors.border, opacity: isDone ? 0.75 : 1 }]}
-        onPress={() =>
+        onPress={() => {
+          // Build a MathSolution-shaped object; if answer/steps are missing
+          // the solution screen will auto-trigger the solver.
+          const solutionData = {
+            problem: item.problem,
+            subject: item.subject,
+            answer: item.answer || "",
+            steps: item.steps || [],
+            explanation: "",
+            tips: [],
+          };
           router.push({
             pathname: "/solution",
-            params: {
-              problem: item.problem,
-              subject: item.subject,
-              answer: item.answer,
-              steps: JSON.stringify(item.steps),
-            },
-          } as any)
-        }
+            params: { data: JSON.stringify(solutionData) },
+          } as any);
+        }}
         activeOpacity={0.75}
       >
         <View style={[styles.problemAccent, { backgroundColor: isDone ? colors.success : (item.isHomework ? colors.warning : subjectColor) }]} />

@@ -149,18 +149,110 @@ export default function SolutionScreen() {
   const generateSimilarMutation = trpc.math.generateSimilar.useMutation();
   const [discussLoading, setDiscussLoading] = useState(false);
 
-  let solution: MathSolution | null = null;
+  // Auto-solve state: triggered when a feed card has no cached solution
+  const solveMutation = trpc.math.solve.useMutation();
+  const [autoSolving, setAutoSolving] = useState(false);
+  const [autoSolveError, setAutoSolveError] = useState<string | null>(null);
+  const [liveSolution, setLiveSolution] = useState<MathSolution | null>(null);
+
+  let parsedSolution: MathSolution | null = null;
   try {
-    solution = JSON.parse(params.data as string);
+    parsedSolution = JSON.parse(params.data as string);
   } catch {
-    solution = null;
+    parsedSolution = null;
   }
 
+  // Determine if we need to auto-solve (problem present but no answer/steps)
+  const needsAutoSolve =
+    parsedSolution !== null &&
+    !!parsedSolution.problem &&
+    (!parsedSolution.answer || !parsedSolution.steps || parsedSolution.steps.length === 0);
+
+  // Use live solution if available, otherwise fall back to parsed
+  const solution: MathSolution | null = liveSolution ?? (needsAutoSolve ? null : parsedSolution);
+
   useEffect(() => {
-    if (solution?.problem) {
-      isBookmarked(solution.problem).then(setBookmarked);
+    if (parsedSolution?.problem) {
+      isBookmarked(parsedSolution.problem).then(setBookmarked);
     }
-  }, [solution?.problem]);
+  }, [parsedSolution?.problem]);
+
+  // Auto-solve effect: fires once when the screen mounts with an unsolved problem
+  useEffect(() => {
+    if (!needsAutoSolve || autoSolving || liveSolution) return;
+    setAutoSolving(true);
+    setAutoSolveError(null);
+    solveMutation.mutate(
+      { problem: parsedSolution!.problem, subject: parsedSolution!.subject as any },
+      {
+        onSuccess: (data) => {
+          setLiveSolution(data as unknown as MathSolution);
+          setAutoSolving(false);
+        },
+        onError: (err) => {
+          setAutoSolveError(err.message || "Failed to solve. Please try again.");
+          setAutoSolving(false);
+        },
+      }
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [needsAutoSolve]);
+
+  // Show auto-solving spinner
+  if (autoSolving) {
+    return (
+      <ScreenContainer>
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 16, padding: 24 }}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={{ color: colors.foreground, fontSize: fs(16), fontWeight: "700", textAlign: "center" }}>
+            Solving problem…
+          </Text>
+          <Text style={{ color: colors.muted, fontSize: fs(13), textAlign: "center", lineHeight: 20 }}>
+            {parsedSolution?.problem}
+          </Text>
+        </View>
+      </ScreenContainer>
+    );
+  }
+
+  // Show auto-solve error
+  if (autoSolveError) {
+    return (
+      <ScreenContainer>
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 16, padding: 24 }}>
+          <IconSymbol size={40} name="exclamationmark.triangle.fill" color={colors.error} />
+          <Text style={{ color: colors.foreground, fontSize: fs(16), fontWeight: "700", textAlign: "center" }}>
+            Could not solve this problem
+          </Text>
+          <Text style={{ color: colors.muted, fontSize: fs(13), textAlign: "center" }}>{autoSolveError}</Text>
+          <TouchableOpacity
+            onPress={() => {
+              setAutoSolveError(null);
+              setAutoSolving(false);
+              // Retry
+              if (parsedSolution?.problem) {
+                setAutoSolving(true);
+                solveMutation.mutate(
+                  { problem: parsedSolution.problem, subject: parsedSolution.subject as any },
+                  {
+                    onSuccess: (data) => { setLiveSolution(data as unknown as MathSolution); setAutoSolving(false); },
+                    onError: (err) => { setAutoSolveError(err.message || "Failed to solve."); setAutoSolving(false); },
+                  }
+                );
+              }
+            }}
+            style={{ backgroundColor: colors.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 }}
+            activeOpacity={0.8}
+          >
+            <Text style={{ color: "#FFFFFF", fontSize: fs(14), fontWeight: "700" }}>Try Again</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => router.back()} activeOpacity={0.75}>
+            <Text style={{ color: colors.muted, fontSize: fs(14) }}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
+      </ScreenContainer>
+    );
+  }
 
   if (!solution) {
     return (

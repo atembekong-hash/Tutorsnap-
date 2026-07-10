@@ -314,3 +314,12 @@
 - [x] Feed subject filter chip bar (one chip per subject in feed)
 - [x] Sort button highlights in primary color when non-default sort is active
 - [x] Sort menu modal with checkmark on active option
+
+## Round 33: Auto-solve Feed Cards + Persist Homework Completion
+- [x] Classroom feed card navigation now passes proper data JSON param to solution screen
+- [x] Solution screen auto-triggers solver when feed card has no cached answer/steps
+- [x] Auto-solve shows spinner with problem text while solving
+- [x] Auto-solve error state with "Try Again" and "Go Back" buttons
+- [x] Homework completion state persisted to AsyncStorage (survives app restart)
+- [x] Completion state loaded on classroom screen mount
+- [x] Completion state saved on every toggle
