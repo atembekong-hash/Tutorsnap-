@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -25,26 +25,38 @@ import { type SubjectId } from "@/lib/subjects";
 import { useNetworkStatus } from "@/hooks/use-network-status";
 import { CameraView, useCameraPermissions } from "@/lib/camera-wrapper";
 
-type ScanMode = "picker" | "camera" | "preview";
+type ScanMode = "camera" | "preview" | "web-picker";
 
 export default function ScanScreen() {
   const colors = useColors();
   const router = useRouter();
   const cameraRef = useRef<any>(null);
-  const [mode, setMode] = useState<ScanMode>("picker");
+
+  // On native, default to camera mode. On web, show gallery picker.
+  const [mode, setMode] = useState<ScanMode>(Platform.OS !== "web" ? "camera" : "web-picker");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedSubject, setSelectedSubject] = useState<SubjectId | null>(null);
-  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [isCameraActive, setIsCameraActive] = useState(Platform.OS !== "web");
   const [facing, setFacing] = useState<"back" | "front">("back");
   const { isOnline } = useNetworkStatus();
 
   const [permission, requestPermission] = useCameraPermissions();
 
-  // Deactivate camera when screen loses focus
+  // Request camera permission on mount (native only)
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+    if (!permission?.granted) {
+      requestPermission();
+    }
+  }, []);
+
+  // Manage camera active state when screen gains/loses focus
   useFocusEffect(
     useCallback(() => {
-      if (mode === "camera") setIsCameraActive(true);
+      if (Platform.OS !== "web" && mode === "camera") {
+        setIsCameraActive(true);
+      }
       return () => setIsCameraActive(false);
     }, [mode])
   );
@@ -82,27 +94,7 @@ export default function ScanScreen() {
     },
   });
 
-  // --- Camera ---
-  const openCamera = async () => {
-    if (Platform.OS === "web") {
-      Alert.alert("Camera not available on web", "Please use the gallery option.");
-      return;
-    }
-    if (!permission?.granted) {
-      const result = await requestPermission();
-      if (!result.granted) {
-        Alert.alert(
-          "Permission Required",
-          "Camera access is needed to scan problems. Please enable it in Settings.",
-          [{ text: "OK" }]
-        );
-        return;
-      }
-    }
-    setMode("camera");
-    setIsCameraActive(true);
-  };
-
+  // --- Take photo with camera ---
   const takePicture = async () => {
     if (!cameraRef.current) return;
     try {
@@ -125,7 +117,7 @@ export default function ScanScreen() {
     }
   };
 
-  // --- Gallery ---
+  // --- Pick from gallery ---
   const pickFromGallery = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
@@ -139,12 +131,13 @@ export default function ScanScreen() {
     });
     if (!result.canceled && result.assets[0]) {
       setSelectedImage(result.assets[0].uri);
+      setIsCameraActive(false);
       setMode("preview");
       solveMutation.reset();
     }
   };
 
-  // --- Solve ---
+  // --- Solve the image ---
   const handleSolve = async () => {
     if (!selectedImage) return;
     setIsProcessing(true);
@@ -180,14 +173,50 @@ export default function ScanScreen() {
     }
   };
 
-  const handleClear = () => {
+  // --- Retake: go back to camera ---
+  const handleRetake = () => {
     setSelectedImage(null);
-    setMode("picker");
     solveMutation.reset();
+    if (Platform.OS !== "web") {
+      setMode("camera");
+      setIsCameraActive(true);
+    } else {
+      setMode("web-picker");
+    }
   };
 
-  // ===== CAMERA VIEW (native only) =====
+  // ===== CAMERA VIEW (native only — default view) =====
   if (mode === "camera" && Platform.OS !== "web" && CameraView) {
+    // If permission not yet granted, show a permission request screen
+    if (!permission?.granted) {
+      return (
+        <View style={[styles.permissionContainer, { backgroundColor: colors.background }]}>
+          <View style={[styles.permissionIcon, { backgroundColor: `${colors.primary}15` }]}>
+            <IconSymbol size={48} name="camera.fill" color={colors.primary} />
+          </View>
+          <Text style={[styles.permissionTitle, { color: colors.foreground }]}>Camera Access Needed</Text>
+          <Text style={[styles.permissionSubtitle, { color: colors.muted }]}>
+            Allow TutorSnap to use your camera to scan problems from your textbook or notes.
+          </Text>
+          <TouchableOpacity
+            onPress={requestPermission}
+            style={[styles.permissionBtn, { backgroundColor: colors.primary }]}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.permissionBtnText}>Allow Camera Access</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={pickFromGallery}
+            style={[styles.permissionGalleryBtn, { borderColor: colors.border }]}
+            activeOpacity={0.8}
+          >
+            <IconSymbol size={18} name="photo.on.rectangle" color={colors.primary} />
+            <Text style={[styles.permissionGalleryText, { color: colors.primary }]}>Choose from Gallery Instead</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
     return (
       <View style={styles.cameraContainer}>
         {isCameraActive && (
@@ -197,22 +226,20 @@ export default function ScanScreen() {
             facing={facing}
           />
         )}
+
         {/* Top bar */}
         <View style={styles.cameraTopBar}>
-          <TouchableOpacity
-            onPress={() => { setMode("picker"); setIsCameraActive(false); }}
-            style={styles.cameraTopBtn}
-          >
-            <IconSymbol size={22} name="xmark" color="#FFFFFF" />
-          </TouchableOpacity>
-          <Text style={styles.cameraTitle}>Scan Problem</Text>
           <TouchableOpacity
             onPress={() => setFacing(f => f === "back" ? "front" : "back")}
             style={styles.cameraTopBtn}
           >
             <IconSymbol size={22} name="arrow.triangle.2.circlepath.camera" color="#FFFFFF" />
           </TouchableOpacity>
+          <Text style={styles.cameraTitle}>Scan Problem</Text>
+          {/* Subject hint label */}
+          <View style={styles.cameraTopBtn} />
         </View>
+
         {/* Viewfinder corners */}
         <View style={styles.viewfinderGuide}>
           <View style={[styles.corner, styles.cornerTL]} />
@@ -220,12 +247,24 @@ export default function ScanScreen() {
           <View style={[styles.corner, styles.cornerBL]} />
           <View style={[styles.corner, styles.cornerBR]} />
         </View>
+
         <Text style={styles.cameraHint}>Position the problem within the frame</Text>
-        {/* Shutter */}
-        <View style={styles.shutterRow}>
+
+        {/* Bottom controls: Gallery | Shutter | Flip */}
+        <View style={styles.bottomControls}>
+          {/* Gallery button */}
+          <TouchableOpacity onPress={pickFromGallery} style={styles.galleryCircleBtn} activeOpacity={0.8}>
+            <IconSymbol size={26} name="photo.on.rectangle" color="#FFFFFF" />
+            <Text style={styles.galleryCircleLabel}>Gallery</Text>
+          </TouchableOpacity>
+
+          {/* Shutter */}
           <TouchableOpacity onPress={takePicture} style={styles.shutterBtn} activeOpacity={0.8}>
             <View style={styles.shutterInner} />
           </TouchableOpacity>
+
+          {/* Spacer to balance layout */}
+          <View style={styles.galleryCircleBtn} />
         </View>
       </View>
     );
@@ -245,7 +284,7 @@ export default function ScanScreen() {
           <View style={[styles.imagePreview, { borderColor: colors.border }]}>
             <Image source={{ uri: selectedImage }} style={styles.previewImage} resizeMode="contain" />
             <TouchableOpacity
-              onPress={handleClear}
+              onPress={handleRetake}
               style={[styles.clearOverlay, { backgroundColor: `${colors.error}E0` }]}
             >
               <IconSymbol size={16} name="xmark" color="#FFFFFF" />
@@ -296,57 +335,33 @@ export default function ScanScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={handleClear}
+            onPress={handleRetake}
             style={[styles.retakeBtn, { borderColor: colors.border }]}
             activeOpacity={0.8}
           >
             <IconSymbol size={18} name="camera.fill" color={colors.muted} />
-            <Text style={[styles.retakeBtnText, { color: colors.muted }]}>Take Another Photo</Text>
+            <Text style={[styles.retakeBtnText, { color: colors.muted }]}>
+              {Platform.OS !== "web" ? "Take Another Photo" : "Choose Another Image"}
+            </Text>
           </TouchableOpacity>
         </ScrollView>
       </ScreenContainer>
     );
   }
 
-  // ===== PICKER VIEW (default) =====
+  // ===== WEB FALLBACK: Gallery-only picker =====
   return (
     <ScreenContainer>
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <Text style={[styles.title, { color: colors.foreground }]}>Scan Problem</Text>
         <Text style={[styles.subtitle, { color: colors.muted }]}>
-          Take a photo or upload an image
+          Upload an image to solve
         </Text>
       </View>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
-        {/* Camera Button — native only */}
-        {Platform.OS !== "web" && (
-          <TouchableOpacity
-            onPress={openCamera}
-            style={[styles.uploadArea, { borderColor: colors.primary, backgroundColor: `${colors.primary}08` }]}
-            activeOpacity={0.8}
-          >
-            <View style={[styles.uploadIcon, { backgroundColor: `${colors.primary}20` }]}>
-              <IconSymbol size={40} name="camera.fill" color={colors.primary} />
-            </View>
-            <Text style={[styles.uploadTitle, { color: colors.foreground }]}>Tap to Take a Photo</Text>
-            <Text style={[styles.uploadSubtitle, { color: colors.muted }]}>
-              Works with handwritten and printed problems
-            </Text>
-          </TouchableOpacity>
-        )}
-
-        {Platform.OS !== "web" && (
-          <View style={styles.dividerRow}>
-            <View style={[styles.divider, { backgroundColor: colors.border }]} />
-            <Text style={[styles.dividerText, { color: colors.muted }]}>or</Text>
-            <View style={[styles.divider, { backgroundColor: colors.border }]} />
-          </View>
-        )}
-
-        {/* Gallery Button */}
         <TouchableOpacity
           onPress={pickFromGallery}
-          style={[styles.galleryBtn, { borderColor: colors.border, backgroundColor: colors.surface }]}
+          style={[styles.galleryBtn, { borderColor: colors.primary, backgroundColor: `${colors.primary}08` }]}
           activeOpacity={0.8}
         >
           <IconSymbol size={22} name="photo.on.rectangle" color={colors.primary} />
@@ -354,7 +369,6 @@ export default function ScanScreen() {
           <IconSymbol size={16} name="chevron.right" color={colors.muted} />
         </TouchableOpacity>
 
-        {/* Tips */}
         <View style={[styles.tipsBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={styles.tipsHeader}>
             <IconSymbol size={16} name="lightbulb.fill" color={colors.warning} />
@@ -374,7 +388,6 @@ export default function ScanScreen() {
           ))}
         </View>
 
-        {/* Subject Hint */}
         <View style={{ marginTop: 16 }}>
           <Text style={[styles.sectionLabel, { color: colors.muted }]}>SUBJECT HINT (OPTIONAL)</Text>
           <Text style={[styles.sectionHint, { color: colors.muted }]}>Helps the AI give a more accurate answer. Leave blank for auto-detect.</Text>
@@ -391,6 +404,16 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 14, marginTop: 4 },
   sectionLabel: { fontSize: 12, fontWeight: "600", marginBottom: 4, letterSpacing: 0.5 },
   sectionHint: { fontSize: 13, marginBottom: 10, lineHeight: 18 },
+
+  // Permission screen
+  permissionContainer: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32 },
+  permissionIcon: { width: 96, height: 96, borderRadius: 28, alignItems: "center", justifyContent: "center", marginBottom: 24 },
+  permissionTitle: { fontSize: 22, fontWeight: "800", marginBottom: 12, textAlign: "center" },
+  permissionSubtitle: { fontSize: 15, lineHeight: 22, textAlign: "center", marginBottom: 32 },
+  permissionBtn: { width: "100%", padding: 16, borderRadius: 16, alignItems: "center", marginBottom: 12 },
+  permissionBtnText: { color: "#FFFFFF", fontSize: 17, fontWeight: "700" },
+  permissionGalleryBtn: { flexDirection: "row", alignItems: "center", gap: 8, padding: 14, borderRadius: 14, borderWidth: 1 },
+  permissionGalleryText: { fontSize: 15, fontWeight: "600" },
 
   // Camera
   cameraContainer: { flex: 1, backgroundColor: "#000" },
@@ -413,10 +436,21 @@ const styles = StyleSheet.create({
   cornerBL: { bottom: 0, left: 0, borderBottomWidth: 3, borderLeftWidth: 3, borderBottomLeftRadius: 4 },
   cornerBR: { bottom: 0, right: 0, borderBottomWidth: 3, borderRightWidth: 3, borderBottomRightRadius: 4 },
   cameraHint: {
-    position: "absolute", bottom: "22%", left: 0, right: 0, textAlign: "center",
+    position: "absolute", bottom: "18%", left: 0, right: 0, textAlign: "center",
     color: "rgba(255,255,255,0.8)", fontSize: 14, zIndex: 10,
   },
-  shutterRow: { position: "absolute", bottom: 48, left: 0, right: 0, alignItems: "center", zIndex: 10 },
+  bottomControls: {
+    position: "absolute", bottom: 48, left: 0, right: 0,
+    flexDirection: "row", alignItems: "center", justifyContent: "space-evenly",
+    zIndex: 10, paddingHorizontal: 24,
+  },
+  galleryCircleBtn: {
+    width: 56, height: 56, borderRadius: 28,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    alignItems: "center", justifyContent: "center",
+    borderWidth: 1.5, borderColor: "rgba(255,255,255,0.4)",
+  },
+  galleryCircleLabel: { color: "#FFFFFF", fontSize: 10, fontWeight: "600", marginTop: 2 },
   shutterBtn: {
     width: 76, height: 76, borderRadius: 38,
     backgroundColor: "rgba(255,255,255,0.25)", borderWidth: 3, borderColor: "#FFFFFF",
@@ -424,15 +458,8 @@ const styles = StyleSheet.create({
   },
   shutterInner: { width: 58, height: 58, borderRadius: 29, backgroundColor: "#FFFFFF" },
 
-  // Picker
-  uploadArea: { borderWidth: 2, borderStyle: "dashed", borderRadius: 24, padding: 40, alignItems: "center", marginBottom: 16 },
-  uploadIcon: { width: 80, height: 80, borderRadius: 24, alignItems: "center", justifyContent: "center", marginBottom: 16 },
-  uploadTitle: { fontSize: 18, fontWeight: "700", marginBottom: 8, textAlign: "center" },
-  uploadSubtitle: { fontSize: 14, textAlign: "center", lineHeight: 20 },
-  dividerRow: { flexDirection: "row", alignItems: "center", marginVertical: 16, gap: 12 },
-  divider: { flex: 1, height: 1 },
-  dividerText: { fontSize: 13, fontWeight: "600" },
-  galleryBtn: { flexDirection: "row", alignItems: "center", padding: 16, borderRadius: 16, borderWidth: 1, gap: 12, marginBottom: 20 },
+  // Gallery button (web)
+  galleryBtn: { flexDirection: "row", alignItems: "center", padding: 16, borderRadius: 16, borderWidth: 2, gap: 12, marginBottom: 20 },
   galleryBtnText: { flex: 1, fontSize: 16, fontWeight: "600" },
   tipsBox: { padding: 16, borderRadius: 16, borderWidth: 1, marginBottom: 16 },
   tipsHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 },
