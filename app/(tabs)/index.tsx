@@ -309,14 +309,8 @@ function SolveScreenContent() {
         >
           {/* Header */}
           <View style={styles.header}>
-            <View style={{ flex: 1, marginRight: 8 }}>
-              <Text style={[styles.greeting, { color: colors.muted }]}>TutorSnap</Text>
-              <Text style={[styles.title, { color: colors.foreground }]} numberOfLines={1}>
-                Solve Any{" "}
-                <Text style={{ color: colors.primary }}>Problem</Text>
-              </Text>
-            </View>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 4, flexShrink: 0 }}>
+            {/* Top row: icon buttons */}
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 4, marginBottom: 4 }}>
               {streak && streak.currentStreak > 0 && (
                 <TouchableOpacity
                   accessibilityLabel="View progress"
@@ -376,6 +370,14 @@ function SolveScreenContent() {
               >
                 <IconSymbol size={22} name="gear" color={colors.foreground} />
               </TouchableOpacity>
+            </View>
+            {/* Bottom row: full-width title */}
+            <View>
+              <Text style={[styles.greeting, { color: colors.muted }]}>TutorSnap</Text>
+              <Text style={[styles.title, { color: colors.foreground }]}>
+                Solve Any{" "}
+                <Text style={{ color: colors.primary }}>Problem</Text>
+              </Text>
             </View>
           </View>
           {/* Daily Goal Progress */}
@@ -780,9 +782,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 8,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+    flexDirection: "column",
   },
   iconBtn: {
     width: 36,
