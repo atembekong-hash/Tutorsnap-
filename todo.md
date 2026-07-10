@@ -205,3 +205,8 @@
 - [x] progress.tsx: add error handling to loadProgress and handleSetGoal
 - [x] leaderboard.tsx: add error handling to load, handleCopyCode, handleAddFriend, handleRemoveFriend; fix parseInt radix
 - [x] TypeScript: 0 errors after all fixes
+
+## Round 20: Subject Picker + Dark Mode Fixes
+- [x] Fix subject picker mobile: replaced 7 near-white/pastel subject colors with saturated accessible colors (anatomy, forensics, general_science, environmental_science, psychology, sociology, civics, statistics)
+- [x] Fix web dark mode: added CSS variable fallbacks in global.css for pre-hydration rendering; aligned Tailwind darkMode to use [data-theme="dark"] selector; rewrote ThemeProvider to apply scheme synchronously on web via localStorage; rewrote use-color-scheme.web.ts to read localStorage synchronously; ThemeProvider now also writes to localStorage so web reads are instant on next load
+- [x] TypeScript: 0 errors after all fixes

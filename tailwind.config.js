@@ -14,7 +14,8 @@ const tailwindColors = Object.fromEntries(
 
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  darkMode: "class",
+  // Use data-theme attribute for dark mode — matches ThemeProvider's root.dataset.theme assignment
+  darkMode: ["selector", '[data-theme="dark"]'],
   // Scan all component and app files for Tailwind classes
   content: ["./app/**/*.{js,ts,tsx}", "./components/**/*.{js,ts,tsx}", "./lib/**/*.{js,ts,tsx}", "./hooks/**/*.{js,ts,tsx}"],
 

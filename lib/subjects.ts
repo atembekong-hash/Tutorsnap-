@@ -42,7 +42,7 @@ export const ALL_SUBJECTS: SubjectDef[] = [
   { id: "calculus",               label: "Calculus",                category: "math",    color: "#6366F1", emoji: "∫" },
   { id: "geometry",               label: "Geometry",                category: "math",    color: "#7C3AED", emoji: "△" },
   { id: "trigonometry",           label: "Trigonometry",            category: "math",    color: "#8B5CF6", emoji: "sin" },
-  { id: "statistics",             label: "Statistics",              category: "math",    color: "#A78BFA", emoji: "σ" },
+  { id: "statistics",             label: "Statistics",              category: "math",    color: "#7C3AED", emoji: "σ" },
   { id: "arithmetic",             label: "Arithmetic",              category: "math",    color: "#4338CA", emoji: "+" },
   { id: "precalculus",            label: "Pre-Calculus",            category: "math",    color: "#5B21B6", emoji: "f(x)" },
   { id: "linear_algebra",         label: "Linear Algebra",          category: "math",    color: "#3730A3", emoji: "[]" },
@@ -66,10 +66,10 @@ export const ALL_SUBJECTS: SubjectDef[] = [
   { id: "physics",                label: "Physics",                 category: "science", color: "#047857", emoji: "⚛️" },
   { id: "earth_science",          label: "Earth Science",           category: "science", color: "#065F46", emoji: "🌎" },
   { id: "space_science",          label: "Space Science",           category: "science", color: "#064E3B", emoji: "🚀" },
-  { id: "environmental_science",  label: "Environmental Science",   category: "science", color: "#34D399", emoji: "🌿" },
-  { id: "anatomy",                label: "Anatomy",                 category: "science", color: "#6EE7B7", emoji: "🫀" },
-  { id: "forensics",              label: "Forensics",               category: "science", color: "#A7F3D0", emoji: "🔍" },
-  { id: "general_science",        label: "General Science",         category: "science", color: "#D1FAE5", emoji: "🔭" },
+  { id: "environmental_science",  label: "Environmental Science",   category: "science", color: "#059669", emoji: "🌿" },
+  { id: "anatomy",                label: "Anatomy",                 category: "science", color: "#0D9488", emoji: "🫀" },
+  { id: "forensics",              label: "Forensics",               category: "science", color: "#0891B2", emoji: "🔍" },
+  { id: "general_science",        label: "General Science",         category: "science", color: "#0284C7", emoji: "🔭" },
 
   // ── Social Studies / History ──────────────────────────────────────────────
   { id: "us_history",             label: "U.S. History",            category: "social",  color: "#D97706", emoji: "🏛️" },
@@ -77,9 +77,9 @@ export const ALL_SUBJECTS: SubjectDef[] = [
   { id: "government",             label: "Government / Civics",     category: "social",  color: "#92400E", emoji: "⚖️" },
   { id: "economics",              label: "Economics",               category: "social",  color: "#78350F", emoji: "📊" },
   { id: "geography",              label: "Geography",               category: "social",  color: "#F59E0B", emoji: "🌏" },
-  { id: "psychology",             label: "Psychology",              category: "social",  color: "#FBBF24", emoji: "🧠" },
-  { id: "sociology",              label: "Sociology",               category: "social",  color: "#FCD34D", emoji: "👥" },
-  { id: "civics",                 label: "Civics",                  category: "social",  color: "#FDE68A", emoji: "🗳️" },
+  { id: "psychology",             label: "Psychology",              category: "social",  color: "#D97706", emoji: "🧠" },
+  { id: "sociology",              label: "Sociology",               category: "social",  color: "#B45309", emoji: "👥" },
+  { id: "civics",                 label: "Civics",                  category: "social",  color: "#92400E", emoji: "🗳️" },
 
   { id: "other",                  label: "Other",                   category: "math",    color: "#6B7280", emoji: "📚" },
 ];

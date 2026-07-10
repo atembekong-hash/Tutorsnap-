@@ -1,3 +1,51 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/*
+ * CSS custom property definitions for TutorSnap theme tokens.
+ * These provide synchronous pre-hydration values so the UI is never
+ * unstyled before ThemeProvider's JavaScript runs.
+ *
+ * ThemeProvider will overwrite these at runtime with the user's
+ * persisted preference, but these defaults ensure a correct first paint.
+ */
+
+/* ── Light mode defaults (applied to :root) ─────────────────────────── */
+:root {
+  --color-primary:    #4F46E5;
+  --color-secondary:  #7C3AED;
+  --color-background: #FFFFFF;
+  --color-surface:    #F8F8FC;
+  --color-foreground: #0F0F14;
+  --color-muted:      #6B7280;
+  --color-border:     #E5E7EB;
+  --color-success:    #10B981;
+  --color-warning:    #F59E0B;
+  --color-error:      #EF4444;
+  --color-tint:       #4F46E5;
+}
+
+/* ── Dark mode overrides (applied when data-theme="dark" is set) ─────── */
+:root[data-theme="dark"] {
+  --color-primary:    #6366F1;
+  --color-secondary:  #8B5CF6;
+  --color-background: #0F0F14;
+  --color-surface:    #1A1A24;
+  --color-foreground: #F0F0FF;
+  --color-muted:      #9CA3AF;
+  --color-border:     #2D2D3D;
+  --color-success:    #34D399;
+  --color-warning:    #FBBF24;
+  --color-error:      #F87171;
+  --color-tint:       #6366F1;
+}
+
+/*
+ * Ensure the page background matches the theme token immediately,
+ * preventing a white flash on dark mode initial load.
+ */
+html, body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+}
