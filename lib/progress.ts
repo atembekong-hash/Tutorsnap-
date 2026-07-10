@@ -160,6 +160,55 @@ export async function recordQuizBonus(pct: number): Promise<{ awarded: boolean; 
   return { awarded: true, newStreak: streak.currentStreak };
 }
 
+// ===== STREAK SHIELD =====
+const SHIELD_KEY = "streak_shield";
+
+/** Returns current shield count (0-3 max) */
+export async function getShieldCount(): Promise<number> {
+  try {
+    const val = await AsyncStorage.getItem(SHIELD_KEY);
+    return val ? Math.min(3, Math.max(0, parseInt(val, 10))) : 0;
+  } catch { return 0; }
+}
+
+/** Award a shield (max 3). Returns new count. */
+export async function earnShield(): Promise<number> {
+  const current = await getShieldCount();
+  if (current >= 3) return current;
+  const next = current + 1;
+  await AsyncStorage.setItem(SHIELD_KEY, String(next));
+  return next;
+}
+
+/**
+ * Check if streak should be protected on app load.
+ * If the user missed exactly one day and has a shield, auto-consume it and preserve streak.
+ * Returns { shieldUsed: boolean, newStreak: number }
+ */
+export async function applyStreakShieldIfNeeded(): Promise<{ shieldUsed: boolean; newStreak: number }> {
+  const progress = await getProgress();
+  const streak = progress.streak;
+  const today = getTodayString();
+  const yesterday = getYesterdayString();
+  // Only apply if last solved was 2 days ago (missed exactly one day)
+  if (!streak.lastSolvedDate || streak.lastSolvedDate === today || streak.lastSolvedDate === yesterday) {
+    return { shieldUsed: false, newStreak: streak.currentStreak };
+  }
+  const lastDate = new Date(streak.lastSolvedDate);
+  const todayDate = new Date(today);
+  const daysMissed = Math.round((todayDate.getTime() - lastDate.getTime()) / 86400000);
+  if (daysMissed !== 2) return { shieldUsed: false, newStreak: streak.currentStreak };
+  const shields = await getShieldCount();
+  if (shields <= 0) return { shieldUsed: false, newStreak: streak.currentStreak };
+  // Consume shield and preserve streak by setting lastSolvedDate to yesterday
+  const newShields = shields - 1;
+  await AsyncStorage.setItem(SHIELD_KEY, String(newShields));
+  const updatedStreak = { ...streak, lastSolvedDate: yesterday };
+  const updated = { ...progress, streak: updatedStreak };
+  await AsyncStorage.setItem(PROGRESS_KEY, JSON.stringify(updated));
+  return { shieldUsed: true, newStreak: streak.currentStreak };
+}
+
 export async function setDailyGoal(goal: number): Promise<void> {
   const progress = await getProgress();
   progress.streak.dailyGoal = goal;

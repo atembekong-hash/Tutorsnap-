@@ -20,6 +20,7 @@ import { type SubjectId, getSubjectColor, getSubjectLabel } from "@/lib/subjects
 import { loadQuizStats, getAdaptiveDifficultySuggestion, type QuizStats, type DifficultyUpSuggestion } from "@/lib/quiz-history";
 import { useFocusEffect } from "expo-router";
 import { useNetworkStatus } from "@/hooks/use-network-status";
+import { getSubjectDifficulty, setSubjectDifficulty } from "@/lib/subject-difficulty";
 
 const QUIZ_COUNTS = [3, 5, 10];
 
@@ -34,6 +35,19 @@ export default function PracticeScreen() {
   const router = useRouter();
   const [selectedSubject, setSelectedSubject] = useState<SubjectId>("algebra");
   const [selectedDifficulty, setSelectedDifficulty] = useState<Difficulty>("medium");
+
+  // Load persisted difficulty when subject changes
+  const handleSubjectChange = useCallback(async (id: SubjectId) => {
+    setSelectedSubject(id);
+    const saved = await getSubjectDifficulty(id);
+    setSelectedDifficulty(saved);
+  }, []);
+
+  // Persist difficulty when it changes
+  const handleDifficultyChange = useCallback(async (diff: Difficulty) => {
+    setSelectedDifficulty(diff);
+    await setSubjectDifficulty(selectedSubject, diff);
+  }, [selectedSubject]);
   const [currentQuestion, setCurrentQuestion] = useState<PracticeQuestion | null>(null);
   const [showAnswer, setShowAnswer] = useState(false);
   const [hintsShown, setHintsShown] = useState(0);
@@ -122,7 +136,7 @@ export default function PracticeScreen() {
           <View style={{ marginTop: 10 }}>
             <SubjectPicker
               value={selectedSubject}
-              onChange={(id) => setSelectedSubject(id ?? "algebra")}
+              onChange={(id) => handleSubjectChange(id ?? "algebra")}
               showAll={false}
             />
           </View>
@@ -138,7 +152,7 @@ export default function PracticeScreen() {
                 <TouchableOpacity
                   key={diff.id}
                   onPress={() => {
-                    setSelectedDifficulty(diff.id);
+                    handleDifficultyChange(diff.id);
                     if (Platform.OS !== "web") {
                       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     }
@@ -208,7 +222,7 @@ export default function PracticeScreen() {
             <View style={styles.suggestionActions}>
               <TouchableOpacity
                 onPress={() => {
-                  setSelectedDifficulty(diffSuggestion.suggestedDifficulty);
+                  handleDifficultyChange(diffSuggestion.suggestedDifficulty);
                   setSuggestionDismissed(true);
                   if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                 }}

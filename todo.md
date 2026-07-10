@@ -66,3 +66,5 @@
 - [x] AI study tip of the day card on home screen
 - [x] Quiz history detail screen with View History button on Practice stats card
 - [x] Badge unlock confetti/scale animation on first tier earn in mastery badges
+- [x] Streak Shield — earn/spend shield to protect streak on missed days
+- [x] Per-subject difficulty persistence — remember last difficulty per subject

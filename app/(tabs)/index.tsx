@@ -19,7 +19,7 @@ import { MathKeyboard } from "@/components/math-keyboard";
 import { useColors } from "@/hooks/use-colors";
 import { trpc } from "@/lib/trpc";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { getProgress, getStreakEmoji, getDailyGoalPercent, type ProgressData } from "@/lib/progress";
+import { getProgress, getStreakEmoji, getDailyGoalPercent, getShieldCount, applyStreakShieldIfNeeded, type ProgressData } from "@/lib/progress";
 import type { HistoryItem, MathSubject } from "@/shared/types";
 import { SubjectPicker } from "@/components/subject-picker";
 import { type SubjectId, getSubjectDef, isMathSubject, getSubjectPlaceholder } from "@/lib/subjects";
@@ -31,6 +31,7 @@ import { WeeklyGoalsCard } from "@/components/weekly-goals-card";
 import { getWeeklyData, type WeeklyData } from "@/lib/weekly-goals";
 import { StudyTipCard } from "@/components/study-tip-card";
 import { AlmostThereBanner } from "@/components/almost-there-banner";
+import { StreakShieldCard } from "@/components/streak-shield-card";
 import { getAlmostBadges } from "@/lib/mastery-badges";
 
 // Subject examples per category — shown dynamically based on selected subject
@@ -103,6 +104,8 @@ export default function SolveScreen() {
   const [weeklyData, setWeeklyData] = useState<WeeklyData | null>(null);
   const [almostBadge, setAlmostBadge] = useState<{ subject: string; subjectLabel: string; remaining: number; nextTier: "bronze" | "silver" | "gold" } | null>(null);
   const [bannerDismissed, setBannerDismissed] = useState(false);
+  const [shieldCount, setShieldCount] = useState(0);
+  const [shieldUsedToast, setShieldUsedToast] = useState(false);
   const inputRef = useRef<TextInput>(null);
   const cursorPosRef = useRef<number>(0);
 
@@ -127,6 +130,14 @@ export default function SolveScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      // Apply streak shield if user missed a day
+      applyStreakShieldIfNeeded().then(({ shieldUsed }) => {
+        if (shieldUsed) {
+          setShieldUsedToast(true);
+          setTimeout(() => setShieldUsedToast(false), 4000);
+        }
+      });
+      getShieldCount().then(setShieldCount);
       loadProgress();
       loadWeeklyData();
       // Check if onboarding has been completed
@@ -300,6 +311,21 @@ export default function SolveScreen() {
             </TouchableOpacity>
           )}
 
+          {/* Shield Used Toast */}
+          {shieldUsedToast && (
+            <View style={[styles.shieldToast, { backgroundColor: "#6366F115", borderColor: "#6366F130" }]}>
+              <Text style={[styles.shieldToastText, { color: "#6366F1" }]}>
+                🛡️ Streak shield activated! Your streak is safe.
+              </Text>
+            </View>
+          )}
+          {/* Streak Shield Card — show when streak > 0 */}
+          {progress?.streak && progress.streak.currentStreak > 0 && (
+            <StreakShieldCard
+              currentStreak={progress.streak.currentStreak}
+              onShieldEarned={(count) => setShieldCount(count)}
+            />
+          )}
           {/* Weekly Goals Card */}
           {weeklyData && (
             <WeeklyGoalsCard
@@ -781,4 +807,6 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   offlineWarningText: { fontSize: 13, fontWeight: "600", flex: 1 },
+  shieldToast: { borderRadius: 12, borderWidth: 1, padding: 12, marginBottom: 8, alignItems: "center" },
+  shieldToastText: { fontSize: 14, fontWeight: "700", textAlign: "center" },
 });
