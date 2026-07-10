@@ -158,3 +158,9 @@
 - [x] Classroom tab in main navigation bar (dedicated tab icon, accessible from anywhere)
 - [x] Challenge a Classmate flow (timed challenge from Classroom feed via share link)
 - [x] Teacher dashboard analytics in Classroom (subject breakdown, most shared topics)
+
+## New Features (Round 13)
+- [x] Classroom leaderboard tab (rank by challenges completed and fastest solve time)
+- [x] Assign as Homework button (due date picker, Homework badge on feed cards, countdown)
+- [x] Push notifications for new classroom problems (notify joined students when teacher shares)
+- [x] Wire recordChallengeResult into challenge.tsx so leaderboard updates after each challenge

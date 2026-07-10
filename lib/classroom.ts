@@ -3,16 +3,18 @@
  *
  * Teachers can create a classroom with a 6-character code.
  * Students join by entering the code.
- * Problems can be shared to the classroom feed.
+ * Problems can be shared to the classroom feed, assigned as homework, and
+ * challenge results are tracked for a leaderboard.
  *
  * All data is stored locally in AsyncStorage.
- * (Cross-device sync would require a backend — this is the local-first version.)
  */
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const CLASSROOM_KEY = "@tutorsnap/classroom";
 const JOINED_KEY = "@tutorsnap/joined_classroom";
 const FEED_KEY = "@tutorsnap/classroom_feed";
+const LEADERBOARD_KEY = "@tutorsnap/classroom_leaderboard";
+const NOTIF_PREFS_KEY = "@tutorsnap/classroom_notif_prefs";
 
 export interface ClassroomInfo {
   code: string;          // 6-char uppercase code
@@ -31,6 +33,24 @@ export interface ClassroomProblem {
   sharedAt: string;      // ISO date
   sharedBy: string;      // display name or "You"
   classCode: string;
+  // Homework fields (optional)
+  isHomework?: boolean;
+  dueDate?: string;      // ISO date
+  homeworkTitle?: string;
+}
+
+export interface LeaderboardEntry {
+  name: string;
+  challengesCompleted: number;
+  challengesCorrect: number;
+  bestTimeSeconds: number | null; // fastest correct solve
+  lastActive: string;             // ISO date
+}
+
+export interface ClassroomNotifPrefs {
+  enabled: boolean;
+  newProblem: boolean;
+  newHomework: boolean;
 }
 
 /** Generate a random 6-char classroom code */
@@ -111,9 +131,36 @@ export async function shareToClassroom(
     classCode,
   };
   const existing = await getClassroomFeed(classCode);
-  const updated = [item, ...existing].slice(0, 50); // keep last 50
+  const updated = [item, ...existing].slice(0, 50);
   await AsyncStorage.setItem(`${FEED_KEY}_${classCode}`, JSON.stringify(updated));
   return item;
+}
+
+/** Assign a problem as homework with a due date */
+export async function assignAsHomework(
+  classCode: string,
+  problemId: string,
+  dueDate: string,
+  homeworkTitle?: string
+): Promise<void> {
+  const feed = await getClassroomFeed(classCode);
+  const updated = feed.map((p) =>
+    p.id === problemId
+      ? { ...p, isHomework: true, dueDate, homeworkTitle: homeworkTitle || p.problem.slice(0, 40) }
+      : p
+  );
+  await AsyncStorage.setItem(`${FEED_KEY}_${classCode}`, JSON.stringify(updated));
+}
+
+/** Remove homework assignment from a problem */
+export async function unassignHomework(classCode: string, problemId: string): Promise<void> {
+  const feed = await getClassroomFeed(classCode);
+  const updated = feed.map((p) =>
+    p.id === problemId
+      ? { ...p, isHomework: false, dueDate: undefined, homeworkTitle: undefined }
+      : p
+  );
+  await AsyncStorage.setItem(`${FEED_KEY}_${classCode}`, JSON.stringify(updated));
 }
 
 /** Remove a problem from the classroom feed */
@@ -121,4 +168,73 @@ export async function removeFromClassroomFeed(classCode: string, id: string): Pr
   const existing = await getClassroomFeed(classCode);
   const updated = existing.filter((p) => p.id !== id);
   await AsyncStorage.setItem(`${FEED_KEY}_${classCode}`, JSON.stringify(updated));
+}
+
+// ─── Leaderboard ────────────────────────────────────────────────────────────
+
+/** Get the leaderboard for a classroom */
+export async function getLeaderboard(classCode: string): Promise<LeaderboardEntry[]> {
+  try {
+    const raw = await AsyncStorage.getItem(`${LEADERBOARD_KEY}_${classCode}`);
+    return raw ? (JSON.parse(raw) as LeaderboardEntry[]) : [];
+  } catch { return []; }
+}
+
+/** Record a challenge result for the leaderboard */
+export async function recordChallengeResult(
+  classCode: string,
+  playerName: string,
+  correct: boolean,
+  timeTakenSeconds: number
+): Promise<void> {
+  const board = await getLeaderboard(classCode);
+  const idx = board.findIndex((e) => e.name === playerName);
+  if (idx >= 0) {
+    const entry = board[idx];
+    entry.challengesCompleted += 1;
+    if (correct) {
+      entry.challengesCorrect += 1;
+      if (entry.bestTimeSeconds === null || timeTakenSeconds < entry.bestTimeSeconds) {
+        entry.bestTimeSeconds = timeTakenSeconds;
+      }
+    }
+    entry.lastActive = new Date().toISOString();
+    board[idx] = entry;
+  } else {
+    board.push({
+      name: playerName,
+      challengesCompleted: 1,
+      challengesCorrect: correct ? 1 : 0,
+      bestTimeSeconds: correct ? timeTakenSeconds : null,
+      lastActive: new Date().toISOString(),
+    });
+  }
+  // Sort: most correct first, then fastest time
+  board.sort((a, b) => {
+    if (b.challengesCorrect !== a.challengesCorrect) return b.challengesCorrect - a.challengesCorrect;
+    if (a.bestTimeSeconds !== null && b.bestTimeSeconds !== null) return a.bestTimeSeconds - b.bestTimeSeconds;
+    if (a.bestTimeSeconds !== null) return -1;
+    if (b.bestTimeSeconds !== null) return 1;
+    return 0;
+  });
+  await AsyncStorage.setItem(`${LEADERBOARD_KEY}_${classCode}`, JSON.stringify(board));
+}
+
+// ─── Notification Preferences ───────────────────────────────────────────────
+
+/** Get classroom notification preferences */
+export async function getClassroomNotifPrefs(): Promise<ClassroomNotifPrefs> {
+  try {
+    const raw = await AsyncStorage.getItem(NOTIF_PREFS_KEY);
+    return raw
+      ? (JSON.parse(raw) as ClassroomNotifPrefs)
+      : { enabled: true, newProblem: true, newHomework: true };
+  } catch {
+    return { enabled: true, newProblem: true, newHomework: true };
+  }
+}
+
+/** Save classroom notification preferences */
+export async function saveClassroomNotifPrefs(prefs: ClassroomNotifPrefs): Promise<void> {
+  await AsyncStorage.setItem(NOTIF_PREFS_KEY, JSON.stringify(prefs));
 }

@@ -1,11 +1,17 @@
 /**
  * Classroom Tab Screen
  *
- * This file makes the Classroom feature available as a dedicated tab in the
- * main navigation bar. It re-uses the full classroom screen implementation
- * from app/classroom.tsx but removes the back button (since it's a root tab).
+ * Tabs: Feed | Leaderboard | Analytics (teacher only) | Manage
+ * Features:
+ *  - Create/join classroom with 6-char code
+ *  - Share problems to feed from Solution screen
+ *  - Assign problems as homework with due date
+ *  - Challenge a classmate (timed challenge flow)
+ *  - Leaderboard ranked by correct answers + fastest time
+ *  - Teacher analytics (subject breakdown, activity)
+ *  - Classroom notification preferences
  */
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -17,6 +23,7 @@ import {
   FlatList,
   Share,
   Platform,
+  Modal,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import * as Haptics from "expo-haptics";
@@ -32,13 +39,52 @@ import {
   leaveClassroom,
   getClassroomFeed,
   removeFromClassroomFeed,
+  assignAsHomework,
+  unassignHomework,
+  getLeaderboard,
+  getClassroomNotifPrefs,
+  saveClassroomNotifPrefs,
   type ClassroomInfo,
   type ClassroomProblem,
+  type LeaderboardEntry,
+  type ClassroomNotifPrefs,
 } from "@/lib/classroom";
 import { getSubjectColor, getSubjectLabel, getSubjectEmoji } from "@/lib/subjects";
 import * as Clipboard from "expo-clipboard";
 
-type Tab = "feed" | "manage" | "analytics";
+type Tab = "feed" | "leaderboard" | "analytics" | "manage";
+
+// Due-date helpers
+function formatDueDate(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  const diff = Math.ceil((d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  if (diff < 0) return "Overdue";
+  if (diff === 0) return "Due today";
+  if (diff === 1) return "Due tomorrow";
+  return `Due in ${diff} days`;
+}
+
+function dueDateColor(iso: string, colors: ReturnType<typeof useColors>): string {
+  const diff = Math.ceil((new Date(iso).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+  if (diff < 0) return colors.error;
+  if (diff <= 1) return colors.warning;
+  return colors.success;
+}
+
+// Generate a list of upcoming date options for the due date picker
+function getDateOptions(): { label: string; iso: string }[] {
+  const opts: { label: string; iso: string }[] = [];
+  const labels = ["Today", "Tomorrow", "In 3 days", "In 1 week", "In 2 weeks"];
+  const offsets = [0, 1, 3, 7, 14];
+  offsets.forEach((offset, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() + offset);
+    d.setHours(23, 59, 0, 0);
+    opts.push({ label: labels[i], iso: d.toISOString() });
+  });
+  return opts;
+}
 
 export default function ClassroomTabScreen() {
   const colors = useColors();
@@ -47,6 +93,8 @@ export default function ClassroomTabScreen() {
   const [myClassroom, setMyClassroom] = useState<ClassroomInfo | null>(null);
   const [joinedClassroom, setJoinedClassroom] = useState<ClassroomInfo | null>(null);
   const [feed, setFeed] = useState<ClassroomProblem[]>([]);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [notifPrefs, setNotifPrefs] = useState<ClassroomNotifPrefs>({ enabled: true, newProblem: true, newHomework: true });
   const [activeTab, setActiveTab] = useState<Tab>("feed");
   const [loading, setLoading] = useState(true);
 
@@ -60,17 +108,34 @@ export default function ClassroomTabScreen() {
 
   const [copiedCode, setCopiedCode] = useState(false);
 
+  // Homework modal state
+  const [homeworkModalItem, setHomeworkModalItem] = useState<ClassroomProblem | null>(null);
+  const [selectedDueDate, setSelectedDueDate] = useState<string>("");
+  const [homeworkTitle, setHomeworkTitle] = useState("");
+
+  const dateOptions = useMemo(() => getDateOptions(), []);
+
   const loadData = useCallback(async () => {
     setLoading(true);
-    const [mine, joined] = await Promise.all([getMyClassroom(), getJoinedClassroom()]);
+    const [mine, joined, prefs] = await Promise.all([
+      getMyClassroom(),
+      getJoinedClassroom(),
+      getClassroomNotifPrefs(),
+    ]);
     setMyClassroom(mine);
     setJoinedClassroom(joined);
+    setNotifPrefs(prefs);
     const activeClassroom = mine || joined;
     if (activeClassroom) {
-      const f = await getClassroomFeed(activeClassroom.code);
+      const [f, lb] = await Promise.all([
+        getClassroomFeed(activeClassroom.code),
+        getLeaderboard(activeClassroom.code),
+      ]);
       setFeed(f);
+      setLeaderboard(lb);
     } else {
       setFeed([]);
+      setLeaderboard([]);
     }
     setLoading(false);
   }, []);
@@ -121,6 +186,7 @@ export default function ClassroomTabScreen() {
             await deleteMyClassroom();
             setMyClassroom(null);
             setFeed([]);
+            setLeaderboard([]);
           },
         },
       ]
@@ -140,6 +206,7 @@ export default function ClassroomTabScreen() {
             await leaveClassroom();
             setJoinedClassroom(null);
             setFeed([]);
+            setLeaderboard([]);
           },
         },
       ]
@@ -190,8 +257,45 @@ export default function ClassroomTabScreen() {
     } as any);
   };
 
+  const handleOpenHomeworkModal = (item: ClassroomProblem) => {
+    setHomeworkModalItem(item);
+    setSelectedDueDate(item.dueDate || dateOptions[1].iso);
+    setHomeworkTitle(item.homeworkTitle || item.problem.slice(0, 40));
+  };
+
+  const handleAssignHomework = async () => {
+    if (!activeClassroom || !homeworkModalItem || !selectedDueDate) return;
+    await assignAsHomework(activeClassroom.code, homeworkModalItem.id, selectedDueDate, homeworkTitle);
+    setFeed((prev) =>
+      prev.map((p) =>
+        p.id === homeworkModalItem.id
+          ? { ...p, isHomework: true, dueDate: selectedDueDate, homeworkTitle }
+          : p
+      )
+    );
+    setHomeworkModalItem(null);
+    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  };
+
+  const handleUnassignHomework = async (item: ClassroomProblem) => {
+    if (!activeClassroom) return;
+    await unassignHomework(activeClassroom.code, item.id);
+    setFeed((prev) =>
+      prev.map((p) =>
+        p.id === item.id ? { ...p, isHomework: false, dueDate: undefined, homeworkTitle: undefined } : p
+      )
+    );
+  };
+
+  const handleToggleNotifPref = async (key: keyof ClassroomNotifPrefs) => {
+    const updated = { ...notifPrefs, [key]: !notifPrefs[key] };
+    setNotifPrefs(updated);
+    await saveClassroomNotifPrefs(updated);
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
   // Analytics: compute subject breakdown from feed
-  const subjectBreakdown = React.useMemo(() => {
+  const subjectBreakdown = useMemo(() => {
     const counts: Record<string, number> = {};
     feed.forEach((p) => {
       counts[p.subject] = (counts[p.subject] || 0) + 1;
@@ -201,6 +305,8 @@ export default function ClassroomTabScreen() {
       .slice(0, 8)
       .map(([subject, count]) => ({ subject, count }));
   }, [feed]);
+
+  const homeworkItems = useMemo(() => feed.filter((p) => p.isHomework), [feed]);
 
   const renderProblemCard = ({ item }: { item: ClassroomProblem }) => {
     const subjectColor = getSubjectColor(item.subject);
@@ -224,12 +330,22 @@ export default function ClassroomTabScreen() {
         }
         activeOpacity={0.75}
       >
-        <View style={[styles.problemAccent, { backgroundColor: subjectColor }]} />
+        <View style={[styles.problemAccent, { backgroundColor: item.isHomework ? colors.warning : subjectColor }]} />
         <View style={styles.problemContent}>
           <View style={styles.problemTop}>
-            <View style={[styles.subjectBadge, { backgroundColor: `${subjectColor}20` }]}>
-              <Text style={styles.subjectEmoji}>{subjectEmoji}</Text>
-              <Text style={[styles.subjectBadgeText, { color: subjectColor }]}>{subjectLabel}</Text>
+            <View style={styles.problemTopLeft}>
+              <View style={[styles.subjectBadge, { backgroundColor: `${subjectColor}20` }]}>
+                <Text style={styles.subjectEmoji}>{subjectEmoji}</Text>
+                <Text style={[styles.subjectBadgeText, { color: subjectColor }]}>{subjectLabel}</Text>
+              </View>
+              {item.isHomework && item.dueDate && (
+                <View style={[styles.hwBadge, { backgroundColor: `${dueDateColor(item.dueDate, colors)}18`, borderColor: `${dueDateColor(item.dueDate, colors)}40` }]}>
+                  <IconSymbol size={10} name="calendar" color={dueDateColor(item.dueDate, colors)} />
+                  <Text style={[styles.hwBadgeText, { color: dueDateColor(item.dueDate, colors) }]}>
+                    {formatDueDate(item.dueDate)}
+                  </Text>
+                </View>
+              )}
             </View>
             <View style={styles.problemTopRight}>
               <Text style={[styles.dateText, { color: colors.muted }]}>{date}</Text>
@@ -247,23 +363,80 @@ export default function ClassroomTabScreen() {
             <Text style={[styles.sharedBy, { color: colors.muted }]}>
               Shared by {item.sharedBy}
             </Text>
-            <TouchableOpacity
-              style={[styles.challengeBtn, { backgroundColor: `${colors.primary}15`, borderColor: `${colors.primary}40` }]}
-              onPress={() => handleChallenge(item)}
-              activeOpacity={0.75}
-            >
-              <IconSymbol size={12} name="timer" color={colors.primary} />
-              <Text style={[styles.challengeBtnText, { color: colors.primary }]}>Challenge</Text>
-            </TouchableOpacity>
+            <View style={styles.problemActions}>
+              {myClassroom && (
+                <TouchableOpacity
+                  style={[styles.hwBtn, {
+                    backgroundColor: item.isHomework ? `${colors.warning}15` : `${colors.surface}`,
+                    borderColor: item.isHomework ? colors.warning : colors.border,
+                  }]}
+                  onPress={() => item.isHomework ? handleUnassignHomework(item) : handleOpenHomeworkModal(item)}
+                  activeOpacity={0.75}
+                >
+                  <IconSymbol size={11} name="calendar" color={item.isHomework ? colors.warning : colors.muted} />
+                  <Text style={[styles.hwBtnText, { color: item.isHomework ? colors.warning : colors.muted }]}>
+                    {item.isHomework ? "HW" : "Assign"}
+                  </Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                style={[styles.challengeBtn, { backgroundColor: `${colors.primary}15`, borderColor: `${colors.primary}40` }]}
+                onPress={() => handleChallenge(item)}
+                activeOpacity={0.75}
+              >
+                <IconSymbol size={12} name="timer" color={colors.primary} />
+                <Text style={[styles.challengeBtnText, { color: colors.primary }]}>Challenge</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </TouchableOpacity>
     );
   };
 
+  const renderLeaderboardEntry = ({ item, index }: { item: LeaderboardEntry; index: number }) => {
+    const medals = ["🥇", "🥈", "🥉"];
+    const medal = index < 3 ? medals[index] : null;
+    const accuracy = item.challengesCompleted > 0
+      ? Math.round((item.challengesCorrect / item.challengesCompleted) * 100)
+      : 0;
+
+    return (
+      <View style={[styles.lbRow, { backgroundColor: colors.surface, borderColor: index === 0 ? `${colors.warning}60` : colors.border }]}>
+        <View style={styles.lbRank}>
+          {medal ? (
+            <Text style={styles.lbMedal}>{medal}</Text>
+          ) : (
+            <Text style={[styles.lbRankNum, { color: colors.muted }]}>#{index + 1}</Text>
+          )}
+        </View>
+        <View style={styles.lbInfo}>
+          <Text style={[styles.lbName, { color: colors.foreground }]}>{item.name}</Text>
+          <Text style={[styles.lbMeta, { color: colors.muted }]}>
+            {item.challengesCompleted} challenge{item.challengesCompleted !== 1 ? "s" : ""}
+            {item.bestTimeSeconds !== null ? ` · Best: ${item.bestTimeSeconds}s` : ""}
+          </Text>
+        </View>
+        <View style={styles.lbStats}>
+          <Text style={[styles.lbCorrect, { color: colors.success }]}>{item.challengesCorrect}</Text>
+          <Text style={[styles.lbAccuracy, { color: colors.muted }]}>{accuracy}%</Text>
+        </View>
+      </View>
+    );
+  };
+
   const tabs: { key: Tab; label: string }[] = myClassroom
-    ? [{ key: "feed", label: "📋 Feed" }, { key: "analytics", label: "📊 Analytics" }, { key: "manage", label: "⚙️ Manage" }]
-    : [{ key: "feed", label: "📋 Feed" }, { key: "manage", label: "⚙️ Manage" }];
+    ? [
+        { key: "feed", label: "📋 Feed" },
+        { key: "leaderboard", label: "🏆 Ranks" },
+        { key: "analytics", label: "📊 Stats" },
+        { key: "manage", label: "⚙️ Manage" },
+      ]
+    : [
+        { key: "feed", label: "📋 Feed" },
+        { key: "leaderboard", label: "🏆 Ranks" },
+        { key: "manage", label: "⚙️ Manage" },
+      ];
 
   return (
     <ScreenContainer>
@@ -379,7 +552,8 @@ export default function ClassroomTabScreen() {
       {/* Active classroom */}
       {activeClassroom && !showCreate && !showJoin && (
         <>
-          <View style={[styles.tabs, { borderBottomColor: colors.border }]}>
+          {/* Tab bar */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.tabsScroll, { borderBottomColor: colors.border }]}>
             {tabs.map((tab) => (
               <TouchableOpacity
                 key={tab.key}
@@ -392,8 +566,9 @@ export default function ClassroomTabScreen() {
                 </Text>
               </TouchableOpacity>
             ))}
-          </View>
+          </ScrollView>
 
+          {/* Feed tab */}
           {activeTab === "feed" && (
             <FlatList
               data={feed}
@@ -401,6 +576,16 @@ export default function ClassroomTabScreen() {
               renderItem={renderProblemCard}
               contentContainerStyle={styles.feedList}
               showsVerticalScrollIndicator={false}
+              ListHeaderComponent={
+                homeworkItems.length > 0 ? (
+                  <View style={[styles.hwBanner, { backgroundColor: `${colors.warning}12`, borderColor: `${colors.warning}30` }]}>
+                    <IconSymbol size={14} name="calendar" color={colors.warning} />
+                    <Text style={[styles.hwBannerText, { color: colors.warning }]}>
+                      {homeworkItems.length} homework assignment{homeworkItems.length !== 1 ? "s" : ""} active
+                    </Text>
+                  </View>
+                ) : null
+              }
               ListEmptyComponent={
                 <View style={styles.feedEmpty}>
                   <Text style={styles.feedEmptyIcon}>📭</Text>
@@ -415,9 +600,42 @@ export default function ClassroomTabScreen() {
             />
           )}
 
+          {/* Leaderboard tab */}
+          {activeTab === "leaderboard" && (
+            <FlatList
+              data={leaderboard}
+              keyExtractor={(item) => item.name}
+              renderItem={renderLeaderboardEntry}
+              contentContainerStyle={styles.lbList}
+              showsVerticalScrollIndicator={false}
+              ListHeaderComponent={
+                <View style={[styles.lbHeader, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                  <Text style={styles.lbTrophyIcon}>🏆</Text>
+                  <Text style={[styles.lbHeaderTitle, { color: colors.foreground }]}>Class Leaderboard</Text>
+                  <Text style={[styles.lbHeaderSub, { color: colors.muted }]}>
+                    Ranked by correct answers · Ties broken by fastest time
+                  </Text>
+                  <View style={styles.lbColHeaders}>
+                    <Text style={[styles.lbColLabel, { color: colors.muted, flex: 1 }]}>Player</Text>
+                    <Text style={[styles.lbColLabel, { color: colors.muted }]}>✓ Correct</Text>
+                  </View>
+                </View>
+              }
+              ListEmptyComponent={
+                <View style={styles.feedEmpty}>
+                  <Text style={styles.feedEmptyIcon}>🎯</Text>
+                  <Text style={[styles.feedEmptyTitle, { color: colors.foreground }]}>No challenges yet</Text>
+                  <Text style={[styles.feedEmptyText, { color: colors.muted }]}>
+                    Complete challenges from the Feed to appear on the leaderboard.
+                  </Text>
+                </View>
+              }
+            />
+          )}
+
+          {/* Analytics tab (teacher only) */}
           {activeTab === "analytics" && myClassroom && (
             <ScrollView contentContainerStyle={styles.analyticsContainer}>
-              {/* Summary row */}
               <View style={[styles.statsRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <View style={styles.statItem}>
                   <Text style={[styles.statValue, { color: colors.foreground }]}>{feed.length}</Text>
@@ -430,14 +648,11 @@ export default function ClassroomTabScreen() {
                 </View>
                 <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
                 <View style={styles.statItem}>
-                  <Text style={[styles.statValue, { color: colors.foreground }]}>
-                    {feed.length > 0 ? new Date(feed[feed.length - 1].sharedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "—"}
-                  </Text>
-                  <Text style={[styles.statLabel, { color: colors.muted }]}>First Shared</Text>
+                  <Text style={[styles.statValue, { color: colors.warning }]}>{homeworkItems.length}</Text>
+                  <Text style={[styles.statLabel, { color: colors.muted }]}>Active HW</Text>
                 </View>
               </View>
 
-              {/* Subject breakdown */}
               <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Subject Breakdown</Text>
               {subjectBreakdown.length === 0 ? (
                 <View style={[styles.emptyAnalytics, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -470,7 +685,6 @@ export default function ClassroomTabScreen() {
                 })
               )}
 
-              {/* Most recent activity */}
               {feed.length > 0 && (
                 <>
                   <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Recent Activity</Text>
@@ -483,6 +697,7 @@ export default function ClassroomTabScreen() {
                         </Text>
                         <Text style={[styles.activityMeta, { color: colors.muted }]}>
                           {getSubjectLabel(item.subject)} · {new Date(item.sharedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                          {item.isHomework ? " · 📚 HW" : ""}
                         </Text>
                       </View>
                     </View>
@@ -492,8 +707,10 @@ export default function ClassroomTabScreen() {
             </ScrollView>
           )}
 
+          {/* Manage tab */}
           {activeTab === "manage" && (
             <ScrollView contentContainerStyle={styles.manageContainer}>
+              {/* Code card */}
               <View style={[styles.codeCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <Text style={[styles.codeCardLabel, { color: colors.muted }]}>
                   {myClassroom ? "Your Class Code" : "Joined Class Code"}
@@ -530,6 +747,38 @@ export default function ClassroomTabScreen() {
                 )}
               </View>
 
+              {/* Notification preferences */}
+              <View style={[styles.notifCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <Text style={[styles.notifCardTitle, { color: colors.foreground }]}>🔔 Notifications</Text>
+                {[
+                  { key: "enabled" as const, label: "Classroom Notifications", sub: "Master toggle for all classroom alerts" },
+                  { key: "newProblem" as const, label: "New Problem Shared", sub: "When a problem is added to the feed" },
+                  { key: "newHomework" as const, label: "New Homework Assigned", sub: "When a problem is assigned as homework" },
+                ].map(({ key, label, sub }) => (
+                  <TouchableOpacity
+                    key={key}
+                    style={[styles.notifRow, { borderTopColor: colors.border }]}
+                    onPress={() => handleToggleNotifPref(key)}
+                    activeOpacity={0.75}
+                  >
+                    <View style={styles.notifRowInfo}>
+                      <Text style={[styles.notifRowLabel, { color: colors.foreground }]}>{label}</Text>
+                      <Text style={[styles.notifRowSub, { color: colors.muted }]}>{sub}</Text>
+                    </View>
+                    <View style={[
+                      styles.toggle,
+                      { backgroundColor: notifPrefs[key] ? colors.primary : colors.border }
+                    ]}>
+                      <View style={[
+                        styles.toggleThumb,
+                        { transform: [{ translateX: notifPrefs[key] ? 18 : 2 }] }
+                      ]} />
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* How to share */}
               <View style={[styles.howToCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <Text style={[styles.howToTitle, { color: colors.foreground }]}>How to Share Problems</Text>
                 <Text style={[styles.howToStep, { color: colors.muted }]}>1. Solve any problem using TutorSnap</Text>
@@ -538,6 +787,7 @@ export default function ClassroomTabScreen() {
                 <Text style={[styles.howToStep, { color: colors.muted }]}>4. The problem appears in the class feed instantly</Text>
               </View>
 
+              {/* Danger zone */}
               <View style={[styles.dangerCard, { borderColor: colors.error + "40" }]}>
                 <TouchableOpacity
                   style={[styles.dangerBtn, { borderColor: colors.error + "40" }]}
@@ -554,6 +804,77 @@ export default function ClassroomTabScreen() {
           )}
         </>
       )}
+
+      {/* Homework Assignment Modal */}
+      <Modal
+        visible={!!homeworkModalItem}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setHomeworkModalItem(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalSheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
+            <View style={[styles.modalHandle, { backgroundColor: colors.border }]} />
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Assign as Homework</Text>
+            {homeworkModalItem && (
+              <Text style={[styles.modalProblemPreview, { color: colors.muted }]} numberOfLines={2}>
+                {homeworkModalItem.problem}
+              </Text>
+            )}
+
+            <Text style={[styles.modalLabel, { color: colors.foreground }]}>Homework Title (optional)</Text>
+            <TextInput
+              style={[styles.modalInput, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
+              value={homeworkTitle}
+              onChangeText={setHomeworkTitle}
+              placeholder="e.g. Chapter 3 Practice"
+              placeholderTextColor={colors.muted}
+              maxLength={60}
+              returnKeyType="done"
+            />
+
+            <Text style={[styles.modalLabel, { color: colors.foreground }]}>Due Date</Text>
+            <View style={styles.dateOptionsRow}>
+              {dateOptions.map((opt) => (
+                <TouchableOpacity
+                  key={opt.iso}
+                  style={[
+                    styles.dateOptionBtn,
+                    {
+                      backgroundColor: selectedDueDate === opt.iso ? colors.primary : colors.surface,
+                      borderColor: selectedDueDate === opt.iso ? colors.primary : colors.border,
+                    },
+                  ]}
+                  onPress={() => setSelectedDueDate(opt.iso)}
+                  activeOpacity={0.75}
+                >
+                  <Text style={[styles.dateOptionText, { color: selectedDueDate === opt.iso ? "#FFFFFF" : colors.foreground }]}>
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalCancelBtn, { borderColor: colors.border }]}
+                onPress={() => setHomeworkModalItem(null)}
+                activeOpacity={0.75}
+              >
+                <Text style={[styles.modalCancelText, { color: colors.muted }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalAssignBtn, { backgroundColor: colors.primary }]}
+                onPress={handleAssignHomework}
+                activeOpacity={0.85}
+              >
+                <IconSymbol size={16} name="calendar" color="#FFFFFF" />
+                <Text style={styles.modalAssignText}>Assign</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScreenContainer>
   );
 }
@@ -576,14 +897,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   codePillText: { fontSize: 14, fontWeight: "800", letterSpacing: 2 },
-  tabs: {
-    flexDirection: "row",
+  tabsScroll: {
     borderBottomWidth: StyleSheet.hairlineWidth,
+    flexGrow: 0,
   },
   tab: {
-    flex: 1,
     paddingVertical: 12,
-    alignItems: "center",
+    paddingHorizontal: 16,
     borderBottomWidth: 2.5,
     borderBottomColor: "transparent",
   },
@@ -644,6 +964,17 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   feedList: { padding: 16, gap: 12, paddingBottom: 32 },
+  hwBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginBottom: 4,
+  },
+  hwBannerText: { fontSize: 12, fontWeight: "600" },
   feedEmpty: { alignItems: "center", paddingTop: 60, gap: 10 },
   feedEmptyIcon: { fontSize: 48 },
   feedEmptyTitle: { fontSize: 17, fontWeight: "700" },
@@ -657,16 +988,38 @@ const styles = StyleSheet.create({
   },
   problemAccent: { width: 4 },
   problemContent: { flex: 1, padding: 14, gap: 6 },
-  problemTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  problemTop: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" },
+  problemTopLeft: { flex: 1, flexDirection: "row", flexWrap: "wrap", gap: 4, alignItems: "center" },
   problemTopRight: { flexDirection: "row", alignItems: "center", gap: 6 },
   subjectBadge: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
   subjectEmoji: { fontSize: 12 },
   subjectBadgeText: { fontSize: 11, fontWeight: "700" },
+  hwBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  hwBadgeText: { fontSize: 10, fontWeight: "700" },
   dateText: { fontSize: 11 },
   removeBtn: { padding: 2 },
   problemText: { fontSize: 14, fontWeight: "600", lineHeight: 20 },
   problemFooter: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   sharedBy: { fontSize: 11 },
+  problemActions: { flexDirection: "row", gap: 6, alignItems: "center" },
+  hwBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  hwBtnText: { fontSize: 10, fontWeight: "700" },
   challengeBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -677,6 +1030,39 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   challengeBtnText: { fontSize: 11, fontWeight: "700" },
+  // Leaderboard
+  lbList: { padding: 16, gap: 10, paddingBottom: 32 },
+  lbHeader: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+    alignItems: "center",
+    gap: 4,
+    marginBottom: 4,
+  },
+  lbTrophyIcon: { fontSize: 36, marginBottom: 4 },
+  lbHeaderTitle: { fontSize: 18, fontWeight: "800" },
+  lbHeaderSub: { fontSize: 12, textAlign: "center", lineHeight: 17 },
+  lbColHeaders: { flexDirection: "row", width: "100%", marginTop: 8, paddingHorizontal: 4 },
+  lbColLabel: { fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.5 },
+  lbRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 14,
+    gap: 12,
+  },
+  lbRank: { width: 32, alignItems: "center" },
+  lbMedal: { fontSize: 22 },
+  lbRankNum: { fontSize: 15, fontWeight: "800" },
+  lbInfo: { flex: 1 },
+  lbName: { fontSize: 15, fontWeight: "700" },
+  lbMeta: { fontSize: 11, marginTop: 2 },
+  lbStats: { alignItems: "flex-end", gap: 2 },
+  lbCorrect: { fontSize: 18, fontWeight: "800" },
+  lbAccuracy: { fontSize: 11 },
+  // Analytics
   analyticsContainer: { padding: 16, gap: 14, paddingBottom: 40 },
   statsRow: {
     flexDirection: "row",
@@ -720,6 +1106,7 @@ const styles = StyleSheet.create({
   activityInfo: { flex: 1 },
   activityProblem: { fontSize: 13, fontWeight: "600" },
   activityMeta: { fontSize: 11, marginTop: 2 },
+  // Manage
   manageContainer: { padding: 16, gap: 14, paddingBottom: 40 },
   codeCard: {
     borderRadius: 16,
@@ -742,6 +1129,36 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
   },
   codeActionText: { fontSize: 13, fontWeight: "700" },
+  // Notification prefs
+  notifCard: { borderRadius: 14, borderWidth: 1, padding: 16, gap: 0 },
+  notifCardTitle: { fontSize: 14, fontWeight: "700", marginBottom: 8 },
+  notifRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    gap: 10,
+  },
+  notifRowInfo: { flex: 1 },
+  notifRowLabel: { fontSize: 13, fontWeight: "600" },
+  notifRowSub: { fontSize: 11, marginTop: 1 },
+  toggle: {
+    width: 42,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: "center",
+  },
+  toggleThumb: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "#FFFFFF",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
+  },
   howToCard: { borderRadius: 14, borderWidth: 1, padding: 16, gap: 8 },
   howToTitle: { fontSize: 14, fontWeight: "700", marginBottom: 4 },
   howToStep: { fontSize: 13, lineHeight: 19 },
@@ -755,4 +1172,62 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   dangerBtnText: { fontSize: 14, fontWeight: "700" },
+  // Homework modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "flex-end",
+  },
+  modalSheet: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderWidth: 1,
+    padding: 24,
+    paddingBottom: 40,
+    gap: 12,
+  },
+  modalHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: "center",
+    marginBottom: 8,
+  },
+  modalTitle: { fontSize: 18, fontWeight: "800" },
+  modalProblemPreview: { fontSize: 13, lineHeight: 19 },
+  modalLabel: { fontSize: 13, fontWeight: "700", marginTop: 4 },
+  modalInput: {
+    borderWidth: 1.5,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    fontSize: 14,
+  },
+  dateOptionsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  dateOptionBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1.5,
+  },
+  dateOptionText: { fontSize: 13, fontWeight: "600" },
+  modalActions: { flexDirection: "row", gap: 10, marginTop: 4 },
+  modalCancelBtn: {
+    flex: 1,
+    paddingVertical: 13,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    alignItems: "center",
+  },
+  modalCancelText: { fontSize: 14, fontWeight: "600" },
+  modalAssignBtn: {
+    flex: 2,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 13,
+    borderRadius: 12,
+  },
+  modalAssignText: { color: "#FFFFFF", fontSize: 14, fontWeight: "700" },
 });

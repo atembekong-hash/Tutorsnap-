@@ -24,6 +24,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { getSubjectColor, getSubjectLabel, getSubjectEmoji } from "@/lib/subjects";
+import { recordChallengeResult } from "@/lib/classroom";
 import type { MathSubject } from "@/shared/types";
 
 type Phase = "ready" | "active" | "result";
@@ -131,6 +132,11 @@ export default function ChallengeScreen() {
 
     setIsCorrect(correct);
     setPhase("result");
+
+    // Record result in leaderboard if this came from a classroom
+    if (classCode) {
+      recordChallengeResult(classCode, "Me", correct, elapsed).catch(() => {/* ignore */});
+    }
 
     if (Platform.OS !== "web") {
       if (correct) {
