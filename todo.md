@@ -97,3 +97,6 @@
 - [x] Wire useFontSize into Chat screen (all message text scales with Text Size setting)
 - [x] Add Contact Support row in Settings ABOUT section (pre-filled mailto)
 - [x] Preferred Subjects pre-select in Practice tab (SubjectPicker opens to preferred category, starred tabs)
+- [x] Study Planner screen with weekly schedule, time slots, and local notification reminders
+- [ ] Flashcard deck PDF export and sharing
+- [x] AI chat history persistence (AsyncStorage, 50-message rolling window)

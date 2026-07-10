@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { ErrorBoundary } from "@/components/error-boundary";
 import {
   View,
@@ -22,6 +22,10 @@ import { SubjectPicker } from "@/components/subject-picker";
 import { type SubjectId, getSubjectLabel } from "@/lib/subjects";
 import { useNetworkStatus } from "@/hooks/use-network-status";
 import { useFontSize } from "@/lib/font-size-provider";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+const CHAT_HISTORY_KEY = "@tutorsnap/chatHistory";
+const MAX_PERSISTED_MESSAGES = 50;
 
 const QUICK_PROMPTS = [
   "Explain the quadratic formula",
@@ -72,21 +76,41 @@ function MessageBubble({ message, colors, fs }: { message: ChatMessage; colors: 
   );
 }
 
+const WELCOME_MESSAGE: ChatMessage = {
+  id: "welcome",
+  role: "assistant",
+  content: "Hi! I'm TutorSnap, your personal academic tutor. Ask me anything — Math, Science, English, History, and more. I'll explain concepts, help with homework, and guide you step by step! 📚",
+  timestamp: Date.now(),
+};
+
 function ChatScreenContent() {
   const colors = useColors();
   const { fs } = useFontSize();
   const [selectedSubject, setSelectedSubject] = useState<SubjectId | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: "welcome",
-      role: "assistant",
-      content: "Hi! I'm TutorSnap, your personal academic tutor. Ask me anything — Math, Science, English, History, and more. I'll explain concepts, help with homework, and guide you step by step! 📚",
-      timestamp: Date.now(),
-    },
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
   const [inputText, setInputText] = useState("");
   const flatListRef = useRef<FlatList>(null);
   const { isOnline } = useNetworkStatus();
+
+  // Load persisted chat history on mount
+  useEffect(() => {
+    AsyncStorage.getItem(CHAT_HISTORY_KEY).then((raw) => {
+      if (raw) {
+        try {
+          const saved = JSON.parse(raw) as ChatMessage[];
+          if (saved.length > 0) setMessages(saved);
+        } catch { /* ignore */ }
+      }
+      setHistoryLoaded(true);
+    });
+  }, []);
+
+  // Persist messages whenever they change (after initial load)
+  const persistMessages = useCallback((msgs: ChatMessage[]) => {
+    const toSave = msgs.slice(-MAX_PERSISTED_MESSAGES);
+    AsyncStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(toSave)).catch(() => {});
+  }, []);
 
   const chatMutation = trpc.academic.chat.useMutation({
     onSuccess: (data) => {
@@ -96,7 +120,11 @@ function ChatScreenContent() {
         content: data.content,
         timestamp: Date.now(),
       };
-      setMessages((prev) => [...prev, aiMessage]);
+      setMessages((prev) => {
+        const next = [...prev, aiMessage];
+        persistMessages(next);
+        return next;
+      });
       setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
     },
   });
@@ -119,6 +147,7 @@ function ChatScreenContent() {
 
     const updatedMessages = [...messages, userMessage];
     setMessages(updatedMessages);
+    persistMessages(updatedMessages);
     setInputText("");
 
     setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
@@ -132,15 +161,20 @@ function ChatScreenContent() {
 
   const handleClearChat = () => {
     const subjectName = selectedSubject ? getSubjectLabel(selectedSubject) : "any subject";
-    setMessages([
+    const cleared: ChatMessage[] = [
       {
         id: "welcome-" + Date.now(),
         role: "assistant",
         content: `Chat cleared! I'm ready to help with ${subjectName}. What would you like to explore? 📚`,
         timestamp: Date.now(),
       },
-    ]);
+    ];
+    setMessages(cleared);
+    AsyncStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(cleared)).catch(() => {});
   };
+
+  // Suppress unused warning
+  void historyLoaded;
 
   return (
     <ScreenContainer>

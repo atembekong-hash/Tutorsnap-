@@ -17,6 +17,8 @@ import { useColors } from "@/hooks/use-colors";
 import { getBookmarks } from "@/lib/bookmarks";
 import type { HistoryItem } from "@/shared/types";
 import { getSubjectDef } from "@/lib/subjects";
+import * as Sharing from "expo-sharing";
+import * as FileSystem from "expo-file-system/legacy";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CARD_WIDTH = SCREEN_WIDTH - 48;
@@ -179,6 +181,51 @@ export default function FlashcardsScreen() {
   const current = bookmarks[currentIndex];
   const progress = bookmarks.length > 0 ? (currentIndex / bookmarks.length) * 100 : 0;
 
+  const handleShareDeck = async () => {
+    if (bookmarks.length === 0) return;
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const lines: string[] = [
+      "TutorSnap Flashcard Deck",
+      `Exported: ${new Date().toLocaleDateString()}`,
+      `Total cards: ${bookmarks.length}`,
+      "",
+      "─".repeat(40),
+    ];
+    bookmarks.forEach((item, idx) => {
+      lines.push("");
+      lines.push(`Card ${idx + 1} — ${item.subject ?? "General"}`);
+      lines.push(`Q: ${item.problem}`);
+      lines.push(`A: ${item.answer}`);
+      if (item.steps && item.steps.length > 0) {
+        lines.push("Steps:");
+        (item.steps as unknown as string[]).forEach((step, si) => {
+          const stepText = typeof step === "string" ? step : (step as any).text ?? JSON.stringify(step);
+          lines.push(`  ${si + 1}. ${stepText}`);
+        });
+      }
+      lines.push("─".repeat(40));
+    });
+    const content = lines.join("\n");
+    try {
+      if (Platform.OS === "web") {
+        const blob = new Blob([content], { type: "text/plain" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "tutorsnap_flashcards.txt";
+        a.click();
+        URL.revokeObjectURL(url);
+      } else {
+        const fileUri = (FileSystem.documentDirectory ?? "") + "tutorsnap_flashcards.txt";
+        await FileSystem.writeAsStringAsync(fileUri, content, { encoding: FileSystem.EncodingType.UTF8 });
+        const canShare = await Sharing.isAvailableAsync();
+        if (canShare) {
+          await Sharing.shareAsync(fileUri, { mimeType: "text/plain", dialogTitle: "Share Flashcard Deck" });
+        }
+      }
+    } catch { /* ignore */ }
+  };
+
   return (
     <ScreenContainer>
       {/* Header */}
@@ -194,7 +241,14 @@ export default function FlashcardsScreen() {
             </Text>
           )}
         </View>
-        <View style={{ width: 30 }} />
+        <TouchableOpacity
+          onPress={handleShareDeck}
+          style={[styles.shareBtn, { backgroundColor: `${colors.primary}15` }]}
+          disabled={bookmarks.length === 0}
+          activeOpacity={0.7}
+        >
+          <IconSymbol size={18} name="square.and.arrow.up.fill" color={bookmarks.length === 0 ? colors.muted : colors.primary} />
+        </TouchableOpacity>
       </View>
 
       {bookmarks.length === 0 ? (
@@ -431,4 +485,5 @@ const styles = StyleSheet.create({
   },
   restartBtnText: { color: "#FFFFFF", fontSize: 16, fontWeight: "700" },
   doneBack: { fontSize: 14 },
+  shareBtn: { padding: 8, borderRadius: 20 },
 });

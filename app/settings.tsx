@@ -509,6 +509,13 @@ export default function SettingsScreen() {
           onPress={() => router.push("/flashcards" as any)}
         />
         <SettingsRow
+          icon="calendar"
+          label="Study Planner"
+          subtitle="Schedule weekly study sessions with reminders"
+          colors={colors}
+          onPress={() => router.push("/study-planner" as any)}
+        />
+        <SettingsRow
           icon="person.2.fill"
           label="Preferred Subjects"
           subtitle={preferredCategoryLabels || "All subjects"}

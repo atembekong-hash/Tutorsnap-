@@ -73,6 +73,11 @@ const MAPPING = {
   // Settings extras
   "textformat.size": "format-size",
   "envelope.fill": "email",
+  "calendar": "calendar-today",
+  "calendar.badge.plus": "event",
+  "book.fill": "menu-book",
+  "clock.badge.checkmark": "alarm-on",
+  "pencil.line": "edit",
   "person.2.fill": "group",
   "hand.raised.fill": "front-hand",
   "doc.text.fill": "description",
