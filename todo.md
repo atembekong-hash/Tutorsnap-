@@ -381,3 +381,15 @@
 - [x] Fix streak-notifications.ts data.type payloads to snake_case to match router
 - [x] Clear bell badge (setBadgeCountAsync(0)) when Notification Center screen opens
 - [x] Add expo-clipboard fallback to handleShareText in solution.tsx for web
+
+## Round 40: RevenueCat Subscription System
+- [x] Install react-native-purchases (RevenueCat SDK)
+- [x] Create lib/subscription.ts — initRevenueCat, getSubscriptionStatus, purchaseProduct, restorePurchases, openManageSubscriptions, getOfferings, usage limit helpers, trial tracking, dev-mode fallback
+- [x] Create app/paywall.tsx — hero with 14-day trial badge, monthly/annual plan cards (annual highlighted as Best Value with Save 42% badge), feature list, CTA "Start Free Trial", Restore Purchases link, legal text, dev-mode notice
+- [x] Create hooks/use-premium.ts — usePremium hook with subscription status, usage counts, checkLimit, incrementUsage, auto-refresh on focus
+- [x] Wire solve limit in app/(tabs)/index.tsx — checkLimit("solves") before handleSolve, paywall modal on limit hit, free-tier counter display
+- [x] Wire quiz question limit in app/quiz.tsx — checkLimit per question in handleNext, paywall modal on limit hit
+- [x] Wire chat message limit in app/(tabs)/chat.tsx — sessionMessageCount check in handleSend, paywall modal on limit hit
+- [x] Add SUBSCRIPTION section to settings.tsx — status display (trial days remaining / active plan / dev mode), Restore Purchases row, Manage Subscription row, View Premium Plans row
+- [x] Register /paywall route in app/_layout.tsx (modal presentation)
+- [x] Wire trial expiry check on app launch in _layout.tsx — shows paywall if trial expired and not premium

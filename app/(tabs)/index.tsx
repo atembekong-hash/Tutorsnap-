@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
+import { Modal } from "react-native";
 import {
   View,
   Text,
@@ -39,6 +40,8 @@ import { BadgeUnlockModal } from "@/components/badge-unlock-modal";
 import { TodayStudyWidget } from "@/components/today-study-widget";
 import { getMyClassroom, getJoinedClassroom, getClassroomFeed, type ClassroomProblem } from "@/lib/classroom";
 import * as Notifications from "expo-notifications";
+import { usePremium } from "@/hooks/use-premium";
+import { FREE_LIMITS } from "@/lib/subscription";
 
 // Subject examples per category — shown dynamically based on selected subject
 const SUBJECT_EXAMPLES: Record<string, string[]> = {
@@ -117,6 +120,8 @@ function SolveScreenContent() {
   const [dueSoonHomework, setDueSoonHomework] = useState<ClassroomProblem | null>(null);
   const [homeworkBannerDismissed, setHomeworkBannerDismissed] = useState(false);
   const [pendingNotifCount, setPendingNotifCount] = useState(0);
+  const [showPaywallModal, setShowPaywallModal] = useState(false);
+  const { isPremium, usage, checkLimit, incrementUsage: incUsage, isDevMode } = usePremium();
   const inputRef = useRef<TextInput>(null);
   const cursorPosRef = useRef<number>(0);
 
@@ -252,13 +257,19 @@ function SolveScreenContent() {
     },
   });
 
-  const handleSolve = () => {
+  const handleSolve = async () => {
     if (!problem.trim()) return;
+    // Usage limit check (free tier)
+    if (!checkLimit("solves")) {
+      setShowPaywallModal(true);
+      return;
+    }
     Keyboard.dismiss();
     setShowMathKeyboard(false);
     if (Platform.OS !== "web") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
+    await incUsage("solves");
     const fullProblem = problem.trim();
     solveMutation.mutate({ problem: fullProblem, subject: selectedSubject ?? "other" });
   };
@@ -644,6 +655,15 @@ function SolveScreenContent() {
             </View>
           </TouchableOpacity>
 
+          {/* Free-tier daily usage counter */}
+          {!isPremium && !isDevMode && (
+            <View style={{ marginHorizontal: 16, marginTop: 8, alignItems: "center" }}>
+              <Text style={{ fontSize: 12, color: colors.muted }}>
+                {Math.max(0, FREE_LIMITS.solvesPerDay - usage.solves)} of {FREE_LIMITS.solvesPerDay} free solves remaining today
+              </Text>
+            </View>
+          )}
+
           {solveMutation.isError && (
             <View
               style={{
@@ -767,6 +787,27 @@ function SolveScreenContent() {
         subjectId={selectedSubject ?? ""}
         onClose={() => setShowCheatSheet(false)}
       />
+
+      {/* Paywall Modal — shown when free daily solve limit is reached */}
+      <Modal
+        visible={showPaywallModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowPaywallModal(false)}
+      >
+        <View style={{ flex: 1 }}>
+          {/* Inline close button so user can dismiss without going premium */}
+          <TouchableOpacity
+            onPress={() => setShowPaywallModal(false)}
+            style={{ position: "absolute", top: 16, right: 20, zIndex: 10, padding: 8 }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Text style={{ fontSize: 16, color: colors.muted }}>✕</Text>
+          </TouchableOpacity>
+          {/* Lazy-import the paywall screen to avoid circular deps */}
+          {React.createElement(require("../paywall").default)}
+        </View>
+      </Modal>
     </ScreenContainer>
   );
 }

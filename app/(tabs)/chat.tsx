@@ -12,6 +12,7 @@ import {
   Keyboard,
   Share,
   Alert,
+  Modal,
 } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
@@ -37,6 +38,8 @@ import {
   migrateOldChatHistory,
   type ChatSession,
 } from "@/lib/chat-sessions";
+import { usePremium } from "@/hooks/use-premium";
+import { FREE_LIMITS } from "@/lib/subscription";
 
 // ─── Quick Prompts ────────────────────────────────────────────────────────────
 
@@ -150,6 +153,9 @@ function ChatScreenContent() {
   const [shareCopied, setShareCopied] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [showPaywallModal, setShowPaywallModal] = useState(false);
+  const [sessionMessageCount, setSessionMessageCount] = useState(0);
+  const { isPremium, isDevMode, incrementUsage: incUsage } = usePremium();
 
   const flatListRef = useRef<FlatList>(null);
   const { isOnline } = useNetworkStatus();
@@ -260,9 +266,19 @@ function ChatScreenContent() {
   // ── Send ────────────────────────────────────────────────────────────────────
 
   const handleSend = useCallback(
-    (text?: string) => {
+    async (text?: string) => {
       const messageText = (text || inputText).trim();
       if (!messageText || !isOnline || !session) return;
+
+      // Chat message limit for free tier (per session)
+      if (!isPremium && !isDevMode) {
+        if (sessionMessageCount >= FREE_LIMITS.chatMessagesPerSession) {
+          setShowPaywallModal(true);
+          return;
+        }
+        setSessionMessageCount((c) => c + 1);
+        await incUsage("chat");
+      }
 
       Keyboard.dismiss();
       if (Platform.OS !== "web") {
@@ -760,6 +776,27 @@ function ChatScreenContent() {
             </TouchableOpacity>
           </View>
         </View>
+      )}
+
+      {/* Paywall Modal — shown when free chat message limit is reached */}
+      {showPaywallModal && (
+        <Modal
+          visible={showPaywallModal}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => setShowPaywallModal(false)}
+        >
+          <View style={{ flex: 1 }}>
+            <TouchableOpacity
+              onPress={() => setShowPaywallModal(false)}
+              style={{ position: "absolute", top: 16, right: 20, zIndex: 10, padding: 8 }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={{ fontSize: 16, color: colors.muted }}>✕</Text>
+            </TouchableOpacity>
+            {React.createElement(require("../paywall").default)}
+          </View>
+        </Modal>
       )}
     </ScreenContainer>
   );

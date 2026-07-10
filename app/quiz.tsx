@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
-import { Share } from "react-native";
+import { Share, Modal } from "react-native";
 import {
   View,
   Text,
@@ -20,6 +20,8 @@ import { trpc } from "@/lib/trpc";
 import { getSubjectColor, getSubjectLabel } from "@/lib/subjects";
 import { saveQuizResult } from "@/lib/quiz-history";
 import { recordQuizBonus } from "@/lib/progress";
+import { usePremium } from "@/hooks/use-premium";
+import { FREE_LIMITS } from "@/lib/subscription";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -248,6 +250,9 @@ export default function QuizScreen() {
   const [totalTime, setTotalTime] = useState(0);
   const [bonusAwarded, setBonusAwarded] = useState(false);
   const [bonusStreak, setBonusStreak] = useState(0);
+  const [showPaywallModal, setShowPaywallModal] = useState(false);
+  const [quizQuestionsAnswered, setQuizQuestionsAnswered] = useState(0);
+  const { isPremium, isDevMode, checkLimit, incrementUsage: incUsage } = usePremium();
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const progressAnim = useRef(new Animated.Value(1)).current;
 
@@ -320,6 +325,19 @@ export default function QuizScreen() {
   };
 
   const handleNext = async () => {
+    // Usage limit check for quiz questions (free tier)
+    if (!isPremium && !isDevMode && currentIdx + 1 < questions.length) {
+      const nextCount = quizQuestionsAnswered + 1;
+      if (nextCount >= FREE_LIMITS.quizQuestionsPerDay) {
+        // Increment to record this question, then show paywall
+        await incUsage("quiz");
+        setQuizQuestionsAnswered(nextCount);
+        setShowPaywallModal(true);
+        return;
+      }
+      await incUsage("quiz");
+      setQuizQuestionsAnswered(nextCount);
+    }
     if (currentIdx + 1 >= questions.length) {
       if (timerRef.current) clearInterval(timerRef.current);
       // Save quiz result to history
@@ -524,6 +542,25 @@ export default function QuizScreen() {
           )}
         </ScrollView>
       )}
+
+      {/* Paywall Modal — shown when free quiz question limit is reached */}
+      <Modal
+        visible={showPaywallModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowPaywallModal(false)}
+      >
+        <View style={{ flex: 1 }}>
+          <TouchableOpacity
+            onPress={() => setShowPaywallModal(false)}
+            style={{ position: "absolute", top: 16, right: 20, zIndex: 10, padding: 8 }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Text style={{ fontSize: 16, color: colors.muted }}>✕</Text>
+          </TouchableOpacity>
+          {React.createElement(require("./paywall").default)}
+        </View>
+      </Modal>
     </ScreenContainer>
   );
 }

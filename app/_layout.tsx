@@ -24,6 +24,7 @@ import { FontSizeProvider } from "@/lib/font-size-provider";
 import * as Notifications from "expo-notifications";
 import { useRouter } from "expo-router";
 import { syncAllStreakNotifications } from "@/lib/streak-notifications";
+import { initRevenueCat, getSubscriptionStatus } from "@/lib/subscription";
 
 // Show notifications as banners when app is in foreground
 if (Platform.OS !== "web") {
@@ -56,6 +57,19 @@ export default function RootLayout() {
     initManusRuntime();
     // Sync streak alert and weekly report notifications on every app launch
     syncAllStreakNotifications().catch(() => {});
+    // Initialise RevenueCat and check trial / subscription status
+    initRevenueCat().then(async () => {
+      try {
+        const status = await getSubscriptionStatus();
+        // If trial has expired and user is not premium, show paywall
+        if (!status.isPremium && !status.isTrialActive && !status.isDevMode) {
+          // Small delay so the app UI settles before presenting paywall
+          setTimeout(() => {
+            router.push("/paywall" as any);
+          }, 1500);
+        }
+      } catch { /* ignore — paywall check failure is non-critical */ }
+    }).catch(() => {});
   }, []);
 
   // Handle notification taps — route by data payload
@@ -273,6 +287,13 @@ export default function RootLayout() {
                 presentation: "card",
                 animation: "slide_from_right",
                 headerShown: false,
+              }}
+            />
+            <Stack.Screen
+              name="paywall"
+              options={{
+                presentation: "modal",
+                animation: "slide_from_bottom",
               }}
             />
           </Stack>

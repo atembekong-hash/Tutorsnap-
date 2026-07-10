@@ -31,6 +31,12 @@ import {
 } from "@/lib/notifications";
 import { SUBJECT_CATEGORIES, type SubjectCategory } from "@/lib/subjects";
 import { useFontSize, FONT_SIZE_SCALES, SCALE_LABELS, type FontSizeScale } from "@/lib/font-size-provider";
+import {
+  getSubscriptionStatus,
+  restorePurchases,
+  openManageSubscriptions,
+  type SubscriptionStatus,
+} from "@/lib/subscription";
 
 const GOAL_OPTIONS = [1, 2, 3, 5, 7, 10];
 const HOUR_OPTIONS = Array.from({ length: 18 }, (_, i) => i + 6);
@@ -141,6 +147,10 @@ export default function SettingsScreen() {
   // Preferred categories
   const [preferredCategories, setPreferredCategories] = useState<Set<SubjectCategory>>(new Set(["math", "english", "science", "social"]));
 
+  // Subscription status
+  const [subStatus, setSubStatus] = useState<SubscriptionStatus | null>(null);
+  const [restoringPurchases, setRestoringPurchases] = useState(false);
+
   // Auto-scroll to What's New when opened via notification deep link
   useEffect(() => {
     if (scrollTo === "whats_new" && whatsNewYRef.current > 0) {
@@ -159,6 +169,7 @@ export default function SettingsScreen() {
       setStreak(p.streak.currentStreak);
     });
     getReminderSettings().then(setReminder);
+    getSubscriptionStatus().then(setSubStatus).catch(() => {});
     AsyncStorage.getItem("@tutorsnap/preferredCategories").then((raw) => {
       if (raw) {
         try {
@@ -354,6 +365,31 @@ export default function SettingsScreen() {
         : "https://play.google.com/store/apps/details?id=com.tutorsnap.app";
       await Linking.openURL(url);
     } catch { /* store review or linking failure is non-critical */ }
+  };
+
+  const handleRestorePurchases = async () => {
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setRestoringPurchases(true);
+    try {
+      const restored = await restorePurchases();
+      if (restored) {
+        if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Alert.alert("Purchases Restored", "Your premium subscription has been restored.");
+        const updated = await getSubscriptionStatus();
+        setSubStatus(updated);
+      } else {
+        Alert.alert("No Purchases Found", "We couldn't find any previous purchases for this account.");
+      }
+    } catch {
+      Alert.alert("Error", "Could not restore purchases. Please try again.");
+    } finally {
+      setRestoringPurchases(false);
+    }
+  };
+
+  const handleManageSubscription = async () => {
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    await openManageSubscriptions();
   };
 
   const handlePrivacyPolicy = () => {
@@ -628,6 +664,55 @@ export default function SettingsScreen() {
           colors={colors}
           onPress={handleResetProgress}
           danger
+        />
+
+        {/* Subscription */}
+        <SectionHeader title="SUBSCRIPTION" colors={colors} />
+        {/* Status row */}
+        {subStatus && (
+          <View style={[styles.row, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={[styles.rowIcon, { backgroundColor: `${colors.primary}15` }]}>
+              <IconSymbol size={18} name="star.fill" color={colors.primary} />
+            </View>
+            <View style={styles.rowContent}>
+              <Text style={[styles.rowLabel, { color: colors.foreground }]}>TutorSnap Premium</Text>
+              <Text style={[styles.rowSubtitle, { color: colors.muted }]}>
+                {subStatus.isDevMode
+                  ? "Dev mode — all features unlocked"
+                  : subStatus.activeProductId
+                  ? `Active — ${subStatus.activeProductId === "tutorsnap_annual" ? "Annual plan" : "Monthly plan"}`
+                  : subStatus.isTrialActive
+                  ? `Free trial — ${subStatus.trialDaysRemaining} day${subStatus.trialDaysRemaining !== 1 ? "s" : ""} remaining`
+                  : "Free tier — upgrade to unlock all features"}
+              </Text>
+            </View>
+            {(subStatus.isPremium || subStatus.isTrialActive) && (
+              <View style={[styles.goalBadge, { backgroundColor: `${colors.primary}20` }]}>
+                <Text style={[styles.goalBadgeText, { color: colors.primary }]}>✓</Text>
+              </View>
+            )}
+          </View>
+        )}
+        <SettingsRow
+          icon="arrow.clockwise.circle.fill"
+          label={restoringPurchases ? "Restoring…" : "Restore Purchases"}
+          subtitle="Recover a previous subscription"
+          colors={colors}
+          onPress={restoringPurchases ? undefined : handleRestorePurchases}
+        />
+        <SettingsRow
+          icon="creditcard.fill"
+          label="Manage Subscription"
+          subtitle="Change or cancel your plan in the App Store"
+          colors={colors}
+          onPress={handleManageSubscription}
+        />
+        <SettingsRow
+          icon="crown.fill"
+          label="View Premium Plans"
+          subtitle="Upgrade for unlimited access"
+          colors={colors}
+          onPress={() => router.push("/paywall" as any)}
         />
 
         {/* About */}
