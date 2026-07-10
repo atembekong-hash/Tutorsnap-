@@ -407,7 +407,8 @@ export default function SolutionScreen() {
         problem: solution!.problem,
         answer: solution!.answer,
         subject: solution!.subject,
-        steps: (solution!.steps || []).map((s) => `Step ${s.stepNumber}: ${s.title} — ${s.explanation}`),
+        // Store steps as JSON strings so they can be parsed back into SolutionStep objects
+        steps: (solution!.steps || []).map((s) => JSON.stringify(s)),
         sharedBy: "You",
       });
       Alert.alert("Shared!", `Problem added to "${classroom.name}" feed.`);

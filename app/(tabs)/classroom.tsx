@@ -62,6 +62,7 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ProblemCommentSheet } from "@/components/problem-comment-sheet";
 import { getCommentCount } from "@/lib/problem-comments";
+import { toggleBookmark, isBookmarked } from "@/lib/bookmarks";
 
 const HW_DONE_KEY = "@tutorsnap/hw_done";
 
@@ -121,6 +122,7 @@ export default function ClassroomTabScreen() {
   const [displayName, setDisplayName] = useState("");
   const [showNamePrompt, setShowNamePrompt] = useState(false);
   const [pendingJoinCode, setPendingJoinCode] = useState("");
+  const [classroomNameInput, setClassroomNameInput] = useState("");
 
   const [copiedCode, setCopiedCode] = useState(false);
 
@@ -149,6 +151,9 @@ export default function ClassroomTabScreen() {
   // Comment sheet
   const [commentProblem, setCommentProblem] = useState<ClassroomProblem | null>(null);
   const [commentCounts, setCommentCounts] = useState<Record<string, number>>({});
+
+  // Bookmarked problem IDs (local set for instant UI feedback)
+  const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
 
   const dateOptions = useMemo(() => getDateOptions(), []);
 
@@ -200,6 +205,12 @@ export default function ClassroomTabScreen() {
       setFeed(f);
       setLeaderboard(lb);
       refreshCommentCounts(f);
+      // Load bookmark state for each feed item
+      const bookmarkChecks = await Promise.all(
+        f.map(async (item) => [item.id, await isBookmarked(item.problem)] as [string, boolean])
+      );
+      const bookmarkedSet = new Set(bookmarkChecks.filter(([, v]) => v).map(([id]) => id));
+      setBookmarkedIds(bookmarkedSet);
     } else {
       setFeed([]);
       setLeaderboard([]);
@@ -242,11 +253,13 @@ export default function ClassroomTabScreen() {
     setDisplayName(name);
     setJoining(true);
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    // Pass the display name as the classroom name so it doesn't default to "Shared Classroom"
-    const info = await joinClassroom(pendingJoinCode, `${name}'s Classroom`);
+    // Use the classroom name the student entered (or a sensible fallback)
+    const classroomLabel = classroomNameInput.trim() || `Class ${pendingJoinCode}`;
+    const info = await joinClassroom(pendingJoinCode, classroomLabel);
     setJoinedClassroom(info);
     setShowNamePrompt(false);
     setPendingJoinCode("");
+    setClassroomNameInput("");
     setJoining(false);
     setActiveTab("feed");
     await loadData();
@@ -480,6 +493,33 @@ export default function ClassroomTabScreen() {
     });
   };
 
+  // Bookmark toggle for feed cards
+  const handleBookmarkToggle = useCallback(async (item: ClassroomProblem) => {
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const historyItem = {
+      id: `classroom-${item.id}`,
+      problem: item.problem,
+      answer: item.answer || "",
+      subject: item.subject as import("@/shared/types").MathSubject,
+      steps: (item.steps || []) as unknown as import("@/shared/types").SolutionStep[],
+      solvedAt: new Date(item.sharedAt).getTime(),
+    };
+    const nowBookmarked = await toggleBookmark(historyItem);
+    setBookmarkedIds((prev) => {
+      const next = new Set(prev);
+      if (nowBookmarked) next.add(item.id);
+      else next.delete(item.id);
+      return next;
+    });
+    if (Platform.OS !== "web") {
+      Haptics.notificationAsync(
+        nowBookmarked
+          ? Haptics.NotificationFeedbackType.Success
+          : Haptics.NotificationFeedbackType.Warning
+      );
+    }
+  }, []);
+
   // Analytics: compute subject breakdown from feed
   const subjectBreakdown = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -507,11 +547,18 @@ export default function ClassroomTabScreen() {
         onPress={() => {
           // Build a MathSolution-shaped object; if answer/steps are missing
           // the solution screen will auto-trigger the solver.
+          // Steps may be JSON-stringified SolutionStep objects — parse them back.
+          const parsedSteps = (item.steps || []).map((s) => {
+            if (typeof s === "string") {
+              try { return JSON.parse(s); } catch { return null; }
+            }
+            return s;
+          }).filter(Boolean);
           const solutionData = {
             problem: item.problem,
             subject: item.subject,
             answer: item.answer || "",
-            steps: item.steps || [],
+            steps: parsedSteps,
             explanation: "",
             tips: [],
           };
@@ -547,6 +594,18 @@ export default function ClassroomTabScreen() {
             </View>
             <View style={styles.problemTopRight}>
               <Text style={[styles.dateText, { color: colors.muted }]}>{date}</Text>
+              {/* Bookmark button */}
+              <TouchableOpacity
+                onPress={(e) => { e.stopPropagation?.(); handleBookmarkToggle(item); }}
+                accessibilityLabel={bookmarkedIds.has(item.id) ? "Remove bookmark" : "Bookmark"}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <IconSymbol
+                  size={16}
+                  name={bookmarkedIds.has(item.id) ? "bookmark.fill" : "bookmark"}
+                  color={bookmarkedIds.has(item.id) ? colors.primary : colors.muted}
+                />
+              </TouchableOpacity>
               {myClassroom && (
                 <TouchableOpacity onPress={() => handleRemoveProblem(item.id)} style={styles.removeBtn}
                   accessibilityLabel="Remove">
@@ -1374,26 +1433,37 @@ export default function ClassroomTabScreen() {
       >
         <View style={styles.modalOverlay}>
           <View style={[styles.modalSheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
-            <Text style={[styles.modalTitle, { color: colors.foreground }]}>What's your name?</Text>
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Join Classroom</Text>
             <Text style={[styles.modalLabel, { color: colors.muted }]}>
-              Your name will appear on the classroom leaderboard.
+              Enter your display name and the classroom name (optional).
             </Text>
+            <Text style={[styles.modalLabel, { color: colors.foreground, fontWeight: "700", marginTop: 8 }]}>Your Display Name</Text>
             <TextInput
               style={[styles.modalInput, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
               value={displayName}
               onChangeText={setDisplayName}
-              placeholder="Your display name"
+              placeholder="e.g. Alex Smith"
               placeholderTextColor={colors.muted}
               maxLength={30}
+              returnKeyType="next"
+              autoFocus
+            />
+            <Text style={[styles.modalLabel, { color: colors.foreground, fontWeight: "700", marginTop: 8 }]}>Classroom Name (optional)</Text>
+            <TextInput
+              style={[styles.modalInput, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
+              value={classroomNameInput}
+              onChangeText={setClassroomNameInput}
+              placeholder="e.g. Mr. Smith's Algebra Class"
+              placeholderTextColor={colors.muted}
+              maxLength={60}
               returnKeyType="done"
               onSubmitEditing={handleConfirmJoin}
-              autoFocus
             />
             <View style={styles.modalActions}>
               <TouchableOpacity
                 accessibilityLabel="Toggle show name prompt"
                 style={[styles.modalCancelBtn, { borderColor: colors.border }]}
-                onPress={() => { setShowNamePrompt(false); setPendingJoinCode(""); }}
+                onPress={() => { setShowNamePrompt(false); setPendingJoinCode(""); setClassroomNameInput(""); }}
                 activeOpacity={0.75}
               >
                 <Text style={[styles.modalCancelText, { color: colors.muted }]}>Cancel</Text>

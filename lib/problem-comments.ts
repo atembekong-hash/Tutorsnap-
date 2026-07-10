@@ -3,6 +3,7 @@
  *
  * Stores short student comments per classroom problem ID in AsyncStorage.
  * Comments are local-only (no server sync) and keyed by problem ID.
+ * Supports quoted replies via replyToId / replyToAuthor / replyToText fields.
  */
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -14,6 +15,10 @@ export interface ProblemComment {
   author: string; // display name
   text: string;
   createdAt: string; // ISO
+  // Optional reply fields
+  replyToId?: string;
+  replyToAuthor?: string;
+  replyToText?: string; // snippet of the quoted comment (first 80 chars)
 }
 
 type CommentsMap = Record<string, ProblemComment[]>; // problemId → comments[]
@@ -43,7 +48,8 @@ export async function getComments(problemId: string): Promise<ProblemComment[]> 
 export async function addComment(
   problemId: string,
   author: string,
-  text: string
+  text: string,
+  replyTo?: { id: string; author: string; text: string }
 ): Promise<ProblemComment[]> {
   const map = await getAll();
   const comment: ProblemComment = {
@@ -52,6 +58,13 @@ export async function addComment(
     author,
     text: text.trim(),
     createdAt: new Date().toISOString(),
+    ...(replyTo
+      ? {
+          replyToId: replyTo.id,
+          replyToAuthor: replyTo.author,
+          replyToText: replyTo.text.slice(0, 80),
+        }
+      : {}),
   };
   map[problemId] = [...(map[problemId] ?? []), comment];
   await saveAll(map);

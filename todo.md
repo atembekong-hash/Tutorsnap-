@@ -330,3 +330,11 @@
 - [x] Comment button on every feed card (shows count badge when > 0)
 - [x] Comment counts loaded on feed load and refreshed when sheet closes
 - [x] Offline banner already wired into root layout (covers all screens including Solve and Classroom)
+
+## Round 35: Comment Replies, Feed Bookmarks, Classroom Audit Fixes
+- [x] Add quoted reply threading to ProblemCommentSheet (replyToId, replyToAuthor, replyToText)
+- [x] Add bookmark button to classroom feed cards (bookmark.fill / bookmark icon, persisted via bookmarks.ts)
+- [x] Fix joined classroom name — student now enters classroom name in join modal (no more fabricated name)
+- [x] Fix challenge leaderboard fallback from "Me" to "Student"
+- [x] Fix "View Full Solution" in challenge to use data JSON param (auto-solve if steps missing)
+- [x] Fix classroom feed steps — stored as JSON strings, parsed back on navigation (no more lossy string format)

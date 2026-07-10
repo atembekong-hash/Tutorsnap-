@@ -2,7 +2,8 @@
  * ProblemCommentSheet
  *
  * A Modal bottom-sheet that shows the comment thread for a classroom problem.
- * Students can add and delete their own comments.
+ * Students can add comments, reply to specific comments (quoted reply), and
+ * delete their own comments.
  */
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
@@ -47,7 +48,9 @@ export function ProblemCommentSheet({
   const [loading, setLoading] = useState(true);
   const [inputText, setInputText] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<ProblemComment | null>(null);
   const inputRef = useRef<TextInput>(null);
+  const listRef = useRef<FlatList>(null);
 
   const loadComments = useCallback(async () => {
     setLoading(true);
@@ -60,6 +63,7 @@ export function ProblemCommentSheet({
     if (visible) {
       loadComments();
       setInputText("");
+      setReplyingTo(null);
     }
   }, [visible, loadComments]);
 
@@ -68,16 +72,37 @@ export function ProblemCommentSheet({
     if (!trimmed || submitting) return;
     setSubmitting(true);
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const updated = await addComment(problemId, displayName || "Student", trimmed);
+    const updated = await addComment(
+      problemId,
+      displayName || "Student",
+      trimmed,
+      replyingTo
+        ? { id: replyingTo.id, author: replyingTo.author, text: replyingTo.text }
+        : undefined
+    );
     setComments(updated);
     setInputText("");
+    setReplyingTo(null);
     setSubmitting(false);
+    // Scroll to bottom after posting
+    setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
+  };
+
+  const handleReply = (comment: ProblemComment) => {
+    setReplyingTo(comment);
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    inputRef.current?.focus();
+  };
+
+  const handleCancelReply = () => {
+    setReplyingTo(null);
   };
 
   const handleDelete = async (commentId: string) => {
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     const updated = await deleteComment(problemId, commentId);
     setComments(updated);
+    if (replyingTo?.id === commentId) setReplyingTo(null);
   };
 
   const formatTime = (iso: string) => {
@@ -94,6 +119,8 @@ export function ProblemCommentSheet({
 
   const renderComment = ({ item }: { item: ProblemComment }) => {
     const isOwn = item.author === (displayName || "Student");
+    const hasReply = !!item.replyToId;
+
     return (
       <View style={[styles.commentRow, isOwn && styles.commentRowOwn]}>
         <View
@@ -105,11 +132,33 @@ export function ProblemCommentSheet({
             },
           ]}
         >
+          {/* Quoted reply block */}
+          {hasReply && (
+            <View style={[styles.replyQuote, { backgroundColor: `${colors.muted}15`, borderLeftColor: colors.primary }]}>
+              <Text style={[styles.replyQuoteAuthor, { color: colors.primary }]}>
+                ↩ {item.replyToAuthor}
+              </Text>
+              <Text style={[styles.replyQuoteText, { color: colors.muted }]} numberOfLines={2}>
+                {item.replyToText}
+              </Text>
+            </View>
+          )}
+
+          {/* Comment meta row */}
           <View style={styles.commentMeta}>
             <Text style={[styles.commentAuthor, { color: isOwn ? colors.primary : colors.foreground }]}>
               {item.author}
             </Text>
             <Text style={[styles.commentTime, { color: colors.muted }]}>{formatTime(item.createdAt)}</Text>
+            {/* Reply button */}
+            <TouchableOpacity
+              onPress={() => handleReply(item)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityLabel="Reply"
+            >
+              <IconSymbol size={12} name="arrowshape.turn.up.left.fill" color={colors.muted} />
+            </TouchableOpacity>
+            {/* Delete own comment */}
             {isOwn && (
               <TouchableOpacity
                 onPress={() => handleDelete(item.id)}
@@ -120,6 +169,8 @@ export function ProblemCommentSheet({
               </TouchableOpacity>
             )}
           </View>
+
+          {/* Comment text */}
           <Text style={[styles.commentText, { color: colors.foreground }]}>{item.text}</Text>
         </View>
       </View>
@@ -146,9 +197,7 @@ export function ProblemCommentSheet({
           <View style={styles.header}>
             <View style={styles.headerLeft}>
               <IconSymbol size={18} name="bubble.left.fill" color={colors.primary} />
-              <Text style={[styles.headerTitle, { color: colors.foreground }]}>
-                Comments
-              </Text>
+              <Text style={[styles.headerTitle, { color: colors.foreground }]}>Comments</Text>
               {comments.length > 0 && (
                 <View style={[styles.countBadge, { backgroundColor: `${colors.primary}20` }]}>
                   <Text style={[styles.countBadgeText, { color: colors.primary }]}>{comments.length}</Text>
@@ -174,6 +223,7 @@ export function ProblemCommentSheet({
             </View>
           ) : (
             <FlatList
+              ref={listRef}
               data={comments}
               keyExtractor={(item) => item.id}
               renderItem={renderComment}
@@ -191,6 +241,21 @@ export function ProblemCommentSheet({
             />
           )}
 
+          {/* Reply context bar */}
+          {replyingTo && (
+            <View style={[styles.replyBar, { backgroundColor: `${colors.primary}10`, borderTopColor: `${colors.primary}30` }]}>
+              <View style={styles.replyBarLeft}>
+                <IconSymbol size={13} name="arrowshape.turn.up.left.fill" color={colors.primary} />
+                <Text style={[styles.replyBarText, { color: colors.primary }]} numberOfLines={1}>
+                  Replying to <Text style={{ fontWeight: "700" }}>{replyingTo.author}</Text>: {replyingTo.text.slice(0, 50)}
+                </Text>
+              </View>
+              <TouchableOpacity onPress={handleCancelReply} accessibilityLabel="Cancel reply">
+                <IconSymbol size={16} name="xmark.circle.fill" color={colors.primary} />
+              </TouchableOpacity>
+            </View>
+          )}
+
           {/* Input row */}
           <View style={[styles.inputRow, { borderTopColor: colors.border, backgroundColor: colors.background }]}>
             <TextInput
@@ -198,7 +263,7 @@ export function ProblemCommentSheet({
               style={[styles.input, { color: colors.foreground, backgroundColor: colors.surface, borderColor: colors.border }]}
               value={inputText}
               onChangeText={setInputText}
-              placeholder="Add a comment or question…"
+              placeholder={replyingTo ? `Reply to ${replyingTo.author}…` : "Add a comment or question…"}
               placeholderTextColor={colors.muted}
               multiline
               maxLength={300}
@@ -246,7 +311,7 @@ const styles = StyleSheet.create({
   sheet: {
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    maxHeight: 560,
+    maxHeight: 580,
     paddingBottom: Platform.OS === "ios" ? 34 : 16,
   },
   handle: {
@@ -334,6 +399,22 @@ const styles = StyleSheet.create({
     padding: 10,
     gap: 4,
   },
+  replyQuote: {
+    borderLeftWidth: 3,
+    borderRadius: 6,
+    paddingLeft: 8,
+    paddingVertical: 4,
+    marginBottom: 4,
+  },
+  replyQuoteAuthor: {
+    fontSize: 11,
+    fontWeight: "700",
+    marginBottom: 2,
+  },
+  replyQuoteText: {
+    fontSize: 11,
+    lineHeight: 15,
+  },
   commentMeta: {
     flexDirection: "row",
     alignItems: "center",
@@ -350,6 +431,25 @@ const styles = StyleSheet.create({
   commentText: {
     fontSize: 14,
     lineHeight: 20,
+  },
+  replyBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    gap: 8,
+  },
+  replyBarLeft: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  replyBarText: {
+    fontSize: 12,
+    flex: 1,
   },
   inputRow: {
     flexDirection: "row",

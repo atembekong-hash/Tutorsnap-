@@ -45,6 +45,7 @@ const MAPPING = {
   "doc.on.doc": "content-copy",
   "pencil.and.list.clipboard": "assignment",
   "bubble.left.fill": "chat-bubble",
+  "arrowshape.turn.up.left.fill": "reply",
   "eye.fill": "visibility",
   // Bookmarks & Progress
   "bookmark": "bookmark-border",

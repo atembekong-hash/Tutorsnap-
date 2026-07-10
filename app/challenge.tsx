@@ -136,7 +136,7 @@ export default function ChallengeScreen() {
     // Record result in leaderboard if this came from a classroom
     if (classCode) {
       getClassroomDisplayName()
-        .then((name) => recordChallengeResult(classCode, name || "Me", correct, elapsed))
+        .then((name) => recordChallengeResult(classCode, name || "Student", correct, elapsed))
         .catch(() => {/* ignore */});
     }
 
@@ -378,10 +378,12 @@ export default function ChallengeScreen() {
                 router.push({
                   pathname: "/solution",
                   params: {
-                    problem,
-                    subject,
-                    answer: correctAnswer,
-                    steps: params.steps,
+                    data: JSON.stringify({
+                      problem,
+                      subject,
+                      answer: correctAnswer,
+                      steps: [],
+                    }),
                   },
                 } as any)
               }
