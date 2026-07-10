@@ -24,7 +24,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { getSubjectColor, getSubjectLabel, getSubjectEmoji } from "@/lib/subjects";
-import { recordChallengeResult } from "@/lib/classroom";
+import { recordChallengeResult, getClassroomDisplayName } from "@/lib/classroom";
 import type { MathSubject } from "@/shared/types";
 
 type Phase = "ready" | "active" | "result";
@@ -135,7 +135,9 @@ export default function ChallengeScreen() {
 
     // Record result in leaderboard if this came from a classroom
     if (classCode) {
-      recordChallengeResult(classCode, "Me", correct, elapsed).catch(() => {/* ignore */});
+      getClassroomDisplayName()
+        .then((name) => recordChallengeResult(classCode, name || "Me", correct, elapsed))
+        .catch(() => {/* ignore */});
     }
 
     if (Platform.OS !== "web") {
@@ -148,8 +150,9 @@ export default function ChallengeScreen() {
   };
 
   const handleShareResult = async () => {
-    const status = isCorrect ? "✅ Solved" : "❌ Timed out";
-    const timeStr = isCorrect ? `in ${timeTaken}s` : `(${selectedDuration}s limit)`;
+    const timedOut = !isCorrect && timeTaken >= selectedDuration;
+    const status = isCorrect ? "✅ Solved" : timedOut ? "⏰ Timed out" : "❌ Incorrect";
+    const timeStr = isCorrect ? `in ${timeTaken}s` : timedOut ? `(${selectedDuration}s limit)` : `after ${timeTaken}s`;
     try {
       await Share.share({
         message: `TutorSnap Challenge ${status} ${timeStr}!\n\n📚 ${subjectEmoji} ${subjectLabel}\n❓ ${problem}\n\nChallenge your classmates at tutorsnapai.tech`,

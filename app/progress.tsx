@@ -20,6 +20,7 @@ import {
   getSubjectDisplay,
   type ProgressData,
 } from "@/lib/progress";
+import { loadQuizStats, type QuizStats } from "@/lib/quiz-history";
 import {
   computeMasteryBadges,
   BADGE_COLORS,
@@ -45,6 +46,7 @@ export default function ProgressScreen() {
   const colors = useColors();
   const router = useRouter();
   const [progress, setProgress] = useState<ProgressData | null>(null);
+  const [quizStats, setQuizStats] = useState<QuizStats | null>(null);
   const [showGoalPicker, setShowGoalPicker] = useState(false);
   const [unlockModal, setUnlockModal] = useState<{ tier: BadgeTier; subjectLabel: string } | null>(null);
 
@@ -52,6 +54,11 @@ export default function ProgressScreen() {
     try {
       const p = await getProgress();
       setProgress(p);
+      // Load quiz accuracy stats for the per-subject chart
+      try {
+        const qs = await loadQuizStats();
+        setQuizStats(qs);
+      } catch { /* non-critical */ }
       // Check for newly unlocked badges
       try {
         const badges = computeMasteryBadges(p.subjectCounts);
@@ -346,6 +353,53 @@ export default function ProgressScreen() {
           );
         })()}
 
+        {/* Per-Subject Quiz Accuracy Chart */}
+        {quizStats && quizStats.totalQuizzes > 0 && Object.keys(quizStats.bySubject).length > 0 && (
+          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.cardTitle, { color: colors.foreground }]}>Quiz Accuracy by Subject</Text>
+            <Text style={[styles.cardSubtitle, { color: colors.muted }]}>
+              Average score across {quizStats.totalQuizzes} quiz{quizStats.totalQuizzes !== 1 ? "zes" : ""}
+            </Text>
+            {Object.entries(quizStats.bySubject)
+              .sort(([, a], [, b]) => b.avg - a.avg)
+              .map(([subject, data]) => {
+                const info = getSubjectDisplay(subject);
+                const barColor =
+                  data.avg >= 90 ? colors.success :
+                  data.avg >= 70 ? colors.primary :
+                  data.avg >= 50 ? colors.warning :
+                  colors.error;
+                return (
+                  <View key={subject} style={styles.accuracyRow}>
+                    <View style={styles.accuracyLabelRow}>
+                      <View style={[styles.accuracyDot, { backgroundColor: info.color }]} />
+                      <Text style={[styles.accuracyLabel, { color: colors.foreground }]} numberOfLines={1}>
+                        {info.label}
+                      </Text>
+                      <Text style={[styles.accuracyQuizCount, { color: colors.muted }]}>
+                        {data.total} quiz{data.total !== 1 ? "zes" : ""}
+                      </Text>
+                    </View>
+                    <View style={styles.accuracyBarRow}>
+                      <View style={[styles.accuracyTrack, { backgroundColor: `${barColor}20` }]}>
+                        <View
+                          style={[
+                            styles.accuracyFill,
+                            { width: `${data.avg}%` as any, backgroundColor: barColor },
+                          ]}
+                        />
+                      </View>
+                      <Text style={[styles.accuracyPct, { color: barColor }]}>{data.avg}%</Text>
+                    </View>
+                    <View style={styles.accuracyMetaRow}>
+                      <Text style={[styles.accuracyMeta, { color: colors.muted }]}>Best: {data.best}%</Text>
+                    </View>
+                  </View>
+                );
+              })}
+          </View>
+        )}
+
         {/* Empty State */}
         {streak.totalSolved === 0 && (
           <View style={styles.emptyState}>
@@ -568,4 +622,34 @@ const styles = StyleSheet.create({
     marginTop: 8,
     gap: 4,
   },
+  accuracyRow: {
+    marginBottom: 14,
+  },
+  accuracyLabelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 6,
+  },
+  accuracyDot: { width: 10, height: 10, borderRadius: 5, flexShrink: 0 },
+  accuracyLabel: { flex: 1, fontSize: 13, fontWeight: "600" },
+  accuracyQuizCount: { fontSize: 11, fontWeight: "500" },
+  accuracyBarRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  accuracyTrack: {
+    flex: 1,
+    height: 10,
+    borderRadius: 5,
+    overflow: "hidden",
+  },
+  accuracyFill: {
+    height: "100%",
+    borderRadius: 5,
+  },
+  accuracyPct: { fontSize: 13, fontWeight: "700", minWidth: 36, textAlign: "right" },
+  accuracyMetaRow: { marginTop: 3, marginLeft: 18 },
+  accuracyMeta: { fontSize: 11 },
 });

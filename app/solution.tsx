@@ -92,6 +92,46 @@ function StepCard({ step, colors, fs }: { step: SolutionStep; colors: any; fs: (
   );
 }
 
+function WorkedExampleCopyButton({
+  problem,
+  colors,
+  fs,
+}: {
+  problem: string;
+  colors: ReturnType<typeof useColors>;
+  fs: (n: number) => number;
+}) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <TouchableOpacity
+      accessibilityLabel="Copy example problem to clipboard"
+      accessibilityRole="button"
+      onPress={async () => {
+        try {
+          await Clipboard.setStringAsync(problem);
+          setCopied(true);
+          if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          setTimeout(() => setCopied(false), 2000);
+        } catch { /* ignore */ }
+      }}
+      style={[
+        styles.copyBtn,
+        { backgroundColor: copied ? `${colors.success}20` : `${colors.success}15` },
+      ]}
+      activeOpacity={0.75}
+    >
+      <IconSymbol
+        size={14}
+        name={copied ? "checkmark.circle.fill" : "doc.on.doc"}
+        color={copied ? colors.success : colors.success}
+      />
+      <Text style={[styles.copyText, { color: colors.success, fontSize: fs(12) }]}>
+        {copied ? "Copied!" : "Copy Problem"}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
 export default function SolutionScreen() {
   const colors = useColors();
   const { fs } = useFontSize();
@@ -557,11 +597,18 @@ export default function SolutionScreen() {
         {/* Worked Example */}
         {(solution as any).workedExample && (
           <View style={[styles.workedExampleCard, { backgroundColor: `${colors.success}08`, borderColor: `${colors.success}30` }]}>
-            <View style={styles.sectionHeader}>
-              <IconSymbol size={16} name="pencil.and.list.clipboard" color={colors.success} />
-              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-                {(solution as any).workedExample.title || "Worked Example"}
-              </Text>
+            <View style={[styles.sectionHeader, { justifyContent: "space-between" }]}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
+                <IconSymbol size={16} name="pencil.and.list.clipboard" color={colors.success} />
+                <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+                  {(solution as any).workedExample.title || "Worked Example"}
+                </Text>
+              </View>
+              <WorkedExampleCopyButton
+                problem={(solution as any).workedExample.problem}
+                colors={colors}
+                fs={fs}
+              />
             </View>
             <View style={[styles.workedExampleProblem, { backgroundColor: `${colors.success}12`, borderColor: `${colors.success}25` }]}>
               <Text style={[styles.workedExampleLabel, { color: colors.success }]}>EXAMPLE PROBLEM</Text>

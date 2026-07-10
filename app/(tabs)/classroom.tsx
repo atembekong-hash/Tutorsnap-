@@ -119,6 +119,10 @@ export default function ClassroomTabScreen() {
   const [selectedDueDate, setSelectedDueDate] = useState<string>("");
   const [homeworkTitle, setHomeworkTitle] = useState("");
 
+  // Edit display-name modal
+  const [showEditNameModal, setShowEditNameModal] = useState(false);
+  const [editNameValue, setEditNameValue] = useState("");
+
   const dateOptions = useMemo(() => getDateOptions(), []);
 
   const loadData = useCallback(async () => {
@@ -183,7 +187,8 @@ export default function ClassroomTabScreen() {
     setDisplayName(name);
     setJoining(true);
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    const info = await joinClassroom(pendingJoinCode);
+    // Pass the display name as the classroom name so it doesn't default to "Shared Classroom"
+    const info = await joinClassroom(pendingJoinCode, `${name}'s Classroom`);
     setJoinedClassroom(info);
     setShowNamePrompt(false);
     setPendingJoinCode("");
@@ -335,23 +340,17 @@ export default function ClassroomTabScreen() {
   };
 
   const handleEditDisplayName = () => {
-    Alert.prompt(
-      "Your Display Name",
-      "This name appears on the classroom leaderboard.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Save",
-          onPress: async (name: string | undefined) => {
-            if (!name?.trim()) return;
-            await saveClassroomDisplayName(name.trim());
-            setDisplayName(name.trim());
-          },
-        },
-      ],
-      "plain-text",
-      displayName
-    );
+    setEditNameValue(displayName);
+    setShowEditNameModal(true);
+  };
+
+  const handleSaveDisplayName = async () => {
+    const name = editNameValue.trim();
+    if (!name) return;
+    await saveClassroomDisplayName(name);
+    setDisplayName(name);
+    setShowEditNameModal(false);
+    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
   // Analytics: compute subject breakdown from feed
@@ -990,6 +989,55 @@ export default function ClassroomTabScreen() {
               >
                 <IconSymbol size={16} name="calendar" color="#FFFFFF" />
                 <Text style={styles.modalAssignText}>Assign</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Edit Display Name Modal (cross-platform, replaces Alert.prompt) */}
+      <Modal
+        visible={showEditNameModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowEditNameModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalSheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
+            <View style={[styles.modalHandle, { backgroundColor: colors.border }]} />
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Your Display Name</Text>
+            <Text style={[styles.modalLabel, { color: colors.muted }]}>
+              This name appears on the classroom leaderboard.
+            </Text>
+            <TextInput
+              style={[styles.modalInput, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
+              value={editNameValue}
+              onChangeText={setEditNameValue}
+              placeholder="Your display name"
+              placeholderTextColor={colors.muted}
+              maxLength={30}
+              returnKeyType="done"
+              onSubmitEditing={handleSaveDisplayName}
+              autoFocus
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                accessibilityLabel="Cancel edit name"
+                style={[styles.modalCancelBtn, { borderColor: colors.border }]}
+                onPress={() => setShowEditNameModal(false)}
+                activeOpacity={0.75}
+              >
+                <Text style={[styles.modalCancelText, { color: colors.muted }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                accessibilityLabel="Save display name"
+                style={[styles.modalAssignBtn, { backgroundColor: colors.primary, opacity: !editNameValue.trim() ? 0.5 : 1 }]}
+                onPress={handleSaveDisplayName}
+                disabled={!editNameValue.trim()}
+                activeOpacity={0.85}
+              >
+                <IconSymbol size={16} name="checkmark.circle.fill" color="#FFFFFF" />
+                <Text style={styles.modalAssignText}>Save Name</Text>
               </TouchableOpacity>
             </View>
           </View>

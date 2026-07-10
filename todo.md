@@ -286,3 +286,12 @@
 - [x] Solution screen: copy icon on each similar problem (checkmark feedback on success, haptic notification)
 - [x] Solution screen: hint expanded section now has styled background box for better readability
 - [x] TypeScript: 0 errors; Metro: bundled cleanly
+
+## Round 30: Classroom Audit + Progress Chart + Solution Extras
+- [x] Worked Example copy button on Solution screen
+- [x] Per-subject quiz accuracy bar chart on Progress screen
+- [x] Classroom: redirect /classroom to full-featured tab classroom
+- [x] Classroom: leaderboard uses saved display name (not "Me")
+- [x] Classroom: challenge result label distinguishes "Incorrect" vs "Timed out"
+- [x] Classroom: joined classroom name set from student display name
+- [x] Classroom: display-name editing uses cross-platform modal (replaces Alert.prompt)
