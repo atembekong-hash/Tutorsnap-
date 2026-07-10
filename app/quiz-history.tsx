@@ -93,14 +93,21 @@ export default function QuizHistoryScreen() {
   const router = useRouter();
   const [history, setHistory] = useState<QuizResult[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
       setLoading(true);
-      loadQuizHistory().then((data) => {
-        setHistory(data);
-        setLoading(false);
-      });
+      setLoadError(false);
+      loadQuizHistory()
+        .then((data) => {
+          setHistory(data);
+          setLoading(false);
+        })
+        .catch(() => {
+          setLoadError(true);
+          setLoading(false);
+        });
     }, [])
   );
 
@@ -123,6 +130,22 @@ export default function QuizHistoryScreen() {
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator color={colors.primary} size="large" />
+        </View>
+      ) : loadError ? (
+        <View style={styles.center}>
+          <Text style={styles.emptyEmoji}>⚠️</Text>
+          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Could Not Load History</Text>
+          <Text style={[styles.emptySub, { color: colors.muted }]}>Something went wrong. Please try again.</Text>
+          <TouchableOpacity
+            onPress={() => {
+              setLoading(true);
+              setLoadError(false);
+              loadQuizHistory().then((data) => { setHistory(data); setLoading(false); }).catch(() => { setLoadError(true); setLoading(false); });
+            }}
+            style={[styles.startBtn, { backgroundColor: colors.primary }]}
+          >
+            <Text style={styles.startBtnText}>Retry</Text>
+          </TouchableOpacity>
         </View>
       ) : history.length === 0 ? (
         <View style={styles.center}>

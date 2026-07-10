@@ -244,6 +244,13 @@ export default function RootLayout() {
                 animation: "slide_from_right",
               }}
             />
+            <Stack.Screen
+              name="quiz-history"
+              options={{
+                presentation: "card",
+                animation: "slide_from_right",
+              }}
+            />
           </Stack>
           <StatusBar style="auto" />
         </QueryClientProvider>

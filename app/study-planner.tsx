@@ -11,6 +11,7 @@ import {
   Platform,
   Alert,
   FlatList,
+  KeyboardAvoidingView,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "expo-router";
@@ -294,6 +295,7 @@ export default function StudyPlannerScreen() {
 
       {/* Add/Edit Modal */}
       <Modal visible={showModal} transparent animationType="slide" onRequestClose={() => setShowModal(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
         <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setShowModal(false)} />
         <View style={[styles.modalSheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
           <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
@@ -482,6 +484,7 @@ export default function StudyPlannerScreen() {
             />
           </View>
         </Modal>
+        </KeyboardAvoidingView>
       </Modal>
     </ScreenContainer>
   );

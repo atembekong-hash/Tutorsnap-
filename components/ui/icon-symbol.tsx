@@ -115,6 +115,9 @@ const MAPPING = {
   "lock.doc.fill": "lock",
   "text.badge.checkmark": "fact-check",
   "waveform.badge.exclamationmark": "report-problem",
+  // Solution screen
+  "text.bubble": "chat",
+  "doc.fill": "insert-drive-file",
 } as unknown as IconMapping;
 
 export function IconSymbol({
