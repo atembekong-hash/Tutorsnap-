@@ -23,6 +23,7 @@ import { useUpdateCheck } from "@/lib/use-update-check";
 import { FontSizeProvider } from "@/lib/font-size-provider";
 import * as Notifications from "expo-notifications";
 import { useRouter } from "expo-router";
+import { syncAllStreakNotifications } from "@/lib/streak-notifications";
 
 // Show notifications as banners when app is in foreground
 if (Platform.OS !== "web") {
@@ -53,6 +54,8 @@ export default function RootLayout() {
 
   useEffect(() => {
     initManusRuntime();
+    // Sync streak alert and weekly report notifications on every app launch
+    syncAllStreakNotifications().catch(() => {});
   }, []);
 
   // Handle notification taps — route by data payload

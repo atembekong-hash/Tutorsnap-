@@ -38,6 +38,7 @@ import { getAlmostBadges, computeMasteryBadges, getSeenBadges, markBadgeSeen, ty
 import { BadgeUnlockModal } from "@/components/badge-unlock-modal";
 import { TodayStudyWidget } from "@/components/today-study-widget";
 import { getMyClassroom, getJoinedClassroom, getClassroomFeed, type ClassroomProblem } from "@/lib/classroom";
+import * as Notifications from "expo-notifications";
 
 // Subject examples per category — shown dynamically based on selected subject
 const SUBJECT_EXAMPLES: Record<string, string[]> = {
@@ -115,6 +116,7 @@ function SolveScreenContent() {
   const [pendingBadge, setPendingBadge] = useState<{ tier: BadgeTier; subjectLabel: string } | null>(null);
   const [dueSoonHomework, setDueSoonHomework] = useState<ClassroomProblem | null>(null);
   const [homeworkBannerDismissed, setHomeworkBannerDismissed] = useState(false);
+  const [pendingNotifCount, setPendingNotifCount] = useState(0);
   const inputRef = useRef<TextInput>(null);
   const cursorPosRef = useRef<number>(0);
 
@@ -169,6 +171,12 @@ function SolveScreenContent() {
       loadProgress();
       loadWeeklyData();
       loadDueSoonHomework();
+      // Load pending notification count for bell badge
+      if (Platform.OS !== "web") {
+        Notifications.getAllScheduledNotificationsAsync()
+          .then((reqs: unknown[]) => setPendingNotifCount(reqs.length))
+          .catch(() => {});
+      }
       // Check if onboarding has been completed
       AsyncStorage.getItem("@tutorsnap/onboardingDone").then((done) => {
         if (!done) {
@@ -203,8 +211,15 @@ function SolveScreenContent() {
       }
       // Record solve in progress
       const { recordSolve } = await import("@/lib/progress");
-      await recordSolve(data.subject as MathSubject || "other");
+      const updatedProgress = await recordSolve(data.subject as MathSubject || "other");
       await loadProgress();
+      // Cancel streak alert if daily goal is now met
+      try {
+        const { cancelStreakAlert } = await import("@/lib/streak-notifications");
+        if (updatedProgress.streak.todaySolved >= updatedProgress.streak.dailyGoal) {
+          await cancelStreakAlert();
+        }
+      } catch { /* ignore */ }
       // Check if a new badge was just earned
       try {
         const { getProgress: getP } = await import("@/lib/progress");
@@ -317,6 +332,22 @@ function SolveScreenContent() {
                   </View>
                 </TouchableOpacity>
               )}
+              <TouchableOpacity
+                accessibilityLabel="Open notification center"
+                onPress={() => router.push("/notification-center" as any)}
+                style={[styles.iconBtn, { position: "relative" }]}
+                activeOpacity={0.7}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <IconSymbol size={22} name="bell.fill" color={colors.foreground} />
+                {pendingNotifCount > 0 && (
+                  <View style={[styles.notifBadge, { backgroundColor: colors.error }]}>
+                    <Text style={styles.notifBadgeText}>
+                      {pendingNotifCount > 9 ? "9+" : String(pendingNotifCount)}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
               <TouchableOpacity
                 accessibilityLabel="Toggle color scheme"
                 onPress={() => {
@@ -956,4 +987,16 @@ const styles = StyleSheet.create({
   homeworkBannerDue: { fontSize: 12, fontWeight: "700" },
   homeworkBannerClose: { padding: 2 },
   homeworkBannerCloseText: { fontSize: 14, fontWeight: "600" },
+  notifBadge: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 3,
+  },
+  notifBadgeText: { fontSize: 9, fontWeight: "700", color: "#fff" },
 });

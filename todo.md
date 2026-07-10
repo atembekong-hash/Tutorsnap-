@@ -368,3 +368,10 @@
 - [x] Wired studyReminders pref gate into lib/homework-notifications.ts
 - [x] Wired dailyReminder pref gate into lib/notifications.ts
 - [x] Wired studyReminders pref gate into lib/study-planner.ts (with cancel-on-disable)
+
+## Round 38: Streak Alert + Weekly Report Notifications + Dashboard Bell Icon
+- [x] Build lib/streak-notifications.ts with streak alert (8 PM daily) and weekly progress report (Sunday 9 AM)
+- [x] Wire syncAllStreakNotifications into app launch (_layout.tsx)
+- [x] Wire cancelStreakAlert when daily goal is met in index.tsx
+- [x] Add notification bell icon with live badge count to dashboard header
+- [x] Bell taps navigate to Notification Center screen
