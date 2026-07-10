@@ -229,41 +229,6 @@ function PracticeScreenContent() {
           )}
         </TouchableOpacity>
 
-        {/* Adaptive Difficulty Suggestion Banner */}
-        {diffSuggestion && !suggestionDismissed && (
-          <View style={[styles.suggestionBanner, { backgroundColor: `${colors.success}15`, borderColor: `${colors.success}40` }]}>
-            <View style={styles.suggestionLeft}>
-              <Text style={styles.suggestionEmoji}>🚀</Text>
-              <View style={styles.suggestionText}>
-                <Text style={[styles.suggestionTitle, { color: colors.foreground }]}>
-                  Ready for a challenge?
-                </Text>
-                <Text style={[styles.suggestionSub, { color: colors.muted }]}>
-                  You averaged {diffSuggestion.avgPct}% on your last 3 {diffSuggestion.currentDifficulty} quizzes.
-                  Try <Text style={{ fontWeight: "700", color: colors.success }}>{diffSuggestion.suggestedDifficulty}</Text>!
-                </Text>
-              </View>
-            </View>
-            <View style={styles.suggestionActions}>
-              <TouchableOpacity
-                accessibilityLabel="Toggle suggestion dismissed"
-                onPress={() => {
-                  handleDifficultyChange(diffSuggestion.suggestedDifficulty);
-                  setSuggestionDismissed(true);
-                  if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                }}
-                style={[styles.suggestionAccept, { backgroundColor: colors.success }]}
-              >
-                <Text style={styles.suggestionAcceptText}>Switch</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => setSuggestionDismissed(true)} style={styles.suggestionDismiss}
-                accessibilityLabel="Toggle suggestion dismissed">
-                <IconSymbol size={16} name="xmark.circle.fill" color={colors.muted} />
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-
         {/* Quiz Count Picker + Start Quiz */}
         <View style={[styles.quizSection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={styles.quizSectionHeader}>
@@ -324,6 +289,70 @@ function PracticeScreenContent() {
               <View style={styles.statItem}>
                 <Text style={[styles.statValue, { color: colors.warning }]}>{quizStats.averageScore}%</Text>
                 <Text style={[styles.statLabel, { color: colors.muted }]}>Average</Text>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Adaptive Difficulty Suggestion Banner — shown below stats for maximum visibility */}
+        {diffSuggestion && !suggestionDismissed && (
+          <View
+            style={[
+              styles.suggestionBanner,
+              { backgroundColor: colors.surface, borderColor: colors.success },
+            ]}
+          >
+            {/* Top accent strip */}
+            <View style={[styles.suggestionAccentStrip, { backgroundColor: colors.success }]} />
+            <View style={styles.suggestionInner}>
+              <View style={styles.suggestionIconWrap}>
+                <Text style={styles.suggestionEmoji}>🚀</Text>
+              </View>
+              <View style={styles.suggestionBody}>
+                <Text style={[styles.suggestionTitle, { color: colors.foreground }]}>
+                  Ready to level up?
+                </Text>
+                <Text style={[styles.suggestionSub, { color: colors.muted }]}>
+                  You averaged{" "}
+                  <Text style={{ fontWeight: "700", color: colors.success }}>
+                    {diffSuggestion.avgPct}%
+                  </Text>{" "}
+                  on your last 3{" "}
+                  <Text style={{ fontWeight: "600", color: colors.foreground }}>
+                    {diffSuggestion.currentDifficulty}
+                  </Text>{" "}
+                  {getSubjectLabel(selectedSubject)} quizzes. Try{" "}
+                  <Text style={{ fontWeight: "700", color: colors.success }}>
+                    {diffSuggestion.suggestedDifficulty}
+                  </Text>!
+                </Text>
+                <View style={styles.suggestionBtnRow}>
+                  <TouchableOpacity
+                    accessibilityLabel={`Switch to ${diffSuggestion.suggestedDifficulty} difficulty`}
+                    accessibilityRole="button"
+                    onPress={() => {
+                      handleDifficultyChange(diffSuggestion.suggestedDifficulty);
+                      setSuggestionDismissed(true);
+                      if (Platform.OS !== "web")
+                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                    }}
+                    style={[styles.suggestionAccept, { backgroundColor: colors.success }]}
+                    activeOpacity={0.85}
+                  >
+                    <IconSymbol size={14} name="arrow.up.circle.fill" color="#fff" />
+                    <Text style={styles.suggestionAcceptText}>
+                      Switch to {diffSuggestion.suggestedDifficulty}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => setSuggestionDismissed(true)}
+                    style={styles.suggestionDismiss}
+                    accessibilityLabel="Dismiss difficulty suggestion"
+                    accessibilityRole="button"
+                  >
+                    <Text style={[styles.suggestionDismissText, { color: colors.muted }]}>Not now</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
           </View>
@@ -568,21 +597,42 @@ const styles = StyleSheet.create({
   statValue: { fontSize: 22, fontWeight: "800" },
   statLabel: { fontSize: 12 },
   suggestionBanner: {
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: 12,
+    marginHorizontal: 16,
+    marginTop: 12,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    overflow: "hidden",
+  },
+  suggestionAccentStrip: { height: 4, width: "100%" },
+  suggestionInner: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    padding: 14,
+    gap: 12,
+  },
+  suggestionIconWrap: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: "rgba(34,197,94,0.12)",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  suggestionEmoji: { fontSize: 22 },
+  suggestionBody: { flex: 1 },
+  suggestionTitle: { fontSize: 15, fontWeight: "700", marginBottom: 4 },
+  suggestionSub: { fontSize: 13, lineHeight: 19, marginBottom: 12 },
+  suggestionBtnRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  suggestionAccept: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    gap: 10,
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 10,
   },
-  suggestionLeft: { flex: 1, flexDirection: "row", alignItems: "flex-start", gap: 10 },
-  suggestionEmoji: { fontSize: 22, marginTop: 2 },
-  suggestionText: { flex: 1 },
-  suggestionTitle: { fontSize: 14, fontWeight: "700", marginBottom: 2 },
-  suggestionSub: { fontSize: 12, lineHeight: 17 },
-  suggestionActions: { flexDirection: "row", alignItems: "center", gap: 6 },
-  suggestionAccept: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10 },
   suggestionAcceptText: { color: "#fff", fontWeight: "700", fontSize: 13 },
   suggestionDismiss: { padding: 4 },
+  suggestionDismissText: { fontSize: 13, fontWeight: "500" },
 });

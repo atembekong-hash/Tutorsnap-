@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
+  ScrollView,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
@@ -13,6 +14,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { loadQuizHistory, type QuizResult } from "@/lib/quiz-history";
+import { getSubjectLabel } from "@/lib/subjects";
 
 function gradeLabel(pct: number): { letter: string; color: string } {
   if (pct >= 90) return { letter: "A", color: "#22C55E" };
@@ -39,20 +41,28 @@ function formatDuration(seconds: number): string {
   return `${s}s`;
 }
 
-function QuizResultCard({ item, colors, onPress }: { item: QuizResult; colors: ReturnType<typeof useColors>; onPress: () => void }) {
+function QuizResultCard({
+  item,
+  colors,
+  onPress,
+}: {
+  item: QuizResult;
+  colors: ReturnType<typeof useColors>;
+  onPress: () => void;
+}) {
   const grade = gradeLabel(item.pct);
   return (
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.8}
-      accessibilityLabel={`View details for ${item.subject} quiz, score ${item.pct}%`}
+      accessibilityLabel={`View details for ${getSubjectLabel(item.subject)} quiz, score ${item.pct}%`}
       accessibilityRole="button"
       style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
     >
       <View style={styles.cardHeader}>
         <View style={styles.cardLeft}>
           <Text style={[styles.cardSubject, { color: colors.foreground }]}>
-            {item.subject.charAt(0).toUpperCase() + item.subject.slice(1)}
+            {getSubjectLabel(item.subject)}
           </Text>
           <Text style={[styles.cardMeta, { color: colors.muted }]}>
             {formatDate(item.completedAt)} · {formatTime(item.completedAt)}
@@ -105,6 +115,7 @@ export default function QuizHistoryScreen() {
   const [history, setHistory] = useState<QuizResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const [activeSubject, setActiveSubject] = useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -122,17 +133,42 @@ export default function QuizHistoryScreen() {
     }, [])
   );
 
+  // Derive unique subjects from history (preserving order of first appearance)
+  const subjects = React.useMemo(() => {
+    const seen = new Set<string>();
+    const result: string[] = [];
+    for (const h of history) {
+      if (!seen.has(h.subject)) {
+        seen.add(h.subject);
+        result.push(h.subject);
+      }
+    }
+    return result;
+  }, [history]);
+
+  // Filtered list
+  const filtered = React.useMemo(
+    () => (activeSubject ? history.filter((h) => h.subject === activeSubject) : history),
+    [history, activeSubject]
+  );
+
   return (
     <ScreenContainer>
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} accessibilityLabel="Go back" accessibilityRole="button">
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.backBtn}
+          accessibilityLabel="Go back"
+          accessibilityRole="button"
+        >
           <IconSymbol size={24} name="arrow.left" color={colors.foreground} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={[styles.headerTitle, { color: colors.foreground }]}>Quiz History</Text>
           <Text style={[styles.headerSub, { color: colors.muted }]}>
-            {history.length} quiz{history.length !== 1 ? "zes" : ""} completed
+            {filtered.length} quiz{filtered.length !== 1 ? "zes" : ""}
+            {activeSubject ? ` · ${getSubjectLabel(activeSubject)}` : ` · ${history.length} total`}
           </Text>
         </View>
         <View style={{ width: 40 }} />
@@ -153,7 +189,9 @@ export default function QuizHistoryScreen() {
             onPress={() => {
               setLoading(true);
               setLoadError(false);
-              loadQuizHistory().then((data) => { setHistory(data); setLoading(false); }).catch(() => { setLoadError(true); setLoading(false); });
+              loadQuizHistory()
+                .then((data) => { setHistory(data); setLoading(false); })
+                .catch(() => { setLoadError(true); setLoading(false); });
             }}
             style={[styles.startBtn, { backgroundColor: colors.primary }]}
           >
@@ -177,20 +215,146 @@ export default function QuizHistoryScreen() {
           </TouchableOpacity>
         </View>
       ) : (
-        <FlatList
-          data={history}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <QuizResultCard
-              item={item}
-              colors={colors}
-              onPress={() => router.push({ pathname: "/quiz-history-detail", params: { id: item.id } } as any)}
+        <>
+          {/* Subject filter chips */}
+          {subjects.length > 1 && (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filterBar}
+              style={[styles.filterBarWrapper, { borderBottomColor: colors.border }]}
+            >
+              {/* "All" chip */}
+              <TouchableOpacity
+                onPress={() => setActiveSubject(null)}
+                style={[
+                  styles.filterChip,
+                  {
+                    backgroundColor: activeSubject === null ? colors.primary : colors.surface,
+                    borderColor: activeSubject === null ? colors.primary : colors.border,
+                  },
+                ]}
+                activeOpacity={0.75}
+                accessibilityLabel="Show all subjects"
+                accessibilityRole="button"
+              >
+                <Text
+                  style={[
+                    styles.filterChipText,
+                    { color: activeSubject === null ? "#fff" : colors.foreground },
+                  ]}
+                >
+                  All
+                </Text>
+                <View
+                  style={[
+                    styles.filterChipCount,
+                    {
+                      backgroundColor:
+                        activeSubject === null ? "rgba(255,255,255,0.25)" : `${colors.primary}20`,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.filterChipCountText,
+                      { color: activeSubject === null ? "#fff" : colors.primary },
+                    ]}
+                  >
+                    {history.length}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              {subjects.map((subj) => {
+                const count = history.filter((h) => h.subject === subj).length;
+                const isActive = activeSubject === subj;
+                return (
+                  <TouchableOpacity
+                    key={subj}
+                    onPress={() => setActiveSubject(isActive ? null : subj)}
+                    style={[
+                      styles.filterChip,
+                      {
+                        backgroundColor: isActive ? colors.primary : colors.surface,
+                        borderColor: isActive ? colors.primary : colors.border,
+                      },
+                    ]}
+                    activeOpacity={0.75}
+                    accessibilityLabel={`Filter by ${getSubjectLabel(subj)}`}
+                    accessibilityRole="button"
+                  >
+                    <Text
+                      style={[
+                        styles.filterChipText,
+                        { color: isActive ? "#fff" : colors.foreground },
+                      ]}
+                    >
+                      {getSubjectLabel(subj)}
+                    </Text>
+                    <View
+                      style={[
+                        styles.filterChipCount,
+                        {
+                          backgroundColor: isActive
+                            ? "rgba(255,255,255,0.25)"
+                            : `${colors.primary}20`,
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.filterChipCountText,
+                          { color: isActive ? "#fff" : colors.primary },
+                        ]}
+                      >
+                        {count}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          )}
+
+          {filtered.length === 0 ? (
+            <View style={styles.center}>
+              <Text style={styles.emptyEmoji}>🔍</Text>
+              <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No Results</Text>
+              <Text style={[styles.emptySub, { color: colors.muted }]}>
+                No quizzes found for {activeSubject ? getSubjectLabel(activeSubject) : "this filter"}.
+              </Text>
+              <TouchableOpacity
+                onPress={() => setActiveSubject(null)}
+                accessibilityLabel="Clear subject filter"
+                accessibilityRole="button"
+                style={[styles.startBtn, { backgroundColor: colors.primary }]}
+              >
+                <Text style={styles.startBtnText}>Clear Filter</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <FlatList
+              data={filtered}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <QuizResultCard
+                  item={item}
+                  colors={colors}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/quiz-history-detail",
+                      params: { id: item.id },
+                    } as any)
+                  }
+                />
+              )}
+              contentContainerStyle={styles.listContent}
+              showsVerticalScrollIndicator={false}
+              ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
             />
           )}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
-        />
+        </>
       )}
     </ScreenContainer>
   );
@@ -214,6 +378,36 @@ const styles = StyleSheet.create({
   emptySub: { fontSize: 14, textAlign: "center", lineHeight: 20, marginBottom: 24 },
   startBtn: { paddingHorizontal: 28, paddingVertical: 12, borderRadius: 24 },
   startBtnText: { color: "#fff", fontWeight: "600", fontSize: 15 },
+
+  // Filter bar
+  filterBarWrapper: { borderBottomWidth: 0.5 },
+  filterBar: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    gap: 8,
+    flexDirection: "row",
+  },
+  filterChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1.5,
+  },
+  filterChipText: { fontSize: 13, fontWeight: "600" },
+  filterChipCount: {
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 5,
+  },
+  filterChipCountText: { fontSize: 11, fontWeight: "700" },
+
+  // List
   listContent: { padding: 16, paddingBottom: 32 },
   card: {
     borderRadius: 14,
@@ -233,13 +427,25 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   gradeText: { fontSize: 16, fontWeight: "700" },
-  cardStats: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 10, flexWrap: "wrap" },
+  cardStats: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 10,
+    flexWrap: "wrap",
+  },
   statItem: { flexDirection: "row", alignItems: "center", gap: 4 },
   statText: { fontSize: 13 },
   diffBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
   diffText: { fontSize: 11, fontWeight: "600", textTransform: "capitalize" },
   barBg: { height: 4, borderRadius: 2, overflow: "hidden" },
   barFill: { height: 4, borderRadius: 2 },
-  tapHintRow: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 3, marginTop: 8 },
+  tapHintRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: 3,
+    marginTop: 8,
+  },
   tapHintText: { fontSize: 11 },
 });

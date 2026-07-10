@@ -268,3 +268,10 @@
 - [x] Practice Again button re-launches same quiz configuration
 - [x] Graceful fallback for older quiz records without question detail
 - [x] TypeScript: 0 errors
+
+## Round 28: Subject Filter Chips + Adaptive Difficulty Banner
+- [x] Quiz History: horizontal subject filter chip bar (All + per-subject chips with quiz count badges, active chip highlighted in primary color, clears on tap)
+- [x] Quiz History: header subtitle updates to reflect active filter count
+- [x] Quiz History: empty state when filter produces no results, with Clear Filter button
+- [x] Practice: redesigned adaptive difficulty banner — prominent card with green accent strip, rocket icon, subject-specific copy, "Switch to X" button with haptic success, "Not now" dismiss; positioned below Quiz Stats card for maximum visibility
+- [x] TypeScript: 0 errors
