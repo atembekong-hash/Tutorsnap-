@@ -128,3 +128,9 @@
 - [x] 4 new screens registered in _layout.tsx (notification-center, feedback, report-bug, legal)
 - [x] 15 new icon mappings added to icon-symbol.tsx
 - [x] TypeScript: 0 errors
+
+## New Features (Round 8)
+- [x] FAQ / Help Center screen with search, categories, expandable Q&A, and contact fallback
+- [x] In-app version update prompt — checks tutorsnapai.tech/version.json on launch, shows modal when update available
+- [x] Wire FAQ link into Settings ABOUT section
+- [x] Wire update check into root _layout.tsx

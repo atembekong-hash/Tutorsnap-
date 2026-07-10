@@ -18,6 +18,8 @@ import type { EdgeInsets, Metrics, Rect } from "react-native-safe-area-context";
 import { trpc, createTRPCClient } from "@/lib/trpc";
 import { initManusRuntime, subscribeSafeAreaInsets } from "@/lib/_core/manus-runtime";
 import { OfflineBanner } from "@/components/offline-banner";
+import { UpdatePromptModal } from "@/components/update-prompt-modal";
+import { useUpdateCheck } from "@/lib/use-update-check";
 import { FontSizeProvider } from "@/lib/font-size-provider";
 import * as Notifications from "expo-notifications";
 import { useRouter } from "expo-router";
@@ -77,6 +79,7 @@ export default function RootLayout() {
     return () => unsubscribe();
   }, [handleSafeAreaUpdate]);
 
+  const { updateAvailable, updateInfo, forceUpdate, dismiss } = useUpdateCheck();
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -107,6 +110,12 @@ export default function RootLayout() {
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
         <QueryClientProvider client={queryClient}>
           <OfflineBanner />
+          <UpdatePromptModal
+            visible={updateAvailable}
+            updateInfo={updateInfo}
+            forceUpdate={forceUpdate}
+            onDismiss={dismiss}
+          />
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="(tabs)" />
             <Stack.Screen
@@ -205,6 +214,13 @@ export default function RootLayout() {
             />
             <Stack.Screen
               name="legal"
+              options={{
+                presentation: "card",
+                animation: "slide_from_right",
+              }}
+            />
+            <Stack.Screen
+              name="faq"
               options={{
                 presentation: "card",
                 animation: "slide_from_right",

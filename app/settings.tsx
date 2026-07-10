@@ -579,6 +579,13 @@ export default function SettingsScreen() {
           onPress={() => setShowHowTo(true)}
         />
         <SettingsRow
+          icon="questionmark.circle"
+          label="Help Center / FAQ"
+          subtitle="Browse 25+ answers to common questions"
+          colors={colors}
+          onPress={() => router.push("/faq" as any)}
+        />
+        <SettingsRow
           icon="star.bubble.fill"
           label="Rate TutorSnap"
           subtitle="Love the app? Leave us a review"
