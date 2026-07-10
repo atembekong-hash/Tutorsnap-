@@ -84,6 +84,7 @@ export function SubjectPicker({ value, onChange, showAll = true, preferredCatego
       >
         <Pressable style={styles.backdrop} onPress={() => setOpen(false)} />
         <View style={[styles.sheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
+
           <View style={[styles.sheetHeader, { borderBottomColor: colors.border }]}>
             <Text style={[styles.sheetTitle, { color: colors.foreground }]}>Choose Subject</Text>
             <TouchableOpacity onPress={() => setOpen(false)} style={styles.closeBtn}>
@@ -147,7 +148,10 @@ export function SubjectPicker({ value, onChange, showAll = true, preferredCatego
             data={grouped[activeCategory]}
             keyExtractor={(item) => item.id}
             numColumns={2}
+            style={{ flex: 1 }}
             contentContainerStyle={styles.grid}
+            showsVerticalScrollIndicator={true}
+            bounces={true}
             renderItem={({ item }) => (
               <SubjectCell
                 item={item}
@@ -229,7 +233,6 @@ const styles = StyleSheet.create({
     borderLeftWidth: 1,
     borderRightWidth: 1,
     maxHeight: "72%",
-    overflow: "hidden",
   },
   sheetHeader: {
     flexDirection: "row",

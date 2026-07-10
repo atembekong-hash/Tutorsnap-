@@ -271,28 +271,28 @@ function SolveScreenContent() {
         >
           {/* Header */}
           <View style={styles.header}>
-            <View>
+            <View style={{ flex: 1, marginRight: 8 }}>
               <Text style={[styles.greeting, { color: colors.muted }]}>TutorSnap</Text>
-              <Text style={[styles.title, { color: colors.foreground }]}>
+              <Text style={[styles.title, { color: colors.foreground }]} numberOfLines={1}>
                 Solve Any{" "}
                 <Text style={{ color: colors.primary }}>Problem</Text>
               </Text>
             </View>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            {streak && streak.currentStreak > 0 && (
-              <TouchableOpacity
-                onPress={() => router.push("/progress" as any)}
-                style={[styles.streakBadge, { backgroundColor: `${colors.warning}18`, borderColor: `${colors.warning}35` }]}
-              >
-                <Text style={styles.streakEmoji}>{streakEmoji}</Text>
-                <View>
-                  <Text style={[styles.streakNumber, { color: colors.warning }]}>
-                    {streak.currentStreak}
-                  </Text>
-                  <Text style={[styles.streakLabel, { color: colors.muted }]}>day streak</Text>
-                </View>
-                            </TouchableOpacity>
-            )}
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 4, flexShrink: 0 }}>
+              {streak && streak.currentStreak > 0 && (
+                <TouchableOpacity
+                  onPress={() => router.push("/progress" as any)}
+                  style={[styles.streakBadge, { backgroundColor: `${colors.warning}18`, borderColor: `${colors.warning}35` }]}
+                >
+                  <Text style={styles.streakEmoji}>{streakEmoji}</Text>
+                  <View>
+                    <Text style={[styles.streakNumber, { color: colors.warning }]}>
+                      {streak.currentStreak}
+                    </Text>
+                    <Text style={[styles.streakLabel, { color: colors.muted }]}>streak</Text>
+                  </View>
+                </TouchableOpacity>
+              )}
               <TouchableOpacity
                 onPress={() => {
                   const next = colorScheme === "dark" ? "light" : "dark";
@@ -301,21 +301,23 @@ function SolveScreenContent() {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                   }
                 }}
-                style={{ padding: 6 }}
+                style={styles.iconBtn}
                 activeOpacity={0.7}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
                 <IconSymbol
                   size={22}
                   name={colorScheme === "dark" ? "sun.max.fill" : "moon.fill"}
-                  color={colors.muted}
+                  color={colors.foreground}
                 />
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => router.push("/settings" as any)}
-                style={{ padding: 6 }}
+                style={styles.iconBtn}
                 activeOpacity={0.7}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <IconSymbol size={22} name="gear" color={colors.muted} />
+                <IconSymbol size={22} name="gear" color={colors.foreground} />
               </TouchableOpacity>
             </View>
           </View>
@@ -685,7 +687,14 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-start",
+    alignItems: "center",
+  },
+  iconBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
   },
   greeting: {
     fontSize: 13,

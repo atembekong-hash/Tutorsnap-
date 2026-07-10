@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
   Platform,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -36,9 +36,17 @@ const DIFFICULTIES: { id: Difficulty; label: string; color: string; desc: string
 function PracticeScreenContent() {
   const colors = useColors();
   const router = useRouter();
+  const params = useLocalSearchParams<{ subject?: string }>();
   const [selectedSubject, setSelectedSubject] = useState<SubjectId>("algebra");
   const [selectedDifficulty, setSelectedDifficulty] = useState<Difficulty>("medium");
   const [preferredCategories, setPreferredCategories] = useState<SubjectCategory[]>([]);
+
+  // Pre-select subject from navigation params (e.g. from Bookmarks "Practice Similar")
+  useEffect(() => {
+    if (params.subject) {
+      setSelectedSubject(params.subject as SubjectId);
+    }
+  }, [params.subject]);
 
   // Load preferred subjects from Settings on mount and pre-select first preferred subject
   useEffect(() => {

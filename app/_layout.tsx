@@ -173,7 +173,8 @@ export default function RootLayout() {
                 animation: "slide_from_bottom",
               }}
             />
-            <Stack.Screen name="quiz-history" options={{ headerShown: false }} />
+            <Stack.Screen name="faq" options={{ headerShown: false }} />
+        <Stack.Screen name="classroom" options={{ headerShown: false }} />
             <Stack.Screen
               name="study-planner"
               options={{

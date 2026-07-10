@@ -33,6 +33,7 @@ const MAPPING = {
   "magnifyingglass": "search",
   "xmark": "close",
   "xmark.circle.fill": "cancel",
+  "doc.on.doc.fill": "content-copy",
   "clock.fill": "history",
   "list.bullet": "list",
   "lightbulb.fill": "lightbulb",

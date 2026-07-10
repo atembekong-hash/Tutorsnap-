@@ -144,3 +144,12 @@
 - [x] Copy Link option in Solution share menu (generates tutorsnapai.tech/solve?q=... deep link)
 - [x] Practice this topic shortcut in Solution share menu (navigates to Practice pre-filtered by subject)
 - [x] Swipe-to-delete on Bookmarks screen (swipe-left reveals red Delete button)
+
+## Bug Fixes (Round 11)
+- [x] Fix hidden settings icon and light/dark mode toggle icon at top of dashboard
+- [x] Fix subject picker modal not scrolling on mobile
+
+## New Features (Round 11)
+- [x] Streak freeze / grace day mechanic (earned after 7-day streak, one per week)
+- [x] Similar Problems shortcut chip on Bookmarks card (jumps to Practice for that subject)
+- [x] Share to Classroom feature (teacher generates class code, students join to receive problems)

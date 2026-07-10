@@ -235,3 +235,83 @@ export function getSubjectDisplay(subject: string): { label: string; color: stri
 
 /** @deprecated Use getSubjectDisplay() instead */
 export const SUBJECT_DISPLAY: Partial<Record<MathSubject, { label: string; color: string }>> = {};
+
+// ===== STREAK FREEZE =====
+// A streak freeze is a proactive 24-hour protection the user can activate manually.
+// Earned automatically: 1 freeze per 7-day streak milestone (same cadence as shields).
+// Max 1 freeze held at a time. When active, it covers the current day as "solved".
+const FREEZE_KEY = "streak_freeze_v2";
+
+export interface StreakFreezeState {
+  /** Number of freezes available (0 or 1) */
+  available: number;
+  /** ISO date string if a freeze is currently active (covers today), else null */
+  activeUntil: string | null;
+  /** ISO week string of the last week a freeze was earned (to prevent double-earning) */
+  lastEarnedWeek: string | null;
+}
+
+/** Get current ISO week string (e.g. "2024-W03") */
+function getWeekString(): string {
+  const d = new Date();
+  const jan1 = new Date(d.getFullYear(), 0, 1);
+  const week = Math.ceil(((d.getTime() - jan1.getTime()) / 86400000 + jan1.getDay() + 1) / 7);
+  return `${d.getFullYear()}-W${String(week).padStart(2, "0")}`;
+}
+
+export async function getStreakFreezeState(): Promise<StreakFreezeState> {
+  try {
+    const raw = await AsyncStorage.getItem(FREEZE_KEY);
+    if (!raw) return { available: 0, activeUntil: null, lastEarnedWeek: null };
+    return JSON.parse(raw) as StreakFreezeState;
+  } catch {
+    return { available: 0, activeUntil: null, lastEarnedWeek: null };
+  }
+}
+
+async function saveStreakFreezeState(state: StreakFreezeState): Promise<void> {
+  await AsyncStorage.setItem(FREEZE_KEY, JSON.stringify(state));
+}
+
+/**
+ * Try to earn a freeze based on current streak.
+ * Earns 1 freeze when streak hits a 7-day milestone, once per calendar week.
+ * Returns { earned: boolean, newAvailable: number }
+ */
+export async function tryEarnStreakFreeze(currentStreak: number): Promise<{ earned: boolean; newAvailable: number }> {
+  if (currentStreak <= 0 || currentStreak % 7 !== 0) return { earned: false, newAvailable: 0 };
+  const state = await getStreakFreezeState();
+  const thisWeek = getWeekString();
+  if (state.lastEarnedWeek === thisWeek) return { earned: false, newAvailable: state.available };
+  if (state.available >= 1) return { earned: false, newAvailable: state.available };
+  const next: StreakFreezeState = { available: 1, activeUntil: state.activeUntil, lastEarnedWeek: thisWeek };
+  await saveStreakFreezeState(next);
+  return { earned: true, newAvailable: 1 };
+}
+
+/**
+ * Activate a streak freeze for today. Consumes 1 available freeze.
+ * Sets lastSolvedDate to today so the streak is preserved even if no problems are solved.
+ * Returns { activated: boolean }
+ */
+export async function activateStreakFreeze(): Promise<{ activated: boolean }> {
+  const state = await getStreakFreezeState();
+  if (state.available <= 0) return { activated: false };
+  const today = getTodayString();
+  if (state.activeUntil === today) return { activated: false }; // already active today
+  const next: StreakFreezeState = { available: 0, activeUntil: today, lastEarnedWeek: state.lastEarnedWeek };
+  await saveStreakFreezeState(next);
+  // Update streak's lastSolvedDate to today so it doesn't break tomorrow
+  const progress = await getProgress();
+  const updatedStreak = { ...progress.streak, lastSolvedDate: today };
+  await AsyncStorage.setItem(PROGRESS_KEY, JSON.stringify({ ...progress, streak: updatedStreak }));
+  return { activated: true };
+}
+
+/**
+ * Check if a freeze is currently active (covers today).
+ */
+export async function isFreezeActiveToday(): Promise<boolean> {
+  const state = await getStreakFreezeState();
+  return state.activeUntil === getTodayString();
+}

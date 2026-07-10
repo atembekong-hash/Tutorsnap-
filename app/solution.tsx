@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   Share,
+  Alert,
   Platform,
   ActivityIndicator,
 } from "react-native";
@@ -22,6 +23,7 @@ import type { MathSolution, SolutionStep, HistoryItem, MathSubject } from "@/sha
 import { getSubjectColor, getSubjectLabel } from "@/lib/subjects";
 import { useFontSize } from "@/lib/font-size-provider";
 import { trpc } from "@/lib/trpc";
+import { getMyClassroom, getJoinedClassroom, shareToClassroom } from "@/lib/classroom";
 
 function StepCard({ step, colors, fs }: { step: SolutionStep; colors: any; fs: (n: number) => number }) {
   const [expanded, setExpanded] = useState(true);
@@ -221,6 +223,30 @@ export default function SolutionScreen() {
     router.push({ pathname: "/(tabs)/practice", params: { subject: solution!.subject } } as any);
   };
 
+  const handleShareToClassroom = async () => {
+    setShowShareMenu(false);
+    const mine = await getMyClassroom();
+    const joined = await getJoinedClassroom();
+    const classroom = mine || joined;
+    if (!classroom) {
+      Alert.alert(
+        "No Classroom",
+        "You haven't joined or created a classroom yet. Go to Settings → Classroom to get started.",
+        [{ text: "OK" }]
+      );
+      return;
+    }
+    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    await shareToClassroom(classroom.code, {
+      problem: solution!.problem,
+      answer: solution!.answer,
+      subject: solution!.subject,
+      steps: (solution!.steps || []).map((s) => `Step ${s.stepNumber}: ${s.title} — ${s.explanation}`),
+      sharedBy: "You",
+    });
+    Alert.alert("Shared!", `Problem added to "${classroom.name}" feed.`);
+  };
+
   const handleShare = () => setShowShareMenu(true);
 
   const handleCopyAnswer = async () => {
@@ -315,7 +341,7 @@ export default function SolutionScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               onPress={handlePracticeFromMenu}
-              style={styles.shareMenuItem}
+              style={[styles.shareMenuItem, { borderBottomWidth: 0.5, borderBottomColor: colors.border }]}
               activeOpacity={0.7}
             >
               <View style={[styles.shareMenuIcon, { backgroundColor: `${colors.warning}15` }]}>
@@ -324,6 +350,20 @@ export default function SolutionScreen() {
               <View style={styles.shareMenuInfo}>
                 <Text style={[styles.shareMenuLabel, { color: colors.foreground }]}>Practice This Topic</Text>
                 <Text style={[styles.shareMenuDesc, { color: colors.muted }]}>Go to Practice mode for this subject</Text>
+              </View>
+              <IconSymbol size={16} name="chevron.right" color={colors.muted} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleShareToClassroom}
+              style={styles.shareMenuItem}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.shareMenuIcon, { backgroundColor: `${colors.primary}20` }]}>
+                <IconSymbol size={18} name="person.2.fill" color={colors.primary} />
+              </View>
+              <View style={styles.shareMenuInfo}>
+                <Text style={[styles.shareMenuLabel, { color: colors.foreground }]}>Share to Classroom</Text>
+                <Text style={[styles.shareMenuDesc, { color: colors.muted }]}>Add to your class problem feed</Text>
               </View>
               <IconSymbol size={16} name="chevron.right" color={colors.muted} />
             </TouchableOpacity>

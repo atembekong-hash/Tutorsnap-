@@ -35,6 +35,7 @@ import { BadgeUnlockModal } from "@/components/badge-unlock-modal";
 import { SubjectRing } from "@/components/subject-ring";
 import { getSubjectEmoji } from "@/lib/subjects";
 import { StreakShieldCard } from "@/components/streak-shield-card";
+import { StreakFreezeCard } from "@/components/streak-freeze-card";
 
 
 const GOAL_OPTIONS = [1, 3, 5, 10];
@@ -219,6 +220,13 @@ export default function ProgressScreen() {
             onShieldEarned={() => loadProgress()}
           />
         )}
+
+        {/* Streak Freeze */}
+        <StreakFreezeCard
+          currentStreak={streak.currentStreak}
+          onFreezeActivated={() => loadProgress()}
+          onFreezeEarned={() => loadProgress()}
+        />
 
         {/* Weekly Activity */}
         <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>

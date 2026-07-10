@@ -601,6 +601,13 @@ export default function SettingsScreen() {
           onPress={() => router.push("/faq" as any)}
         />
         <SettingsRow
+          icon="person.2.fill"
+          label="Classroom"
+          subtitle="Share problems with your class or join one"
+          colors={colors}
+          onPress={() => router.push("/classroom" as any)}
+        />
+        <SettingsRow
           icon="star.bubble.fill"
           label="Rate TutorSnap"
           subtitle="Love the app? Leave us a review"

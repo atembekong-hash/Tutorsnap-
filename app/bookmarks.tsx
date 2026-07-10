@@ -187,6 +187,16 @@ export default function BookmarksScreen() {
             <Text style={[styles.stepsCount, { color: colors.muted }]}>
               {item.steps?.length || 0} steps
             </Text>
+            <TouchableOpacity
+              onPress={(e) => {
+                e.stopPropagation();
+                router.push({ pathname: "/(tabs)/practice", params: { subject: item.subject } } as any);
+              }}
+              style={[styles.practiceSimilarBtn, { backgroundColor: `${subjectColor}15`, borderColor: `${subjectColor}40` }]}
+              activeOpacity={0.75}
+            >
+              <Text style={[styles.practiceSimilarText, { color: subjectColor }]}>Practice Similar</Text>
+            </TouchableOpacity>
             <IconSymbol size={14} name="chevron.right" color={colors.muted} />
           </View>
         </View>
@@ -560,5 +570,16 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "700",
     letterSpacing: 0.3,
+  },
+  practiceSimilarBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  practiceSimilarText: {
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.2,
   },
 });
