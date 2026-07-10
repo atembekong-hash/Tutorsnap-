@@ -57,6 +57,8 @@ const MAPPING = {
   "arrow.left.and.right": "swap-horiz",
   "person.fill": "person",
   "gear": "settings",
+  "sun.max.fill": "wb-sunny",
+  "moon.fill": "dark-mode",
   "bell.fill": "notifications",
   "bell.slash.fill": "notifications-off",
   "mic.fill": "mic",

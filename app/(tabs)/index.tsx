@@ -20,6 +20,7 @@ import { useColors } from "@/hooks/use-colors";
 import { trpc } from "@/lib/trpc";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getProgress, getStreakEmoji, getDailyGoalPercent, getShieldCount, applyStreakShieldIfNeeded, type ProgressData } from "@/lib/progress";
+import { useThemeContext } from "@/lib/theme-provider";
 import type { HistoryItem, MathSubject } from "@/shared/types";
 import { SubjectPicker } from "@/components/subject-picker";
 import { type SubjectId, getSubjectDef, isMathSubject, getSubjectPlaceholder } from "@/lib/subjects";
@@ -87,6 +88,7 @@ const DEFAULT_EXAMPLES = [
 export default function SolveScreen() {
   const colors = useColors();
   const router = useRouter();
+  const { colorScheme, setColorScheme } = useThemeContext();
   const [problem, setProblem] = useState("");
   const [selectedSubject, setSelectedSubject] = useState<SubjectId | null>(null);
   const [showMathKeyboard, setShowMathKeyboard] = useState(false);
@@ -268,6 +270,23 @@ export default function SolveScreen() {
                 </View>
                             </TouchableOpacity>
             )}
+              <TouchableOpacity
+                onPress={() => {
+                  const next = colorScheme === "dark" ? "light" : "dark";
+                  setColorScheme(next);
+                  if (Platform.OS !== "web") {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  }
+                }}
+                style={{ padding: 6 }}
+                activeOpacity={0.7}
+              >
+                <IconSymbol
+                  size={22}
+                  name={colorScheme === "dark" ? "sun.max.fill" : "moon.fill"}
+                  color={colors.muted}
+                />
+              </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => router.push("/settings" as any)}
                 style={{ padding: 6 }}
