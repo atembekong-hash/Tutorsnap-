@@ -304,6 +304,7 @@ function SolveScreenContent() {
             <View style={{ flexDirection: "row", alignItems: "center", gap: 4, flexShrink: 0 }}>
               {streak && streak.currentStreak > 0 && (
                 <TouchableOpacity
+                  accessibilityLabel="View progress"
                   onPress={() => router.push("/progress" as any)}
                   style={[styles.streakBadge, { backgroundColor: `${colors.warning}18`, borderColor: `${colors.warning}35` }]}
                 >
@@ -317,6 +318,7 @@ function SolveScreenContent() {
                 </TouchableOpacity>
               )}
               <TouchableOpacity
+                accessibilityLabel="Toggle color scheme"
                 onPress={() => {
                   const next = colorScheme === "dark" ? "light" : "dark";
                   setColorScheme(next);
@@ -335,6 +337,7 @@ function SolveScreenContent() {
                 />
               </TouchableOpacity>
               <TouchableOpacity
+                accessibilityLabel="Open settings"
                 onPress={() => router.push("/settings" as any)}
                 style={styles.iconBtn}
                 activeOpacity={0.7}
@@ -347,6 +350,7 @@ function SolveScreenContent() {
           {/* Daily Goal Progress */}
           {streak && streak.dailyGoal > 0 && (
             <TouchableOpacity
+              accessibilityLabel="View progress"
               onPress={() => router.push("/progress" as any)}
               style={[styles.goalBar, { backgroundColor: colors.surface, borderColor: colors.border }]}
               activeOpacity={0.8}
@@ -389,6 +393,7 @@ function SolveScreenContent() {
           {/* Homework Due Soon Banner */}
           {dueSoonHomework && !homeworkBannerDismissed && (
             <TouchableOpacity
+              accessibilityLabel="Open classroom"
               style={[styles.homeworkBanner, { backgroundColor: `${colors.warning}18`, borderColor: `${colors.warning}50` }]}
               onPress={() => router.push("/(tabs)/classroom" as any)}
               activeOpacity={0.8}
@@ -405,6 +410,7 @@ function SolveScreenContent() {
               <View style={styles.homeworkBannerRight}>
                 <Text style={[styles.homeworkBannerDue, { color: colors.warning }]}>Due today</Text>
                 <TouchableOpacity
+                  accessibilityLabel="Toggle homework banner dismissed"
                   onPress={() => setHomeworkBannerDismissed(true)}
                   style={styles.homeworkBannerClose}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -505,6 +511,7 @@ function SolveScreenContent() {
                   {/* Cheat Sheet Button — shown when a subject with a sheet is selected */}
                   {selectedSubject && hasCheatSheet(selectedSubject) && (
                     <TouchableOpacity
+                      accessibilityLabel="Toggle show cheat sheet"
                       onPress={() => {
                         if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                         setShowCheatSheet(true);
@@ -516,6 +523,7 @@ function SolveScreenContent() {
                   )}
                   {isMathSubject(selectedSubject) && (
                     <TouchableOpacity
+                      accessibilityLabel="Toggle show math keyboard"
                       onPress={() => {
                         Keyboard.dismiss();
                         setShowMathKeyboard((v) => !v);
@@ -545,7 +553,8 @@ function SolveScreenContent() {
                     />
                   )}
                   {problem.length > 0 && (
-                    <TouchableOpacity onPress={() => setProblem("")} style={styles.clearBtn}>
+                    <TouchableOpacity onPress={() => setProblem("")} style={styles.clearBtn}
+                      accessibilityLabel="Toggle problem">
                       <IconSymbol size={18} name="xmark.circle.fill" color={colors.muted} />
                     </TouchableOpacity>
                   )}
@@ -571,6 +580,7 @@ function SolveScreenContent() {
 
           {/* Solve Button */}
           <TouchableOpacity
+            accessibilityLabel="Solve problem"
             onPress={handleSolve}
             disabled={!problem.trim() || solveMutation.isPending || !isOnline}
             style={[
@@ -632,6 +642,7 @@ function SolveScreenContent() {
             </TouchableOpacity>
 
             <TouchableOpacity
+              accessibilityLabel="Go to practice"
               onPress={() => router.push("/(tabs)/practice" as any)}
               style={[styles.featureCard, { backgroundColor: `${colors.secondary}12`, borderColor: `${colors.secondary}25` }]}
               activeOpacity={0.8}
@@ -644,6 +655,7 @@ function SolveScreenContent() {
             </TouchableOpacity>
 
             <TouchableOpacity
+              accessibilityLabel="View progress"
               onPress={() => router.push("/progress" as any)}
               style={[styles.featureCard, { backgroundColor: `${colors.success}12`, borderColor: `${colors.success}25` }]}
               activeOpacity={0.8}

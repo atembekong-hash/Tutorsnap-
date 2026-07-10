@@ -126,6 +126,7 @@ class ErrorBoundaryClass extends Component<InternalProps, State> {
           </Text>
           <Text style={[styles.hint, { color: colors.muted }]}>Tap below to try again.</Text>
           <TouchableOpacity
+            accessibilityLabel="Retry"
             onPress={this.handleRetry}
             style={[styles.retryBtn, { backgroundColor: colors.primary }]}
             activeOpacity={0.8}

@@ -380,6 +380,7 @@ export default function SettingsScreen() {
           <View style={styles.goalOptions}>
             {FONT_SIZE_SCALES.map((s) => (
               <TouchableOpacity
+                accessibilityLabel="Toggle font scale"
                 key={s}
                 onPress={() => {
                   if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -484,6 +485,7 @@ export default function SettingsScreen() {
         </View>
         {reminder.enabled && Platform.OS !== "web" && (
           <TouchableOpacity
+            accessibilityLabel="Edit"
             onPress={handleEditTime}
             activeOpacity={0.7}
             style={[styles.row, { backgroundColor: colors.surface, borderColor: colors.border, marginTop: 2 }]}
@@ -738,6 +740,7 @@ export default function SettingsScreen() {
             >
               {HOUR_OPTIONS.map((h) => (
                 <TouchableOpacity
+                  accessibilityLabel="Toggle picker hour"
                   key={h}
                   onPress={() => {
                     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -755,6 +758,7 @@ export default function SettingsScreen() {
             <View style={{ flexDirection: "row", gap: 10, marginBottom: 24 }}>
               {MINUTE_OPTIONS.map((m) => (
                 <TouchableOpacity
+                  accessibilityLabel="Toggle picker minute"
                   key={m}
                   onPress={() => {
                     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -772,10 +776,12 @@ export default function SettingsScreen() {
               {formatReminderTime(pickerHour, pickerMinute)}
             </Text>
             <View style={styles.modalButtons}>
-              <TouchableOpacity onPress={() => setShowTimePicker(false)} style={[styles.modalBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} activeOpacity={0.7}>
+              <TouchableOpacity onPress={() => setShowTimePicker(false)} style={[styles.modalBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} activeOpacity={0.7}
+                accessibilityLabel="Toggle show time picker">
                 <Text style={[styles.modalBtnText, { color: colors.foreground }]}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={handleSaveTime} style={[styles.modalBtn, { backgroundColor: colors.primary }]} activeOpacity={0.85}>
+              <TouchableOpacity onPress={handleSaveTime} style={[styles.modalBtn, { backgroundColor: colors.primary }]} activeOpacity={0.85}
+                accessibilityLabel="Save">
                 <Text style={[styles.modalBtnText, { color: "#FFFFFF" }]}>Set Reminder</Text>
               </TouchableOpacity>
             </View>
@@ -794,7 +800,8 @@ export default function SettingsScreen() {
           <View style={[styles.modalSheet, { backgroundColor: colors.background, borderColor: colors.border, maxHeight: "85%" }]}>
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: colors.foreground }]}>How to use TutorSnap</Text>
-              <TouchableOpacity onPress={() => setShowHowTo(false)} style={styles.modalClose}>
+              <TouchableOpacity onPress={() => setShowHowTo(false)} style={styles.modalClose}
+                accessibilityLabel="Toggle show how to">
                 <IconSymbol size={22} name="xmark.circle.fill" color={colors.muted} />
               </TouchableOpacity>
             </View>
@@ -825,7 +832,8 @@ export default function SettingsScreen() {
           <View style={[styles.modalSheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: colors.foreground }]}>About TutorSnap</Text>
-              <TouchableOpacity onPress={() => setShowAbout(false)} style={styles.modalClose}>
+              <TouchableOpacity onPress={() => setShowAbout(false)} style={styles.modalClose}
+                accessibilityLabel="Toggle show about">
                 <IconSymbol size={22} name="xmark.circle.fill" color={colors.muted} />
               </TouchableOpacity>
             </View>
@@ -857,6 +865,7 @@ export default function SettingsScreen() {
             <View style={[styles.aboutDivider, { backgroundColor: colors.border }]} />
             <View style={styles.modalButtons}>
               <TouchableOpacity
+                accessibilityLabel="Rate app"
                 onPress={() => { setShowAbout(false); handleRateApp(); }}
                 style={[styles.modalBtn, { backgroundColor: colors.primary }]}
                 activeOpacity={0.85}
@@ -879,7 +888,8 @@ export default function SettingsScreen() {
           <View style={[styles.modalSheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: colors.foreground }]}>Preferred Subjects</Text>
-              <TouchableOpacity onPress={() => setShowSubjectPicker(false)} style={styles.modalClose}>
+              <TouchableOpacity onPress={() => setShowSubjectPicker(false)} style={styles.modalClose}
+                accessibilityLabel="Toggle show subject picker">
                 <IconSymbol size={22} name="xmark.circle.fill" color={colors.muted} />
               </TouchableOpacity>
             </View>
@@ -890,6 +900,7 @@ export default function SettingsScreen() {
               const isSelected = preferredCategories.has(id);
               return (
                 <TouchableOpacity
+                  accessibilityLabel="Toggle"
                   key={id}
                   onPress={() => handleToggleCategory(id)}
                   activeOpacity={0.7}

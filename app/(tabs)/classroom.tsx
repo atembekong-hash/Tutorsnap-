@@ -410,7 +410,8 @@ export default function ClassroomTabScreen() {
             <View style={styles.problemTopRight}>
               <Text style={[styles.dateText, { color: colors.muted }]}>{date}</Text>
               {myClassroom && (
-                <TouchableOpacity onPress={() => handleRemoveProblem(item.id)} style={styles.removeBtn}>
+                <TouchableOpacity onPress={() => handleRemoveProblem(item.id)} style={styles.removeBtn}
+                  accessibilityLabel="Remove">
                   <IconSymbol size={14} name="xmark.circle.fill" color={colors.muted} />
                 </TouchableOpacity>
               )}
@@ -426,6 +427,7 @@ export default function ClassroomTabScreen() {
             <View style={styles.problemActions}>
               {myClassroom && (
                 <TouchableOpacity
+                  accessibilityLabel="Open"
                   style={[styles.hwBtn, {
                     backgroundColor: item.isHomework ? `${colors.warning}15` : `${colors.surface}`,
                     borderColor: item.isHomework ? colors.warning : colors.border,
@@ -440,6 +442,7 @@ export default function ClassroomTabScreen() {
                 </TouchableOpacity>
               )}
               <TouchableOpacity
+                accessibilityLabel="Challenge classmate"
                 style={[styles.challengeBtn, { backgroundColor: `${colors.primary}15`, borderColor: `${colors.primary}40` }]}
                 onPress={() => handleChallenge(item)}
                 activeOpacity={0.75}
@@ -524,6 +527,7 @@ export default function ClassroomTabScreen() {
             Create a classroom to share problems with your students, or join one with a code from your teacher.
           </Text>
           <TouchableOpacity
+            accessibilityLabel="Toggle show create"
             style={[styles.primaryBtn, { backgroundColor: colors.primary }]}
             onPress={() => setShowCreate(true)}
             activeOpacity={0.85}
@@ -532,6 +536,7 @@ export default function ClassroomTabScreen() {
             <Text style={styles.primaryBtnText}>Create Classroom</Text>
           </TouchableOpacity>
           <TouchableOpacity
+            accessibilityLabel="Toggle show join"
             style={[styles.secondaryBtn, { borderColor: colors.border, backgroundColor: colors.surface }]}
             onPress={() => setShowJoin(true)}
             activeOpacity={0.85}
@@ -558,6 +563,7 @@ export default function ClassroomTabScreen() {
             onSubmitEditing={handleCreateClassroom}
           />
           <TouchableOpacity
+            accessibilityLabel="Create"
             style={[styles.primaryBtn, { backgroundColor: colors.primary, opacity: creating || !classroomName.trim() ? 0.6 : 1 }]}
             onPress={handleCreateClassroom}
             disabled={creating || !classroomName.trim()}
@@ -566,6 +572,7 @@ export default function ClassroomTabScreen() {
             <Text style={styles.primaryBtnText}>{creating ? "Creating…" : "Create Classroom"}</Text>
           </TouchableOpacity>
           <TouchableOpacity
+            accessibilityLabel="Toggle show create"
             style={[styles.secondaryBtn, { borderColor: colors.border, backgroundColor: colors.surface }]}
             onPress={() => setShowCreate(false)}
             activeOpacity={0.85}
@@ -592,6 +599,7 @@ export default function ClassroomTabScreen() {
             onSubmitEditing={handleJoinClassroom}
           />
           <TouchableOpacity
+            accessibilityLabel="Join"
             style={[styles.primaryBtn, { backgroundColor: colors.primary, opacity: joining || joinCode.length < 4 ? 0.6 : 1 }]}
             onPress={handleJoinClassroom}
             disabled={joining || joinCode.length < 4}
@@ -600,6 +608,7 @@ export default function ClassroomTabScreen() {
             <Text style={styles.primaryBtnText}>{joining ? "Joining…" : "Join Classroom"}</Text>
           </TouchableOpacity>
           <TouchableOpacity
+            accessibilityLabel="Toggle show join"
             style={[styles.secondaryBtn, { borderColor: colors.border, backgroundColor: colors.surface }]}
             onPress={() => setShowJoin(false)}
             activeOpacity={0.85}
@@ -616,6 +625,7 @@ export default function ClassroomTabScreen() {
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.tabsScroll, { borderBottomColor: colors.border }]}>
             {tabs.map((tab) => (
               <TouchableOpacity
+                accessibilityLabel="Toggle active tab"
                 key={tab.key}
                 style={[styles.tab, activeTab === tab.key && { borderBottomColor: colors.primary, borderBottomWidth: 2.5 }]}
                 onPress={() => setActiveTab(tab.key)}
@@ -786,6 +796,7 @@ export default function ClassroomTabScreen() {
                 {myClassroom && (
                   <View style={styles.codeActions}>
                     <TouchableOpacity
+                      accessibilityLabel="Copy"
                       style={[styles.codeActionBtn, { backgroundColor: copiedCode ? colors.success + "18" : colors.primary + "15", borderColor: copiedCode ? colors.success : colors.primary }]}
                       onPress={() => handleCopyCode(activeClassroom.code)}
                       activeOpacity={0.75}
@@ -796,6 +807,7 @@ export default function ClassroomTabScreen() {
                       </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
+                      accessibilityLabel="Share"
                       style={[styles.codeActionBtn, { backgroundColor: colors.primary + "15", borderColor: colors.primary }]}
                       onPress={() => handleShareCode(activeClassroom.code, activeClassroom.name)}
                       activeOpacity={0.75}
@@ -816,6 +828,7 @@ export default function ClassroomTabScreen() {
                   { key: "newHomework" as const, label: "New Homework Assigned", sub: "When a problem is assigned as homework" },
                 ].map(({ key, label, sub }) => (
                   <TouchableOpacity
+                    accessibilityLabel="Toggle"
                     key={key}
                     style={[styles.notifRow, { borderTopColor: colors.border }]}
                     onPress={() => handleToggleNotifPref(key)}
@@ -843,6 +856,7 @@ export default function ClassroomTabScreen() {
                 <View style={[styles.notifCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                   <Text style={[styles.notifCardTitle, { color: colors.foreground }]}>👤 Your Display Name</Text>
                   <TouchableOpacity
+                    accessibilityLabel="Edit"
                     style={[styles.notifRow, { borderTopColor: colors.border }]}
                     onPress={handleEditDisplayName}
                     activeOpacity={0.75}
@@ -865,6 +879,7 @@ export default function ClassroomTabScreen() {
                 <View style={[styles.notifCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                   <Text style={[styles.notifCardTitle, { color: colors.foreground }]}>🏆 Leaderboard</Text>
                   <TouchableOpacity
+                    accessibilityLabel="Reset"
                     style={[styles.notifRow, { borderTopColor: colors.border }]}
                     onPress={handleResetLeaderboard}
                     activeOpacity={0.75}
@@ -892,6 +907,7 @@ export default function ClassroomTabScreen() {
               {/* Danger zone */}
               <View style={[styles.dangerCard, { borderColor: colors.error + "40" }]}>
                 <TouchableOpacity
+                  accessibilityLabel="Delete"
                   style={[styles.dangerBtn, { borderColor: colors.error + "40" }]}
                   onPress={myClassroom ? handleDeleteClassroom : handleLeaveClassroom}
                   activeOpacity={0.75}
@@ -939,6 +955,7 @@ export default function ClassroomTabScreen() {
             <View style={styles.dateOptionsRow}>
               {dateOptions.map((opt) => (
                 <TouchableOpacity
+                  accessibilityLabel="Toggle selected due date"
                   key={opt.iso}
                   style={[
                     styles.dateOptionBtn,
@@ -959,6 +976,7 @@ export default function ClassroomTabScreen() {
 
             <View style={styles.modalActions}>
               <TouchableOpacity
+                accessibilityLabel="Toggle homework modal item"
                 style={[styles.modalCancelBtn, { borderColor: colors.border }]}
                 onPress={() => setHomeworkModalItem(null)}
                 activeOpacity={0.75}
@@ -1004,6 +1022,7 @@ export default function ClassroomTabScreen() {
             />
             <View style={styles.modalActions}>
               <TouchableOpacity
+                accessibilityLabel="Toggle show name prompt"
                 style={[styles.modalCancelBtn, { borderColor: colors.border }]}
                 onPress={() => { setShowNamePrompt(false); setPendingJoinCode(""); }}
                 activeOpacity={0.75}
@@ -1011,6 +1030,7 @@ export default function ClassroomTabScreen() {
                 <Text style={[styles.modalCancelText, { color: colors.muted }]}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
+                accessibilityLabel="Confirm"
                 style={[styles.modalAssignBtn, { backgroundColor: colors.primary }]}
                 onPress={handleConfirmJoin}
                 activeOpacity={0.85}

@@ -47,12 +47,39 @@ const config: ExpoConfig = {
   scheme: env.scheme,
   userInterfaceStyle: "automatic",
   newArchEnabled: true,
+  description: "TutorSnap is your AI-powered academic tutor for every subject — from Algebra and Calculus to Chemistry, History, and Grammar. Snap a photo of any problem, type it in, or ask the AI tutor directly. Get step-by-step solutions, practice quizzes, flashcards, a study planner, and a classroom sharing tool for teachers and students.",
+  githubUrl: "https://tutorsnapai.tech",
   ios: {
     supportsTablet: true,
     bundleIdentifier: env.iosBundleId,
-    "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
-      }
+    appStoreUrl: "https://apps.apple.com/app/tutorsnap/id0000000000",
+    infoPlist: {
+      ITSAppUsesNonExemptEncryption: false,
+      NSPhotoLibraryUsageDescription: "TutorSnap uses your photo library to scan math and science problems.",
+      NSCameraUsageDescription: "TutorSnap uses your camera to take photos of problems for AI solving.",
+      NSMicrophoneUsageDescription: "TutorSnap uses your microphone for voice input on the solve screen.",
+      NSUserNotificationsUsageDescription: "TutorSnap sends study reminders, streak alerts, and classroom notifications.",
+    },
+    privacyManifests: {
+      NSPrivacyAccessedAPITypes: [
+        {
+          NSPrivacyAccessedAPIType: "NSPrivacyAccessedAPICategoryUserDefaults",
+          NSPrivacyAccessedAPITypeReasons: ["CA92.1"],
+        },
+        {
+          NSPrivacyAccessedAPIType: "NSPrivacyAccessedAPICategoryFileTimestamp",
+          NSPrivacyAccessedAPITypeReasons: ["C617.1"],
+        },
+        {
+          NSPrivacyAccessedAPIType: "NSPrivacyAccessedAPICategorySystemBootTime",
+          NSPrivacyAccessedAPITypeReasons: ["35F9.1"],
+        },
+        {
+          NSPrivacyAccessedAPIType: "NSPrivacyAccessedAPICategoryDiskSpace",
+          NSPrivacyAccessedAPITypeReasons: ["E174.1"],
+        },
+      ],
+    },
   },
   android: {
     adaptiveIcon: {

@@ -157,6 +157,7 @@ export default function LeaderboardScreen() {
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>Streak Leaderboard</Text>
         <TouchableOpacity
+          accessibilityLabel="Toggle show add modal"
           onPress={() => setShowAddModal(true)}
           style={[styles.addBtn, { backgroundColor: `${colors.primary}15` }]}
           activeOpacity={0.7}
@@ -185,6 +186,7 @@ export default function LeaderboardScreen() {
                 </View>
               </View>
               <TouchableOpacity
+                accessibilityLabel="Share"
                 onPress={handleShare}
                 style={[styles.shareBtn, { backgroundColor: colors.primary }]}
                 activeOpacity={0.8}
@@ -204,6 +206,7 @@ export default function LeaderboardScreen() {
                 </View>
               </View>
               <TouchableOpacity
+                accessibilityLabel="Copy"
                 onPress={handleCopyCode}
                 style={[styles.copyBtn, { backgroundColor: copied ? `${colors.success}20` : `${colors.primary}15` }]}
                 activeOpacity={0.7}
@@ -258,6 +261,7 @@ export default function LeaderboardScreen() {
                 Share your invite code with classmates, then tap + to add their streak.
               </Text>
               <TouchableOpacity
+                accessibilityLabel="Toggle show add modal"
                 onPress={() => setShowAddModal(true)}
                 style={[styles.emptyBtn, { backgroundColor: colors.primary }]}
                 activeOpacity={0.8}
@@ -282,11 +286,13 @@ export default function LeaderboardScreen() {
       >
         <View style={[styles.modal, { backgroundColor: colors.background }]}>
           <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-            <TouchableOpacity onPress={() => setShowAddModal(false)}>
+            <TouchableOpacity onPress={() => setShowAddModal(false)}
+              accessibilityLabel="Toggle show add modal">
               <Text style={[styles.modalCancel, { color: colors.muted }]}>Cancel</Text>
             </TouchableOpacity>
             <Text style={[styles.modalTitle, { color: colors.foreground }]}>Add Friend</Text>
-            <TouchableOpacity onPress={handleAddFriend}>
+            <TouchableOpacity onPress={handleAddFriend}
+              accessibilityLabel="Add">
               <Text style={[styles.modalDone, { color: colors.primary }]}>Add</Text>
             </TouchableOpacity>
           </View>
@@ -329,6 +335,7 @@ export default function LeaderboardScreen() {
             <View style={styles.avatarGrid}>
               {AVATAR_OPTIONS.map((emoji) => (
                 <TouchableOpacity
+                  accessibilityLabel="Toggle selected avatar"
                   key={emoji}
                   onPress={() => setSelectedAvatar(emoji)}
                   style={[

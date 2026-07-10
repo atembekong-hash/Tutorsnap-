@@ -392,6 +392,7 @@ export default function QuizScreen() {
           {/* Action Button */}
           {!revealed ? (
             <TouchableOpacity
+              accessibilityLabel="Confirm"
               onPress={handleConfirm}
               disabled={!selectedOption}
               style={[styles.actionBtn, { backgroundColor: selectedOption ? colors.primary : colors.border }]}
@@ -403,6 +404,7 @@ export default function QuizScreen() {
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
+              accessibilityLabel="Next"
               onPress={handleNext}
               style={[styles.actionBtn, { backgroundColor: colors.primary }]}
               activeOpacity={0.85}

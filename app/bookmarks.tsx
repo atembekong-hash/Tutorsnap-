@@ -131,6 +131,7 @@ export default function BookmarksScreen() {
 
   const renderRightActions = (item: HistoryItem) => (
     <TouchableOpacity
+      accessibilityLabel="Delete"
       onPress={() => handleDelete(item.id)}
       style={styles.swipeDeleteBtn}
       activeOpacity={0.85}
@@ -169,7 +170,8 @@ export default function BookmarksScreen() {
             </View>
             <View style={styles.cardTopRight}>
               {date ? <Text style={[styles.dateText, { color: colors.muted }]}>{date}</Text> : null}
-              <TouchableOpacity onPress={() => handleDelete(item.id)} style={styles.removeBtn}>
+              <TouchableOpacity onPress={() => handleDelete(item.id)} style={styles.removeBtn}
+                accessibilityLabel="Delete">
                 <IconSymbol size={16} name="bookmark.fill" color={colors.warning} />
               </TouchableOpacity>
             </View>
@@ -188,6 +190,7 @@ export default function BookmarksScreen() {
               {item.steps?.length || 0} steps
             </Text>
             <TouchableOpacity
+              accessibilityLabel="Go to practice"
               onPress={(e) => {
                 e.stopPropagation();
                 router.push({ pathname: "/(tabs)/practice", params: { subject: item.subject } } as any);
@@ -221,6 +224,7 @@ export default function BookmarksScreen() {
           </Text>
         </View>
         <TouchableOpacity
+          accessibilityLabel="View flashcards"
           onPress={() => router.push("/flashcards" as any)}
           style={[styles.flashcardBtn, { backgroundColor: `${colors.primary}15`, borderColor: `${colors.primary}30` }]}
           activeOpacity={0.7}
@@ -260,7 +264,8 @@ export default function BookmarksScreen() {
               clearButtonMode="while-editing"
             />
             {search.length > 0 && Platform.OS !== "ios" && (
-              <TouchableOpacity onPress={() => setSearch("")} activeOpacity={0.7}>
+              <TouchableOpacity onPress={() => setSearch("")} activeOpacity={0.7}
+                accessibilityLabel="Toggle search">
                 <IconSymbol size={17} name="xmark.circle.fill" color={colors.muted} />
               </TouchableOpacity>
             )}
@@ -317,6 +322,7 @@ export default function BookmarksScreen() {
 
             {/* Sort Button */}
             <TouchableOpacity
+              accessibilityLabel="Toggle show sort menu"
               onPress={() => setShowSortMenu(!showSortMenu)}
               style={[styles.sortBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
               activeOpacity={0.7}
@@ -331,6 +337,7 @@ export default function BookmarksScreen() {
             <View style={[styles.sortMenu, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               {SORT_OPTIONS.map((opt) => (
                 <TouchableOpacity
+                  accessibilityLabel="Sort"
                   key={opt.key}
                   onPress={() => handleSortSelect(opt.key)}
                   style={[styles.sortMenuItem, sortKey === opt.key && { backgroundColor: `${colors.primary}10` }]}
@@ -363,6 +370,7 @@ export default function BookmarksScreen() {
                 Try a different keyword or subject filter.
               </Text>
               <TouchableOpacity
+                accessibilityLabel="Toggle search"
                 onPress={() => { setSearch(""); setActiveSubject("all"); }}
                 style={[styles.clearBtn, { borderColor: colors.border }]}
                 activeOpacity={0.7}

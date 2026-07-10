@@ -277,7 +277,8 @@ export default function FAQScreen() {
           clearButtonMode="while-editing"
         />
         {search.length > 0 && Platform.OS !== "ios" && (
-          <TouchableOpacity onPress={() => setSearch("")} activeOpacity={0.7}>
+          <TouchableOpacity onPress={() => setSearch("")} activeOpacity={0.7}
+            accessibilityLabel="Toggle search">
             <IconSymbol size={18} name="xmark.circle.fill" color={colors.muted} />
           </TouchableOpacity>
         )}
@@ -343,6 +344,7 @@ export default function FAQScreen() {
         ) : (
           filtered.map((item, idx) => (
             <TouchableOpacity
+              accessibilityLabel="Toggle"
               key={item.id}
               onPress={() => handleToggle(item.id)}
               activeOpacity={0.7}

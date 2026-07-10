@@ -169,3 +169,9 @@
 - [x] Student display name prompt on classroom join (stored in AsyncStorage, shown on leaderboard)
 - [x] Homework due soon banner on Home screen (appears when assignment due within 24 hours)
 - [x] Reset leaderboard option in Classroom Manage tab (confirmation alert, clears all scores)
+
+## Accessibility and App Store Metadata (Round 15)
+- [x] App Store metadata added to app.config.ts (description, privacy manifest, NSUsageDescription strings for all permissions)
+- [x] 153 accessibilityLabel props added across 31 files (all primary interactive elements)
+- [x] Fixed 4 broken self-closing element injections (study-planner x2, cheat-sheet-bottom-sheet, subject-picker)
+- [x] TypeScript: 0 errors after all fixes

@@ -246,6 +246,7 @@ function PracticeScreenContent() {
             </View>
             <View style={styles.suggestionActions}>
               <TouchableOpacity
+                accessibilityLabel="Toggle suggestion dismissed"
                 onPress={() => {
                   handleDifficultyChange(diffSuggestion.suggestedDifficulty);
                   setSuggestionDismissed(true);
@@ -255,7 +256,8 @@ function PracticeScreenContent() {
               >
                 <Text style={styles.suggestionAcceptText}>Switch</Text>
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => setSuggestionDismissed(true)} style={styles.suggestionDismiss}>
+              <TouchableOpacity onPress={() => setSuggestionDismissed(true)} style={styles.suggestionDismiss}
+                accessibilityLabel="Toggle suggestion dismissed">
                 <IconSymbol size={16} name="xmark.circle.fill" color={colors.muted} />
               </TouchableOpacity>
             </View>
@@ -274,6 +276,7 @@ function PracticeScreenContent() {
             <Text style={[styles.countPickerLabel, { color: colors.muted }]}>Questions:</Text>
             {QUIZ_COUNTS.map((n) => (
               <TouchableOpacity
+                accessibilityLabel="Toggle quiz count"
                 key={n}
                 onPress={() => setQuizCount(n)}
                 style={[styles.countChip, { backgroundColor: quizCount === n ? colors.primary : colors.border }]}

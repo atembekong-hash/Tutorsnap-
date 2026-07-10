@@ -242,6 +242,7 @@ export default function FlashcardsScreen() {
           )}
         </View>
         <TouchableOpacity
+          accessibilityLabel="Share"
           onPress={handleShareDeck}
           style={[styles.shareBtn, { backgroundColor: `${colors.primary}15` }]}
           disabled={bookmarks.length === 0}

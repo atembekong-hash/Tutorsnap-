@@ -159,7 +159,8 @@ export default function PomodoroScreen() {
             {subjectDef?.label ?? subjectId}
           </Text>
         </View>
-        <TouchableOpacity onPress={handleReset} style={styles.resetBtn}>
+        <TouchableOpacity onPress={handleReset} style={styles.resetBtn}
+          accessibilityLabel="Reset">
           <IconSymbol size={20} name="arrow.counterclockwise" color={colors.muted} />
         </TouchableOpacity>
       </View>
@@ -221,6 +222,7 @@ export default function PomodoroScreen() {
           {phase === "done" ? (
             <View style={styles.doneControls}>
               <TouchableOpacity
+                accessibilityLabel="Reset"
                 onPress={handleReset}
                 style={[styles.doneBtn, { backgroundColor: `${subjectColor}18`, borderColor: `${subjectColor}35` }]}
                 activeOpacity={0.8}
@@ -241,6 +243,7 @@ export default function PomodoroScreen() {
             <View style={styles.mainControls}>
               {phase === "break" && (
                 <TouchableOpacity
+                  accessibilityLabel="Skip"
                   onPress={handleSkipBreak}
                   style={[styles.skipBtn, { borderColor: colors.border }]}
                   activeOpacity={0.7}
@@ -250,6 +253,7 @@ export default function PomodoroScreen() {
                 </TouchableOpacity>
               )}
               <TouchableOpacity
+                accessibilityLabel="Start"
                 onPress={handleStartPause}
                 style={[styles.playBtn, { backgroundColor: phaseColor }]}
                 activeOpacity={0.85}

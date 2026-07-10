@@ -197,7 +197,8 @@ function ChatScreenContent() {
               </View>
             </View>
           </View>
-          <TouchableOpacity onPress={handleClearChat} style={styles.clearBtn}>
+          <TouchableOpacity onPress={handleClearChat} style={styles.clearBtn}
+            accessibilityLabel="Clear">
             <IconSymbol size={20} name="trash.fill" color={colors.muted} />
           </TouchableOpacity>
         </View>
@@ -250,6 +251,7 @@ function ChatScreenContent() {
             <View style={styles.quickPrompts}>
               {QUICK_PROMPTS.map((prompt, i) => (
                 <TouchableOpacity
+                  accessibilityLabel="Send message"
                   key={i}
                   onPress={() => handleSend(prompt)}
                   style={[styles.quickPromptChip, { backgroundColor: `${colors.primary}15`, borderColor: `${colors.primary}30` }]}
@@ -289,6 +291,7 @@ function ChatScreenContent() {
             />
           </View>
           <TouchableOpacity
+            accessibilityLabel="Send message"
             onPress={() => handleSend()}
             disabled={!inputText.trim() || chatMutation.isPending || !isOnline}
             style={[

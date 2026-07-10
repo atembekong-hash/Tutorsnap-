@@ -208,6 +208,7 @@ export default function ChallengeScreen() {
             <View style={styles.durationRow}>
               {CHALLENGE_DURATIONS.map((d) => (
                 <TouchableOpacity
+                  accessibilityLabel="Toggle selected duration"
                   key={d}
                   style={[
                     styles.durationBtn,
@@ -232,6 +233,7 @@ export default function ChallengeScreen() {
             </View>
 
             <TouchableOpacity
+              accessibilityLabel="Start"
               style={[styles.startBtn, { backgroundColor: colors.primary }]}
               onPress={handleStart}
               activeOpacity={0.85}
@@ -291,6 +293,7 @@ export default function ChallengeScreen() {
             />
 
             <TouchableOpacity
+              accessibilityLabel="Submit"
               style={[
                 styles.submitBtn,
                 {
@@ -347,6 +350,7 @@ export default function ChallengeScreen() {
 
             <View style={styles.resultActions}>
               <TouchableOpacity
+                accessibilityLabel="Retry"
                 style={[styles.resultBtn, { backgroundColor: colors.primary }]}
                 onPress={handleRetry}
                 activeOpacity={0.85}
@@ -355,6 +359,7 @@ export default function ChallengeScreen() {
                 <Text style={styles.resultBtnText}>Try Again</Text>
               </TouchableOpacity>
               <TouchableOpacity
+                accessibilityLabel="Share"
                 style={[styles.resultBtn, { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1.5 }]}
                 onPress={handleShareResult}
                 activeOpacity={0.85}

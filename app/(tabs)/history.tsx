@@ -182,10 +182,12 @@ function HistoryScreenContent() {
           <Text style={[styles.title, { color: colors.foreground }]}>History</Text>
           {history.length > 0 && (
             <View style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
-              <TouchableOpacity onPress={() => router.push("/bookmarks" as any)} style={styles.clearAllBtn}>
+              <TouchableOpacity onPress={() => router.push("/bookmarks" as any)} style={styles.clearAllBtn}
+                accessibilityLabel="View bookmarks">
                 <IconSymbol size={20} name="bookmark.fill" color={colors.warning} />
               </TouchableOpacity>
-              <TouchableOpacity onPress={handleClearAll} style={styles.clearAllBtn}>
+              <TouchableOpacity onPress={handleClearAll} style={styles.clearAllBtn}
+                accessibilityLabel="Clear">
                 <Text style={[styles.clearAllText, { color: colors.error }]}>Clear All</Text>
               </TouchableOpacity>
             </View>
@@ -209,7 +211,8 @@ function HistoryScreenContent() {
               onChangeText={setSearchQuery}
             />
             {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery("")}>
+              <TouchableOpacity onPress={() => setSearchQuery("")}
+                accessibilityLabel="Toggle search query">
                 <IconSymbol size={16} name="xmark.circle.fill" color={colors.muted} />
               </TouchableOpacity>
             )}
@@ -219,6 +222,7 @@ function HistoryScreenContent() {
           {uniqueSubjects.length > 1 && (
             <View style={styles.filterRow}>
               <TouchableOpacity
+                accessibilityLabel="Toggle filter subject"
                 onPress={() => setFilterSubject("all")}
                 style={[
                   styles.filterChip,
@@ -242,6 +246,7 @@ function HistoryScreenContent() {
                 const color = getSubjectColor(subject);
                 return (
                   <TouchableOpacity
+                    accessibilityLabel="Toggle filter subject"
                     key={subject}
                     onPress={() => setFilterSubject(isSelected ? "all" : subject)}
                     style={[

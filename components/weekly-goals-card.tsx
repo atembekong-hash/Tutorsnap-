@@ -182,6 +182,7 @@ export function WeeklyGoalsCard({
       <View style={styles.header}>
         <Text style={[styles.title, { color: colors.foreground }]}>📅 This Week</Text>
         <TouchableOpacity
+          accessibilityLabel="Toggle picker visible"
           onPress={() => setPickerVisible(true)}
           style={[styles.goalBtn, { backgroundColor: `${colors.primary}15`, borderColor: `${colors.primary}30` }]}
           activeOpacity={0.75}

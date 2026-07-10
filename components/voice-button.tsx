@@ -84,6 +84,7 @@ export function VoiceButton({ onTranscript, size = 44 }: VoiceButtonProps) {
 
   return (
     <TouchableOpacity
+      accessibilityLabel="Button"
       onPress={handlePress}
       disabled={isProcessing}
       activeOpacity={0.8}

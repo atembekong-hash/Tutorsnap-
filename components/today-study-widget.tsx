@@ -51,6 +51,7 @@ export function TodayStudyWidget() {
           </View>
         </View>
         <TouchableOpacity
+          accessibilityLabel="Open study planner"
           onPress={() => router.push("/study-planner" as any)}
           style={[styles.viewAllBtn, { backgroundColor: `${colors.primary}15` }]}
           activeOpacity={0.7}
@@ -131,6 +132,7 @@ export function TodayStudyWidget() {
         })}
         {todaySlots.length > 3 && (
           <TouchableOpacity
+            accessibilityLabel="Open study planner"
             onPress={() => router.push("/study-planner" as any)}
             style={styles.moreRow}
             activeOpacity={0.7}

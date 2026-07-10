@@ -195,6 +195,7 @@ export default function StudyPlannerScreen() {
             const count = slots.filter((s) => s.weekday === day).length;
             return (
               <TouchableOpacity
+                accessibilityLabel="Toggle selected day"
                 key={day}
                 onPress={() => {
                   setSelectedDay(day);
@@ -280,6 +281,7 @@ export default function StudyPlannerScreen() {
                     </Text>
                   </View>
                   <TouchableOpacity
+                    accessibilityLabel="Delete"
                     onPress={() => handleDelete(slot)}
                     style={styles.slotDeleteBtn}
                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -296,13 +298,14 @@ export default function StudyPlannerScreen() {
       {/* Add/Edit Modal */}
       <Modal visible={showModal} transparent animationType="slide" onRequestClose={() => setShowModal(false)}>
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
-        <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setShowModal(false)} />
+        <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setShowModal(false)} accessibilityLabel="Close modal" />
         <View style={[styles.modalSheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
           <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
             <Text style={[styles.modalTitle, { color: colors.foreground }]}>
               {editingSlot ? "Edit Session" : `Add Session · ${WEEKDAY_FULL[selectedDay]}`}
             </Text>
-            <TouchableOpacity onPress={() => setShowModal(false)}>
+            <TouchableOpacity onPress={() => setShowModal(false)}
+              accessibilityLabel="Toggle show modal">
               <Text style={[styles.modalClose, { color: colors.muted }]}>✕</Text>
             </TouchableOpacity>
           </View>
@@ -322,6 +325,7 @@ export default function StudyPlannerScreen() {
             {/* Subject */}
             <Text style={[styles.fieldLabel, { color: colors.muted }]}>SUBJECT</Text>
             <TouchableOpacity
+              accessibilityLabel="Toggle show subject picker"
               onPress={() => setShowSubjectPicker(true)}
               style={[styles.subjectTrigger, { backgroundColor: colors.surface, borderColor: getSubjectColor(formSubject) }]}
               activeOpacity={0.75}
@@ -345,6 +349,7 @@ export default function StudyPlannerScreen() {
                 >
                   {HOURS.map((h) => (
                     <TouchableOpacity
+                      accessibilityLabel="Toggle form hour"
                       key={h}
                       onPress={() => setFormHour(h)}
                       style={[
@@ -366,6 +371,7 @@ export default function StudyPlannerScreen() {
                 <View style={styles.minuteRow}>
                   {MINUTES.map((m) => (
                     <TouchableOpacity
+                      accessibilityLabel="Toggle form minute"
                       key={m}
                       onPress={() => setFormMinute(m)}
                       style={[
@@ -388,6 +394,7 @@ export default function StudyPlannerScreen() {
             <View style={styles.durationRow}>
               {DURATIONS.map((d) => (
                 <TouchableOpacity
+                  accessibilityLabel="Toggle form duration"
                   key={d}
                   onPress={() => setFormDuration(d)}
                   style={[
@@ -429,6 +436,7 @@ export default function StudyPlannerScreen() {
 
             {/* Save Button */}
             <TouchableOpacity
+              accessibilityLabel="Save"
               onPress={handleSave}
               style={[styles.saveBtn, { backgroundColor: colors.primary }]}
               activeOpacity={0.85}
@@ -446,11 +454,12 @@ export default function StudyPlannerScreen() {
           animationType="slide"
           onRequestClose={() => setShowSubjectPicker(false)}
         >
-          <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setShowSubjectPicker(false)} />
+          <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={() => setShowSubjectPicker(false)} accessibilityLabel="Close subject picker" />
           <View style={[styles.subjectSheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
             <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
               <Text style={[styles.modalTitle, { color: colors.foreground }]}>Choose Subject</Text>
-              <TouchableOpacity onPress={() => setShowSubjectPicker(false)}>
+              <TouchableOpacity onPress={() => setShowSubjectPicker(false)}
+                accessibilityLabel="Toggle show subject picker">
                 <Text style={[styles.modalClose, { color: colors.muted }]}>✕</Text>
               </TouchableOpacity>
             </View>
@@ -461,6 +470,7 @@ export default function StudyPlannerScreen() {
               contentContainerStyle={{ padding: 12, gap: 8 }}
               renderItem={({ item }) => (
                 <TouchableOpacity
+                  accessibilityLabel="Toggle form subject"
                   onPress={() => {
                     setFormSubject(item.id);
                     setShowSubjectPicker(false);

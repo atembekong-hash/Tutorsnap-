@@ -96,6 +96,7 @@ export function StudyTipCard({ subject }: StudyTipCardProps) {
           ) : null}
         </View>
         <TouchableOpacity
+          accessibilityLabel="Refresh"
           onPress={handleRefresh}
           disabled={loading}
           style={styles.refreshBtn}

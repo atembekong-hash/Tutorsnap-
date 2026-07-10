@@ -127,6 +127,7 @@ export default function ReportBugScreen() {
           <View style={[styles.categoryGrid, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             {BUG_CATEGORIES.map((cat) => (
               <TouchableOpacity
+                accessibilityLabel="Toggle category"
                 key={cat.id}
                 onPress={() => {
                   if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -153,6 +154,7 @@ export default function ReportBugScreen() {
           <Text style={[styles.sectionLabel, { color: colors.muted }]}>SEVERITY</Text>
           {SEVERITY_OPTIONS.map((opt) => (
             <TouchableOpacity
+              accessibilityLabel="Toggle severity"
               key={opt.id}
               onPress={() => {
                 if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -215,6 +217,7 @@ export default function ReportBugScreen() {
 
           {/* Submit */}
           <TouchableOpacity
+            accessibilityLabel="Submit"
             onPress={handleSubmit}
             style={[styles.submitBtn, { backgroundColor: colors.error }]}
             activeOpacity={0.85}

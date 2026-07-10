@@ -241,6 +241,7 @@ function ScanScreenContent() {
         {/* Top bar */}
         <View style={styles.cameraTopBar}>
           <TouchableOpacity
+            accessibilityLabel="Toggle facing"
             onPress={() => setFacing(f => f === "back" ? "front" : "back")}
             style={styles.cameraTopBtn}
           >
@@ -318,6 +319,7 @@ function ScanScreenContent() {
           </View>
 
           <TouchableOpacity
+            accessibilityLabel="Solve problem"
             onPress={handleSolve}
             disabled={isProcessing || solveMutation.isPending || !isOnline}
             style={[

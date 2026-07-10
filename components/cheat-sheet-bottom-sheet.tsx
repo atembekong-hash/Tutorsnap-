@@ -94,7 +94,7 @@ export function CheatSheetBottomSheet({
       <Animated.View
         style={[styles.backdrop, { opacity: backdropOpacity }]}
       >
-        <TouchableOpacity style={{ flex: 1 }} onPress={handleClose} activeOpacity={1} />
+        <TouchableOpacity style={{ flex: 1 }} onPress={handleClose} activeOpacity={1} accessibilityLabel="Close" />
       </Animated.View>
 
       {/* Sheet */}
@@ -127,7 +127,8 @@ export function CheatSheetBottomSheet({
               </Text>
             </View>
           </View>
-          <TouchableOpacity onPress={handleClose} style={styles.closeBtn}>
+          <TouchableOpacity onPress={handleClose} style={styles.closeBtn}
+            accessibilityLabel="Close">
             <IconSymbol size={20} name="xmark.circle.fill" color={colors.muted} />
           </TouchableOpacity>
         </View>

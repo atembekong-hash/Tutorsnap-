@@ -30,6 +30,7 @@ function StepCard({ step, colors, fs }: { step: SolutionStep; colors: any; fs: (
 
   return (
     <TouchableOpacity
+      accessibilityLabel="Toggle expanded"
       onPress={() => setExpanded(!expanded)}
       activeOpacity={0.8}
       style={[styles.stepCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
@@ -288,6 +289,7 @@ export default function SolutionScreen() {
       {/* Share Menu Overlay */}
       {showShareMenu && (
         <TouchableOpacity
+          accessibilityLabel="Toggle show share menu"
           style={styles.shareOverlay}
           activeOpacity={1}
           onPress={() => setShowShareMenu(false)}
@@ -295,6 +297,7 @@ export default function SolutionScreen() {
           <View style={[styles.shareMenu, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Text style={[styles.shareMenuTitle, { color: colors.muted }]}>Share Solution</Text>
             <TouchableOpacity
+              accessibilityLabel="Share"
               onPress={handleShareText}
               style={[styles.shareMenuItem, { borderBottomWidth: 0.5, borderBottomColor: colors.border }]}
               activeOpacity={0.7}
@@ -309,6 +312,7 @@ export default function SolutionScreen() {
               <IconSymbol size={16} name="chevron.right" color={colors.muted} />
             </TouchableOpacity>
             <TouchableOpacity
+              accessibilityLabel="Share"
               onPress={handleSharePdfFromMenu}
               style={[styles.shareMenuItem, { borderBottomWidth: 0.5, borderBottomColor: colors.border }]}
               activeOpacity={0.7}
@@ -326,6 +330,7 @@ export default function SolutionScreen() {
               <IconSymbol size={16} name="chevron.right" color={colors.muted} />
             </TouchableOpacity>
             <TouchableOpacity
+              accessibilityLabel="Copy"
               onPress={handleCopyLink}
               style={[styles.shareMenuItem, { borderBottomWidth: 0.5, borderBottomColor: colors.border }]}
               activeOpacity={0.7}
@@ -340,6 +345,7 @@ export default function SolutionScreen() {
               <IconSymbol size={16} name={copyLinkFeedback ? "checkmark.circle.fill" : "chevron.right"} color={copyLinkFeedback ? colors.success : colors.muted} />
             </TouchableOpacity>
             <TouchableOpacity
+              accessibilityLabel="Practice this topic"
               onPress={handlePracticeFromMenu}
               style={[styles.shareMenuItem, { borderBottomWidth: 0.5, borderBottomColor: colors.border }]}
               activeOpacity={0.7}
@@ -354,6 +360,7 @@ export default function SolutionScreen() {
               <IconSymbol size={16} name="chevron.right" color={colors.muted} />
             </TouchableOpacity>
             <TouchableOpacity
+              accessibilityLabel="Share"
               onPress={handleShareToClassroom}
               style={styles.shareMenuItem}
               activeOpacity={0.7}
@@ -393,7 +400,8 @@ export default function SolutionScreen() {
             />
           </TouchableOpacity>
           {/* Share as PDF Button */}
-          <TouchableOpacity onPress={handleShare} style={styles.navActionBtn} disabled={shareLoading}>
+          <TouchableOpacity onPress={handleShare} style={styles.navActionBtn} disabled={shareLoading}
+            accessibilityLabel="Share">
             {shareLoading ? (
               <ActivityIndicator size="small" color={colors.primary} />
             ) : (
@@ -431,7 +439,8 @@ export default function SolutionScreen() {
               <IconSymbol size={16} name="checkmark.circle.fill" color={colors.success} />
               <Text style={[styles.answerLabel, { color: colors.success }]}>ANSWER</Text>
             </View>
-            <TouchableOpacity onPress={handleCopyAnswer} style={[styles.copyBtn, { backgroundColor: copyFeedback ? `${colors.success}20` : "transparent" }]}>
+            <TouchableOpacity onPress={handleCopyAnswer} style={[styles.copyBtn, { backgroundColor: copyFeedback ? `${colors.success}20` : "transparent" }]}
+              accessibilityLabel="Copy">
               <IconSymbol size={16} name="doc.on.doc" color={copyFeedback ? colors.success : colors.muted} />
               <Text style={[styles.copyText, { color: copyFeedback ? colors.success : colors.muted }]}>
                 {copyFeedback ? "Copied!" : "Copy"}
@@ -501,6 +510,7 @@ export default function SolutionScreen() {
         {/* AI Similar Problems */}
         <View style={[styles.similarSection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <TouchableOpacity
+            accessibilityLabel="Toggle show similar"
             onPress={async () => {
               if (showSimilar) { setShowSimilar(false); return; }
               if (similarProblems.length > 0) { setShowSimilar(true); return; }
@@ -547,6 +557,7 @@ export default function SolutionScreen() {
                     <Text style={[styles.similarProblem, { color: colors.foreground, fontSize: fs(14) }]}>{p.problem}</Text>
                   </View>
                   <TouchableOpacity
+                    accessibilityLabel="Toggle expanded hint"
                     onPress={() => setExpandedHint(expandedHint === p.id ? null : p.id)}
                     style={styles.hintToggle}
                     activeOpacity={0.7}
@@ -586,6 +597,7 @@ export default function SolutionScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
+            accessibilityLabel="Share"
             onPress={handleShare}
             disabled={shareLoading}
             style={[styles.actionBtn, { backgroundColor: colors.surface, borderColor: colors.border, flex: 1 }]}
@@ -600,6 +612,7 @@ export default function SolutionScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
+            accessibilityLabel="Go to practice"
             onPress={() => router.push("/(tabs)/practice" as any)}
             style={[styles.actionBtn, { backgroundColor: colors.primary, borderColor: colors.primary, flex: 2 }]}
             activeOpacity={0.85}

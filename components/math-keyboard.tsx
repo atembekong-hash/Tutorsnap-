@@ -158,6 +158,7 @@ export function MathKeyboard({ onInsert, onBackspace, onClear }: MathKeyboardPro
           const isActive = activeTab === tab.id;
           return (
             <TouchableOpacity
+              accessibilityLabel="Toggle active tab"
               key={tab.id}
               onPress={() => setActiveTab(tab.id)}
               style={[
@@ -181,6 +182,7 @@ export function MathKeyboard({ onInsert, onBackspace, onClear }: MathKeyboardPro
         })}
         {/* Backspace & Clear */}
         <TouchableOpacity
+          accessibilityLabel="Go back"
           onPress={handleBackspace}
           style={[styles.actionKey, { backgroundColor: `${colors.error}15` }]}
         >

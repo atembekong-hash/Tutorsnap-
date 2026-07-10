@@ -119,6 +119,7 @@ export default function FeedbackScreen() {
             <View style={styles.starsRow}>
               {[1, 2, 3, 4, 5].map((star) => (
                 <TouchableOpacity
+                  accessibilityLabel="Toggle rating"
                   key={star}
                   onPress={() => {
                     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -141,6 +142,7 @@ export default function FeedbackScreen() {
           <View style={[styles.categoryGrid, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             {CATEGORIES.map((cat) => (
               <TouchableOpacity
+                accessibilityLabel="Toggle category"
                 key={cat.id}
                 onPress={() => {
                   if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -182,6 +184,7 @@ export default function FeedbackScreen() {
 
           {/* Submit */}
           <TouchableOpacity
+            accessibilityLabel="Submit"
             onPress={handleSubmit}
             style={[styles.submitBtn, { backgroundColor: colors.primary }]}
             activeOpacity={0.85}

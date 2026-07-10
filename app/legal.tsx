@@ -288,7 +288,8 @@ export default function LegalScreen() {
           <View style={[styles.modalSheet, { backgroundColor: colors.background, borderColor: colors.border, maxHeight: "85%" }]}>
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: colors.foreground }]}>Cookie Policy</Text>
-              <TouchableOpacity onPress={() => setShowCookies(false)} style={styles.modalClose}>
+              <TouchableOpacity onPress={() => setShowCookies(false)} style={styles.modalClose}
+                accessibilityLabel="Toggle show cookies">
                 <IconSymbol size={22} name="xmark.circle.fill" color={colors.muted} />
               </TouchableOpacity>
             </View>
@@ -306,7 +307,8 @@ export default function LegalScreen() {
           <View style={[styles.modalSheet, { backgroundColor: colors.background, borderColor: colors.border, maxHeight: "90%" }]}>
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: colors.foreground }]}>Open Source Licenses</Text>
-              <TouchableOpacity onPress={() => setShowLicenses(false)} style={styles.modalClose}>
+              <TouchableOpacity onPress={() => setShowLicenses(false)} style={styles.modalClose}
+                accessibilityLabel="Toggle show licenses">
                 <IconSymbol size={22} name="xmark.circle.fill" color={colors.muted} />
               </TouchableOpacity>
             </View>
@@ -348,7 +350,8 @@ export default function LegalScreen() {
           <View style={[styles.modalSheet, { backgroundColor: colors.background, borderColor: colors.border, maxHeight: "85%" }]}>
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: colors.foreground }]}>Community Guidelines</Text>
-              <TouchableOpacity onPress={() => setShowCommunity(false)} style={styles.modalClose}>
+              <TouchableOpacity onPress={() => setShowCommunity(false)} style={styles.modalClose}
+                accessibilityLabel="Toggle show community">
                 <IconSymbol size={22} name="xmark.circle.fill" color={colors.muted} />
               </TouchableOpacity>
             </View>
@@ -366,7 +369,8 @@ export default function LegalScreen() {
           <View style={[styles.modalSheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: colors.foreground }]}>Consent Management</Text>
-              <TouchableOpacity onPress={() => setShowConsent(false)} style={styles.modalClose}>
+              <TouchableOpacity onPress={() => setShowConsent(false)} style={styles.modalClose}
+                accessibilityLabel="Toggle show consent">
                 <IconSymbol size={22} name="xmark.circle.fill" color={colors.muted} />
               </TouchableOpacity>
             </View>
@@ -386,6 +390,7 @@ export default function LegalScreen() {
                 </Text>
               </View>
               <TouchableOpacity
+                accessibilityLabel="Toggle analytics consent"
                 onPress={async () => {
                   if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                   const next = !analyticsConsent;
@@ -414,6 +419,7 @@ export default function LegalScreen() {
                 </Text>
               </View>
               <TouchableOpacity
+                accessibilityLabel="Toggle marketing consent"
                 onPress={async () => {
                   if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                   const next = !marketingConsent;
@@ -435,6 +441,7 @@ export default function LegalScreen() {
             </Text>
 
             <TouchableOpacity
+              accessibilityLabel="Toggle show consent"
               onPress={() => setShowConsent(false)}
               style={[styles.consentDoneBtn, { backgroundColor: colors.primary }]}
               activeOpacity={0.85}
@@ -451,7 +458,8 @@ export default function LegalScreen() {
           <View style={[styles.modalSheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: colors.foreground }]}>Data Deletion Request</Text>
-              <TouchableOpacity onPress={() => setShowDataDeletion(false)} style={styles.modalClose}>
+              <TouchableOpacity onPress={() => setShowDataDeletion(false)} style={styles.modalClose}
+                accessibilityLabel="Toggle show data deletion">
                 <IconSymbol size={22} name="xmark.circle.fill" color={colors.muted} />
               </TouchableOpacity>
             </View>
@@ -475,6 +483,7 @@ export default function LegalScreen() {
 
             <View style={styles.modalButtons}>
               <TouchableOpacity
+                accessibilityLabel="Toggle show data deletion"
                 onPress={() => setShowDataDeletion(false)}
                 style={[styles.modalBtn, { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 }]}
                 activeOpacity={0.7}

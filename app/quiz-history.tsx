@@ -137,6 +137,7 @@ export default function QuizHistoryScreen() {
           <Text style={[styles.emptyTitle, { color: colors.foreground }]}>Could Not Load History</Text>
           <Text style={[styles.emptySub, { color: colors.muted }]}>Something went wrong. Please try again.</Text>
           <TouchableOpacity
+            accessibilityLabel="Toggle loading"
             onPress={() => {
               setLoading(true);
               setLoadError(false);

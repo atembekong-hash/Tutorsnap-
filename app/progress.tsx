@@ -154,6 +154,7 @@ export default function ProgressScreen() {
           <View style={styles.cardHeader}>
             <Text style={[styles.cardTitle, { color: colors.foreground }]}>Daily Goal</Text>
             <TouchableOpacity
+              accessibilityLabel="Toggle show goal picker"
               onPress={() => setShowGoalPicker((v) => !v)}
               style={[styles.editBtn, { backgroundColor: `${colors.primary}15`, borderColor: `${colors.primary}30` }]}
             >

@@ -63,6 +63,7 @@ export function SubjectPicker({ value, onChange, showAll = true, preferredCatego
   return (
     <>
       <TouchableOpacity
+        accessibilityLabel="Toggle open"
         style={[styles.trigger, { borderColor: buttonColor, backgroundColor: buttonColor + "18" }]}
         onPress={() => {
           if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -82,12 +83,13 @@ export function SubjectPicker({ value, onChange, showAll = true, preferredCatego
         animationType="slide"
         onRequestClose={() => setOpen(false)}
       >
-        <Pressable style={styles.backdrop} onPress={() => setOpen(false)} />
+        <Pressable style={styles.backdrop} onPress={() => setOpen(false)} accessibilityLabel="Close subject picker" />
         <View style={[styles.sheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
 
           <View style={[styles.sheetHeader, { borderBottomColor: colors.border }]}>
             <Text style={[styles.sheetTitle, { color: colors.foreground }]}>Choose Subject</Text>
-            <TouchableOpacity onPress={() => setOpen(false)} style={styles.closeBtn}>
+            <TouchableOpacity onPress={() => setOpen(false)} style={styles.closeBtn}
+              accessibilityLabel="Toggle open">
               <Text style={[styles.closeBtnText, { color: colors.muted }]}>{"✕"}</Text>
             </TouchableOpacity>
           </View>
@@ -124,6 +126,7 @@ export function SubjectPicker({ value, onChange, showAll = true, preferredCatego
               const isPreferred = preferredCategories.includes(cat);
               return (
                 <TouchableOpacity
+                  accessibilityLabel="Toggle active category"
                   key={cat}
                   style={[
                     styles.tab,
