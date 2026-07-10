@@ -55,11 +55,19 @@ export default function ScanScreen() {
   useFocusEffect(
     useCallback(() => {
       if (Platform.OS !== "web" && mode === "camera") {
+        // Activate camera once permission resolves (or if already granted)
         setIsCameraActive(true);
       }
       return () => setIsCameraActive(false);
     }, [mode])
   );
+
+  // When permission resolves to granted, activate the camera viewfinder
+  useEffect(() => {
+    if (Platform.OS !== "web" && permission?.granted && mode === "camera") {
+      setIsCameraActive(true);
+    }
+  }, [permission?.granted, mode]);
 
   const solveMutation = trpc.academic.solveFromImage.useMutation({
     onSuccess: async (data) => {
@@ -187,8 +195,10 @@ export default function ScanScreen() {
 
   // ===== CAMERA VIEW (native only — default view) =====
   if (mode === "camera" && Platform.OS !== "web" && CameraView) {
-    // If permission not yet granted, show a permission request screen
-    if (!permission?.granted) {
+    // permission === null means still loading — show camera UI optimistically
+    // Only show permission screen when we know it's definitively denied
+    const permissionDenied = permission !== null && !permission.granted;
+    if (permissionDenied) {
       return (
         <View style={[styles.permissionContainer, { backgroundColor: colors.background }]}>
           <View style={[styles.permissionIcon, { backgroundColor: `${colors.primary}15` }]}>
@@ -219,7 +229,7 @@ export default function ScanScreen() {
 
     return (
       <View style={styles.cameraContainer}>
-        {isCameraActive && (
+        {(isCameraActive && permission?.granted) && (
           <CameraView
             ref={cameraRef}
             style={StyleSheet.absoluteFill}
