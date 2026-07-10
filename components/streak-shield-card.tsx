@@ -70,8 +70,8 @@ export function StreakShieldCard({ currentStreak, onShieldEarned }: Props) {
               style={[
                 styles.pip,
                 {
-                  backgroundColor: i < shields ? "#6366F1" : `${colors.border}`,
-                  borderColor: i < shields ? "#6366F1" : colors.border,
+                  backgroundColor: i < shields ? colors.primary : colors.border,
+                  borderColor: i < shields ? colors.primary : colors.border,
                 },
               ]}
             >
@@ -82,8 +82,8 @@ export function StreakShieldCard({ currentStreak, onShieldEarned }: Props) {
       </View>
 
       {justEarned && (
-        <View style={[styles.earnedBanner, { backgroundColor: "#6366F115", borderColor: "#6366F130" }]}>
-          <Text style={[styles.earnedText, { color: "#6366F1" }]}>
+        <View style={[styles.earnedBanner, { backgroundColor: `${colors.primary}20`, borderColor: `${colors.primary}40` }]}>
+          <Text style={[styles.earnedText, { color: colors.primary }]}>
             🎉 Shield earned! Your streak is protected for 1 missed day.
           </Text>
         </View>
@@ -92,7 +92,7 @@ export function StreakShieldCard({ currentStreak, onShieldEarned }: Props) {
       {canEarn && !justEarned && (
         <TouchableOpacity
           onPress={handleEarn}
-          style={[styles.earnBtn, { backgroundColor: "#6366F1" }]}
+          style={[styles.earnBtn, { backgroundColor: colors.primary }]}
           activeOpacity={0.85}
         >
           <Text style={styles.earnBtnText}>
@@ -108,7 +108,7 @@ export function StreakShieldCard({ currentStreak, onShieldEarned }: Props) {
               style={[
                 styles.progressFill,
                 {
-                  backgroundColor: "#6366F1",
+                  backgroundColor: colors.primary,
                   width: `${((currentStreak % 7) / 7) * 100}%`,
                 },
               ]}

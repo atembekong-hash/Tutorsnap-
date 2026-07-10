@@ -5,11 +5,13 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Animated, Text, StyleSheet, Platform, View } from "react-native";
 import { useNetworkStatus } from "@/hooks/use-network-status";
+import { useColors } from "@/hooks/use-colors";
 
 type BannerState = "hidden" | "offline" | "back-online";
 
 export function OfflineBanner() {
   const { isOnline, isChecking } = useNetworkStatus();
+  const colors = useColors();
   const slideY = useRef(new Animated.Value(-56)).current;
   const opacity = useRef(new Animated.Value(1)).current;
   const [bannerState, setBannerState] = useState<BannerState>("hidden");
@@ -70,16 +72,24 @@ export function OfflineBanner() {
 
   const isBackOnline = bannerState === "back-online";
 
+  // Offline: dark navy-ish using surface+foreground blend; Online: success green
+  // We use explicit dark values so the banner is always high-contrast regardless of app theme
+  const offlineBg = "#1C1C2E";
+  const onlineBg = colors.success;
+
   return (
     <Animated.View
       style={[
         styles.banner,
-        isBackOnline ? styles.bannerOnline : styles.bannerOffline,
+        { backgroundColor: isBackOnline ? onlineBg : offlineBg },
         { transform: [{ translateY: slideY }], opacity },
       ]}
       pointerEvents="none"
     >
-      <View style={[styles.dot, isBackOnline ? styles.dotOnline : styles.dotOffline]} />
+      <View style={[
+        styles.dot,
+        { backgroundColor: isBackOnline ? "#FFFFFF" : colors.error },
+      ]} />
       <Text style={styles.text}>
         {isBackOnline ? "Back online" : "No internet connection"}
       </Text>
@@ -113,22 +123,10 @@ const styles = StyleSheet.create({
       web: { boxShadow: "0 2px 8px rgba(0,0,0,0.3)" },
     }),
   },
-  bannerOffline: {
-    backgroundColor: "#1a1a2e",
-  },
-  bannerOnline: {
-    backgroundColor: "#166534",
-  },
   dot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-  },
-  dotOffline: {
-    backgroundColor: "#F87171",
-  },
-  dotOnline: {
-    backgroundColor: "#86efac",
   },
   text: {
     color: "#FFFFFF",
@@ -137,7 +135,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   checkmark: {
-    color: "#86efac",
+    color: "#FFFFFF",
     fontSize: 14,
     fontWeight: "800",
   },

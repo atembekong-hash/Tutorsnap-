@@ -106,3 +106,5 @@
 - [x] Pomodoro timer for active Study Planner sessions
 - [x] Streak leaderboard with shareable invite links
 - [x] AI-generated similar practice problems on Solution screen
+
+- [x] Dark mode consistency audit — fixed ErrorBoundary, OfflineBanner, StreakShieldCard, and home screen shield toast

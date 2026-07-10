@@ -334,8 +334,8 @@ function SolveScreenContent() {
 
           {/* Shield Used Toast */}
           {shieldUsedToast && (
-            <View style={[styles.shieldToast, { backgroundColor: "#6366F115", borderColor: "#6366F130" }]}>
-              <Text style={[styles.shieldToastText, { color: "#6366F1" }]}>
+            <View style={[styles.shieldToast, { backgroundColor: `${colors.primary}20`, borderColor: `${colors.primary}40` }]}>
+              <Text style={[styles.shieldToastText, { color: colors.primary }]}>
                 🛡️ Streak shield activated! Your streak is safe.
               </Text>
             </View>
