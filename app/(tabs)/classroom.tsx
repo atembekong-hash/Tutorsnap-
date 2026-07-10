@@ -42,8 +42,11 @@ import {
   assignAsHomework,
   unassignHomework,
   getLeaderboard,
+  resetLeaderboard,
   getClassroomNotifPrefs,
   saveClassroomNotifPrefs,
+  getClassroomDisplayName,
+  saveClassroomDisplayName,
   type ClassroomInfo,
   type ClassroomProblem,
   type LeaderboardEntry,
@@ -105,6 +108,9 @@ export default function ClassroomTabScreen() {
   const [showJoin, setShowJoin] = useState(false);
   const [joinCode, setJoinCode] = useState("");
   const [joining, setJoining] = useState(false);
+  const [displayName, setDisplayName] = useState("");
+  const [showNamePrompt, setShowNamePrompt] = useState(false);
+  const [pendingJoinCode, setPendingJoinCode] = useState("");
 
   const [copiedCode, setCopiedCode] = useState(false);
 
@@ -117,11 +123,13 @@ export default function ClassroomTabScreen() {
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const [mine, joined, prefs] = await Promise.all([
+    const [mine, joined, prefs, savedName] = await Promise.all([
       getMyClassroom(),
       getJoinedClassroom(),
       getClassroomNotifPrefs(),
+      getClassroomDisplayName(),
     ]);
+    if (savedName) setDisplayName(savedName);
     setMyClassroom(mine);
     setJoinedClassroom(joined);
     setNotifPrefs(prefs);
@@ -162,12 +170,23 @@ export default function ClassroomTabScreen() {
       Alert.alert("Invalid Code", "Please enter a valid classroom code.");
       return;
     }
-    setJoining(true);
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    const info = await joinClassroom(code);
-    setJoinedClassroom(info);
+    // Show display name prompt before joining
+    setPendingJoinCode(code);
     setShowJoin(false);
     setJoinCode("");
+    setShowNamePrompt(true);
+  };
+
+  const handleConfirmJoin = async () => {
+    const name = displayName.trim() || "Student";
+    await saveClassroomDisplayName(name);
+    setDisplayName(name);
+    setJoining(true);
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const info = await joinClassroom(pendingJoinCode);
+    setJoinedClassroom(info);
+    setShowNamePrompt(false);
+    setPendingJoinCode("");
     setJoining(false);
     setActiveTab("feed");
     await loadData();
@@ -292,6 +311,47 @@ export default function ClassroomTabScreen() {
     setNotifPrefs(updated);
     await saveClassroomNotifPrefs(updated);
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  const handleResetLeaderboard = () => {
+    if (!activeClassroom) return;
+    Alert.alert(
+      "Reset Leaderboard",
+      "This will clear all scores and rankings for this classroom. This cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Reset",
+          style: "destructive",
+          onPress: async () => {
+            await resetLeaderboard(activeClassroom.code);
+            setLeaderboard([]);
+            if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            Alert.alert("Leaderboard Reset", "All scores have been cleared.");
+          },
+        },
+      ]
+    );
+  };
+
+  const handleEditDisplayName = () => {
+    Alert.prompt(
+      "Your Display Name",
+      "This name appears on the classroom leaderboard.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Save",
+          onPress: async (name: string | undefined) => {
+            if (!name?.trim()) return;
+            await saveClassroomDisplayName(name.trim());
+            setDisplayName(name.trim());
+          },
+        },
+      ],
+      "plain-text",
+      displayName
+    );
   };
 
   // Analytics: compute subject breakdown from feed
@@ -778,6 +838,48 @@ export default function ClassroomTabScreen() {
                 ))}
               </View>
 
+              {/* Display name (student only) */}
+              {joinedClassroom && (
+                <View style={[styles.notifCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                  <Text style={[styles.notifCardTitle, { color: colors.foreground }]}>👤 Your Display Name</Text>
+                  <TouchableOpacity
+                    style={[styles.notifRow, { borderTopColor: colors.border }]}
+                    onPress={handleEditDisplayName}
+                    activeOpacity={0.75}
+                  >
+                    <View style={styles.notifRowInfo}>
+                      <Text style={[styles.notifRowLabel, { color: colors.foreground }]}>
+                        {displayName || "Set your name"}
+                      </Text>
+                      <Text style={[styles.notifRowSub, { color: colors.muted }]}>
+                        Shown on the classroom leaderboard
+                      </Text>
+                    </View>
+                    <IconSymbol size={16} name="chevron.right" color={colors.muted} />
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* Reset leaderboard (teacher only) */}
+              {myClassroom && (
+                <View style={[styles.notifCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                  <Text style={[styles.notifCardTitle, { color: colors.foreground }]}>🏆 Leaderboard</Text>
+                  <TouchableOpacity
+                    style={[styles.notifRow, { borderTopColor: colors.border }]}
+                    onPress={handleResetLeaderboard}
+                    activeOpacity={0.75}
+                  >
+                    <View style={styles.notifRowInfo}>
+                      <Text style={[styles.notifRowLabel, { color: colors.error }]}>Reset Leaderboard</Text>
+                      <Text style={[styles.notifRowSub, { color: colors.muted }]}>
+                        Clear all scores and rankings for a new term
+                      </Text>
+                    </View>
+                    <IconSymbol size={16} name="trash.fill" color={colors.error} />
+                  </TouchableOpacity>
+                </View>
+              )}
+
               {/* How to share */}
               <View style={[styles.howToCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <Text style={[styles.howToTitle, { color: colors.foreground }]}>How to Share Problems</Text>
@@ -870,6 +972,52 @@ export default function ClassroomTabScreen() {
               >
                 <IconSymbol size={16} name="calendar" color="#FFFFFF" />
                 <Text style={styles.modalAssignText}>Assign</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Display Name Prompt Modal (shown before joining) */}
+      <Modal
+        visible={showNamePrompt}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowNamePrompt(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalSheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>What's your name?</Text>
+            <Text style={[styles.modalLabel, { color: colors.muted }]}>
+              Your name will appear on the classroom leaderboard.
+            </Text>
+            <TextInput
+              style={[styles.modalInput, { backgroundColor: colors.surface, borderColor: colors.border, color: colors.foreground }]}
+              value={displayName}
+              onChangeText={setDisplayName}
+              placeholder="Your display name"
+              placeholderTextColor={colors.muted}
+              maxLength={30}
+              returnKeyType="done"
+              onSubmitEditing={handleConfirmJoin}
+              autoFocus
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalCancelBtn, { borderColor: colors.border }]}
+                onPress={() => { setShowNamePrompt(false); setPendingJoinCode(""); }}
+                activeOpacity={0.75}
+              >
+                <Text style={[styles.modalCancelText, { color: colors.muted }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalAssignBtn, { backgroundColor: colors.primary }]}
+                onPress={handleConfirmJoin}
+                activeOpacity={0.85}
+                disabled={joining}
+              >
+                <IconSymbol size={16} name="checkmark.circle.fill" color="#FFFFFF" />
+                <Text style={styles.modalAssignText}>{joining ? "Joining..." : "Join Classroom"}</Text>
               </TouchableOpacity>
             </View>
           </View>

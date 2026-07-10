@@ -15,6 +15,7 @@ const JOINED_KEY = "@tutorsnap/joined_classroom";
 const FEED_KEY = "@tutorsnap/classroom_feed";
 const LEADERBOARD_KEY = "@tutorsnap/classroom_leaderboard";
 const NOTIF_PREFS_KEY = "@tutorsnap/classroom_notif_prefs";
+const DISPLAY_NAME_KEY = "@tutorsnap/classroom_display_name";
 
 export interface ClassroomInfo {
   code: string;          // 6-char uppercase code
@@ -237,4 +238,30 @@ export async function getClassroomNotifPrefs(): Promise<ClassroomNotifPrefs> {
 /** Save classroom notification preferences */
 export async function saveClassroomNotifPrefs(prefs: ClassroomNotifPrefs): Promise<void> {
   await AsyncStorage.setItem(NOTIF_PREFS_KEY, JSON.stringify(prefs));
+}
+
+// ─── Display Name ────────────────────────────────────────────────────────────
+
+/** Get the student's saved display name for the classroom leaderboard */
+export async function getClassroomDisplayName(): Promise<string | null> {
+  try {
+    return await AsyncStorage.getItem(DISPLAY_NAME_KEY);
+  } catch { return null; }
+}
+
+/** Save the student's display name */
+export async function saveClassroomDisplayName(name: string): Promise<void> {
+  await AsyncStorage.setItem(DISPLAY_NAME_KEY, name.trim());
+}
+
+/** Clear the student's display name */
+export async function clearClassroomDisplayName(): Promise<void> {
+  await AsyncStorage.removeItem(DISPLAY_NAME_KEY);
+}
+
+// ─── Reset Leaderboard ───────────────────────────────────────────────────────
+
+/** Reset (clear) the leaderboard for a classroom */
+export async function resetLeaderboard(classCode: string): Promise<void> {
+  await AsyncStorage.removeItem(`${LEADERBOARD_KEY}_${classCode}`);
 }

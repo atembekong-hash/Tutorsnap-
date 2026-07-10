@@ -164,3 +164,8 @@
 - [x] Assign as Homework button (due date picker, Homework badge on feed cards, countdown)
 - [x] Push notifications for new classroom problems (notify joined students when teacher shares)
 - [x] Wire recordChallengeResult into challenge.tsx so leaderboard updates after each challenge
+
+## New Features (Round 14)
+- [x] Student display name prompt on classroom join (stored in AsyncStorage, shown on leaderboard)
+- [x] Homework due soon banner on Home screen (appears when assignment due within 24 hours)
+- [x] Reset leaderboard option in Classroom Manage tab (confirmation alert, clears all scores)

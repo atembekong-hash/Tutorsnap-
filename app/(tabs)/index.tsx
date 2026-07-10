@@ -37,6 +37,7 @@ import { StreakShieldCard } from "@/components/streak-shield-card";
 import { getAlmostBadges, computeMasteryBadges, getSeenBadges, markBadgeSeen, type BadgeTier } from "@/lib/mastery-badges";
 import { BadgeUnlockModal } from "@/components/badge-unlock-modal";
 import { TodayStudyWidget } from "@/components/today-study-widget";
+import { getMyClassroom, getJoinedClassroom, getClassroomFeed, type ClassroomProblem } from "@/lib/classroom";
 
 // Subject examples per category — shown dynamically based on selected subject
 const SUBJECT_EXAMPLES: Record<string, string[]> = {
@@ -112,6 +113,8 @@ function SolveScreenContent() {
   const [shieldCount, setShieldCount] = useState(0);
   const [shieldUsedToast, setShieldUsedToast] = useState(false);
   const [pendingBadge, setPendingBadge] = useState<{ tier: BadgeTier; subjectLabel: string } | null>(null);
+  const [dueSoonHomework, setDueSoonHomework] = useState<ClassroomProblem | null>(null);
+  const [homeworkBannerDismissed, setHomeworkBannerDismissed] = useState(false);
   const inputRef = useRef<TextInput>(null);
   const cursorPosRef = useRef<number>(0);
 
@@ -134,6 +137,25 @@ function SolveScreenContent() {
     setWeeklyData(w);
   };
 
+  const loadDueSoonHomework = async () => {
+    try {
+      const [mine, joined] = await Promise.all([getMyClassroom(), getJoinedClassroom()]);
+      const active = mine || joined;
+      if (!active) { setDueSoonHomework(null); return; }
+      const feed = await getClassroomFeed(active.code);
+      const now = Date.now();
+      const soon = feed
+        .filter((p) => p.isHomework && p.dueDate)
+        .filter((p) => {
+          const diff = (new Date(p.dueDate!).getTime() - now) / (1000 * 60 * 60);
+          return diff >= 0 && diff <= 24;
+        })
+        .sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime());
+      setDueSoonHomework(soon[0] || null);
+      setHomeworkBannerDismissed(false);
+    } catch { setDueSoonHomework(null); }
+  };
+
   useFocusEffect(
     useCallback(() => {
       // Apply streak shield if user missed a day
@@ -146,6 +168,7 @@ function SolveScreenContent() {
       getShieldCount().then(setShieldCount);
       loadProgress();
       loadWeeklyData();
+      loadDueSoonHomework();
       // Check if onboarding has been completed
       AsyncStorage.getItem("@tutorsnap/onboardingDone").then((done) => {
         if (!done) {
@@ -363,6 +386,35 @@ function SolveScreenContent() {
               </Text>
             </View>
           )}
+          {/* Homework Due Soon Banner */}
+          {dueSoonHomework && !homeworkBannerDismissed && (
+            <TouchableOpacity
+              style={[styles.homeworkBanner, { backgroundColor: `${colors.warning}18`, borderColor: `${colors.warning}50` }]}
+              onPress={() => router.push("/(tabs)/classroom" as any)}
+              activeOpacity={0.8}
+            >
+              <View style={styles.homeworkBannerLeft}>
+                <Text style={styles.homeworkBannerEmoji}>📚</Text>
+                <View>
+                  <Text style={[styles.homeworkBannerTitle, { color: colors.foreground }]}>Homework Due Soon</Text>
+                  <Text style={[styles.homeworkBannerSub, { color: colors.muted }]} numberOfLines={1}>
+                    {dueSoonHomework.homeworkTitle || dueSoonHomework.problem.slice(0, 40)}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.homeworkBannerRight}>
+                <Text style={[styles.homeworkBannerDue, { color: colors.warning }]}>Due today</Text>
+                <TouchableOpacity
+                  onPress={() => setHomeworkBannerDismissed(true)}
+                  style={styles.homeworkBannerClose}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Text style={[styles.homeworkBannerCloseText, { color: colors.muted }]}>✕</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          )}
+
           {/* Streak Shield Card — show when streak > 0 */}
           {progress?.streak && progress.streak.currentStreak > 0 && (
             <StreakShieldCard
@@ -880,4 +932,16 @@ const styles = StyleSheet.create({
   offlineWarningText: { fontSize: 13, fontWeight: "600", flex: 1 },
   shieldToast: { borderRadius: 12, borderWidth: 1, padding: 12, marginBottom: 8, alignItems: "center" },
   shieldToastText: { fontSize: 14, fontWeight: "700", textAlign: "center" },
+  homeworkBanner: {
+    borderRadius: 14, borderWidth: 1, padding: 12, marginBottom: 10,
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+  },
+  homeworkBannerLeft: { flexDirection: "row", alignItems: "center", gap: 10, flex: 1 },
+  homeworkBannerEmoji: { fontSize: 22 },
+  homeworkBannerTitle: { fontSize: 13, fontWeight: "700" },
+  homeworkBannerSub: { fontSize: 12, marginTop: 1 },
+  homeworkBannerRight: { flexDirection: "row", alignItems: "center", gap: 8, marginLeft: 8 },
+  homeworkBannerDue: { fontSize: 12, fontWeight: "700" },
+  homeworkBannerClose: { padding: 2 },
+  homeworkBannerCloseText: { fontSize: 14, fontWeight: "600" },
 });
