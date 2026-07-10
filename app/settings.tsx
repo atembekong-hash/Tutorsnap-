@@ -8,10 +8,14 @@ import {
   Switch,
   Platform,
   Modal,
+  Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
 import Constants from "expo-constants";
 import * as Haptics from "expo-haptics";
+import * as Linking from "expo-linking";
+import * as StoreReview from "expo-store-review";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
@@ -23,12 +27,31 @@ import {
   formatReminderTime,
   type ReminderSettings,
 } from "@/lib/notifications";
+import { SUBJECT_CATEGORIES, type SubjectCategory } from "@/lib/subjects";
+import { useFontSize, FONT_SIZE_SCALES, SCALE_LABELS, type FontSizeScale } from "@/lib/font-size-provider";
 
 const GOAL_OPTIONS = [1, 2, 3, 5, 7, 10];
-
-// Hours available for reminder (6 AM – 11 PM)
 const HOUR_OPTIONS = Array.from({ length: 18 }, (_, i) => i + 6);
 const MINUTE_OPTIONS = [0, 15, 30, 45];
+
+const CATEGORIES = Object.entries(SUBJECT_CATEGORIES) as [SubjectCategory, { label: string; emoji: string; color: string }][];
+
+const WHATS_NEW: { title: string; desc: string }[] = [
+  { title: "Error Recovery", desc: "Each screen now catches crashes and shows a friendly retry card instead of going blank." },
+  { title: "Offline Indicator", desc: "A banner appears when you lose connection and confirms when you're back online." },
+  { title: "Camera Scan Fix", desc: "The Scan tab now opens the live camera viewfinder directly on launch." },
+  { title: "Adaptive Difficulty", desc: "Practice mode remembers your difficulty per subject and suggests upgrades based on quiz scores." },
+  { title: "Timed Quiz Mode", desc: "30-second multiple-choice quizzes with scoring, streaks, and history tracking." },
+];
+
+const HOW_TO_STEPS = [
+  { emoji: "📸", title: "Snap a Photo", desc: "Tap the Scan tab and point your camera at any homework problem. TutorSnap will read and solve it instantly." },
+  { emoji: "⌨️", title: "Type a Question", desc: "On the Home tab, type any question in the input box and tap Solve. Works for any subject." },
+  { emoji: "🎙️", title: "Speak Your Question", desc: "Tap the mic icon to record your question. TutorSnap transcribes and answers it." },
+  { emoji: "💬", title: "Chat with AI Tutor", desc: "Open the Chat tab for a back-and-forth conversation. Ask follow-up questions, request examples, or explore topics." },
+  { emoji: "🔥", title: "Build Your Streak", desc: "Solve at least your daily goal every day to keep your streak alive. Earn badges as you master subjects." },
+  { emoji: "📚", title: "Practice Mode", desc: "Go to Practice to generate problems by subject and difficulty. Use Timed Quiz for a scored challenge." },
+];
 
 function SectionHeader({ title, colors }: { title: string; colors: any }) {
   return (
@@ -86,19 +109,12 @@ function formatHour(hour: number): string {
   return `${h} ${period}`;
 }
 
-const WHATS_NEW: { title: string; desc: string }[] = [
-  { title: "Error Recovery", desc: "Each screen now catches crashes and shows a friendly retry card instead of going blank." },
-  { title: "Offline Indicator", desc: "A banner appears when you lose connection and confirms when you're back online." },
-  { title: "Camera Scan Fix", desc: "The Scan tab now opens the live camera viewfinder directly on launch." },
-  { title: "Adaptive Difficulty", desc: "Practice mode remembers your difficulty per subject and suggests upgrades based on quiz scores." },
-  { title: "Timed Quiz Mode", desc: "30-second multiple-choice quizzes with scoring, streaks, and history tracking." },
-];
-
 export default function SettingsScreen() {
   const colors = useColors();
   const router = useRouter();
   const { colorScheme, setColorScheme } = useThemeContext();
   const isDark = colorScheme === "dark";
+  const { scale: fontScale, setScale: setFontScale } = useFontSize();
 
   const [dailyGoal, setDailyGoalState] = useState(3);
   const [todaySolved, setTodaySolved] = useState(0);
@@ -112,6 +128,14 @@ export default function SettingsScreen() {
   const [pickerMinute, setPickerMinute] = useState(0);
   const [reminderSaving, setReminderSaving] = useState(false);
 
+  // Modal states
+  const [showHowTo, setShowHowTo] = useState(false);
+  const [showAbout, setShowAbout] = useState(false);
+  const [showSubjectPicker, setShowSubjectPicker] = useState(false);
+
+  // Preferred categories
+  const [preferredCategories, setPreferredCategories] = useState<Set<SubjectCategory>>(new Set(["math", "english", "science", "social"]));
+
   useEffect(() => {
     getProgress().then((p) => {
       setDailyGoalState(p.streak.dailyGoal);
@@ -120,29 +144,30 @@ export default function SettingsScreen() {
       setStreak(p.streak.currentStreak);
     });
     getReminderSettings().then(setReminder);
+    AsyncStorage.getItem("@tutorsnap/preferredCategories").then((raw) => {
+      if (raw) {
+        try {
+          const arr = JSON.parse(raw) as SubjectCategory[];
+          if (arr.length > 0) setPreferredCategories(new Set(arr));
+        } catch { /* ignore */ }
+      }
+    });
   }, []);
 
   const handleToggleTheme = () => {
-    if (Platform.OS !== "web") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setColorScheme(isDark ? "light" : "dark");
   };
 
   const handleSetGoal = async (goal: number) => {
-    if (Platform.OS !== "web") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setDailyGoalState(goal);
     await setDailyGoal(goal);
   };
 
   const handleToggleReminder = async (value: boolean) => {
-    if (Platform.OS !== "web") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     if (value) {
-      // Open time picker to choose time before enabling
       setPickerHour(reminder.hour);
       setPickerMinute(reminder.minute);
       setShowTimePicker(true);
@@ -156,9 +181,7 @@ export default function SettingsScreen() {
   };
 
   const handleSaveTime = async () => {
-    if (Platform.OS !== "web") {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    }
+    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setShowTimePicker(false);
     setReminderSaving(true);
     const updated: ReminderSettings = { enabled: true, hour: pickerHour, minute: pickerMinute };
@@ -173,6 +196,120 @@ export default function SettingsScreen() {
     setPickerMinute(reminder.minute);
     setShowTimePicker(true);
   };
+
+  const handleToggleCategory = async (cat: SubjectCategory) => {
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const next = new Set(preferredCategories);
+    if (next.has(cat)) {
+      if (next.size <= 1) return; // must keep at least one
+      next.delete(cat);
+    } else {
+      next.add(cat);
+    }
+    setPreferredCategories(next);
+    await AsyncStorage.setItem("@tutorsnap/preferredCategories", JSON.stringify(Array.from(next)));
+  };
+
+  const handleClearHistory = () => {
+    Alert.alert(
+      "Clear History",
+      "This will permanently delete all your solved problems. Your streak and progress stats will not be affected.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Clear History",
+          style: "destructive",
+          onPress: async () => {
+            await AsyncStorage.removeItem("math_history");
+            if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          },
+        },
+      ]
+    );
+  };
+
+  const handleResetProgress = () => {
+    Alert.alert(
+      "Reset All Progress",
+      "This will permanently delete your streak, daily stats, quiz history, bookmarks, and badges. This cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Reset Everything",
+          style: "destructive",
+          onPress: async () => {
+            const keysToDelete = [
+              "math_progress",
+              "streak_shield",
+              "math_history",
+              "math_bookmarks",
+              "tutorsnap_quiz_history",
+              "tutorsnap_weekly_quiz_goal",
+              "@tutorsnap/seenBadges",
+              "tutorsnap_crash_log",
+            ];
+            await AsyncStorage.multiRemove(keysToDelete);
+            // Also clear per-subject difficulty keys
+            const allKeys = await AsyncStorage.getAllKeys();
+            const diffKeys = allKeys.filter((k) => k.startsWith("@tutorsnap/subjectDifficulty_"));
+            if (diffKeys.length > 0) await AsyncStorage.multiRemove(diffKeys);
+            if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            // Refresh stats
+            setStreak(0);
+            setTodaySolved(0);
+            setTotalSolved(0);
+            setDailyGoalState(3);
+          },
+        },
+      ]
+    );
+  };
+
+  const handleShareProgress = async () => {
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const message = `📚 TutorSnap Progress\n🔥 ${streak}-day streak\n✅ ${totalSolved} problems solved\n🎯 Daily goal: ${dailyGoal} problems\n\nDownload TutorSnap to ace your studies!`;
+    try {
+      if (Platform.OS === "web") {
+        await Linking.openURL(`mailto:?subject=My TutorSnap Progress&body=${encodeURIComponent(message)}`);
+      } else {
+        const Sharing = await import("expo-sharing");
+        const FileSystem = await import("expo-file-system/legacy");
+        const fileUri = FileSystem.documentDirectory + "tutorsnap_progress.txt";
+        await FileSystem.writeAsStringAsync(fileUri, message);
+        await Sharing.shareAsync(fileUri, { mimeType: "text/plain", dialogTitle: "Share Progress" });
+      }
+    } catch { /* ignore */ }
+  };
+
+  const handleRateApp = async () => {
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (Platform.OS !== "web") {
+      const isAvailable = await StoreReview.isAvailableAsync();
+      if (isAvailable) {
+        await StoreReview.requestReview();
+        return;
+      }
+    }
+    // Fallback: open store page
+    const url = Platform.OS === "ios"
+      ? "https://apps.apple.com/app/id0000000000"
+      : "https://play.google.com/store/apps/details?id=com.tutorsnap.app";
+    Linking.openURL(url);
+  };
+
+  const handlePrivacyPolicy = () => {
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Linking.openURL("https://mathgenius-g8jxpbar.manus.space/privacy");
+  };
+
+  const handleTerms = () => {
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    Linking.openURL("https://mathgenius-g8jxpbar.manus.space/terms");
+  };
+
+  const preferredCategoryLabels = Array.from(preferredCategories)
+    .map((c) => SUBJECT_CATEGORIES[c]?.emoji)
+    .join(" ");
 
   return (
     <ScreenContainer>
@@ -207,6 +344,42 @@ export default function SettingsScreen() {
 
         {/* Appearance */}
         <SectionHeader title="APPEARANCE" colors={colors} />
+        {/* Font Size */}
+        <View style={[styles.goalCard, { backgroundColor: colors.surface, borderColor: colors.border, marginBottom: 2 }]}>
+          <View style={styles.goalHeader}>
+            <View style={[styles.rowIcon, { backgroundColor: `${colors.primary}15` }]}>
+              <IconSymbol size={18} name="textformat.size" color={colors.primary} />
+            </View>
+            <View style={styles.rowContent}>
+              <Text style={[styles.rowLabel, { color: colors.foreground }]}>Text Size</Text>
+              <Text style={[styles.rowSubtitle, { color: colors.muted }]}>{SCALE_LABELS[fontScale]}</Text>
+            </View>
+          </View>
+          <View style={styles.goalOptions}>
+            {FONT_SIZE_SCALES.map((s) => (
+              <TouchableOpacity
+                key={s}
+                onPress={() => {
+                  if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setFontScale(s);
+                }}
+                style={[
+                  styles.goalOption,
+                  { flex: 1, width: undefined,
+                    backgroundColor: fontScale === s ? colors.primary : colors.background,
+                    borderColor: fontScale === s ? colors.primary : colors.border,
+                  },
+                ]}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.goalOptionText, { color: fontScale === s ? "#FFFFFF" : colors.foreground, fontSize: s === "small" ? 11 : s === "medium" ? 13 : s === "large" ? 15 : 17 }]}>
+                  {s === "small" ? "A" : s === "medium" ? "A" : s === "large" ? "A" : "A"}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
         <SettingsRow
           icon="gear"
           label="Dark Mode"
@@ -253,12 +426,7 @@ export default function SettingsScreen() {
                 ]}
                 activeOpacity={0.7}
               >
-                <Text
-                  style={[
-                    styles.goalOptionText,
-                    { color: dailyGoal === g ? "#FFFFFF" : colors.foreground },
-                  ]}
-                >
+                <Text style={[styles.goalOptionText, { color: dailyGoal === g ? "#FFFFFF" : colors.foreground }]}>
                   {g}
                 </Text>
               </TouchableOpacity>
@@ -327,20 +495,80 @@ export default function SettingsScreen() {
           colors={colors}
           onPress={() => router.push("/bookmarks" as any)}
         />
+        <SettingsRow
+          icon="rectangle.stack.fill"
+          label="Flashcards"
+          subtitle="Review saved problems as flashcards"
+          colors={colors}
+          onPress={() => router.push("/flashcards" as any)}
+        />
+        <SettingsRow
+          icon="person.2.fill"
+          label="Preferred Subjects"
+          subtitle={preferredCategoryLabels || "All subjects"}
+          colors={colors}
+          onPress={() => setShowSubjectPicker(true)}
+        />
+        <SettingsRow
+          icon="square.and.arrow.up.fill"
+          label="Share Progress"
+          subtitle="Share your streak and stats"
+          colors={colors}
+          onPress={handleShareProgress}
+        />
+        <SettingsRow
+          icon="eraser.fill"
+          label="Clear History"
+          subtitle="Delete all solved problems"
+          colors={colors}
+          onPress={handleClearHistory}
+          danger
+        />
+        <SettingsRow
+          icon="arrow.counterclockwise.circle.fill"
+          label="Reset All Progress"
+          subtitle="Delete streak, stats, badges, and history"
+          colors={colors}
+          onPress={handleResetProgress}
+          danger
+        />
 
         {/* About */}
         <SectionHeader title="ABOUT" colors={colors} />
         <SettingsRow
           icon="info.circle"
-          label="TutorSnap"
-          subtitle="Version 1.0.0 — AI-powered academic tutor"
+          label="About TutorSnap"
+          subtitle={`Version ${Constants.expoConfig?.version ?? "1.1.0"} — AI-powered academic tutor`}
           colors={colors}
+          onPress={() => setShowAbout(true)}
         />
-                <SettingsRow
+        <SettingsRow
           icon="questionmark.circle"
           label="How to use TutorSnap"
-          subtitle="Type, scan, or speak any question to get instant help"
+          subtitle="Step-by-step guide for all features"
           colors={colors}
+          onPress={() => setShowHowTo(true)}
+        />
+        <SettingsRow
+          icon="star.bubble.fill"
+          label="Rate TutorSnap"
+          subtitle="Love the app? Leave us a review"
+          colors={colors}
+          onPress={handleRateApp}
+        />
+        <SettingsRow
+          icon="hand.raised.fill"
+          label="Privacy Policy"
+          subtitle="How we handle your data"
+          colors={colors}
+          onPress={handlePrivacyPolicy}
+        />
+        <SettingsRow
+          icon="doc.text.fill"
+          label="Terms of Service"
+          subtitle="Usage terms and conditions"
+          colors={colors}
+          onPress={handleTerms}
         />
 
         {/* What's New */}
@@ -387,7 +615,7 @@ export default function SettingsScreen() {
         {/* App version footer */}
         <View style={styles.versionFooter}>
           <Text style={[styles.versionText, { color: colors.muted }]}>
-            TutorSnap v{Constants.expoConfig?.version ?? "1.0.0"}
+            TutorSnap v{Constants.expoConfig?.version ?? "1.1.0"}
           </Text>
           <Text style={[styles.versionBuild, { color: colors.border }]}>
             Expo SDK {Constants.expoConfig?.sdkVersion ?? "54"} · {Platform.OS}
@@ -396,7 +624,7 @@ export default function SettingsScreen() {
 
       </ScrollView>
 
-      {/* Time Picker Modal */}
+      {/* ── Time Picker Modal ─────────────────────────────────────────────── */}
       <Modal
         visible={showTimePicker}
         transparent
@@ -409,8 +637,6 @@ export default function SettingsScreen() {
             <Text style={[styles.modalSubtitle, { color: colors.muted }]}>
               You'll get a daily nudge at this time
             </Text>
-
-            {/* Hour picker */}
             <Text style={[styles.pickerLabel, { color: colors.muted }]}>HOUR</Text>
             <ScrollView
               horizontal
@@ -425,13 +651,7 @@ export default function SettingsScreen() {
                     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     setPickerHour(h);
                   }}
-                  style={[
-                    styles.pickerChip,
-                    {
-                      backgroundColor: pickerHour === h ? colors.primary : colors.surface,
-                      borderColor: pickerHour === h ? colors.primary : colors.border,
-                    },
-                  ]}
+                  style={[styles.pickerChip, { backgroundColor: pickerHour === h ? colors.primary : colors.surface, borderColor: pickerHour === h ? colors.primary : colors.border }]}
                 >
                   <Text style={[styles.pickerChipText, { color: pickerHour === h ? "#FFFFFF" : colors.foreground }]}>
                     {formatHour(h)}
@@ -439,8 +659,6 @@ export default function SettingsScreen() {
                 </TouchableOpacity>
               ))}
             </ScrollView>
-
-            {/* Minute picker */}
             <Text style={[styles.pickerLabel, { color: colors.muted }]}>MINUTE</Text>
             <View style={{ flexDirection: "row", gap: 10, marginBottom: 24 }}>
               {MINUTE_OPTIONS.map((m) => (
@@ -450,13 +668,7 @@ export default function SettingsScreen() {
                     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     setPickerMinute(m);
                   }}
-                  style={[
-                    styles.pickerChip,
-                    {
-                      backgroundColor: pickerMinute === m ? colors.primary : colors.surface,
-                      borderColor: pickerMinute === m ? colors.primary : colors.border,
-                    },
-                  ]}
+                  style={[styles.pickerChip, { backgroundColor: pickerMinute === m ? colors.primary : colors.surface, borderColor: pickerMinute === m ? colors.primary : colors.border }]}
                 >
                   <Text style={[styles.pickerChipText, { color: pickerMinute === m ? "#FFFFFF" : colors.foreground }]}>
                     :{m.toString().padStart(2, "0")}
@@ -464,30 +676,156 @@ export default function SettingsScreen() {
                 </TouchableOpacity>
               ))}
             </View>
-
             <Text style={[styles.previewTime, { color: colors.primary }]}>
               {formatReminderTime(pickerHour, pickerMinute)}
             </Text>
-
             <View style={styles.modalButtons}>
-              <TouchableOpacity
-                onPress={() => setShowTimePicker(false)}
-                style={[styles.modalBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                activeOpacity={0.7}
-              >
+              <TouchableOpacity onPress={() => setShowTimePicker(false)} style={[styles.modalBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} activeOpacity={0.7}>
                 <Text style={[styles.modalBtnText, { color: colors.foreground }]}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                onPress={handleSaveTime}
-                style={[styles.modalBtn, { backgroundColor: colors.primary }]}
-                activeOpacity={0.85}
-              >
+              <TouchableOpacity onPress={handleSaveTime} style={[styles.modalBtn, { backgroundColor: colors.primary }]} activeOpacity={0.85}>
                 <Text style={[styles.modalBtnText, { color: "#FFFFFF" }]}>Set Reminder</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
+
+      {/* ── How To Modal ──────────────────────────────────────────────────── */}
+      <Modal
+        visible={showHowTo}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowHowTo(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalSheet, { backgroundColor: colors.background, borderColor: colors.border, maxHeight: "85%" }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.foreground }]}>How to use TutorSnap</Text>
+              <TouchableOpacity onPress={() => setShowHowTo(false)} style={styles.modalClose}>
+                <IconSymbol size={22} name="xmark.circle.fill" color={colors.muted} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false} style={{ marginTop: 8 }}>
+              {HOW_TO_STEPS.map((step, i) => (
+                <View key={i} style={[styles.howToRow, { borderBottomColor: colors.border, borderBottomWidth: i < HOW_TO_STEPS.length - 1 ? 0.5 : 0 }]}>
+                  <Text style={styles.howToEmoji}>{step.emoji}</Text>
+                  <View style={styles.howToContent}>
+                    <Text style={[styles.howToTitle, { color: colors.foreground }]}>{step.title}</Text>
+                    <Text style={[styles.howToDesc, { color: colors.muted }]}>{step.desc}</Text>
+                  </View>
+                </View>
+              ))}
+              <View style={{ height: 24 }} />
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── About Modal ───────────────────────────────────────────────────── */}
+      <Modal
+        visible={showAbout}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowAbout(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalSheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.foreground }]}>About TutorSnap</Text>
+              <TouchableOpacity onPress={() => setShowAbout(false)} style={styles.modalClose}>
+                <IconSymbol size={22} name="xmark.circle.fill" color={colors.muted} />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.aboutLogoRow}>
+              <Text style={styles.aboutLogo}>🎓</Text>
+              <View>
+                <Text style={[styles.aboutAppName, { color: colors.foreground }]}>TutorSnap</Text>
+                <Text style={[styles.aboutVersion, { color: colors.muted }]}>
+                  Version {Constants.expoConfig?.version ?? "1.1.0"}
+                </Text>
+              </View>
+            </View>
+            <Text style={[styles.aboutDesc, { color: colors.muted }]}>
+              TutorSnap is your AI-powered academic tutor for every subject — from Algebra and Calculus to World History and Creative Writing. Snap a photo of any problem, type a question, or speak your query to get instant step-by-step solutions.
+            </Text>
+            <View style={[styles.aboutDivider, { backgroundColor: colors.border }]} />
+            <View style={styles.aboutRow}>
+              <Text style={[styles.aboutRowLabel, { color: colors.muted }]}>Platform</Text>
+              <Text style={[styles.aboutRowValue, { color: colors.foreground }]}>{Platform.OS === "ios" ? "iOS" : Platform.OS === "android" ? "Android" : "Web"}</Text>
+            </View>
+            <View style={styles.aboutRow}>
+              <Text style={[styles.aboutRowLabel, { color: colors.muted }]}>Expo SDK</Text>
+              <Text style={[styles.aboutRowValue, { color: colors.foreground }]}>{Constants.expoConfig?.sdkVersion ?? "54"}</Text>
+            </View>
+            <View style={styles.aboutRow}>
+              <Text style={[styles.aboutRowLabel, { color: colors.muted }]}>Subjects</Text>
+              <Text style={[styles.aboutRowValue, { color: colors.foreground }]}>36 across 4 categories</Text>
+            </View>
+            <View style={[styles.aboutDivider, { backgroundColor: colors.border }]} />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                onPress={() => { setShowAbout(false); handleRateApp(); }}
+                style={[styles.modalBtn, { backgroundColor: colors.primary }]}
+                activeOpacity={0.85}
+              >
+                <Text style={[styles.modalBtnText, { color: "#FFFFFF" }]}>⭐ Rate the App</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Preferred Subjects Modal ──────────────────────────────────────── */}
+      <Modal
+        visible={showSubjectPicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowSubjectPicker(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalSheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.foreground }]}>Preferred Subjects</Text>
+              <TouchableOpacity onPress={() => setShowSubjectPicker(false)} style={styles.modalClose}>
+                <IconSymbol size={22} name="xmark.circle.fill" color={colors.muted} />
+              </TouchableOpacity>
+            </View>
+            <Text style={[styles.modalSubtitle, { color: colors.muted }]}>
+              Choose which subject categories appear first in Practice and Solve.
+            </Text>
+            {CATEGORIES.map(([id, cat]) => {
+              const isSelected = preferredCategories.has(id);
+              return (
+                <TouchableOpacity
+                  key={id}
+                  onPress={() => handleToggleCategory(id)}
+                  activeOpacity={0.7}
+                  style={[
+                    styles.catRow,
+                    {
+                      backgroundColor: isSelected ? `${cat.color}15` : colors.surface,
+                      borderColor: isSelected ? cat.color : colors.border,
+                    },
+                  ]}
+                >
+                  <Text style={styles.catEmoji}>{cat.emoji}</Text>
+                  <Text style={[styles.catLabel, { color: isSelected ? cat.color : colors.foreground }]}>
+                    {cat.label}
+                  </Text>
+                  {isSelected && (
+                    <IconSymbol size={18} name="checkmark.circle.fill" color={cat.color} />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+            <Text style={[styles.catHint, { color: colors.muted }]}>
+              At least one category must remain selected.
+            </Text>
+          </View>
+        </View>
+      </Modal>
+
     </ScreenContainer>
   );
 }
@@ -568,11 +906,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   goalBadgeText: { fontSize: 18, fontWeight: "800" },
-  goalOptions: {
-    flexDirection: "row",
-    gap: 8,
-    flexWrap: "wrap",
-  },
+  goalOptions: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
   goalOption: {
     width: 44,
     height: 44,
@@ -603,7 +937,7 @@ const styles = StyleSheet.create({
   subjectDot: { width: 7, height: 7, borderRadius: 4 },
   subjectTagText: { fontSize: 13, fontWeight: "600" },
   subjectsCount: { fontSize: 12, marginTop: 4 },
-  // Modal
+  // Modals
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.45)",
@@ -616,95 +950,70 @@ const styles = StyleSheet.create({
     padding: 24,
     paddingBottom: 40,
   },
-  modalTitle: { fontSize: 20, fontWeight: "800", marginBottom: 6 },
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 6,
+  },
+  modalClose: { padding: 4 },
+  modalTitle: { fontSize: 20, fontWeight: "800" },
   modalSubtitle: { fontSize: 14, marginBottom: 20 },
-  pickerLabel: {
-    fontSize: 11,
-    fontWeight: "700",
-    letterSpacing: 1,
-    marginBottom: 10,
-  },
-  pickerChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1.5,
-  },
+  pickerLabel: { fontSize: 11, fontWeight: "700", letterSpacing: 1, marginBottom: 10 },
+  pickerChip: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, borderWidth: 1.5 },
   pickerChipText: { fontSize: 14, fontWeight: "700" },
-  previewTime: {
-    fontSize: 32,
-    fontWeight: "800",
-    textAlign: "center",
-    marginBottom: 24,
-    letterSpacing: -1,
-  },
+  previewTime: { fontSize: 32, fontWeight: "800", textAlign: "center", marginBottom: 24, letterSpacing: -1 },
   modalButtons: { flexDirection: "row", gap: 12 },
-  modalBtn: {
-    flex: 1,
-    paddingVertical: 16,
-    borderRadius: 14,
-    alignItems: "center",
-    borderWidth: 1,
-  },
+  modalBtn: { flex: 1, paddingVertical: 16, borderRadius: 14, alignItems: "center", borderWidth: 1 },
   modalBtnText: { fontSize: 16, fontWeight: "700" },
-  versionFooter: {
-    alignItems: "center",
-    paddingVertical: 24,
-    gap: 4,
+  // How To
+  howToRow: {
+    flexDirection: "row",
+    gap: 14,
+    paddingVertical: 14,
+    alignItems: "flex-start",
   },
-  versionText: {
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  versionBuild: {
-    fontSize: 11,
-    fontWeight: "400",
-  },
-  whatsNewCard: {
-    marginHorizontal: 16,
-    marginBottom: 12,
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 16,
-  },
-  whatsNewHeader: {
+  howToEmoji: { fontSize: 26, lineHeight: 32 },
+  howToContent: { flex: 1 },
+  howToTitle: { fontSize: 15, fontWeight: "700", marginBottom: 3 },
+  howToDesc: { fontSize: 13, lineHeight: 19 },
+  // About
+  aboutLogoRow: { flexDirection: "row", alignItems: "center", gap: 14, marginBottom: 16, marginTop: 8 },
+  aboutLogo: { fontSize: 48 },
+  aboutAppName: { fontSize: 22, fontWeight: "800" },
+  aboutVersion: { fontSize: 13, marginTop: 2 },
+  aboutDesc: { fontSize: 14, lineHeight: 21, marginBottom: 16 },
+  aboutDivider: { height: 0.5, marginVertical: 12 },
+  aboutRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 6 },
+  aboutRowLabel: { fontSize: 14 },
+  aboutRowValue: { fontSize: 14, fontWeight: "600" },
+  // Category picker
+  catRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    marginBottom: 14,
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    marginBottom: 8,
   },
-  whatsNewTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    flex: 1,
-  },
-  versionBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 10,
-  },
-  versionBadgeText: {
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  changelogRow: {
-    flexDirection: "row",
-    gap: 8,
-    marginBottom: 10,
-  },
-  changelogDot: {
-    fontSize: 16,
-    lineHeight: 20,
-    marginTop: 1,
-  },
+  catEmoji: { fontSize: 22 },
+  catLabel: { flex: 1, fontSize: 16, fontWeight: "600" },
+  catHint: { fontSize: 12, textAlign: "center", marginTop: 8 },
+  // Version footer
+  versionFooter: { alignItems: "center", paddingVertical: 24, gap: 4 },
+  versionText: { fontSize: 13, fontWeight: "600" },
+  versionBuild: { fontSize: 11, fontWeight: "400" },
+  // What's New
+  whatsNewCard: { marginHorizontal: 16, marginBottom: 12, borderRadius: 16, borderWidth: 1, padding: 16 },
+  whatsNewHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 14 },
+  whatsNewTitle: { fontSize: 16, fontWeight: "700", flex: 1 },
+  versionBadge: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 10 },
+  versionBadgeText: { fontSize: 12, fontWeight: "700" },
+  changelogRow: { flexDirection: "row", gap: 8, marginBottom: 10 },
+  changelogDot: { fontSize: 16, lineHeight: 20, marginTop: 1 },
   changelogContent: { flex: 1 },
-  changelogLabel: {
-    fontSize: 14,
-    fontWeight: "600",
-    marginBottom: 2,
-  },
-  changelogDesc: {
-    fontSize: 13,
-    lineHeight: 18,
-  },
+  changelogLabel: { fontSize: 14, fontWeight: "600", marginBottom: 2 },
+  changelogDesc: { fontSize: 13, lineHeight: 18 },
 });

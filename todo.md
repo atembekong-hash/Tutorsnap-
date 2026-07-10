@@ -77,3 +77,15 @@
 - [x] Extend ErrorBoundary to all tab screens (Chat, History, Practice, Scan)
 - [x] Add crash reporting via componentDidCatch persisted to AsyncStorage
 - [x] Add What's New changelog card in Settings under ABOUT
+- [x] How-To modal in Settings with step-by-step guide
+- [x] About TutorSnap modal with version, platform info, and Rate App button
+- [x] Preferred Subjects editor in Settings (saves to AsyncStorage)
+- [x] Clear History row in Settings (with confirmation alert)
+- [x] Reset All Progress row in Settings (with confirmation alert)
+- [x] Share Progress row in Settings (via expo-sharing)
+- [x] Text Size / Font Size preference in Settings (Small/Medium/Large/XL)
+- [x] FontSizeProvider context wired to root layout
+- [x] Rate TutorSnap row in Settings (expo-store-review)
+- [x] Privacy Policy row in Settings (opens browser)
+- [x] Terms of Service row in Settings (opens browser)
+- [x] Flashcards link in Settings PROGRESS & DATA section

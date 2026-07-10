@@ -70,6 +70,18 @@ const MAPPING = {
   "questionmark.circle": "help",
   "wifi.slash": "wifi-off",
   "wifi": "wifi",
+  // Settings extras
+  "textformat.size": "format-size",
+  "person.2.fill": "group",
+  "hand.raised.fill": "front-hand",
+  "doc.text.fill": "description",
+  "square.and.pencil": "edit-note",
+  "eraser.fill": "backspace",
+  "arrow.counterclockwise.circle.fill": "settings-backup-restore",
+  "rectangle.stack.fill": "layers",
+  "sparkles": "auto-awesome",
+  "star.bubble.fill": "rate-review",
+  "square.and.arrow.up.fill": "ios-share",
   // Code
   "chevron.left.forwardslash.chevron.right": "code",
 } as IconMapping;
