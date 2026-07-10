@@ -9,8 +9,10 @@ import {
   Platform,
   Modal,
   Alert,
+  type ScrollView as ScrollViewType,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useRef } from "react";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import Constants from "expo-constants";
 import * as Haptics from "expo-haptics";
 import * as Linking from "expo-linking";
@@ -112,6 +114,9 @@ function formatHour(hour: number): string {
 export default function SettingsScreen() {
   const colors = useColors();
   const router = useRouter();
+  const { scrollTo } = useLocalSearchParams<{ scrollTo?: string }>();
+  const scrollRef = useRef<ScrollViewType>(null);
+  const whatsNewYRef = useRef<number>(0);
   const { colorScheme, setColorScheme } = useThemeContext();
   const isDark = colorScheme === "dark";
   const { scale: fontScale, setScale: setFontScale } = useFontSize();
@@ -135,6 +140,16 @@ export default function SettingsScreen() {
 
   // Preferred categories
   const [preferredCategories, setPreferredCategories] = useState<Set<SubjectCategory>>(new Set(["math", "english", "science", "social"]));
+
+  // Auto-scroll to What's New when opened via notification deep link
+  useEffect(() => {
+    if (scrollTo === "whats_new" && whatsNewYRef.current > 0) {
+      const timer = setTimeout(() => {
+        scrollRef.current?.scrollTo({ y: whatsNewYRef.current - 16, animated: true });
+      }, 400);
+      return () => clearTimeout(timer);
+    }
+  }, [scrollTo]);
 
   useEffect(() => {
     getProgress().then((p) => {
@@ -329,7 +344,7 @@ export default function SettingsScreen() {
         <View style={{ width: 30 }} />
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 48 }}>
+      <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 48 }}>
 
         {/* Stats Summary */}
         <View style={[styles.statsCard, { backgroundColor: `${colors.primary}10`, borderColor: `${colors.primary}25` }]}>
@@ -639,7 +654,10 @@ export default function SettingsScreen() {
         />
 
         {/* What's New */}
-        <View style={[styles.whatsNewCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <View
+          style={[styles.whatsNewCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+          onLayout={(e) => { whatsNewYRef.current = e.nativeEvent.layout.y; }}
+        >
           <View style={styles.whatsNewHeader}>
             <Text style={{ fontSize: 16 }}>🎉</Text>
             <Text style={[styles.whatsNewTitle, { color: colors.foreground }]}>What's New</Text>

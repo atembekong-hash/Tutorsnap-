@@ -134,3 +134,8 @@
 - [x] In-app version update prompt — checks tutorsnapai.tech/version.json on launch, shows modal when update available
 - [x] Wire FAQ link into Settings ABOUT section
 - [x] Wire update check into root _layout.tsx
+
+## New Features (Round 9)
+- [x] Search/filter bar on Bookmarks screen (by subject, keyword, date)
+- [x] Share button on Solution screen (share problem + steps as text or image)
+- [x] Push notification deep link to What's New section in Settings

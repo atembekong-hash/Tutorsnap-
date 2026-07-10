@@ -67,6 +67,7 @@ export default function SolutionScreen() {
   const [bookmarked, setBookmarked] = useState(false);
   const [copyFeedback, setCopyFeedback] = useState(false);
   const [shareLoading, setShareLoading] = useState(false);
+  const [showShareMenu, setShowShareMenu] = useState(false);
   const [showSimilar, setShowSimilar] = useState(false);
   const [similarProblems, setSimilarProblems] = useState<{ id: string; problem: string; hint: string }[]>([]);
   const [expandedHint, setExpandedHint] = useState<string | null>(null);
@@ -177,7 +178,29 @@ export default function SolutionScreen() {
     }
   };
 
-  const handleShare = handleSharePdf;
+  const handleShareText = async () => {
+    setShowShareMenu(false);
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    const stepsText = (solution!.steps || [])
+      .map((s) => `Step ${s.stepNumber}: ${s.title}\n${s.expression ? `  ${s.expression}\n` : ""}  ${s.explanation}`)
+      .join("\n\n");
+    const tipsText = (solution!.tips || []).length > 0
+      ? `\n\n💡 Tips:\n${solution!.tips!.map((t) => `• ${t}`).join("\n")}`
+      : "";
+    const message = `📚 ${getSubjectLabel(solution!.subject)} — TutorSnap\n\n❓ ${solution!.problem}\n\n✅ Answer: ${solution!.answer}\n\n${stepsText}${tipsText}\n\nSolved with TutorSnap · tutorsnapai.tech`;
+    try {
+      await Share.share({ message });
+    } catch {
+      // user cancelled
+    }
+  };
+
+  const handleSharePdfFromMenu = async () => {
+    setShowShareMenu(false);
+    await handleSharePdf();
+  };
+
+  const handleShare = () => setShowShareMenu(true);
 
   const handleCopyAnswer = async () => {
     if (Platform.OS !== "web") {
@@ -215,6 +238,49 @@ export default function SolutionScreen() {
 
   return (
     <ScreenContainer>
+      {/* Share Menu Overlay */}
+      {showShareMenu && (
+        <TouchableOpacity
+          style={styles.shareOverlay}
+          activeOpacity={1}
+          onPress={() => setShowShareMenu(false)}
+        >
+          <View style={[styles.shareMenu, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.shareMenuTitle, { color: colors.muted }]}>Share Solution</Text>
+            <TouchableOpacity
+              onPress={handleShareText}
+              style={[styles.shareMenuItem, { borderBottomWidth: 0.5, borderBottomColor: colors.border }]}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.shareMenuIcon, { backgroundColor: `${colors.primary}15` }]}>
+                <IconSymbol size={18} name="text.bubble" color={colors.primary} />
+              </View>
+              <View style={styles.shareMenuInfo}>
+                <Text style={[styles.shareMenuLabel, { color: colors.foreground }]}>Share as Text</Text>
+                <Text style={[styles.shareMenuDesc, { color: colors.muted }]}>Send to WhatsApp, iMessage, etc.</Text>
+              </View>
+              <IconSymbol size={16} name="chevron.right" color={colors.muted} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleSharePdfFromMenu}
+              style={styles.shareMenuItem}
+              activeOpacity={0.7}
+              disabled={shareLoading}
+            >
+              <View style={[styles.shareMenuIcon, { backgroundColor: `${colors.error}15` }]}>
+                {shareLoading
+                  ? <ActivityIndicator size="small" color={colors.error} />
+                  : <IconSymbol size={18} name="doc.fill" color={colors.error} />}
+              </View>
+              <View style={styles.shareMenuInfo}>
+                <Text style={[styles.shareMenuLabel, { color: colors.foreground }]}>Share as PDF</Text>
+                <Text style={[styles.shareMenuDesc, { color: colors.muted }]}>Formatted document with all steps</Text>
+              </View>
+              <IconSymbol size={16} name="chevron.right" color={colors.muted} />
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      )}
       {/* Header */}
       <View style={[styles.navBar, { borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
@@ -636,4 +702,46 @@ const styles = StyleSheet.create({
   hintToggle: { flexDirection: "row", alignItems: "center", gap: 4, marginLeft: 34 },
   hintToggleText: { fontSize: 12, fontWeight: "600" },
   hintText: { marginLeft: 34, lineHeight: 18 },
+  shareOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    zIndex: 200,
+    justifyContent: "flex-end",
+  },
+  shareMenu: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderWidth: 1,
+    paddingBottom: 32,
+    overflow: "hidden",
+  },
+  shareMenuTitle: {
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 1,
+    textAlign: "center",
+    paddingVertical: 14,
+  },
+  shareMenuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    gap: 14,
+  },
+  shareMenuIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  shareMenuInfo: { flex: 1 },
+  shareMenuLabel: { fontSize: 15, fontWeight: "700", marginBottom: 2 },
+  shareMenuDesc: { fontSize: 12, lineHeight: 17 },
 });

@@ -55,7 +55,7 @@ export default function RootLayout() {
     initManusRuntime();
   }, []);
 
-  // Handle notification taps — navigate to Study Planner
+  // Handle notification taps — route by data payload
   useEffect(() => {
     if (Platform.OS === "web") return;
     const sub = Notifications.addNotificationResponseReceivedListener((response) => {
@@ -63,6 +63,11 @@ export default function RootLayout() {
       if (data?.slotId) {
         // Tapped a study planner notification — open the planner
         router.push("/study-planner" as any);
+      } else if (data?.screen === "whats_new" || data?.type === "update") {
+        // Tapped an "update available" or "what's new" notification — open Settings scrolled to What's New
+        router.push({ pathname: "/settings", params: { scrollTo: "whats_new" } } as any);
+      } else if (data?.screen === "settings") {
+        router.push("/settings" as any);
       }
     });
     return () => sub.remove();
