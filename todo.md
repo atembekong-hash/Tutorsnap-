@@ -139,3 +139,8 @@
 - [x] Search/filter bar on Bookmarks screen (by subject, keyword, date)
 - [x] Share button on Solution screen (share problem + steps as text or image)
 - [x] Push notification deep link to What's New section in Settings
+
+## New Features (Round 10)
+- [x] Copy Link option in Solution share menu (generates tutorsnapai.tech/solve?q=... deep link)
+- [x] Practice this topic shortcut in Solution share menu (navigates to Practice pre-filtered by subject)
+- [x] Swipe-to-delete on Bookmarks screen (swipe-left reveals red Delete button)

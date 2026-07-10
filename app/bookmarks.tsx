@@ -11,6 +11,7 @@ import {
   ScrollView,
 } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
+import Swipeable from "react-native-gesture-handler/Swipeable";
 import * as Haptics from "expo-haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -128,6 +129,17 @@ export default function BookmarksScreen() {
     setShowSortMenu(false);
   };
 
+  const renderRightActions = (item: HistoryItem) => (
+    <TouchableOpacity
+      onPress={() => handleDelete(item.id)}
+      style={styles.swipeDeleteBtn}
+      activeOpacity={0.85}
+    >
+      <IconSymbol size={22} name="trash.fill" color="#FFFFFF" />
+      <Text style={styles.swipeDeleteText}>Delete</Text>
+    </TouchableOpacity>
+  );
+
   const renderItem = ({ item }: { item: HistoryItem }) => {
     const subjectColor = getSubjectColor(item.subject);
     const subjectLabel = getSubjectLabel(item.subject);
@@ -137,9 +149,14 @@ export default function BookmarksScreen() {
       : "";
 
     return (
+      <Swipeable
+        renderRightActions={() => renderRightActions(item)}
+        rightThreshold={60}
+        overshootRight={false}
+        friction={2}
+      >
       <TouchableOpacity
         onPress={() => handleViewSolution(item)}
-        onLongPress={() => handleDelete(item.id)}
         style={[styles.bookmarkCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
         activeOpacity={0.75}
       >
@@ -174,6 +191,7 @@ export default function BookmarksScreen() {
           </View>
         </View>
       </TouchableOpacity>
+      </Swipeable>
     );
   };
 
@@ -528,4 +546,19 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   clearBtnText: { fontSize: 14, fontWeight: "600" },
+  swipeDeleteBtn: {
+    backgroundColor: "#EF4444",
+    justifyContent: "center",
+    alignItems: "center",
+    width: 80,
+    borderRadius: 16,
+    marginLeft: 8,
+    gap: 4,
+  },
+  swipeDeleteText: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.3,
+  },
 });

@@ -68,6 +68,7 @@ export default function SolutionScreen() {
   const [copyFeedback, setCopyFeedback] = useState(false);
   const [shareLoading, setShareLoading] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
+  const [copyLinkFeedback, setCopyLinkFeedback] = useState(false);
   const [showSimilar, setShowSimilar] = useState(false);
   const [similarProblems, setSimilarProblems] = useState<{ id: string; problem: string; hint: string }[]>([]);
   const [expandedHint, setExpandedHint] = useState<string | null>(null);
@@ -200,6 +201,26 @@ export default function SolutionScreen() {
     await handleSharePdf();
   };
 
+  const handleCopyLink = async () => {
+    setShowShareMenu(false);
+    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    const encoded = encodeURIComponent(solution!.problem);
+    const link = `https://tutorsnapai.tech/solve?q=${encoded}&subject=${solution!.subject}`;
+    try {
+      await Clipboard.setStringAsync(link);
+      setCopyLinkFeedback(true);
+      setTimeout(() => setCopyLinkFeedback(false), 2000);
+    } catch {
+      // ignore
+    }
+  };
+
+  const handlePracticeFromMenu = () => {
+    setShowShareMenu(false);
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    router.push({ pathname: "/(tabs)/practice", params: { subject: solution!.subject } } as any);
+  };
+
   const handleShare = () => setShowShareMenu(true);
 
   const handleCopyAnswer = async () => {
@@ -263,7 +284,7 @@ export default function SolutionScreen() {
             </TouchableOpacity>
             <TouchableOpacity
               onPress={handleSharePdfFromMenu}
-              style={styles.shareMenuItem}
+              style={[styles.shareMenuItem, { borderBottomWidth: 0.5, borderBottomColor: colors.border }]}
               activeOpacity={0.7}
               disabled={shareLoading}
             >
@@ -278,8 +299,43 @@ export default function SolutionScreen() {
               </View>
               <IconSymbol size={16} name="chevron.right" color={colors.muted} />
             </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleCopyLink}
+              style={[styles.shareMenuItem, { borderBottomWidth: 0.5, borderBottomColor: colors.border }]}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.shareMenuIcon, { backgroundColor: `${colors.success}15` }]}>
+                <IconSymbol size={18} name="link" color={colors.success} />
+              </View>
+              <View style={styles.shareMenuInfo}>
+                <Text style={[styles.shareMenuLabel, { color: colors.foreground }]}>Copy Link</Text>
+                <Text style={[styles.shareMenuDesc, { color: colors.muted }]}>Copy tutorsnapai.tech solve link to clipboard</Text>
+              </View>
+              <IconSymbol size={16} name={copyLinkFeedback ? "checkmark.circle.fill" : "chevron.right"} color={copyLinkFeedback ? colors.success : colors.muted} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handlePracticeFromMenu}
+              style={styles.shareMenuItem}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.shareMenuIcon, { backgroundColor: `${colors.warning}15` }]}>
+                <IconSymbol size={18} name="pencil.and.list.clipboard" color={colors.warning} />
+              </View>
+              <View style={styles.shareMenuInfo}>
+                <Text style={[styles.shareMenuLabel, { color: colors.foreground }]}>Practice This Topic</Text>
+                <Text style={[styles.shareMenuDesc, { color: colors.muted }]}>Go to Practice mode for this subject</Text>
+              </View>
+              <IconSymbol size={16} name="chevron.right" color={colors.muted} />
+            </TouchableOpacity>
           </View>
         </TouchableOpacity>
+      )}
+      {/* Copy Link feedback toast */}
+      {copyLinkFeedback && (
+        <View style={[styles.linkToast, { backgroundColor: colors.success }]}>
+          <IconSymbol size={15} name="checkmark.circle.fill" color="#FFFFFF" />
+          <Text style={styles.linkToastText}>Link copied to clipboard!</Text>
+        </View>
       )}
       {/* Header */}
       <View style={[styles.navBar, { borderBottomColor: colors.border }]}>
@@ -744,4 +800,17 @@ const styles = StyleSheet.create({
   shareMenuInfo: { flex: 1 },
   shareMenuLabel: { fontSize: 15, fontWeight: "700", marginBottom: 2 },
   shareMenuDesc: { fontSize: 12, lineHeight: 17 },
+  linkToast: {
+    position: "absolute",
+    bottom: 100,
+    alignSelf: "center",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 24,
+    zIndex: 300,
+  },
+  linkToastText: { color: "#FFFFFF", fontSize: 14, fontWeight: "700" },
 });
