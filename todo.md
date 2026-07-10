@@ -235,3 +235,9 @@
 - [x] Refactor chat screen: named sessions, new chat button, resume from history, share chat button, history button, auto-save every message, auto-title from first user message
 - [x] Register chat-history route in _layout.tsx
 - [x] TypeScript: 0 errors
+
+## Round 25: Chat Rename, Pin, and Discuss with Tutor
+- [x] Session renaming: long-press on chat history card opens rename modal (inline text input + save)
+- [x] Pinned chats: pin/unpin button on cards, pinned sessions always appear at top of history list (max 3)
+- [x] Discuss with Tutor: button on solution screen opens a new chat pre-seeded with the problem and solution
+- [x] TypeScript: 0 errors

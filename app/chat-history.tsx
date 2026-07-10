@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -10,6 +10,8 @@ import {
   ActivityIndicator,
   Platform,
   Share,
+  Modal,
+  KeyboardAvoidingView,
 } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
@@ -24,6 +26,9 @@ import {
   deleteSession,
   clearAllSessions,
   loadSession,
+  renameSession,
+  togglePin,
+  MAX_PINNED,
   type ChatSessionSummary,
 } from "@/lib/chat-sessions";
 
@@ -50,6 +55,9 @@ function SessionCard({
   onResume,
   onDelete,
   onShare,
+  onRename,
+  onTogglePin,
+  pinLimitReached,
 }: {
   session: ChatSessionSummary;
   colors: any;
@@ -57,21 +65,44 @@ function SessionCard({
   onResume: () => void;
   onDelete: () => void;
   onShare: () => void;
+  onRename: () => void;
+  onTogglePin: () => void;
+  pinLimitReached: boolean;
 }) {
   const subjectLabel = session.subject ? getSubjectLabel(session.subject as any) : null;
+  const canPin = session.pinned || !pinLimitReached;
 
   return (
     <TouchableOpacity
       onPress={onResume}
-      accessibilityLabel={`Resume chat: ${session.title}`}
-      style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
+      onLongPress={onRename}
+      delayLongPress={500}
+      accessibilityLabel={`Resume chat: ${session.title}. Long press to rename.`}
+      style={[
+        styles.card,
+        {
+          backgroundColor: colors.surface,
+          borderColor: session.pinned ? colors.primary : colors.border,
+          borderWidth: session.pinned ? 1.5 : 1,
+        },
+      ]}
       activeOpacity={0.75}
     >
-      {/* Top row: title + time */}
+      {/* Top row: title + time + pin */}
       <View style={styles.cardTop}>
         <View style={styles.cardTitleRow}>
-          <View style={[styles.chatIcon, { backgroundColor: `${colors.primary}18` }]}>
-            <Text style={{ fontSize: 16 }}>💬</Text>
+          {/* Pin indicator / icon */}
+          <View
+            style={[
+              styles.chatIcon,
+              { backgroundColor: session.pinned ? `${colors.primary}22` : `${colors.primary}12` },
+            ]}
+          >
+            {session.pinned ? (
+              <Text style={{ fontSize: 16 }}>📌</Text>
+            ) : (
+              <Text style={{ fontSize: 16 }}>💬</Text>
+            )}
           </View>
           <View style={styles.cardTitleBlock}>
             <Text
@@ -96,6 +127,23 @@ function SessionCard({
               </Text>
             </View>
           </View>
+
+          {/* Pin button */}
+          <TouchableOpacity
+            onPress={onTogglePin}
+            accessibilityLabel={session.pinned ? "Unpin this chat" : canPin ? "Pin this chat" : `Pin limit reached (max ${MAX_PINNED})`}
+            style={[
+              styles.pinBtn,
+              {
+                backgroundColor: session.pinned ? `${colors.primary}18` : "transparent",
+                opacity: canPin ? 1 : 0.35,
+              },
+            ]}
+            activeOpacity={0.7}
+            disabled={!canPin}
+          >
+            <Text style={{ fontSize: 14 }}>{session.pinned ? "📌" : "🔖"}</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -117,6 +165,16 @@ function SessionCard({
         >
           <IconSymbol size={14} name="bubble.left.fill" color={colors.primary} />
           <Text style={[styles.actionBtnText, { color: colors.primary, fontSize: fs(13) }]}>Continue</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={onRename}
+          accessibilityLabel="Rename this chat"
+          style={[styles.actionBtn, { backgroundColor: `${colors.surface}` }]}
+          activeOpacity={0.75}
+        >
+          <IconSymbol size={14} name="square.and.pencil" color={colors.muted} />
+          <Text style={[styles.actionBtnText, { color: colors.muted, fontSize: fs(13) }]}>Rename</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -143,6 +201,104 @@ function SessionCard({
   );
 }
 
+// ─── Rename Modal ─────────────────────────────────────────────────────────────
+
+function RenameModal({
+  visible,
+  initialTitle,
+  colors,
+  fs,
+  onSave,
+  onCancel,
+}: {
+  visible: boolean;
+  initialTitle: string;
+  colors: any;
+  fs: (n: number) => number;
+  onSave: (title: string) => void;
+  onCancel: () => void;
+}) {
+  const [value, setValue] = useState(initialTitle);
+  const inputRef = useRef<TextInput>(null);
+
+  useEffect(() => {
+    if (visible) {
+      setValue(initialTitle);
+      // Auto-focus after modal animation
+      setTimeout(() => inputRef.current?.focus(), 150);
+    }
+  }, [visible, initialTitle]);
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onCancel}
+      statusBarTranslucent
+    >
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={StyleSheet.absoluteFillObject}
+      >
+        <TouchableOpacity
+          style={[styles.modalBackdrop]}
+          activeOpacity={1}
+          onPress={onCancel}
+        />
+        <View style={[styles.renameSheet, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text style={[styles.renameTitle, { color: colors.foreground, fontSize: fs(17) }]}>
+            Rename Chat
+          </Text>
+          <TextInput
+            ref={inputRef}
+            style={[
+              styles.renameInput,
+              {
+                color: colors.foreground,
+                borderColor: colors.border,
+                backgroundColor: colors.background,
+                fontSize: fs(15),
+              },
+            ]}
+            value={value}
+            onChangeText={setValue}
+            placeholder="Enter a name for this chat"
+            placeholderTextColor={colors.muted}
+            maxLength={60}
+            returnKeyType="done"
+            onSubmitEditing={() => value.trim() && onSave(value.trim())}
+            selectTextOnFocus
+          />
+          <Text style={[styles.renameHint, { color: colors.muted, fontSize: fs(12) }]}>
+            {value.length}/60 characters
+          </Text>
+          <View style={styles.renameActions}>
+            <TouchableOpacity
+              onPress={onCancel}
+              style={[styles.renameBtn, { backgroundColor: `${colors.muted}18` }]}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.renameBtnText, { color: colors.muted, fontSize: fs(15) }]}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => value.trim() && onSave(value.trim())}
+              style={[
+                styles.renameBtn,
+                { backgroundColor: value.trim() ? colors.primary : `${colors.primary}40` },
+              ]}
+              activeOpacity={0.8}
+              disabled={!value.trim()}
+            >
+              <Text style={[styles.renameBtnText, { color: "#fff", fontSize: fs(15) }]}>Save</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
+
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function ChatHistoryScreen() {
@@ -154,6 +310,11 @@ export default function ChatHistoryScreen() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // Rename modal state
+  const [renameTarget, setRenameTarget] = useState<ChatSessionSummary | null>(null);
+
+  const pinnedCount = sessions.filter((s) => s.pinned).length;
 
   const loadSessions = useCallback(async () => {
     setLoading(true);
@@ -207,7 +368,6 @@ export default function ChatHistoryScreen() {
   const handleShare = async (session: ChatSessionSummary) => {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-    // Load full session to get all messages
     const full = await loadSession(session.id);
     if (!full) return;
 
@@ -229,7 +389,6 @@ export default function ChatHistoryScreen() {
       if (msg.id === "welcome" || msg.id.startsWith("welcome-")) continue;
       const role = msg.role === "user" ? "You" : "TutorSnap";
       const time = new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-      // Strip Markdown/LaTeX for plain-text share
       const text = msg.content
         .replace(/\$\$[\s\S]*?\$\$/g, "[equation]")
         .replace(/\$[^$\n]+\$/g, "[math]")
@@ -256,6 +415,36 @@ export default function ChatHistoryScreen() {
     try {
       await Share.share({ message: shareText });
     } catch { /* user cancelled */ }
+  };
+
+  const handleRename = (session: ChatSessionSummary) => {
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setRenameTarget(session);
+  };
+
+  const handleRenameSave = async (newTitle: string) => {
+    if (!renameTarget) return;
+    await renameSession(renameTarget.id, newTitle);
+    setSessions((prev) =>
+      prev.map((s) => (s.id === renameTarget.id ? { ...s, title: newTitle } : s))
+    );
+    setRenameTarget(null);
+    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  };
+
+  const handleTogglePin = async (session: ChatSessionSummary) => {
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const result = await togglePin(session.id);
+    if (result === null) {
+      Alert.alert(
+        "Pin Limit Reached",
+        `You can pin up to ${MAX_PINNED} chats. Unpin one to pin this chat.`,
+        [{ text: "OK" }]
+      );
+      return;
+    }
+    // Reload to get correct sort order (pinned first)
+    await loadSessions();
   };
 
   const handleClearAll = () => {
@@ -338,6 +527,16 @@ export default function ChatHistoryScreen() {
         )}
       </View>
 
+      {/* Pin hint */}
+      {pinnedCount > 0 && !search && (
+        <View style={[styles.pinHint, { backgroundColor: `${colors.primary}10`, borderBottomColor: colors.border }]}>
+          <Text style={{ fontSize: 12 }}>📌</Text>
+          <Text style={[styles.pinHintText, { color: colors.primary, fontSize: fs(12) }]}>
+            {pinnedCount} pinned · {MAX_PINNED - pinnedCount} slot{MAX_PINNED - pinnedCount !== 1 ? "s" : ""} remaining
+          </Text>
+        </View>
+      )}
+
       {/* Content */}
       {loading ? (
         <View style={styles.center}>
@@ -368,16 +567,42 @@ export default function ChatHistoryScreen() {
         <FlatList
           data={filtered}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <SessionCard
-              session={item}
-              colors={colors}
-              fs={fs}
-              onResume={() => handleResume(item.id)}
-              onDelete={() => handleDelete(item)}
-              onShare={() => handleShare(item)}
-            />
-          )}
+          renderItem={({ item, index }) => {
+            // Section header for "Pinned" and "All Chats"
+            const prevItem = index > 0 ? filtered[index - 1] : null;
+            const showPinnedHeader = item.pinned && !prevItem?.pinned && !search;
+            const showAllHeader = !item.pinned && prevItem?.pinned && !search;
+            return (
+              <>
+                {showPinnedHeader && (
+                  <Text style={[styles.sectionLabel, { color: colors.muted, fontSize: fs(11) }]}>
+                    PINNED
+                  </Text>
+                )}
+                {showAllHeader && (
+                  <Text style={[styles.sectionLabel, { color: colors.muted, fontSize: fs(11) }]}>
+                    ALL CHATS
+                  </Text>
+                )}
+                {!item.pinned && !prevItem && !search && (
+                  <Text style={[styles.sectionLabel, { color: colors.muted, fontSize: fs(11) }]}>
+                    ALL CHATS
+                  </Text>
+                )}
+                <SessionCard
+                  session={item}
+                  colors={colors}
+                  fs={fs}
+                  onResume={() => handleResume(item.id)}
+                  onDelete={() => handleDelete(item)}
+                  onShare={() => handleShare(item)}
+                  onRename={() => handleRename(item)}
+                  onTogglePin={() => handleTogglePin(item)}
+                  pinLimitReached={pinnedCount >= MAX_PINNED}
+                />
+              </>
+            );
+          }}
           contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
           showsVerticalScrollIndicator={false}
           ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
@@ -397,6 +622,16 @@ export default function ChatHistoryScreen() {
           <Text style={[styles.toastText, { fontSize: fs(13) }]}>Chat copied to clipboard</Text>
         </View>
       )}
+
+      {/* Rename Modal */}
+      <RenameModal
+        visible={!!renameTarget}
+        initialTitle={renameTarget?.title ?? ""}
+        colors={colors}
+        fs={fs}
+        onSave={handleRenameSave}
+        onCancel={() => setRenameTarget(null)}
+      />
     </ScreenContainer>
   );
 }
@@ -434,6 +669,15 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   searchInput: { flex: 1 },
+  pinHint: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderBottomWidth: 0.5,
+  },
+  pinHintText: { fontWeight: "600" },
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32 },
   emptyTitle: { fontWeight: "700", marginBottom: 8, textAlign: "center" },
   emptySubtitle: { textAlign: "center", lineHeight: 22 },
@@ -450,9 +694,15 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     marginBottom: 12,
   },
+  sectionLabel: {
+    fontWeight: "700",
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+    marginBottom: 8,
+    marginTop: 4,
+  },
   card: {
     borderRadius: 16,
-    borderWidth: 1,
     overflow: "hidden",
   },
   cardTop: { padding: 14, paddingBottom: 8 },
@@ -476,6 +726,14 @@ const styles = StyleSheet.create({
   subjectBadgeText: { fontWeight: "600" },
   cardTime: {},
   cardCount: {},
+  pinBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
   cardPreview: {
     paddingHorizontal: 14,
     paddingBottom: 12,
@@ -485,14 +743,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     borderTopWidth: 0.5,
     padding: 10,
-    gap: 8,
+    gap: 6,
   },
   actionBtn: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 5,
+    gap: 4,
     paddingVertical: 8,
     borderRadius: 10,
   },
@@ -509,4 +767,38 @@ const styles = StyleSheet.create({
     borderRadius: 24,
   },
   toastText: { color: "#fff", fontWeight: "600" },
+  // Rename modal
+  modalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.45)",
+  },
+  renameSheet: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderWidth: 1,
+    padding: 24,
+    paddingBottom: 40,
+    gap: 16,
+  },
+  renameTitle: { fontWeight: "700", textAlign: "center" },
+  renameInput: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    lineHeight: 22,
+  },
+  renameHint: { textAlign: "right", marginTop: -8 },
+  renameActions: { flexDirection: "row", gap: 12 },
+  renameBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: "center",
+  },
+  renameBtnText: { fontWeight: "700" },
 });

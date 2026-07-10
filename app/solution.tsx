@@ -25,6 +25,7 @@ import { getSubjectColor, getSubjectLabel } from "@/lib/subjects";
 import { useFontSize } from "@/lib/font-size-provider";
 import { trpc } from "@/lib/trpc";
 import { getMyClassroom, getJoinedClassroom, shareToClassroom } from "@/lib/classroom";
+import { createSession, renameSession } from "@/lib/chat-sessions";
 
 function StepCard({ step, colors, fs }: { step: SolutionStep; colors: any; fs: (n: number) => number }) {
   const [expanded, setExpanded] = useState(true);
@@ -105,6 +106,7 @@ export default function SolutionScreen() {
   const [similarProblems, setSimilarProblems] = useState<{ id: string; problem: string; hint: string }[]>([]);
   const [expandedHint, setExpandedHint] = useState<string | null>(null);
   const generateSimilarMutation = trpc.math.generateSimilar.useMutation();
+  const [discussLoading, setDiscussLoading] = useState(false);
 
   let solution: MathSolution | null = null;
   try {
@@ -293,6 +295,30 @@ export default function SolutionScreen() {
       setTimeout(() => setCopyFeedback(false), 1500);
     } catch (e) {
       // ignore
+    }
+  };
+
+  const handleDiscussWithTutor = async () => {
+    if (!solution) return;
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setDiscussLoading(true);
+    try {
+      // Build a pre-seeded context message that gives the AI the full solution context
+      const subjectLabel = getSubjectLabel(solution.subject);
+      const seedMessage = `I just solved this problem with TutorSnap and I have some questions about it.\n\n**Subject:** ${subjectLabel}\n**Problem:** ${solution.problem}\n**Answer:** ${solution.answer}\n\nCan you help me understand this better?`;
+      const session = await createSession(solution.subject);
+      // Set a descriptive title
+      const titleStr = `Discussing: ${solution.problem.length > 40 ? solution.problem.slice(0, 40) + "\u2026" : solution.problem}`;
+      await renameSession(session.id, titleStr);
+      // Navigate with seed message so chat screen pre-populates the context
+      router.push({
+        pathname: "/(tabs)/chat",
+        params: { sessionId: session.id, seedMessage },
+      });
+    } catch {
+      Alert.alert("Error", "Could not open the chat. Please try again.");
+    } finally {
+      setDiscussLoading(false);
     }
   };
 
@@ -658,6 +684,27 @@ export default function SolutionScreen() {
             <Text style={[styles.actionBtnText, { color: "#FFFFFF" }]}>Practice Similar</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Discuss with Tutor */}
+        <TouchableOpacity
+          accessibilityLabel="Discuss this solution with AI Tutor"
+          onPress={handleDiscussWithTutor}
+          disabled={discussLoading}
+          style={[
+            styles.discussBtn,
+            { backgroundColor: `${colors.primary}12`, borderColor: `${colors.primary}30` },
+          ]}
+          activeOpacity={0.8}
+        >
+          {discussLoading ? (
+            <ActivityIndicator size="small" color={colors.primary} />
+          ) : (
+            <IconSymbol size={18} name="bubble.left.fill" color={colors.primary} />
+          )}
+          <Text style={[styles.discussBtnText, { color: colors.primary }]}>
+            Discuss with Tutor
+          </Text>
+        </TouchableOpacity>
       </ScrollView>
     </ScreenContainer>
   );
@@ -903,4 +950,16 @@ const styles = StyleSheet.create({
     zIndex: 300,
   },
   linkToastText: { color: "#FFFFFF", fontSize: 14, fontWeight: "700" },
+  discussBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    marginHorizontal: 16,
+    marginBottom: 24,
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  discussBtnText: { fontSize: 15, fontWeight: "700" },
 });

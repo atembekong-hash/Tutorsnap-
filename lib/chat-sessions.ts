@@ -6,6 +6,7 @@
  *
  * Storage layout (AsyncStorage):
  *   @tutorsnap/chatSessions/index  → string[]  (ordered list of session IDs, newest first)
+ *   @tutorsnap/chatSessions/pins   → string[]  (up to 3 pinned session IDs)
  *   @tutorsnap/chatSessions/<id>   → ChatSession JSON
  */
 
@@ -32,14 +33,17 @@ export interface ChatSessionSummary {
   updatedAt: number;
   messageCount: number;
   preview: string;         // Last AI message snippet
+  pinned: boolean;         // Whether this session is pinned to the top
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const INDEX_KEY = "@tutorsnap/chatSessions/index";
+const PINS_KEY = "@tutorsnap/chatSessions/pins";
 const SESSION_KEY = (id: string) => `@tutorsnap/chatSessions/${id}`;
 const MAX_MESSAGES_PER_SESSION = 200;
 const MAX_SESSIONS = 100;
+export const MAX_PINNED = 3;
 
 // ─── ID Generation ────────────────────────────────────────────────────────────
 
@@ -52,7 +56,6 @@ export function generateSessionId(): string {
 export function generateSessionTitle(firstUserMessage: string): string {
   const trimmed = firstUserMessage.trim();
   if (trimmed.length <= 40) return trimmed;
-  // Truncate at word boundary
   const truncated = trimmed.slice(0, 40);
   const lastSpace = truncated.lastIndexOf(" ");
   return (lastSpace > 20 ? truncated.slice(0, lastSpace) : truncated) + "…";
@@ -76,6 +79,51 @@ async function writeIndex(ids: string[]): Promise<void> {
   } catch { /* ignore */ }
 }
 
+// ─── Pins Operations ──────────────────────────────────────────────────────────
+
+export async function readPins(): Promise<string[]> {
+  try {
+    const raw = await AsyncStorage.getItem(PINS_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw) as string[];
+  } catch {
+    return [];
+  }
+}
+
+async function writePins(ids: string[]): Promise<void> {
+  try {
+    await AsyncStorage.setItem(PINS_KEY, JSON.stringify(ids));
+  } catch { /* ignore */ }
+}
+
+/** Pin a session. Returns false if already at MAX_PINNED and this session is not already pinned. */
+export async function pinSession(id: string): Promise<boolean> {
+  const pins = await readPins();
+  if (pins.includes(id)) return true; // already pinned
+  if (pins.length >= MAX_PINNED) return false; // limit reached
+  await writePins([id, ...pins]);
+  return true;
+}
+
+/** Unpin a session. */
+export async function unpinSession(id: string): Promise<void> {
+  const pins = await readPins();
+  await writePins(pins.filter((p) => p !== id));
+}
+
+/** Toggle pin state. Returns the new pinned state, or null if pin limit reached. */
+export async function togglePin(id: string): Promise<boolean | null> {
+  const pins = await readPins();
+  if (pins.includes(id)) {
+    await writePins(pins.filter((p) => p !== id));
+    return false;
+  }
+  if (pins.length >= MAX_PINNED) return null; // limit reached
+  await writePins([id, ...pins]);
+  return true;
+}
+
 // ─── Session CRUD ─────────────────────────────────────────────────────────────
 
 /** Create a new empty session and add it to the index. */
@@ -97,7 +145,6 @@ export async function createSession(subject: string | null = null): Promise<Chat
 
 /** Persist a session to storage and update the index. */
 export async function saveSession(session: ChatSession): Promise<void> {
-  // Trim messages to cap
   const trimmed: ChatSession = {
     ...session,
     messages: session.messages.slice(-MAX_MESSAGES_PER_SESSION),
@@ -109,7 +156,6 @@ export async function saveSession(session: ChatSession): Promise<void> {
     await AsyncStorage.setItem(SESSION_KEY(session.id), JSON.stringify(trimmed));
   } catch { return; }
 
-  // Update index — newest first
   const index = await readIndex();
   const filtered = index.filter((id) => id !== session.id);
   const newIndex = [session.id, ...filtered].slice(0, MAX_SESSIONS);
@@ -127,27 +173,34 @@ export async function loadSession(id: string): Promise<ChatSession | null> {
   }
 }
 
-/** Delete a session and remove it from the index. */
+/** Delete a session and remove it from the index and pins. */
 export async function deleteSession(id: string): Promise<void> {
   try {
     await AsyncStorage.removeItem(SESSION_KEY(id));
   } catch { /* ignore */ }
   const index = await readIndex();
   await writeIndex(index.filter((sid) => sid !== id));
+  // Also remove from pins if present
+  await unpinSession(id);
 }
 
 /** Rename a session title. */
 export async function renameSession(id: string, title: string): Promise<void> {
   const session = await loadSession(id);
   if (!session) return;
-  await saveSession({ ...session, title: title.trim() || "Chat" });
+  // Preserve updatedAt — don't bump it just for a rename
+  const renamed: ChatSession = { ...session, title: title.trim() || "Chat" };
+  try {
+    await AsyncStorage.setItem(SESSION_KEY(id), JSON.stringify(renamed));
+  } catch { /* ignore */ }
 }
 
 // ─── List Operations ──────────────────────────────────────────────────────────
 
-/** Load all session summaries (no full message arrays) for the history list. */
+/** Load all session summaries (no full message arrays) for the history list.
+ *  Pinned sessions are sorted to the top, then newest-first for the rest. */
 export async function listSessionSummaries(): Promise<ChatSessionSummary[]> {
-  const index = await readIndex();
+  const [index, pins] = await Promise.all([readIndex(), readPins()]);
   if (index.length === 0) return [];
 
   const keys = index.map(SESSION_KEY);
@@ -158,12 +211,12 @@ export async function listSessionSummaries(): Promise<ChatSessionSummary[]> {
     return [];
   }
 
+  const pinSet = new Set(pins);
   const summaries: ChatSessionSummary[] = [];
   for (const [, raw] of pairs) {
     if (!raw) continue;
     try {
       const s = JSON.parse(raw) as ChatSession;
-      // Find last AI message for preview
       const lastAI = [...s.messages].reverse().find((m) => m.role === "assistant");
       const preview = lastAI
         ? lastAI.content.replace(/[#*_`~\[\]]/g, "").slice(0, 80).trim()
@@ -176,15 +229,23 @@ export async function listSessionSummaries(): Promise<ChatSessionSummary[]> {
         updatedAt: s.updatedAt,
         messageCount: s.messageCount,
         preview,
+        pinned: pinSet.has(s.id),
       });
     } catch { /* skip malformed */ }
   }
 
-  // Sort newest first (index order is already newest first, but re-sort to be safe)
-  return summaries.sort((a, b) => b.updatedAt - a.updatedAt);
+  // Pinned first (in pin order), then newest-first for unpinned
+  const pinned = pins
+    .map((pid) => summaries.find((s) => s.id === pid))
+    .filter((s): s is ChatSessionSummary => !!s);
+  const unpinned = summaries
+    .filter((s) => !pinSet.has(s.id))
+    .sort((a, b) => b.updatedAt - a.updatedAt);
+
+  return [...pinned, ...unpinned];
 }
 
-/** Delete all sessions. */
+/** Delete all sessions and clear pins. */
 export async function clearAllSessions(): Promise<void> {
   const index = await readIndex();
   const keys = index.map(SESSION_KEY);
@@ -192,14 +253,11 @@ export async function clearAllSessions(): Promise<void> {
     await AsyncStorage.multiRemove(keys);
   } catch { /* ignore */ }
   await writeIndex([]);
+  await writePins([]);
 }
 
 // ─── Migration Helper ─────────────────────────────────────────────────────────
 
-/**
- * Migrate the old single-session chat history to the new multi-session format.
- * Called once on first launch of the new version.
- */
 const OLD_CHAT_KEY = "@tutorsnap/chatHistory";
 const MIGRATION_DONE_KEY = "@tutorsnap/chatSessionsMigrated";
 
