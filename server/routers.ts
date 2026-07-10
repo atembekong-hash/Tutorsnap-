@@ -319,10 +319,33 @@ Respond ONLY with valid JSON in this exact format:
       });
       const rawContent = result.choices[0]?.message?.content ?? "";
       const text = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
-      return { content: text || "I apologize, I couldn't process your request." };
+            return { content: text || "I apologize, I couldn't process your request." };
+    }),
+
+  generateSimilar: publicProcedure
+    .input(z.object({
+      problem: z.string(),
+      subject: z.string(),
+      difficulty: z.enum(["easy", "medium", "hard"]).default("medium"),
+      count: z.number().min(1).max(5).default(3),
+    }))
+    .mutation(async ({ input }) => {
+      const prompt = `You are TutorSnap, an expert academic tutor.\nThe student just solved this problem:\n"${input.problem}"\n\nGenerate exactly ${input.count} similar practice problems of ${input.difficulty} difficulty in the subject "${input.subject}".\nThe problems should test the same concept or skill but use different numbers, scenarios, or contexts.\nRespond ONLY with valid JSON in this exact format:\n{\n  "problems": [\n    {\n      "id": "p1",\n      "problem": "The practice problem text",\n      "hint": "A brief hint (1 sentence)"\n    }\n  ]\n}`;
+      const result = await invokeLLM({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: prompt },
+          { role: "user", content: "Generate the similar problems now." },
+        ],
+        max_tokens: 1200,
+        response_format: { type: "json_object" },
+      });
+      const rawContent = result.choices[0]?.message?.content ?? "";
+      const text = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
+      const jsonStr = extractJsonFromContent(text);
+      return JSON.parse(jsonStr) as { problems: { id: string; problem: string; hint: string }[] };
     }),
 });
-
 // ─── Voice router ────────────────────────────────────────────────────────────
 const voiceRouter = router({
   /** Get a presigned PUT URL to upload audio directly from the client */
@@ -361,10 +384,9 @@ const voiceRouter = router({
           message: result.error,
         });
       }
-      return { text: result.text, language: result.language };
+                  return { text: result.text, language: result.language };
     }),
 });
-
 // Keep math router as alias for backward compatibility
 const mathRouter = academicRouter;
 

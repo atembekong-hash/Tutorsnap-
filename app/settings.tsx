@@ -516,6 +516,13 @@ export default function SettingsScreen() {
           onPress={() => router.push("/study-planner" as any)}
         />
         <SettingsRow
+          icon="trophy.fill"
+          label="Streak Leaderboard"
+          subtitle="Compare streaks with friends"
+          colors={colors}
+          onPress={() => router.push("/leaderboard" as any)}
+        />
+        <SettingsRow
           icon="person.2.fill"
           label="Preferred Subjects"
           subtitle={preferredCategoryLabels || "All subjects"}

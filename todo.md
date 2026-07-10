@@ -103,3 +103,6 @@
 - [x] Study Planner today-widget card on home screen
 - [x] Streak Shield/Freeze system in Progress screen
 - [x] Push notifications for scheduled study reminders
+- [x] Pomodoro timer for active Study Planner sessions
+- [x] Streak leaderboard with shareable invite links
+- [x] AI-generated similar practice problems on Solution screen

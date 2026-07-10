@@ -167,6 +167,20 @@ export default function RootLayout() {
                 animation: "slide_from_right",
               }}
             />
+            <Stack.Screen
+              name="pomodoro"
+              options={{
+                presentation: "fullScreenModal",
+                animation: "slide_from_bottom",
+              }}
+            />
+            <Stack.Screen
+              name="leaderboard"
+              options={{
+                presentation: "card",
+                animation: "slide_from_right",
+              }}
+            />
             <Stack.Screen name="oauth/callback" />
           </Stack>
           <StatusBar style="auto" />

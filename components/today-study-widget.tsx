@@ -100,12 +100,26 @@ export function TodayStudyWidget() {
                 </Text>
               </View>
 
-              {/* Status indicator */}
+              {/* Status / Timer button */}
               <View style={styles.statusCol}>
                 {isNow ? (
-                  <View style={[styles.nowBadge, { backgroundColor: subjectColor }]}>
-                    <Text style={styles.nowText}>NOW</Text>
-                  </View>
+                  <TouchableOpacity
+                    onPress={() =>
+                      router.push({
+                        pathname: "/pomodoro" as any,
+                        params: {
+                          duration: String(slot.durationMinutes),
+                          subject: slot.subject,
+                          label: slot.label,
+                        },
+                      })
+                    }
+                    style={[styles.timerBtn, { backgroundColor: subjectColor }]}
+                    activeOpacity={0.8}
+                  >
+                    <IconSymbol size={12} name="play.fill" color="#FFF" />
+                    <Text style={styles.timerBtnText}>Start</Text>
+                  </TouchableOpacity>
                 ) : isPast ? (
                   <IconSymbol size={16} name="checkmark.circle.fill" color={colors.success} />
                 ) : slot.notifyEnabled ? (
@@ -194,4 +208,13 @@ const styles = StyleSheet.create({
   nowText: { color: "#FFFFFF", fontSize: 9, fontWeight: "800", letterSpacing: 0.5 },
   moreRow: { paddingVertical: 4, alignItems: "center" },
   moreText: { fontSize: 13, fontWeight: "600" },
+  timerBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  timerBtnText: { color: "#FFFFFF", fontSize: 11, fontWeight: "700" },
 });

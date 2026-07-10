@@ -21,6 +21,7 @@ import { toggleBookmark, isBookmarked } from "@/lib/bookmarks";
 import type { MathSolution, SolutionStep, HistoryItem, MathSubject } from "@/shared/types";
 import { getSubjectColor, getSubjectLabel } from "@/lib/subjects";
 import { useFontSize } from "@/lib/font-size-provider";
+import { trpc } from "@/lib/trpc";
 
 function StepCard({ step, colors, fs }: { step: SolutionStep; colors: any; fs: (n: number) => number }) {
   const [expanded, setExpanded] = useState(true);
@@ -66,6 +67,10 @@ export default function SolutionScreen() {
   const [bookmarked, setBookmarked] = useState(false);
   const [copyFeedback, setCopyFeedback] = useState(false);
   const [shareLoading, setShareLoading] = useState(false);
+  const [showSimilar, setShowSimilar] = useState(false);
+  const [similarProblems, setSimilarProblems] = useState<{ id: string; problem: string; hint: string }[]>([]);
+  const [expandedHint, setExpandedHint] = useState<string | null>(null);
+  const generateSimilarMutation = trpc.math.generateSimilar.useMutation();
 
   let solution: MathSolution | null = null;
   try {
@@ -331,6 +336,73 @@ export default function SolutionScreen() {
           </View>
         )}
 
+        {/* AI Similar Problems */}
+        <View style={[styles.similarSection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <TouchableOpacity
+            onPress={async () => {
+              if (showSimilar) { setShowSimilar(false); return; }
+              if (similarProblems.length > 0) { setShowSimilar(true); return; }
+              if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              try {
+                const result = await generateSimilarMutation.mutateAsync({
+                  problem: solution!.problem,
+                  subject: solution!.subject,
+                  difficulty: "medium",
+                  count: 3,
+                });
+                setSimilarProblems(result.problems ?? []);
+                setShowSimilar(true);
+                if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              } catch { /* ignore */ }
+            }}
+            style={styles.similarHeader}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.similarIconWrap, { backgroundColor: `${colors.primary}15` }]}>
+              {generateSimilarMutation.isPending ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <IconSymbol size={18} name="wand.and.stars" color={colors.primary} />
+              )}
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.similarTitle, { color: colors.foreground }]}>Generate Similar Problems</Text>
+              <Text style={[styles.similarSub, { color: colors.muted }]}>
+                {generateSimilarMutation.isPending ? "Generating 3 practice problems…" : similarProblems.length > 0 ? `${similarProblems.length} problems ready` : "AI-generated practice problems"}
+              </Text>
+            </View>
+            <IconSymbol size={16} name={showSimilar ? "chevron.up" : "chevron.down"} color={colors.muted} />
+          </TouchableOpacity>
+
+          {showSimilar && similarProblems.length > 0 && (
+            <View style={styles.similarList}>
+              {similarProblems.map((p, i) => (
+                <View key={p.id} style={[styles.similarItem, { borderColor: colors.border }]}>
+                  <View style={styles.similarItemHeader}>
+                    <View style={[styles.similarNum, { backgroundColor: `${colors.primary}20` }]}>
+                      <Text style={[styles.similarNumText, { color: colors.primary }]}>{i + 1}</Text>
+                    </View>
+                    <Text style={[styles.similarProblem, { color: colors.foreground, fontSize: fs(14) }]}>{p.problem}</Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => setExpandedHint(expandedHint === p.id ? null : p.id)}
+                    style={styles.hintToggle}
+                    activeOpacity={0.7}
+                  >
+                    <IconSymbol size={14} name="lightbulb.fill" color={colors.warning} />
+                    <Text style={[styles.hintToggleText, { color: colors.warning }]}>
+                      {expandedHint === p.id ? "Hide hint" : "Show hint"}
+                    </Text>
+                  </TouchableOpacity>
+                  {expandedHint === p.id && (
+                    <Text style={[styles.hintText, { color: colors.muted, fontSize: fs(13) }]}>{p.hint}</Text>
+                  )}
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+
         {/* Action Buttons */}
         <View style={styles.actionRow}>
           <TouchableOpacity
@@ -521,4 +593,47 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   actionBtnText: { fontSize: 14, fontWeight: "700" },
+  similarSection: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    overflow: "hidden",
+  },
+  similarHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 16,
+  },
+  similarIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  similarTitle: { fontSize: 15, fontWeight: "700", marginBottom: 2 },
+  similarSub: { fontSize: 12 },
+  similarList: { paddingHorizontal: 16, paddingBottom: 12 },
+  similarItem: {
+    borderTopWidth: 1,
+    paddingVertical: 12,
+    gap: 8,
+  },
+  similarItemHeader: { flexDirection: "row", gap: 10, alignItems: "flex-start" },
+  similarNum: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 1,
+    flexShrink: 0,
+  },
+  similarNumText: { fontSize: 12, fontWeight: "800" },
+  similarProblem: { flex: 1, fontWeight: "500", lineHeight: 20 },
+  hintToggle: { flexDirection: "row", alignItems: "center", gap: 4, marginLeft: 34 },
+  hintToggleText: { fontSize: 12, fontWeight: "600" },
+  hintText: { marginLeft: 34, lineHeight: 18 },
 });
