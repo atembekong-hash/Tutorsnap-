@@ -153,3 +153,8 @@
 - [x] Streak freeze / grace day mechanic (earned after 7-day streak, one per week)
 - [x] Similar Problems shortcut chip on Bookmarks card (jumps to Practice for that subject)
 - [x] Share to Classroom feature (teacher generates class code, students join to receive problems)
+
+## New Features (Round 12)
+- [x] Classroom tab in main navigation bar (dedicated tab icon, accessible from anywhere)
+- [x] Challenge a Classmate flow (timed challenge from Classroom feed via share link)
+- [x] Teacher dashboard analytics in Classroom (subject breakdown, most shared topics)

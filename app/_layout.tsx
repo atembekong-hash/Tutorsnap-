@@ -181,6 +181,13 @@ export default function RootLayout() {
               }}
             />
             <Stack.Screen
+              name="challenge"
+              options={{
+                presentation: "fullScreenModal",
+                animation: "slide_from_bottom",
+              }}
+            />
+            <Stack.Screen
               name="study-planner"
               options={{
                 presentation: "card",
