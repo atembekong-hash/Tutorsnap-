@@ -2,13 +2,19 @@ import { useState, useEffect, useCallback } from "react";
 import { Platform } from "react-native";
 import Constants from "expo-constants";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getApiBaseUrl } from "@/constants/oauth";
 
-// Primary URL — served from the production domain.
-// The local API server at /version.json is used as a dev fallback.
-const VERSION_CHECK_URLS = [
-  "https://tutorsnapai.tech/version.json",
-  "http://127.0.0.1:3000/version.json",
-];
+// Version check is served by the app's own Express backend at /version.json.
+// This works in both development (local API server) and production (deployed backend).
+// NOTE FOR FUTURE WEB BUILD: once tutorsnapai.tech is live, the production
+// backend should also proxy or mirror this endpoint so the public URL works.
+function getVersionCheckUrl(): string {
+  const base = getApiBaseUrl();
+  if (base) return `${base}/version.json`;
+  // Fallback for native builds where getApiBaseUrl returns empty
+  return "http://127.0.0.1:3000/version.json";
+}
+
 const STORAGE_KEY = "@tutorsnap/lastUpdateCheckDismissed";
 // Only show the update prompt once per 24 hours per version
 const DISMISS_TTL_MS = 24 * 60 * 60 * 1000;
@@ -67,22 +73,19 @@ export function useUpdateCheck(): UpdateCheckState {
       try {
         let data: UpdateInfo | null = null;
 
-        for (const url of VERSION_CHECK_URLS) {
-          try {
-            const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 6000);
-            const res = await fetch(url, {
-              signal: controller.signal,
-              headers: { "Cache-Control": "no-cache" },
-            });
-            clearTimeout(timeout);
-            if (res.ok) {
-              data = (await res.json()) as UpdateInfo;
-              break;
-            }
-          } catch {
-            // Try next URL
+        try {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 6000);
+          const res = await fetch(getVersionCheckUrl(), {
+            signal: controller.signal,
+            headers: { "Cache-Control": "no-cache" },
+          });
+          clearTimeout(timeout);
+          if (res.ok) {
+            data = (await res.json()) as UpdateInfo;
           }
+        } catch {
+          // Network error — update check is non-critical, silently skip
         }
 
         if (!data || cancelled) return;

@@ -571,13 +571,30 @@ export default function FlashcardsScreen() {
             </View>
           </View>
           <TouchableOpacity
+            accessibilityLabel="Study again"
             onPress={restart}
             style={[styles.restartBtn, { backgroundColor: colors.primary }]}
           >
             <IconSymbol size={18} name="arrow.counterclockwise" color="#FFFFFF" />
             <Text style={styles.restartBtnText}>Study Again</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 12 }}>
+          <TouchableOpacity
+            accessibilityLabel="Export deck as PDF"
+            onPress={() => {
+              if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setShareMenuVisible(true);
+            }}
+            style={[styles.printBtn, { borderColor: colors.border }]}
+            activeOpacity={0.75}
+          >
+            {pdfLoading ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <IconSymbol size={16} name="doc.fill" color={colors.primary} />
+            )}
+            <Text style={[styles.printBtnText, { color: colors.primary }]}>Export Deck</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 4 }}>
             <Text style={[styles.doneBack, { color: colors.muted }]}>Back to Bookmarks</Text>
           </TouchableOpacity>
         </View>
@@ -894,4 +911,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   menuCancelText: { fontSize: 15, fontWeight: "600" },
+  // Print / Export button on Session Complete screen
+  printBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginTop: 8,
+  },
+  printBtnText: { fontSize: 15, fontWeight: "700" },
 });

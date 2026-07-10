@@ -179,4 +179,6 @@
 ## Round 16: Flashcard PDF Export + Version Endpoint
 - [x] Flashcard PDF export: replace text-only share with a two-option menu (Share as PDF using expo-print, Share as Text), styled HTML deck with all cards
 - [x] Version.json endpoint: add GET /version.json route to Express server returning current version metadata
-- [x] useUpdateCheck hook updated to try tutorsnapai.tech first, then local API server as fallback
+- [x] useUpdateCheck hook refactored to use getApiBaseUrl() from the mobile architecture — no tutorsnapai.tech dependency
+- [x] Export Deck button added to Session Complete screen (opens same two-option share menu)
+- [x] FUTURE_WEB_SETUP.md created documenting all deferred tutorsnapai.tech tasks (version.json hosting, App Store ID, legal pages, universal links, email setup)
