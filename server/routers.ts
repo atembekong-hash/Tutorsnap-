@@ -193,20 +193,24 @@ const academicRouter = router({
       subject: z.string().default("other"),
     }))
     .mutation(async ({ input }) => {
-      const systemPrompt = buildSolveSystemPrompt(input.subject);
-      const result = await invokeLLM({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: input.problem },
-        ],
-        max_tokens: 6000,
-        response_format: { type: "json_object" },
-      });
-      const rawContent = result.choices[0]?.message?.content ?? "";
-      const text = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
-      const jsonStr = extractJsonFromContent(text);
-      return JSON.parse(jsonStr);
+      try {
+        const systemPrompt = buildSolveSystemPrompt(input.subject);
+        const result = await invokeLLM({
+          model: "gpt-4o-mini",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: input.problem },
+          ],
+          max_tokens: 6000,
+          response_format: { type: "json_object" },
+        });
+        const rawContent = result.choices[0]?.message?.content ?? "";
+        const text = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
+        const jsonStr = extractJsonFromContent(text);
+        return JSON.parse(jsonStr);
+      } catch (err: unknown) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err instanceof Error ? err.message : "Failed to solve problem. Please try again." });
+      }
     }),
 
   solveFromImage: publicProcedure
@@ -216,28 +220,32 @@ const academicRouter = router({
       subject: z.string().default("other"),
     }))
     .mutation(async ({ input }) => {
-      const result = await invokeLLM({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: IMAGE_SOLVE_SYSTEM_PROMPT },
-          {
-            role: "user",
-            content: [
-              { type: "text", text: `Please identify and answer the question in this image. Subject hint: ${input.subject}` },
-              {
-                type: "image_url",
-                image_url: { url: `data:${input.mimeType};base64,${input.imageBase64}` },
-              },
-            ],
-          },
-        ],
-        max_tokens: 6000,
-        response_format: { type: "json_object" },
-      });
-      const rawContent = result.choices[0]?.message?.content ?? "";
-      const text = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
-      const jsonStr = extractJsonFromContent(text);
-      return JSON.parse(jsonStr);
+      try {
+        const result = await invokeLLM({
+          model: "gpt-4o-mini",
+          messages: [
+            { role: "system", content: IMAGE_SOLVE_SYSTEM_PROMPT },
+            {
+              role: "user",
+              content: [
+                { type: "text", text: `Please identify and answer the question in this image. Subject hint: ${input.subject}` },
+                {
+                  type: "image_url",
+                  image_url: { url: `data:${input.mimeType};base64,${input.imageBase64}` },
+                },
+              ],
+            },
+          ],
+          max_tokens: 6000,
+          response_format: { type: "json_object" },
+        });
+        const rawContent = result.choices[0]?.message?.content ?? "";
+        const text = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
+        const jsonStr = extractJsonFromContent(text);
+        return JSON.parse(jsonStr);
+      } catch (err: unknown) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err instanceof Error ? err.message : "Failed to process image. Please try again." });
+      }
     }),
 
   generatePractice: publicProcedure

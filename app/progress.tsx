@@ -35,6 +35,7 @@ import {
 import { BadgeUnlockModal } from "@/components/badge-unlock-modal";
 import { SubjectRing } from "@/components/subject-ring";
 import { getSubjectEmoji } from "@/lib/subjects";
+import { getChallengeHistory, getChallengeStats, type ChallengeAttempt } from "@/lib/challenge-history";
 import { StreakShieldCard } from "@/components/streak-shield-card";
 import { StreakFreezeCard } from "@/components/streak-freeze-card";
 
@@ -49,6 +50,7 @@ export default function ProgressScreen() {
   const [quizStats, setQuizStats] = useState<QuizStats | null>(null);
   const [showGoalPicker, setShowGoalPicker] = useState(false);
   const [unlockModal, setUnlockModal] = useState<{ tier: BadgeTier; subjectLabel: string } | null>(null);
+  const [challengeHistory, setChallengeHistory] = useState<ChallengeAttempt[]>([]);
 
   const loadProgress = async () => {
     try {
@@ -73,6 +75,11 @@ export default function ProgressScreen() {
           }
         }
       } catch { /* badge check failure is non-critical */ }
+      // Load challenge history
+      try {
+        const ch = await getChallengeHistory();
+        setChallengeHistory(ch);
+      } catch { /* non-critical */ }
     } catch {
       // getProgress has internal fallbacks; this handles unexpected failures
     }
@@ -400,6 +407,63 @@ export default function ProgressScreen() {
           </View>
         )}
 
+        {/* Challenge History Section */}
+        {challengeHistory.length > 0 && (() => {
+          const stats = getChallengeStats(challengeHistory);
+          return (
+            <View style={styles.section}>
+              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>⚡ Challenge History</Text>
+              {/* Stats row */}
+              <View style={[styles.challengeStatsRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <View style={styles.challengeStat}>
+                  <Text style={[styles.challengeStatNum, { color: colors.primary }]}>{stats.total}</Text>
+                  <Text style={[styles.challengeStatLabel, { color: colors.muted }]}>Total</Text>
+                </View>
+                <View style={[styles.challengeStatDivider, { backgroundColor: colors.border }]} />
+                <View style={styles.challengeStat}>
+                  <Text style={[styles.challengeStatNum, { color: colors.success }]}>{stats.correct}</Text>
+                  <Text style={[styles.challengeStatLabel, { color: colors.muted }]}>Correct</Text>
+                </View>
+                <View style={[styles.challengeStatDivider, { backgroundColor: colors.border }]} />
+                <View style={styles.challengeStat}>
+                  <Text style={[styles.challengeStatNum, { color: stats.pct >= 70 ? colors.success : stats.pct >= 40 ? colors.warning : colors.error }]}>{stats.pct}%</Text>
+                  <Text style={[styles.challengeStatLabel, { color: colors.muted }]}>Accuracy</Text>
+                </View>
+                <View style={[styles.challengeStatDivider, { backgroundColor: colors.border }]} />
+                <View style={styles.challengeStat}>
+                  <Text style={[styles.challengeStatNum, { color: colors.foreground }]}>{stats.avgTime}s</Text>
+                  <Text style={[styles.challengeStatLabel, { color: colors.muted }]}>Avg Time</Text>
+                </View>
+                {stats.streak > 1 && (
+                  <>
+                    <View style={[styles.challengeStatDivider, { backgroundColor: colors.border }]} />
+                    <View style={styles.challengeStat}>
+                      <Text style={[styles.challengeStatNum, { color: colors.warning }]}>🔥{stats.streak}</Text>
+                      <Text style={[styles.challengeStatLabel, { color: colors.muted }]}>Streak</Text>
+                    </View>
+                  </>
+                )}
+              </View>
+              {/* Recent attempts list */}
+              {challengeHistory.slice(0, 10).map((attempt) => (
+                <View key={attempt.id} style={[styles.challengeRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                  <View style={[styles.challengeRowAccent, { backgroundColor: attempt.correct ? colors.success : colors.error }]} />
+                  <View style={styles.challengeRowBody}>
+                    <Text style={[styles.challengeRowProblem, { color: colors.foreground }]} numberOfLines={2}>{attempt.problem}</Text>
+                    <View style={styles.challengeRowMeta}>
+                      <Text style={[styles.challengeRowSubject, { color: colors.muted }]}>{getSubjectEmoji(attempt.subject as any)} {attempt.subject}</Text>
+                      <Text style={[styles.challengeRowTime, { color: colors.muted }]}>{attempt.timeTaken}s · {new Date(attempt.date).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</Text>
+                    </View>
+                  </View>
+                  <Text style={[styles.challengeRowResult, { color: attempt.correct ? colors.success : colors.error }]}>
+                    {attempt.correct ? "✓" : "✗"}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          );
+        })()}
+
         {/* Empty State */}
         {streak.totalSolved === 0 && (
           <View style={styles.emptyState}>
@@ -652,4 +716,77 @@ const styles = StyleSheet.create({
   accuracyPct: { fontSize: 13, fontWeight: "700", minWidth: 36, textAlign: "right" },
   accuracyMetaRow: { marginTop: 3, marginLeft: 18 },
   accuracyMeta: { fontSize: 11 },
+  section: {
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    marginBottom: 12,
+  },
+  challengeStatsRow: {
+    flexDirection: "row",
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 12,
+    marginBottom: 12,
+    alignItems: "center",
+    justifyContent: "space-around",
+  },
+  challengeStat: {
+    alignItems: "center",
+    flex: 1,
+  },
+  challengeStatNum: {
+    fontSize: 20,
+    fontWeight: "800",
+  },
+  challengeStatLabel: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  challengeStatDivider: {
+    width: 1,
+    height: 32,
+    marginHorizontal: 4,
+  },
+  challengeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 10,
+    borderWidth: 1,
+    marginBottom: 8,
+    overflow: "hidden",
+  },
+  challengeRowAccent: {
+    width: 4,
+    alignSelf: "stretch",
+  },
+  challengeRowBody: {
+    flex: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  challengeRowProblem: {
+    fontSize: 13,
+    fontWeight: "600",
+    lineHeight: 18,
+  },
+  challengeRowMeta: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 4,
+  },
+  challengeRowSubject: {
+    fontSize: 11,
+  },
+  challengeRowTime: {
+    fontSize: 11,
+  },
+  challengeRowResult: {
+    fontSize: 20,
+    fontWeight: "800",
+    paddingRight: 12,
+  },
 });

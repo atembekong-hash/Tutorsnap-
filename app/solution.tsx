@@ -688,17 +688,17 @@ export default function SolutionScreen() {
         )}
 
         {/* Worked Example */}
-        {(solution as any).workedExample && (
+        {solution.workedExample && (
           <View style={[styles.workedExampleCard, { backgroundColor: `${colors.success}08`, borderColor: `${colors.success}30` }]}>
             <View style={[styles.sectionHeader, { justifyContent: "space-between" }]}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
                 <IconSymbol size={16} name="pencil.and.list.clipboard" color={colors.success} />
                 <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-                  {(solution as any).workedExample.title || "Worked Example"}
+                  {solution.workedExample.title || "Worked Example"}
                 </Text>
               </View>
               <WorkedExampleCopyButton
-                problem={(solution as any).workedExample.problem}
+                problem={solution.workedExample.problem}
                 colors={colors}
                 fs={fs}
               />
@@ -706,16 +706,16 @@ export default function SolutionScreen() {
             <View style={[styles.workedExampleProblem, { backgroundColor: `${colors.success}12`, borderColor: `${colors.success}25` }]}>
               <Text style={[styles.workedExampleLabel, { color: colors.success }]}>EXAMPLE PROBLEM</Text>
               <Text style={[styles.workedExampleProblemText, { color: colors.foreground, fontSize: fs(14) }]}>
-                {(solution as any).workedExample.problem}
+                {solution.workedExample.problem}
               </Text>
             </View>
             <AIResponseErrorBoundary
-              fallbackText={(solution as any).workedExample.solution}
+              fallbackText={solution.workedExample.solution}
               fontSize={fs(14)}
               color={colors.foreground}
             >
               <AIResponseRenderer
-                markdown={(solution as any).workedExample.solution}
+                markdown={solution.workedExample.solution}
                 fontSize={fs(14)}
                 color={colors.foreground}
                 codeBackground={colors.surface}

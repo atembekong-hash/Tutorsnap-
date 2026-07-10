@@ -25,6 +25,7 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { getSubjectColor, getSubjectLabel, getSubjectEmoji } from "@/lib/subjects";
 import { recordChallengeResult, getClassroomDisplayName } from "@/lib/classroom";
+import { saveChallengeAttempt } from "@/lib/challenge-history";
 import type { MathSubject } from "@/shared/types";
 
 type Phase = "ready" | "active" | "result";
@@ -132,6 +133,16 @@ export default function ChallengeScreen() {
 
     setIsCorrect(correct);
     setPhase("result");
+
+    // Save to local challenge history
+    saveChallengeAttempt({
+      problem,
+      subject,
+      classCode,
+      correct,
+      timeTaken: elapsed,
+      date: new Date().toISOString(),
+    }).catch(() => {/* ignore */});
 
     // Record result in leaderboard if this came from a classroom
     if (classCode) {

@@ -59,6 +59,7 @@ const MAPPING = {
   "flame.fill": "local-fire-department",
   "chart.xyaxis.line": "show-chart",
   "arrow.up.right": "north-east",
+  "arrow.up.circle.fill": "arrow-circle-up",
   "arrow.counterclockwise": "replay",
   "play.fill": "play-arrow",
   "pause.fill": "pause",

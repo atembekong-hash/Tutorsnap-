@@ -12,6 +12,7 @@ import { useRouter } from "expo-router";
 import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useColors } from "@/hooks/use-colors";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { SUBJECT_CATEGORIES, type SubjectCategory } from "@/lib/subjects";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -98,7 +99,7 @@ export default function OnboardingScreen() {
   };
 
   return (
-    <View style={[styles.root, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]} edges={["top", "bottom", "left", "right"]}>
       {/* Skip button */}
       <TouchableOpacity
         style={styles.skipBtn}
@@ -206,8 +207,7 @@ export default function OnboardingScreen() {
         </Text>
       </TouchableOpacity>
 
-      <View style={{ height: 40 }} />
-    </View>
+    </SafeAreaView>
   );
 }
 

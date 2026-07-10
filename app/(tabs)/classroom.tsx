@@ -155,6 +155,9 @@ export default function ClassroomTabScreen() {
   // Bookmarked problem IDs (local set for instant UI feedback)
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
 
+  // Expanded card ID for full problem text preview
+  const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
+
   const dateOptions = useMemo(() => getDateOptions(), []);
 
   // Load persisted homework completion state on mount
@@ -614,9 +617,24 @@ export default function ClassroomTabScreen() {
               )}
             </View>
           </View>
-          <Text style={[styles.problemText, { color: colors.foreground }]} numberOfLines={2}>
-            {item.problem}
-          </Text>
+          {/* Expandable problem preview */}
+          <TouchableOpacity
+            onPress={(e) => { e.stopPropagation?.(); setExpandedCardId((prev) => prev === item.id ? null : item.id); }}
+            activeOpacity={0.85}
+            accessibilityLabel={expandedCardId === item.id ? "Collapse problem" : "Expand problem"}
+          >
+            <Text
+              style={[styles.problemText, { color: colors.foreground }]}
+              numberOfLines={expandedCardId === item.id ? undefined : 2}
+            >
+              {item.problem}
+            </Text>
+            {item.problem.length > 80 && (
+              <Text style={[styles.expandHint, { color: colors.primary }]}>
+                {expandedCardId === item.id ? "Show less ▲" : "Show more ▼"}
+              </Text>
+            )}
+          </TouchableOpacity>
           <View style={styles.problemFooter}>
             <Text style={[styles.sharedBy, { color: colors.muted }]}>
               Shared by {item.sharedBy}
@@ -1928,5 +1946,11 @@ const styles = StyleSheet.create({
   },
   sortOptionText: {
     fontSize: 15,
+  },
+  expandHint: {
+    fontSize: 11,
+    fontWeight: "600",
+    marginTop: 4,
+    letterSpacing: 0.2,
   },
 });

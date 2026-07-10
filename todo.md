@@ -338,3 +338,19 @@
 - [x] Fix challenge leaderboard fallback from "Me" to "Student"
 - [x] Fix "View Full Solution" in challenge to use data JSON param (auto-solve if steps missing)
 - [x] Fix classroom feed steps — stored as JSON strings, parsed back on navigation (no more lossy string format)
+
+## Round 36: Classroom Preview + Challenge History + Full App Audit
+
+- [x] Expandable problem preview on classroom feed cards (tap to expand/collapse)
+- [x] Challenge history log — lib/challenge-history.ts with local AsyncStorage persistence
+- [x] Challenge history section in Progress screen (stats card + recent attempts list)
+- [x] Save challenge attempt in challenge.tsx handleSubmit
+- [x] Remove as any casts from workedExample in solution.tsx (type already correct)
+- [x] Onboarding screen: use SafeAreaView for proper notch/safe-area handling
+- [x] Server router: wrap solve and solveFromImage mutations in try-catch with TRPCError
+- [x] All icon mappings verified — arrow.up.circle.fill added
+- [x] All FlatLists verified to have keyExtractor
+- [x] All onPress handlers verified — no dead-end buttons found
+- [x] Classroom sort menu, search bar, subject filter all verified wired correctly
+- [x] Leaderboard clipboard fallback already correct (expo-clipboard)
+- [x] Auto-solve loading state in solution.tsx verified correct
