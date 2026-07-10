@@ -64,6 +64,28 @@ async function startServer() {
     res.json({ ok: true, timestamp: Date.now() });
   });
 
+  // Version metadata endpoint — used by the in-app update check hook.
+  // The live tutorsnapai.tech/version.json is the canonical source for production.
+  // This endpoint serves the same data from the local API server so the update
+  // prompt can be tested in development without a deployed domain.
+  app.get("/version.json", (_req, res) => {
+    res.json({
+      latestVersion: "1.1.0",
+      minVersion: "1.0.0",
+      releaseNotes: [
+        "Flashcard PDF export — share your entire deck as a printable PDF",
+        "Classroom leaderboard and homework assignment tools",
+        "153 accessibility improvements for screen readers",
+        "App Store privacy manifest and NSUsageDescription strings",
+        "Pomodoro focus timer for Study Planner sessions",
+        "Streak freeze mechanic and badge unlock animations",
+      ],
+      iosStoreUrl: "https://apps.apple.com/app/tutorsnap/id0000000000",
+      androidStoreUrl: "https://play.google.com/store/apps/details?id=com.tutorsnap.app",
+      forceUpdate: false,
+    });
+  });
+
   app.use(
     "/api/trpc",
     createExpressMiddleware({

@@ -3,7 +3,12 @@ import { Platform } from "react-native";
 import Constants from "expo-constants";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const VERSION_CHECK_URL = "https://tutorsnapai.tech/version.json";
+// Primary URL — served from the production domain.
+// The local API server at /version.json is used as a dev fallback.
+const VERSION_CHECK_URLS = [
+  "https://tutorsnapai.tech/version.json",
+  "http://127.0.0.1:3000/version.json",
+];
 const STORAGE_KEY = "@tutorsnap/lastUpdateCheckDismissed";
 // Only show the update prompt once per 24 hours per version
 const DISMISS_TTL_MS = 24 * 60 * 60 * 1000;
@@ -60,18 +65,27 @@ export function useUpdateCheck(): UpdateCheckState {
       if (Platform.OS === "web") return;
 
       try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 6000);
+        let data: UpdateInfo | null = null;
 
-        const res = await fetch(VERSION_CHECK_URL, {
-          signal: controller.signal,
-          headers: { "Cache-Control": "no-cache" },
-        });
-        clearTimeout(timeout);
+        for (const url of VERSION_CHECK_URLS) {
+          try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 6000);
+            const res = await fetch(url, {
+              signal: controller.signal,
+              headers: { "Cache-Control": "no-cache" },
+            });
+            clearTimeout(timeout);
+            if (res.ok) {
+              data = (await res.json()) as UpdateInfo;
+              break;
+            }
+          } catch {
+            // Try next URL
+          }
+        }
 
-        if (!res.ok || cancelled) return;
-
-        const data = (await res.json()) as UpdateInfo;
+        if (!data || cancelled) return;
 
         // Get current app version from app.config.ts via Constants
         const currentVersion =

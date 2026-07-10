@@ -8,6 +8,8 @@ import {
   ScrollView,
   Platform,
   Animated,
+  Modal,
+  ActivityIndicator,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import * as Haptics from "expo-haptics";
@@ -16,9 +18,10 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { getBookmarks } from "@/lib/bookmarks";
 import type { HistoryItem } from "@/shared/types";
-import { getSubjectDef } from "@/lib/subjects";
+import { getSubjectDef, getSubjectLabel } from "@/lib/subjects";
 import * as Sharing from "expo-sharing";
 import * as FileSystem from "expo-file-system/legacy";
+import * as Print from "expo-print";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CARD_WIDTH = SCREEN_WIDTH - 48;
@@ -128,6 +131,212 @@ function FlipCard({
   );
 }
 
+// ─── PDF HTML Builder ─────────────────────────────────────────────────────────
+
+function buildDeckHtml(bookmarks: HistoryItem[]): string {
+  const date = new Date().toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
+  const cardsHtml = bookmarks
+    .map((item, idx) => {
+      const subjectDef = getSubjectDef(item.subject as any);
+      const subjectLabel = getSubjectLabel(item.subject);
+      const emoji = subjectDef?.emoji ?? "📚";
+      const color = subjectDef?.color ?? "#4F46E5";
+
+      const stepsHtml =
+        item.steps && item.steps.length > 0
+          ? `<div class="steps-section">
+              <div class="steps-label">Solution Steps</div>
+              ${(item.steps as any[])
+                .map((s, si) => {
+                  const title = typeof s === "string" ? "" : s.title ?? "";
+                  const explanation =
+                    typeof s === "string" ? s : s.explanation ?? JSON.stringify(s);
+                  const expression = typeof s === "string" ? "" : s.expression ?? "";
+                  return `<div class="step">
+                    <span class="step-num">Step ${si + 1}</span>
+                    ${title ? `<strong class="step-title">${title}</strong>` : ""}
+                    ${expression ? `<div class="step-expr">${expression}</div>` : ""}
+                    <p class="step-text">${explanation}</p>
+                  </div>`;
+                })
+                .join("")}
+            </div>`
+          : "";
+
+      return `
+        <div class="card" style="border-left: 4px solid ${color}">
+          <div class="card-header">
+            <span class="card-num">#${idx + 1}</span>
+            <span class="subject-badge" style="background:${color}18;color:${color}">${emoji} ${subjectLabel}</span>
+          </div>
+          <div class="question-section">
+            <div class="section-label">QUESTION</div>
+            <p class="question-text">${item.problem}</p>
+          </div>
+          <div class="answer-section">
+            <div class="section-label answer-label">ANSWER</div>
+            <p class="answer-text">${item.answer}</p>
+          </div>
+          ${stepsHtml}
+        </div>
+      `;
+    })
+    .join("");
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      background: #fff;
+      color: #1a1a1a;
+      padding: 0;
+    }
+    .cover {
+      background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+      color: #fff;
+      padding: 40px 32px 32px;
+      margin-bottom: 32px;
+    }
+    .cover-app { font-size: 11px; font-weight: 800; letter-spacing: 3px; opacity: 0.75; margin-bottom: 8px; }
+    .cover-title { font-size: 28px; font-weight: 800; margin-bottom: 6px; }
+    .cover-meta { font-size: 14px; opacity: 0.8; }
+    .cover-count {
+      display: inline-block;
+      background: rgba(255,255,255,0.2);
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 700;
+      margin-top: 14px;
+    }
+    .cards-container { padding: 0 24px 40px; }
+    .card {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 20px;
+      page-break-inside: avoid;
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .card-num { font-size: 12px; font-weight: 700; color: #9ca3af; }
+    .subject-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 8px;
+    }
+    .section-label {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      color: #6b7280;
+      margin-bottom: 6px;
+    }
+    .answer-label { color: #16a34a; }
+    .question-section { margin-bottom: 14px; }
+    .question-text {
+      font-size: 15px;
+      font-weight: 600;
+      line-height: 1.55;
+      color: #111827;
+    }
+    .answer-section {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-bottom: 12px;
+    }
+    .answer-text {
+      font-size: 16px;
+      font-weight: 700;
+      line-height: 1.5;
+      color: #111827;
+    }
+    .steps-section { margin-top: 12px; }
+    .steps-label {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      color: #6b7280;
+      margin-bottom: 8px;
+    }
+    .step {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin-bottom: 8px;
+    }
+    .step-num {
+      display: inline-block;
+      background: #4F46E520;
+      color: #4F46E5;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 5px;
+      margin-bottom: 4px;
+    }
+    .step-title {
+      display: block;
+      font-size: 13px;
+      color: #1a1a1a;
+      margin-bottom: 4px;
+    }
+    .step-expr {
+      background: #4F46E510;
+      border: 1px solid #4F46E530;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-family: monospace;
+      font-size: 14px;
+      font-weight: 700;
+      color: #4F46E5;
+      text-align: center;
+      margin-bottom: 6px;
+    }
+    .step-text { font-size: 13px; color: #374151; line-height: 1.5; }
+    .footer {
+      text-align: center;
+      color: #9ca3af;
+      font-size: 11px;
+      padding: 16px 24px 32px;
+      border-top: 1px solid #f3f4f6;
+    }
+    @page { margin: 20px; }
+  </style>
+</head>
+<body>
+  <div class="cover">
+    <div class="cover-app">TUTORSNAP</div>
+    <div class="cover-title">Flashcard Deck</div>
+    <div class="cover-meta">Exported on ${date}</div>
+    <div class="cover-count">${bookmarks.length} card${bookmarks.length !== 1 ? "s" : ""}</div>
+  </div>
+  <div class="cards-container">
+    ${cardsHtml}
+  </div>
+  <div class="footer">Generated by TutorSnap · tutorsnapai.tech</div>
+</body>
+</html>`;
+}
+
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function FlashcardsScreen() {
@@ -138,6 +347,8 @@ export default function FlashcardsScreen() {
   const [sessionDone, setSessionDone] = useState(false);
   const [knownCount, setKnownCount] = useState(0);
   const [reviewCount, setReviewCount] = useState(0);
+  const [shareMenuVisible, setShareMenuVisible] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -181,9 +392,48 @@ export default function FlashcardsScreen() {
   const current = bookmarks[currentIndex];
   const progress = bookmarks.length > 0 ? (currentIndex / bookmarks.length) * 100 : 0;
 
-  const handleShareDeck = async () => {
+  const handleSharePdf = async () => {
+    setShareMenuVisible(false);
     if (bookmarks.length === 0) return;
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    if (Platform.OS === "web") {
+      // Web: open print dialog directly
+      const html = buildDeckHtml(bookmarks);
+      try {
+        await Print.printAsync({ html });
+      } catch {
+        // User cancelled
+      }
+      return;
+    }
+
+    setPdfLoading(true);
+    try {
+      const html = buildDeckHtml(bookmarks);
+      const { uri } = await Print.printToFileAsync({ html });
+      const destUri = (FileSystem.documentDirectory ?? "") + "tutorsnap_flashcards.pdf";
+      await FileSystem.moveAsync({ from: uri, to: destUri });
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(destUri, {
+          mimeType: "application/pdf",
+          dialogTitle: "Share Flashcard Deck",
+          UTI: "com.adobe.pdf",
+        });
+      }
+    } catch {
+      // User cancelled or error
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
+  const handleShareText = async () => {
+    setShareMenuVisible(false);
+    if (bookmarks.length === 0) return;
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
     const lines: string[] = [
       "TutorSnap Flashcard Deck",
       `Exported: ${new Date().toLocaleDateString()}`,
@@ -198,14 +448,16 @@ export default function FlashcardsScreen() {
       lines.push(`A: ${item.answer}`);
       if (item.steps && item.steps.length > 0) {
         lines.push("Steps:");
-        (item.steps as unknown as string[]).forEach((step, si) => {
-          const stepText = typeof step === "string" ? step : (step as any).text ?? JSON.stringify(step);
+        (item.steps as unknown as any[]).forEach((step, si) => {
+          const stepText =
+            typeof step === "string" ? step : step.explanation ?? step.text ?? JSON.stringify(step);
           lines.push(`  ${si + 1}. ${stepText}`);
         });
       }
       lines.push("─".repeat(40));
     });
     const content = lines.join("\n");
+
     try {
       if (Platform.OS === "web") {
         const blob = new Blob([content], { type: "text/plain" });
@@ -217,20 +469,31 @@ export default function FlashcardsScreen() {
         URL.revokeObjectURL(url);
       } else {
         const fileUri = (FileSystem.documentDirectory ?? "") + "tutorsnap_flashcards.txt";
-        await FileSystem.writeAsStringAsync(fileUri, content, { encoding: FileSystem.EncodingType.UTF8 });
+        await FileSystem.writeAsStringAsync(fileUri, content, {
+          encoding: FileSystem.EncodingType.UTF8,
+        });
         const canShare = await Sharing.isAvailableAsync();
         if (canShare) {
-          await Sharing.shareAsync(fileUri, { mimeType: "text/plain", dialogTitle: "Share Flashcard Deck" });
+          await Sharing.shareAsync(fileUri, {
+            mimeType: "text/plain",
+            dialogTitle: "Share Flashcard Deck",
+          });
         }
       }
-    } catch { /* ignore */ }
+    } catch {
+      // ignore
+    }
   };
 
   return (
     <ScreenContainer>
       {/* Header */}
       <View style={[styles.navBar, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity
+          accessibilityLabel="Go back"
+          onPress={() => router.back()}
+          style={styles.backBtn}
+        >
           <IconSymbol size={22} name="arrow.left" color={colors.foreground} />
         </TouchableOpacity>
         <View style={{ alignItems: "center" }}>
@@ -242,13 +505,25 @@ export default function FlashcardsScreen() {
           )}
         </View>
         <TouchableOpacity
-          accessibilityLabel="Share"
-          onPress={handleShareDeck}
+          accessibilityLabel="Export deck"
+          onPress={() => {
+            if (bookmarks.length === 0) return;
+            if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            setShareMenuVisible(true);
+          }}
           style={[styles.shareBtn, { backgroundColor: `${colors.primary}15` }]}
-          disabled={bookmarks.length === 0}
+          disabled={bookmarks.length === 0 || pdfLoading}
           activeOpacity={0.7}
         >
-          <IconSymbol size={18} name="square.and.arrow.up.fill" color={bookmarks.length === 0 ? colors.muted : colors.primary} />
+          {pdfLoading ? (
+            <ActivityIndicator size="small" color={colors.primary} />
+          ) : (
+            <IconSymbol
+              size={18}
+              name="square.and.arrow.up.fill"
+              color={bookmarks.length === 0 ? colors.muted : colors.primary}
+            />
+          )}
         </TouchableOpacity>
       </View>
 
@@ -276,11 +551,21 @@ export default function FlashcardsScreen() {
             You reviewed all {bookmarks.length} flashcard{bookmarks.length !== 1 ? "s" : ""}.
           </Text>
           <View style={styles.doneStats}>
-            <View style={[styles.doneStat, { backgroundColor: `${colors.success}15`, borderColor: `${colors.success}30` }]}>
+            <View
+              style={[
+                styles.doneStat,
+                { backgroundColor: `${colors.success}15`, borderColor: `${colors.success}30` },
+              ]}
+            >
               <Text style={[styles.doneStatValue, { color: colors.success }]}>{knownCount}</Text>
               <Text style={[styles.doneStatLabel, { color: colors.muted }]}>Got it</Text>
             </View>
-            <View style={[styles.doneStat, { backgroundColor: `${colors.warning}15`, borderColor: `${colors.warning}30` }]}>
+            <View
+              style={[
+                styles.doneStat,
+                { backgroundColor: `${colors.warning}15`, borderColor: `${colors.warning}30` },
+              ]}
+            >
               <Text style={[styles.doneStatValue, { color: colors.warning }]}>{reviewCount}</Text>
               <Text style={[styles.doneStatLabel, { color: colors.muted }]}>Review again</Text>
             </View>
@@ -317,27 +602,108 @@ export default function FlashcardsScreen() {
           {/* Action buttons */}
           <View style={styles.actions}>
             <TouchableOpacity
+              accessibilityLabel="Review again"
               onPress={handleReview}
-              style={[styles.actionBtn, { backgroundColor: `${colors.warning}15`, borderColor: `${colors.warning}40` }]}
+              style={[
+                styles.actionBtn,
+                { backgroundColor: `${colors.warning}15`, borderColor: `${colors.warning}40` },
+              ]}
               activeOpacity={0.8}
             >
               <IconSymbol size={20} name="arrow.counterclockwise" color={colors.warning} />
               <Text style={[styles.actionBtnText, { color: colors.warning }]}>Review Again</Text>
             </TouchableOpacity>
             <TouchableOpacity
+              accessibilityLabel="Got it"
               onPress={handleKnow}
-              style={[styles.actionBtn, { backgroundColor: `${colors.success}15`, borderColor: `${colors.success}40` }]}
+              style={[
+                styles.actionBtn,
+                { backgroundColor: `${colors.success}15`, borderColor: `${colors.success}40` },
+              ]}
               activeOpacity={0.8}
             >
               <IconSymbol size={20} name="checkmark.circle.fill" color={colors.success} />
               <Text style={[styles.actionBtnText, { color: colors.success }]}>Got It!</Text>
             </TouchableOpacity>
           </View>
-          <Text style={[styles.flipHint, { color: colors.muted }]}>
-            Tap the card to flip it
-          </Text>
+          <Text style={[styles.flipHint, { color: colors.muted }]}>Tap the card to flip it</Text>
         </View>
       )}
+
+      {/* Share / Export Menu */}
+      <Modal
+        visible={shareMenuVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShareMenuVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.menuOverlay}
+          activeOpacity={1}
+          onPress={() => setShareMenuVisible(false)}
+        >
+          <View
+            style={[
+              styles.menuSheet,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+          >
+            <Text style={[styles.menuTitle, { color: colors.foreground }]}>Export Deck</Text>
+            <Text style={[styles.menuSubtitle, { color: colors.muted }]}>
+              {bookmarks.length} card{bookmarks.length !== 1 ? "s" : ""}
+            </Text>
+
+            <TouchableOpacity
+              accessibilityLabel="Share as PDF"
+              onPress={handleSharePdf}
+              style={[styles.menuItem, { borderColor: colors.border }]}
+              activeOpacity={0.75}
+            >
+              <View style={[styles.menuItemIcon, { backgroundColor: `${colors.primary}15` }]}>
+                <IconSymbol size={20} name="doc.fill" color={colors.primary} />
+              </View>
+              <View style={styles.menuItemText}>
+                <Text style={[styles.menuItemTitle, { color: colors.foreground }]}>
+                  Share as PDF
+                </Text>
+                <Text style={[styles.menuItemDesc, { color: colors.muted }]}>
+                  Styled printable deck with all cards and steps
+                </Text>
+              </View>
+              <IconSymbol size={16} name="chevron.right" color={colors.muted} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              accessibilityLabel="Share as text"
+              onPress={handleShareText}
+              style={[styles.menuItem, { borderColor: colors.border }]}
+              activeOpacity={0.75}
+            >
+              <View style={[styles.menuItemIcon, { backgroundColor: `${colors.success}15` }]}>
+                <IconSymbol size={20} name="text.bubble" color={colors.success} />
+              </View>
+              <View style={styles.menuItemText}>
+                <Text style={[styles.menuItemTitle, { color: colors.foreground }]}>
+                  Share as Text
+                </Text>
+                <Text style={[styles.menuItemDesc, { color: colors.muted }]}>
+                  Plain text format for messages and notes
+                </Text>
+              </View>
+              <IconSymbol size={16} name="chevron.right" color={colors.muted} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              accessibilityLabel="Cancel"
+              onPress={() => setShareMenuVisible(false)}
+              style={[styles.menuCancel, { borderColor: colors.border }]}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.menuCancelText, { color: colors.muted }]}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </ScreenContainer>
   );
 }
@@ -404,7 +770,7 @@ const styles = StyleSheet.create({
   },
   cardBadgeText: { fontSize: 12, fontWeight: "700" },
   cardBody: { flex: 1 },
-  cardHint: { fontSize: 10, fontWeight: "700", letterSpacing: 1, marginBottom: 10 },
+  cardHint: { fontSize: 10, fontWeight: "700", letterSpacing: 1, marginBottom: 8 },
   cardQuestion: { fontSize: 18, fontWeight: "600", lineHeight: 26 },
   cardAnswer: { fontSize: 16, lineHeight: 24, fontWeight: "500" },
   stepsPreview: { marginTop: 12 },
@@ -487,4 +853,45 @@ const styles = StyleSheet.create({
   restartBtnText: { color: "#FFFFFF", fontSize: 16, fontWeight: "700" },
   doneBack: { fontSize: 14 },
   shareBtn: { padding: 8, borderRadius: 20 },
+  // Share menu
+  menuOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "flex-end",
+  },
+  menuSheet: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderWidth: 0.5,
+    paddingTop: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+  },
+  menuTitle: { fontSize: 17, fontWeight: "800", textAlign: "center", marginBottom: 2 },
+  menuSubtitle: { fontSize: 13, textAlign: "center", marginBottom: 20 },
+  menuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    paddingVertical: 14,
+    borderBottomWidth: 0.5,
+  },
+  menuItemIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  menuItemText: { flex: 1 },
+  menuItemTitle: { fontSize: 15, fontWeight: "700", marginBottom: 2 },
+  menuItemDesc: { fontSize: 12, lineHeight: 16 },
+  menuCancel: {
+    marginTop: 14,
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 0.5,
+    alignItems: "center",
+  },
+  menuCancelText: { fontSize: 15, fontWeight: "600" },
 });

@@ -175,3 +175,8 @@
 - [x] 153 accessibilityLabel props added across 31 files (all primary interactive elements)
 - [x] Fixed 4 broken self-closing element injections (study-planner x2, cheat-sheet-bottom-sheet, subject-picker)
 - [x] TypeScript: 0 errors after all fixes
+
+## Round 16: Flashcard PDF Export + Version Endpoint
+- [x] Flashcard PDF export: replace text-only share with a two-option menu (Share as PDF using expo-print, Share as Text), styled HTML deck with all cards
+- [x] Version.json endpoint: add GET /version.json route to Express server returning current version metadata
+- [x] useUpdateCheck hook updated to try tutorsnapai.tech first, then local API server as fallback
