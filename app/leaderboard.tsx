@@ -36,6 +36,7 @@ import {
   type FriendEntry,
 } from "@/lib/leaderboard";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getChallengeHistory, getChallengeStats, type ChallengeAttempt } from "@/lib/challenge-history";
 
 const MY_NAME_KEY = "@tutorsnap/studentName";
 
@@ -44,6 +45,8 @@ export default function LeaderboardScreen() {
   const router = useRouter();
 
   const [myName, setMyName] = useState("You");
+  const [challengeHistory, setChallengeHistory] = useState<ChallengeAttempt[]>([]);
+  const [challengeStats, setChallengeStats] = useState<{ total: number; correct: number; pct: number; avgTime: number } | null>(null);
   const [myStreak, setMyStreak] = useState(0);
   const [myTotal, setMyTotal] = useState(0);
   const [inviteCode, setInviteCode] = useState("");
@@ -70,6 +73,10 @@ export default function LeaderboardScreen() {
       setMyName(storedName ?? "You");
       setInviteCode(code);
       setFriends(storedFriends);
+      const hist = await getChallengeHistory().catch(() => [] as ChallengeAttempt[]);
+      const stats = getChallengeStats(hist);
+      setChallengeHistory(hist.slice(0, 10));
+      setChallengeStats(stats.total > 0 ? stats : null);
     } catch { /* load failure degrades gracefully */ }
   }, []);
 
@@ -267,29 +274,81 @@ export default function LeaderboardScreen() {
           </TouchableOpacity>
         )}
         ListEmptyComponent={() => null}
-        ListFooterComponent={() =>
-          ranked.length <= 1 ? (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyEmoji}>👥</Text>
-              <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No friends yet</Text>
-              <Text style={[styles.emptySub, { color: colors.muted }]}>
-                Share your invite code with classmates, then tap + to add their streak.
+        ListFooterComponent={() => (
+          <View>
+            {ranked.length <= 1 ? (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyEmoji}>👥</Text>
+                <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No friends yet</Text>
+                <Text style={[styles.emptySub, { color: colors.muted }]}>
+                  Share your invite code with classmates, then tap + to add their streak.
+                </Text>
+                <TouchableOpacity
+                  accessibilityLabel="Toggle show add modal"
+                  onPress={() => setShowAddModal(true)}
+                  style={[styles.emptyBtn, { backgroundColor: colors.primary }]}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.emptyBtnText}>Add a Friend</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <Text style={[styles.longPressHint, { color: colors.muted }]}>
+                Long-press a friend to remove them
               </Text>
-              <TouchableOpacity
-                accessibilityLabel="Toggle show add modal"
-                onPress={() => setShowAddModal(true)}
-                style={[styles.emptyBtn, { backgroundColor: colors.primary }]}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.emptyBtnText}>Add a Friend</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <Text style={[styles.longPressHint, { color: colors.muted }]}>
-              Long-press a friend to remove them
-            </Text>
-          )
-        }
+            )}
+
+            {/* Challenge History Section */}
+            {challengeStats && challengeHistory.length > 0 && (
+              <View style={[styles.challengeSection, { borderTopColor: colors.border }]}>
+                <Text style={[styles.sectionTitle, { color: colors.muted, marginBottom: 10 }]}>CHALLENGE HISTORY</Text>
+                {/* Stats row */}
+                <View style={[styles.challengeStatsRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                  <View style={styles.challengeStat}>
+                    <Text style={[styles.challengeStatNum, { color: colors.foreground }]}>{challengeStats.total}</Text>
+                    <Text style={[styles.challengeStatLabel, { color: colors.muted }]}>Played</Text>
+                  </View>
+                  <View style={[styles.challengeStatDivider, { backgroundColor: colors.border }]} />
+                  <View style={styles.challengeStat}>
+                    <Text style={[styles.challengeStatNum, { color: colors.success }]}>{challengeStats.correct}</Text>
+                    <Text style={[styles.challengeStatLabel, { color: colors.muted }]}>Correct</Text>
+                  </View>
+                  <View style={[styles.challengeStatDivider, { backgroundColor: colors.border }]} />
+                  <View style={styles.challengeStat}>
+                    <Text style={[styles.challengeStatNum, { color: challengeStats.pct >= 70 ? colors.success : challengeStats.pct >= 50 ? colors.warning : colors.error }]}>{challengeStats.pct}%</Text>
+                    <Text style={[styles.challengeStatLabel, { color: colors.muted }]}>Accuracy</Text>
+                  </View>
+                  <View style={[styles.challengeStatDivider, { backgroundColor: colors.border }]} />
+                  <View style={styles.challengeStat}>
+                    <Text style={[styles.challengeStatNum, { color: colors.foreground }]}>{challengeStats.avgTime}s</Text>
+                    <Text style={[styles.challengeStatLabel, { color: colors.muted }]}>Avg Time</Text>
+                  </View>
+                </View>
+                {/* Recent attempts */}
+                {challengeHistory.map((attempt) => (
+                  <View
+                    key={attempt.id}
+                    style={[styles.challengeRow, {
+                      backgroundColor: colors.surface,
+                      borderColor: attempt.correct ? `${colors.success}30` : `${colors.error}20`,
+                      borderLeftColor: attempt.correct ? colors.success : colors.error,
+                    }]}
+                  >
+                    <Text style={{ fontSize: 18 }}>{attempt.correct ? "✅" : "❌"}</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.challengeRowProblem, { color: colors.foreground }]} numberOfLines={1}>
+                        {attempt.problem}
+                      </Text>
+                      <Text style={[styles.challengeRowMeta, { color: colors.muted }]}>
+                        {attempt.subject} · {attempt.timeTaken}s · {new Date(attempt.date).toLocaleDateString()}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
       />
 
       {/* Add Friend Modal */}
@@ -505,4 +564,27 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   tipText: { fontSize: 13, lineHeight: 19 },
+  challengeSection: { marginTop: 20, paddingTop: 16, borderTopWidth: 0.5, gap: 8 },
+  challengeStatsRow: {
+    flexDirection: "row",
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 14,
+    marginBottom: 4,
+  },
+  challengeStat: { flex: 1, alignItems: "center", gap: 2 },
+  challengeStatNum: { fontSize: 20, fontWeight: "800" },
+  challengeStatLabel: { fontSize: 11, fontWeight: "600" },
+  challengeStatDivider: { width: 1, marginHorizontal: 4 },
+  challengeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderLeftWidth: 4,
+  },
+  challengeRowProblem: { fontSize: 14, fontWeight: "600" },
+  challengeRowMeta: { fontSize: 12, marginTop: 2 },
 });

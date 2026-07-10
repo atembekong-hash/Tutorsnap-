@@ -354,3 +354,17 @@
 - [x] Classroom sort menu, search bar, subject filter all verified wired correctly
 - [x] Leaderboard clipboard fallback already correct (expo-clipboard)
 - [x] Auto-solve loading state in solution.tsx verified correct
+
+## Round 37: Challenge History in Leaderboard + Settings Audit
+- [x] Add challenge history section to Leaderboard screen (stats card + per-attempt rows)
+- [x] Homework due-date display already fully implemented (confirmed in audit)
+- [x] Settings audit: Reset All Progress now covers all 20+ storage keys (streak_freeze_v2, chat sessions, notif prefs, consent, challenge history, dynamic keys)
+- [x] Settings audit: Notification Center toggles now gate actual notification delivery via lib/notification-prefs.ts
+- [x] Settings audit: Fixed duplicate questionmark.circle icon (How To now uses book.fill)
+- [x] Settings audit: Moved Classroom row from ABOUT section to PROGRESS & DATA section
+- [x] Settings audit: Updated What's New to reflect recent features (quiz history detail, classroom overhaul, challenge history, deeper AI solutions, subject accuracy chart)
+- [x] Settings audit: Subjects Covered card now uses dynamic SUBJECT_CATEGORIES data (38 subjects)
+- [x] Created lib/notification-prefs.ts shared pref-gate helper
+- [x] Wired studyReminders pref gate into lib/homework-notifications.ts
+- [x] Wired dailyReminder pref gate into lib/notifications.ts
+- [x] Wired studyReminders pref gate into lib/study-planner.ts (with cancel-on-disable)

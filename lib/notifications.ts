@@ -8,6 +8,7 @@
 import { Platform } from "react-native";
 import * as Notifications from "expo-notifications";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { isNotifEnabled } from "./notification-prefs";
 
 const REMINDER_ENABLED_KEY = "@tutorsnap/reminderEnabled";
 const REMINDER_HOUR_KEY = "@tutorsnap/reminderHour";
@@ -70,6 +71,8 @@ export async function cancelDailyReminder(): Promise<void> {
 /** Schedule (or reschedule) the daily reminder at the given hour:minute */
 export async function scheduleDailyReminder(hour: number, minute: number): Promise<boolean> {
   if (Platform.OS === "web") return false;
+  const enabled = await isNotifEnabled("dailyReminder");
+  if (!enabled) return false;
   const granted = await requestNotificationPermission();
   if (!granted) return false;
 

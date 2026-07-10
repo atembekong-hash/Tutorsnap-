@@ -12,6 +12,7 @@
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { isNotifEnabled } from "./notification-prefs";
 
 const NOTIF_IDS_KEY = "@tutorsnap/hw_notif_ids";
 
@@ -69,6 +70,8 @@ export async function scheduleHomeworkReminders(
   dueDateIso: string
 ): Promise<void> {
   if (Platform.OS === "web") return;
+  const enabled = await isNotifEnabled("studyReminders");
+  if (!enabled) return;
   const granted = await requestNotifPermission();
   if (!granted) return;
 

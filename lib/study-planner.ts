@@ -8,6 +8,7 @@ import { Platform } from "react-native";
 import * as Notifications from "expo-notifications";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { SubjectId } from "@/lib/subjects";
+import { isNotifEnabled } from "./notification-prefs";
 
 const PLANNER_KEY = "@tutorsnap/studyPlanner";
 const NOTIF_IDS_KEY = "@tutorsnap/plannerNotifIds";
@@ -76,6 +77,19 @@ export function formatTime(hour: number, minute: number): string {
 /** Schedule weekly notifications for all slots that have notifyEnabled */
 export async function syncPlannerNotifications(slots: StudySlot[]): Promise<void> {
   if (Platform.OS === "web") return;
+  const enabled = await isNotifEnabled("studyReminders");
+  if (!enabled) {
+    // Still cancel any existing planner notifications when pref is off
+    try {
+      const raw = await AsyncStorage.getItem(NOTIF_IDS_KEY);
+      if (raw) {
+        const ids: string[] = JSON.parse(raw);
+        await Promise.all(ids.map((id) => Notifications.cancelScheduledNotificationAsync(id).catch(() => {})));
+      }
+      await AsyncStorage.removeItem(NOTIF_IDS_KEY);
+    } catch { /* ignore */ }
+    return;
+  }
 
   // Cancel all previously scheduled planner notifications
   try {

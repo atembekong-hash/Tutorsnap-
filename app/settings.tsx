@@ -39,11 +39,11 @@ const MINUTE_OPTIONS = [0, 15, 30, 45];
 const CATEGORIES = Object.entries(SUBJECT_CATEGORIES) as [SubjectCategory, { label: string; emoji: string; color: string }][];
 
 const WHATS_NEW: { title: string; desc: string }[] = [
-  { title: "Error Recovery", desc: "Each screen now catches crashes and shows a friendly retry card instead of going blank." },
-  { title: "Offline Indicator", desc: "A banner appears when you lose connection and confirms when you're back online." },
-  { title: "Camera Scan Fix", desc: "The Scan tab now opens the live camera viewfinder directly on launch." },
-  { title: "Adaptive Difficulty", desc: "Practice mode remembers your difficulty per subject and suggests upgrades based on quiz scores." },
-  { title: "Timed Quiz Mode", desc: "30-second multiple-choice quizzes with scoring, streaks, and history tracking." },
+  { title: "Quiz History Detail", desc: "Tap any past quiz to see a full per-question breakdown — correct answer, your answer, and an explanation for every wrong response." },
+  { title: "Classroom Overhaul", desc: "Feed search, sort & subject filter, homework due-date reminders, completion tracking, comment threads with replies, and bookmark buttons on every card." },
+  { title: "Challenge History", desc: "Every challenge attempt is saved. Review past results with time, outcome, and problem text in the Leaderboard and Progress screens." },
+  { title: "Deeper AI Solutions", desc: "Solve page now handles any difficulty — calculus, differential equations, abstract algebra — with 6-10 detailed steps, worked examples, and concept explanations." },
+  { title: "Subject Accuracy Chart", desc: "Progress screen now shows a colour-coded bar chart of your average accuracy per subject so you can see exactly where to focus." },
 ];
 
 const HOW_TO_STEPS = [
@@ -267,27 +267,55 @@ export default function SettingsScreen() {
           text: "Reset Everything",
           style: "destructive",
           onPress: async () => {
-            const keysToDelete = [
-              "math_progress",
-              "streak_shield",
-              "math_history",
-              "math_bookmarks",
-              "tutorsnap_quiz_history",
-              "tutorsnap_weekly_quiz_goal",
-              "@tutorsnap/seenBadges",
-              "tutorsnap_crash_log",
-            ];
-            await AsyncStorage.multiRemove(keysToDelete);
-            // Also clear per-subject difficulty keys
-            const allKeys = await AsyncStorage.getAllKeys();
-            const diffKeys = allKeys.filter((k) => k.startsWith("@tutorsnap/subjectDifficulty_"));
-            if (diffKeys.length > 0) await AsyncStorage.multiRemove(diffKeys);
-            if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            // Refresh stats
-            setStreak(0);
-            setTodaySolved(0);
-            setTotalSolved(0);
-            setDailyGoalState(3);
+            try {
+              const keysToDelete = [
+                // Progress & streaks
+                "math_progress",
+                "streak_shield",
+                "streak_freeze_v2",
+                // History & bookmarks
+                "math_history",
+                "math_bookmarks",
+                // Quiz
+                "tutorsnap_quiz_history",
+                "tutorsnap_weekly_quiz_goal",
+                // Challenge history
+                "challenge_history_v1",
+                // Badges & crash log
+                "@tutorsnap/seenBadges",
+                "tutorsnap_crash_log",
+                // Chat sessions
+                "@tutorsnap/chatSessions/index",
+                "@tutorsnap/chatSessions/pins",
+                "@tutorsnap/chatHistory",
+                // Notification prefs
+                "@tutorsnap/notificationPrefs",
+                "@tutorsnap/reminderEnabled",
+                "@tutorsnap/reminderHour",
+                "@tutorsnap/reminderMinute",
+                "@tutorsnap/reminderNotifId",
+                // Consent
+                "@tutorsnap/consent",
+              ];
+              await AsyncStorage.multiRemove(keysToDelete);
+              // Clear per-subject difficulty keys, per-day quiz-bonus keys, and per-session chat keys
+              const allKeys = await AsyncStorage.getAllKeys();
+              const dynamicKeys = allKeys.filter((k) =>
+                k.startsWith("@tutorsnap/subjectDifficulty_") ||
+                k.startsWith("math_progress_quiz_bonus_") ||
+                k.startsWith("@tutorsnap/chatSessions/")
+              );
+              if (dynamicKeys.length > 0) await AsyncStorage.multiRemove(dynamicKeys);
+              if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              // Refresh stats
+              setStreak(0);
+              setTodaySolved(0);
+              setTotalSolved(0);
+              setDailyGoalState(3);
+              Alert.alert("Reset Complete", "All progress and data has been cleared.");
+            } catch {
+              Alert.alert("Error", "Could not reset all data. Please try again.");
+            }
           },
         },
       ]
@@ -572,6 +600,13 @@ export default function SettingsScreen() {
           onPress={() => setShowSubjectPicker(true)}
         />
         <SettingsRow
+          icon="person.2.fill"
+          label="Classroom"
+          subtitle="Share problems with your class or join one"
+          colors={colors}
+          onPress={() => router.push("/classroom" as any)}
+        />
+        <SettingsRow
           icon="square.and.arrow.up.fill"
           label="Share Progress"
           subtitle="Share your streak and stats"
@@ -605,7 +640,7 @@ export default function SettingsScreen() {
           onPress={() => setShowAbout(true)}
         />
         <SettingsRow
-          icon="questionmark.circle"
+          icon="book.fill"
           label="How to use TutorSnap"
           subtitle="Step-by-step guide for all features"
           colors={colors}
@@ -617,13 +652,6 @@ export default function SettingsScreen() {
           subtitle="Browse 25+ answers to common questions"
           colors={colors}
           onPress={() => router.push("/faq" as any)}
-        />
-        <SettingsRow
-          icon="person.2.fill"
-          label="Classroom"
-          subtitle="Share problems with your class or join one"
-          colors={colors}
-          onPress={() => router.push("/classroom" as any)}
         />
         <SettingsRow
           icon="star.bubble.fill"
@@ -705,20 +733,15 @@ export default function SettingsScreen() {
         <View style={[styles.subjectsCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Text style={[styles.subjectsTitle, { color: colors.foreground }]}>Subjects Covered</Text>
           <View style={styles.subjectTags}>
-            {[
-              { label: "Mathematics", color: "#4F46E5" },
-              { label: "English / ELA", color: "#0891B2" },
-              { label: "Science", color: "#059669" },
-              { label: "Social Studies", color: "#D97706" },
-            ].map((s) => (
-              <View key={s.label} style={[styles.subjectTag, { backgroundColor: `${s.color}15` }]}>
-                <View style={[styles.subjectDot, { backgroundColor: s.color }]} />
-                <Text style={[styles.subjectTagText, { color: s.color }]}>{s.label}</Text>
+            {CATEGORIES.map(([key, cat]) => (
+              <View key={key} style={[styles.subjectTag, { backgroundColor: `${cat.color}15` }]}>
+                <Text style={{ fontSize: 13 }}>{cat.emoji}</Text>
+                <Text style={[styles.subjectTagText, { color: cat.color }]}>{cat.label}</Text>
               </View>
             ))}
           </View>
           <Text style={[styles.subjectsCount, { color: colors.muted }]}>
-            36 subjects across 4 categories
+            38 subjects across 4 categories
           </Text>
         </View>
 
