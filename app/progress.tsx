@@ -27,10 +27,14 @@ import {
   BADGE_THRESHOLDS,
   getSeenBadges,
   markBadgeSeen,
+  getTierForSolves,
   type MasteryBadge,
   type BadgeTier,
 } from "@/lib/mastery-badges";
 import { BadgeUnlockModal } from "@/components/badge-unlock-modal";
+import { SubjectRing } from "@/components/subject-ring";
+import { getSubjectEmoji } from "@/lib/subjects";
+
 
 const GOAL_OPTIONS = [1, 3, 5, 10];
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -239,40 +243,33 @@ export default function ProgressScreen() {
           </View>
         </View>
 
-        {/* Subject Mastery */}
+        {/* Subject Mastery — animated ring grid */}
         {subjectEntries.length > 0 && (
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Text style={[styles.cardTitle, { color: colors.foreground }]}>Subject Mastery</Text>
             <Text style={[styles.cardSubtitle, { color: colors.muted }]}>
               Based on {streak.totalSolved} problems solved
             </Text>
-            {subjectEntries.map(([subject, count]) => {
-              const info = getSubjectDisplay(subject);
-              const label = info.label;
-              const color = info.color;
-              const pct = Math.round((count / totalSolved) * 100);
-              return (
-                <View key={subject} style={styles.subjectRow}>
-                  <View style={styles.subjectRowLeft}>
-                    <View style={[styles.subjectDot, { backgroundColor: color }]} />
-                    <Text style={[styles.subjectLabel, { color: colors.foreground }]}>{label}</Text>
-                  </View>
-                  <View style={styles.subjectRowRight}>
-                    <View style={[styles.subjectTrack, { backgroundColor: `${color}20` }]}>
-                      <View
-                        style={[
-                          styles.subjectFill,
-                          { backgroundColor: color, width: `${pct}%` },
-                        ]}
-                      />
-                    </View>
-                    <Text style={[styles.subjectCount, { color: colors.muted }]}>
-                      {count}
-                    </Text>
-                  </View>
-                </View>
-              );
-            })}
+            <View style={styles.ringGrid}>
+              {subjectEntries.map(([subject, count]) => {
+                const info = getSubjectDisplay(subject);
+                const pct = Math.round((count / totalSolved) * 100);
+                const emoji = getSubjectEmoji(subject);
+                const tier = getTierForSolves(count);
+                const tierLabel = tier ? `${BADGE_EMOJI[tier]} ${tier.charAt(0).toUpperCase() + tier.slice(1)}` : undefined;
+                return (
+                  <SubjectRing
+                    key={subject}
+                    label={info.label}
+                    emoji={emoji}
+                    color={info.color}
+                    pct={pct}
+                    solves={count}
+                    tier={tierLabel}
+                  />
+                );
+              })}
+            </View>
           </View>
         )}
 
@@ -536,5 +533,12 @@ const styles = StyleSheet.create({
   badgeProgressWrap: { width: "100%", marginTop: 6, gap: 3 },
   badgeProgressTrack: { height: 5, borderRadius: 3, overflow: "hidden", width: "100%" },
   badgeProgressFill: { height: "100%", borderRadius: 3 },
-  badgeProgressLabel: { fontSize: 10, textAlign: "center" },
+  badgeProgressLabel: { fontSize: 10, fontWeight: "600" },
+  ringGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-around",
+    marginTop: 8,
+    gap: 4,
+  },
 });
