@@ -51,6 +51,12 @@ export type SolutionStep = {
   expression?: string;
 };
 
+export type WorkedExample = {
+  title: string;
+  problem: string;
+  solution: string;
+};
+
 export type MathSolution = {
   problem: string;
   subject: MathSubject;
@@ -59,6 +65,7 @@ export type MathSolution = {
   conceptExplained?: string;
   tips?: string[];
   relatedTopics?: string[];
+  workedExample?: WorkedExample;
 };
 
 export type HistoryItem = {

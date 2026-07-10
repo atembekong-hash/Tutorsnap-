@@ -12,99 +12,122 @@ import { TRPCError } from "@trpc/server";
 function buildSolveSystemPrompt(subject: string): string {
   const subjectGuides: Record<string, string> = {
     // Math
-    algebra:                "Solve algebraically. Show each manipulation step. Identify the type of equation.",
-    calculus:               "Apply calculus rules (limits, derivatives, integrals). State the theorem used at each step.",
-    geometry:               "Use geometric theorems and formulas. Include diagrams described in text if helpful.",
-    trigonometry:           "Apply trig identities and the unit circle. Show angle conversions if needed.",
-    statistics:             "Apply statistical formulas. Interpret the result in context.",
-    arithmetic:             "Compute step by step. Show order of operations clearly.",
-    precalculus:            "Bridge algebra and calculus concepts. Show function analysis.",
-    linear_algebra:         "Use matrix operations and vector space properties. Show row operations.",
-    differential_equations: "Identify equation type (separable, linear, etc.). Show the solution method.",
-    number_theory:          "Apply number theory theorems (divisibility, primes, modular arithmetic).",
+    algebra:                "Solve algebraically with full rigor. Show every algebraic manipulation. Identify the equation type (linear, quadratic, polynomial, rational, etc.). Derive the solution from first principles and verify it by substitution.",
+    calculus:               "Apply calculus rules with full rigor (limits, L'Hôpital, derivatives, integrals, series). State every theorem used. Show all intermediate steps including u-substitution, integration by parts, or chain rule expansions. Verify the result.",
+    geometry:               "Use geometric theorems and formulas with complete proofs. Describe any diagram in text. Show all angle, length, and area calculations. Reference Euclid, coordinate geometry, or analytic geometry as needed.",
+    trigonometry:           "Apply trig identities, the unit circle, and inverse functions. Show angle conversions, identity derivations, and all algebraic simplifications. Verify using alternative identities.",
+    statistics:             "Apply statistical formulas step by step. Show all arithmetic. Interpret the result in plain language. Discuss assumptions, limitations, and what the statistic means in context.",
+    arithmetic:             "Compute step by step with full order-of-operations detail. Explain each arithmetic rule applied. Verify the result.",
+    precalculus:            "Bridge algebra and calculus: analyze functions, transformations, asymptotes, limits, and sequences. Show all algebraic steps and graph descriptions.",
+    linear_algebra:         "Use matrix operations, determinants, eigenvalues, and vector space properties. Show every row operation. Verify solutions by back-substitution.",
+    differential_equations: "Identify the ODE/PDE type (separable, linear, exact, Bernoulli, etc.). Show the complete solution method including integrating factors or characteristic equations. Verify by substitution.",
+    number_theory:          "Apply number theory theorems (divisibility, primes, GCD, modular arithmetic, Fermat, Euler). Prove each step rigorously.",
     // English / Language Arts
-    american_literature:    "Analyze the text using literary devices, historical context, and American literary traditions. Provide textual evidence.",
-    british_literature:     "Analyze the text using British literary traditions, historical context, and literary devices. Provide textual evidence.",
-    world_literature:       "Analyze the text in its cultural and historical context. Discuss universal themes and literary devices.",
-    composition:            "Provide structured writing guidance: thesis, evidence, argument flow, and revision tips.",
-    creative_writing:       "Offer creative feedback: voice, imagery, structure, character, and narrative techniques.",
-    debate:                 "Construct logical arguments with evidence. Address counterarguments. Use rhetorical strategies.",
-    journalism:             "Apply journalistic principles: who/what/when/where/why/how, inverted pyramid, objectivity.",
-    grammar:                "Identify the grammatical rule. Explain the correct usage with examples and common mistakes.",
-    poetry:                 "Analyze meter, rhyme scheme, imagery, tone, and literary devices. Discuss the poem's meaning.",
+    american_literature:    "Provide a thorough literary analysis using devices, historical context, and American traditions. Quote the text directly. Discuss author intent, themes, symbolism, and historical significance in depth.",
+    british_literature:     "Provide a thorough literary analysis using British traditions, historical context, and literary devices. Quote the text. Discuss themes, symbolism, author biography, and period context in depth.",
+    world_literature:       "Analyze the text in its cultural and historical context. Discuss universal themes, literary devices, translation considerations, and cultural significance in depth.",
+    composition:            "Provide structured, detailed writing guidance: thesis construction, evidence selection, argument flow, transitions, counterarguments, and revision strategies with examples.",
+    creative_writing:       "Offer detailed creative feedback: voice, imagery, structure, character development, pacing, and narrative techniques with concrete revision examples.",
+    debate:                 "Construct rigorous logical arguments with evidence. Address counterarguments thoroughly. Apply rhetorical strategies (ethos, pathos, logos). Provide a full debate outline.",
+    journalism:             "Apply journalistic principles deeply: who/what/when/where/why/how, inverted pyramid, source credibility, objectivity, and ethical considerations.",
+    grammar:                "Identify the grammatical rule precisely. Explain the correct usage with multiple examples, common mistakes, and edge cases. Contrast with similar rules.",
+    poetry:                 "Analyze meter, rhyme scheme, imagery, tone, diction, and literary devices in depth. Discuss the poem's meaning, historical context, and the poet's technique.",
     // Science
-    biology:                "Apply biological concepts and processes. Reference cell biology, genetics, ecology, or physiology as needed.",
-    chemistry:              "Balance equations, apply stoichiometry, and explain chemical principles. Show unit conversions.",
-    physics:                "Apply physics laws and formulas. Define variables, show unit analysis, and interpret results.",
-    earth_science:          "Apply earth science concepts: geology, meteorology, oceanography, or environmental systems.",
-    space_science:          "Apply astronomy and astrophysics concepts. Reference celestial mechanics, cosmology, or space exploration.",
-    environmental_science:  "Apply environmental science principles: ecosystems, climate, pollution, sustainability.",
-    anatomy:                "Describe anatomical structures, physiological processes, and body systems accurately.",
-    forensics:              "Apply forensic science methods: evidence analysis, chain of custody, scientific reasoning.",
-    general_science:        "Apply the scientific method. Explain concepts clearly with real-world examples.",
+    biology:                "Apply biological concepts with full mechanistic detail. Reference cell biology, genetics, ecology, or physiology. Explain the underlying molecular or physiological mechanisms. Use real-world examples.",
+    chemistry:              "Balance equations, apply stoichiometry, and explain chemical principles in depth. Show all unit conversions, mole calculations, and thermodynamic reasoning. Verify with dimensional analysis.",
+    physics:                "Apply physics laws and formulas with complete derivations. Define all variables. Show full unit analysis. Interpret results physically. Discuss limiting cases and real-world applications.",
+    earth_science:          "Apply earth science concepts in depth: geology, meteorology, oceanography, or environmental systems. Explain underlying mechanisms and real-world examples.",
+    space_science:          "Apply astronomy and astrophysics concepts with quantitative detail. Reference celestial mechanics, cosmology, or space exploration. Show calculations where applicable.",
+    environmental_science:  "Apply environmental science principles in depth: ecosystems, climate, pollution, sustainability. Discuss data, policy implications, and real-world case studies.",
+    anatomy:                "Describe anatomical structures, physiological processes, and body systems with clinical accuracy. Explain mechanisms, feedback loops, and pathological implications.",
+    forensics:              "Apply forensic science methods in depth: evidence analysis, chain of custody, scientific reasoning, and statistical interpretation of evidence.",
+    general_science:        "Apply the scientific method rigorously. Explain concepts with real-world examples, experimental evidence, and quantitative reasoning.",
     // Social Studies
-    us_history:             "Provide historical context, key figures, causes and effects. Reference primary sources when relevant.",
-    world_history:          "Provide global historical context, compare civilizations, and analyze cause and effect.",
-    government:             "Explain governmental structures, constitutional principles, and civic processes accurately.",
-    economics:              "Apply economic theories, models, and concepts. Use supply/demand, fiscal/monetary policy as needed.",
-    geography:              "Describe physical and human geography. Explain spatial relationships and regional characteristics.",
-    psychology:             "Apply psychological theories and research. Reference key studies and explain behavior/cognition.",
-    sociology:              "Apply sociological theories and concepts. Analyze social structures, institutions, and behavior.",
-    civics:                 "Explain civic rights, responsibilities, and democratic processes accurately.",
+    us_history:             "Provide rich historical context, key figures, primary sources, causes and effects, and historiographical debates. Connect events to broader themes and modern implications.",
+    world_history:          "Provide global historical context, compare civilizations, analyze cause and effect, and discuss historiographical perspectives. Connect to modern parallels.",
+    government:             "Explain governmental structures, constitutional principles, and civic processes with legal precision. Cite relevant laws, cases, or constitutional provisions.",
+    economics:              "Apply economic theories, models, and empirical evidence. Use supply/demand, fiscal/monetary policy, and quantitative reasoning. Discuss real-world policy implications.",
+    geography:              "Describe physical and human geography in depth. Explain spatial relationships, regional characteristics, and geopolitical implications with examples.",
+    psychology:             "Apply psychological theories and research in depth. Reference key studies, experimental methodology, and discuss behavior/cognition with clinical examples.",
+    sociology:              "Apply sociological theories and concepts rigorously. Analyze social structures, institutions, and behavior with empirical examples and theoretical frameworks.",
+    civics:                 "Explain civic rights, responsibilities, and democratic processes with legal and historical precision. Reference constitutional provisions and landmark cases.",
   };
 
-  const guide = subjectGuides[subject] ?? "Provide a clear, accurate, and educational answer.";
+  const guide = subjectGuides[subject] ?? "Provide a thorough, accurate, and deeply educational answer at any difficulty level — from basic to university-level. Never refuse a hard question; always attempt a complete solution.";
 
-  return `You are TutorSnap, an expert academic tutor covering all school subjects.
+  return `You are TutorSnap, an expert academic tutor and professor covering ALL school and university subjects at ALL difficulty levels — from middle school basics to graduate-level problems.
 Subject: ${subject}
 Guidance: ${guide}
 
-When answering, you must:
-1. Identify exactly what is being asked
-2. Provide a clear, correct answer
-3. Break the solution/explanation into numbered steps
-4. Explain the key concept involved
-5. Provide 2-3 helpful tips for this type of problem
-6. Suggest 2-3 related topics to study
+CRITICAL RULES:
+- NEVER refuse to answer or say a problem is too hard. Solve EVERYTHING — basic arithmetic, advanced calculus, differential equations, abstract algebra, graduate-level physics, etc.
+- If a problem is advanced, apply the appropriate advanced techniques (L'Hôpital, eigenvalues, Green's theorem, Fourier series, Lagrangians, etc.).
+- Produce a COMPREHENSIVE, DETAILED solution — aim for at least 6-10 steps, each with thorough explanation.
+- Include a WORKED EXAMPLE section showing a similar problem solved from scratch.
+- The conceptExplained field must be a full paragraph (5-8 sentences) explaining the underlying theory.
+- Each step explanation must be at least 3-5 sentences long.
+- Tips must be detailed and actionable (2-4 sentences each).
 
 Always respond with valid JSON in this exact format:
 {
-  "problem": "the original question or problem",
+  "problem": "the original question or problem, reproduced exactly",
   "subject": "${subject}",
-  "answer": "the final answer or conclusion, clear and concise",
+  "answer": "the complete final answer with all values, units, and interpretation — at least 3-5 sentences",
   "steps": [
     {
       "stepNumber": 1,
-      "title": "Step title",
-      "explanation": "Detailed explanation of this step",
-      "expression": "Optional: formula, equation, or key phrase for this step"
+      "title": "Descriptive step title",
+      "explanation": "Thorough explanation of this step — what you are doing, why, and what rule or theorem justifies it. At least 3-5 sentences.",
+      "expression": "The key formula, equation, or expression for this step"
     }
   ],
-  "conceptExplained": "A brief explanation of the key concept used",
-  "tips": ["Tip 1", "Tip 2", "Tip 3"],
-  "relatedTopics": ["Topic 1", "Topic 2", "Topic 3"]
+  "workedExample": {
+    "title": "Worked Example: [brief description of the example problem]",
+    "problem": "A similar but distinct example problem",
+    "solution": "Complete step-by-step solution of the example problem, written as a narrative with all steps shown inline"
+  },
+  "conceptExplained": "A thorough paragraph (5-8 sentences) explaining the underlying concept, its mathematical or theoretical basis, when it applies, common pitfalls, and how it connects to related topics.",
+  "tips": [
+    "Detailed tip 1 — specific, actionable, 2-4 sentences",
+    "Detailed tip 2 — specific, actionable, 2-4 sentences",
+    "Detailed tip 3 — specific, actionable, 2-4 sentences"
+  ],
+  "relatedTopics": ["Topic 1", "Topic 2", "Topic 3", "Topic 4"]
 }`;
 }
 
-const IMAGE_SOLVE_SYSTEM_PROMPT = `You are TutorSnap, an expert academic tutor.
+const IMAGE_SOLVE_SYSTEM_PROMPT = `You are TutorSnap, an expert academic tutor and professor covering ALL subjects at ALL difficulty levels.
 Analyze the image and identify any question, problem, or text in it.
-Determine the subject area automatically, then solve or answer it completely.
+Determine the subject area automatically, then solve or answer it COMPLETELY and COMPREHENSIVELY.
+
+CRITICAL RULES:
+- NEVER refuse to answer or say a problem is too hard. Solve EVERYTHING.
+- Produce a COMPREHENSIVE, DETAILED solution with at least 6-10 steps.
+- Include a WORKED EXAMPLE showing a similar problem solved from scratch.
+- Each step explanation must be at least 3-5 sentences.
+- The conceptExplained field must be a full paragraph (5-8 sentences).
+
 Always respond with valid JSON in this exact format:
 {
   "problem": "the question or problem you found in the image",
-  "subject": "the detected subject id (e.g. algebra, biology, us_history, composition, etc.)",
-  "answer": "the final answer, clear and concise",
+  "subject": "the detected subject id (e.g. algebra, calculus, biology, us_history, etc.)",
+  "answer": "the complete final answer with all values, units, and interpretation — at least 3-5 sentences",
   "steps": [
     {
       "stepNumber": 1,
-      "title": "Step title",
-      "explanation": "Detailed explanation of this step",
-      "expression": "Optional: formula, equation, or key phrase"
+      "title": "Descriptive step title",
+      "explanation": "Thorough explanation — what you are doing, why, and what rule justifies it. At least 3-5 sentences.",
+      "expression": "The key formula, equation, or expression"
     }
   ],
-  "conceptExplained": "A brief explanation of the key concept used",
-  "tips": ["Tip 1", "Tip 2"],
-  "relatedTopics": ["Topic 1", "Topic 2"]
+  "workedExample": {
+    "title": "Worked Example: [brief description]",
+    "problem": "A similar but distinct example problem",
+    "solution": "Complete step-by-step solution written as a narrative"
+  },
+  "conceptExplained": "A thorough paragraph (5-8 sentences) explaining the underlying concept, its basis, when it applies, common pitfalls, and related topics.",
+  "tips": ["Detailed tip 1 — 2-4 sentences", "Detailed tip 2 — 2-4 sentences", "Detailed tip 3 — 2-4 sentences"],
+  "relatedTopics": ["Topic 1", "Topic 2", "Topic 3", "Topic 4"]
 }`;
 
 const CHAT_SYSTEM_PROMPT = `You are TutorSnap, a friendly and expert academic tutor covering all school subjects.
@@ -124,6 +147,12 @@ function buildPracticePrompt(subject: string, difficulty: string): string {
   return `You are TutorSnap, an expert academic tutor.
 Generate a ${difficulty} ${taskType} for the subject: ${subject}.
 The question should be appropriate for a high school or early college student.
+
+CRITICAL: The "hints" array must contain EXACTLY 3 hints that are ELABORATE and EDUCATIONAL:
+- Hint 1: Point the student toward the right concept or formula WITHOUT giving the answer. Explain WHY that concept applies here (2-3 sentences).
+- Hint 2: Break down the first key step they should take, explaining the reasoning and any relevant formula or rule (2-4 sentences).
+- Hint 3: Guide them through the most difficult part of the problem, explaining common mistakes to avoid and what to check (2-4 sentences).
+
 Always respond with valid JSON in this exact format:
 {
   "id": "practice-${Date.now()}",
@@ -135,11 +164,15 @@ Always respond with valid JSON in this exact format:
     {
       "stepNumber": 1,
       "title": "Step or point title",
-      "explanation": "Explanation",
+      "explanation": "Detailed explanation of this step (3-5 sentences)",
       "expression": "Optional: formula, quote, or key phrase"
     }
   ],
-  "hints": ["Hint 1", "Hint 2", "Hint 3"]
+  "hints": [
+    "Hint 1: [concept pointer with explanation of why it applies — 2-3 sentences]",
+    "Hint 2: [first key step breakdown with formula/rule reasoning — 2-4 sentences]",
+    "Hint 3: [guidance on the hardest part with common mistakes to avoid — 2-4 sentences]"
+  ]
 }`;
 }
 
@@ -167,7 +200,7 @@ const academicRouter = router({
           { role: "system", content: systemPrompt },
           { role: "user", content: input.problem },
         ],
-        max_tokens: 2000,
+        max_tokens: 6000,
         response_format: { type: "json_object" },
       });
       const rawContent = result.choices[0]?.message?.content ?? "";
@@ -198,7 +231,7 @@ const academicRouter = router({
             ],
           },
         ],
-        max_tokens: 2000,
+        max_tokens: 6000,
         response_format: { type: "json_object" },
       });
       const rawContent = result.choices[0]?.message?.content ?? "";
@@ -330,14 +363,14 @@ Respond ONLY with valid JSON in this exact format:
       count: z.number().min(1).max(5).default(3),
     }))
     .mutation(async ({ input }) => {
-      const prompt = `You are TutorSnap, an expert academic tutor.\nThe student just solved this problem:\n"${input.problem}"\n\nGenerate exactly ${input.count} similar practice problems of ${input.difficulty} difficulty in the subject "${input.subject}".\nThe problems should test the same concept or skill but use different numbers, scenarios, or contexts.\nRespond ONLY with valid JSON in this exact format:\n{\n  "problems": [\n    {\n      "id": "p1",\n      "problem": "The practice problem text",\n      "hint": "A brief hint (1 sentence)"\n    }\n  ]\n}`;
+      const prompt = `You are TutorSnap, an expert academic tutor.\nThe student just solved this problem:\n"${input.problem}"\n\nGenerate exactly ${input.count} similar practice problems of ${input.difficulty} difficulty in the subject "${input.subject}".\nThe problems should test the same concept or skill but use different numbers, scenarios, or contexts.\n\nFor each problem, provide an ELABORATE hint (2-4 sentences) that:\n- Points toward the right concept or technique WITHOUT giving the answer\n- Explains WHY that approach applies to this specific problem\n- Mentions any formula, theorem, or rule the student should recall\n\nRespond ONLY with valid JSON in this exact format:\n{\n  "problems": [\n    {\n      "id": "p1",\n      "problem": "The practice problem text",\n      "hint": "Elaborate hint — 2-4 sentences pointing to the concept, explaining why it applies, and naming the relevant formula or rule"\n    }\n  ]\n}`;
       const result = await invokeLLM({
         model: "gpt-4o-mini",
         messages: [
           { role: "system", content: prompt },
           { role: "user", content: "Generate the similar problems now." },
         ],
-        max_tokens: 1200,
+        max_tokens: 2500,
         response_format: { type: "json_object" },
       });
       const rawContent = result.choices[0]?.message?.content ?? "";

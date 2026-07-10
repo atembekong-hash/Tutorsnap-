@@ -275,3 +275,14 @@
 - [x] Quiz History: empty state when filter produces no results, with Clear Filter button
 - [x] Practice: redesigned adaptive difficulty banner — prominent card with green accent strip, rocket icon, subject-specific copy, "Switch to X" button with haptic success, "Not now" dismiss; positioned below Quiz Stats card for maximum visibility
 - [x] TypeScript: 0 errors
+
+## Round 29: Solve Page Overhaul + Similar Problems Copy Icons + Elaborate Hints
+- [x] Server: upgraded solve prompt — NEVER refuses any difficulty, 6-10 steps, each 3-5 sentences, includes workedExample section, 5-8 sentence conceptExplained, detailed tips (2-4 sentences each), max_tokens raised to 6000
+- [x] Server: upgraded image-solve prompt with same comprehensive rules
+- [x] Server: upgraded generateSimilar prompt — elaborate hints (2-4 sentences, concept pointer + why it applies + formula/rule), max_tokens raised to 2500
+- [x] Server: upgraded practice prompt — 3 elaborate hints (concept pointer, first key step breakdown, hardest part guidance), max_tokens raised to 1500
+- [x] Shared types: added WorkedExample type; added workedExample? field to MathSolution
+- [x] Solution screen: renders new Worked Example card (green accent, example problem box, full narrative solution via AIResponseRenderer)
+- [x] Solution screen: copy icon on each similar problem (checkmark feedback on success, haptic notification)
+- [x] Solution screen: hint expanded section now has styled background box for better readability
+- [x] TypeScript: 0 errors; Metro: bundled cleanly

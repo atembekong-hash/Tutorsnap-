@@ -20,7 +20,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { toggleBookmark, isBookmarked } from "@/lib/bookmarks";
-import type { MathSolution, SolutionStep, HistoryItem, MathSubject } from "@/shared/types";
+import type { MathSolution, SolutionStep, HistoryItem, MathSubject, WorkedExample } from "@/shared/types";
 import { getSubjectColor, getSubjectLabel } from "@/lib/subjects";
 import { useFontSize } from "@/lib/font-size-provider";
 import { trpc } from "@/lib/trpc";
@@ -105,6 +105,7 @@ export default function SolutionScreen() {
   const [showSimilar, setShowSimilar] = useState(false);
   const [similarProblems, setSimilarProblems] = useState<{ id: string; problem: string; hint: string }[]>([]);
   const [expandedHint, setExpandedHint] = useState<string | null>(null);
+  const [copiedProblemId, setCopiedProblemId] = useState<string | null>(null);
   const generateSimilarMutation = trpc.math.generateSimilar.useMutation();
   const [discussLoading, setDiscussLoading] = useState(false);
 
@@ -553,6 +554,38 @@ export default function SolutionScreen() {
           </View>
         )}
 
+        {/* Worked Example */}
+        {(solution as any).workedExample && (
+          <View style={[styles.workedExampleCard, { backgroundColor: `${colors.success}08`, borderColor: `${colors.success}30` }]}>
+            <View style={styles.sectionHeader}>
+              <IconSymbol size={16} name="pencil.and.list.clipboard" color={colors.success} />
+              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+                {(solution as any).workedExample.title || "Worked Example"}
+              </Text>
+            </View>
+            <View style={[styles.workedExampleProblem, { backgroundColor: `${colors.success}12`, borderColor: `${colors.success}25` }]}>
+              <Text style={[styles.workedExampleLabel, { color: colors.success }]}>EXAMPLE PROBLEM</Text>
+              <Text style={[styles.workedExampleProblemText, { color: colors.foreground, fontSize: fs(14) }]}>
+                {(solution as any).workedExample.problem}
+              </Text>
+            </View>
+            <AIResponseErrorBoundary
+              fallbackText={(solution as any).workedExample.solution}
+              fontSize={fs(14)}
+              color={colors.foreground}
+            >
+              <AIResponseRenderer
+                markdown={(solution as any).workedExample.solution}
+                fontSize={fs(14)}
+                color={colors.foreground}
+                codeBackground={colors.surface}
+                flavor="github"
+                stripPreamble={false}
+              />
+            </AIResponseErrorBoundary>
+          </View>
+        )}
+
         {/* Related Topics */}
         {solution.relatedTopics && solution.relatedTopics.length > 0 && (
           <View style={styles.relatedSection}>
@@ -613,12 +646,34 @@ export default function SolutionScreen() {
             <View style={styles.similarList}>
               {similarProblems.map((p, i) => (
                 <View key={p.id} style={[styles.similarItem, { borderColor: colors.border }]}>
+                  {/* Problem row: number badge + text + copy icon */}
                   <View style={styles.similarItemHeader}>
                     <View style={[styles.similarNum, { backgroundColor: `${colors.primary}20` }]}>
                       <Text style={[styles.similarNumText, { color: colors.primary }]}>{i + 1}</Text>
                     </View>
                     <Text style={[styles.similarProblem, { color: colors.foreground, fontSize: fs(14) }]}>{p.problem}</Text>
+                    <TouchableOpacity
+                      accessibilityLabel={`Copy problem ${i + 1}`}
+                      accessibilityRole="button"
+                      onPress={async () => {
+                        try {
+                          await Clipboard.setStringAsync(p.problem);
+                          setCopiedProblemId(p.id);
+                          if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                          setTimeout(() => setCopiedProblemId(null), 2000);
+                        } catch { /* ignore */ }
+                      }}
+                      style={[styles.similarCopyBtn, { backgroundColor: copiedProblemId === p.id ? `${colors.success}20` : `${colors.primary}12` }]}
+                      activeOpacity={0.7}
+                    >
+                      <IconSymbol
+                        size={14}
+                        name={copiedProblemId === p.id ? "checkmark.circle.fill" : "doc.on.doc"}
+                        color={copiedProblemId === p.id ? colors.success : colors.primary}
+                      />
+                    </TouchableOpacity>
                   </View>
+                  {/* Hint toggle */}
                   <TouchableOpacity
                     accessibilityLabel="Toggle expanded hint"
                     onPress={() => setExpandedHint(expandedHint === p.id ? null : p.id)}
@@ -631,7 +686,9 @@ export default function SolutionScreen() {
                     </Text>
                   </TouchableOpacity>
                   {expandedHint === p.id && (
-                    <Text style={[styles.hintText, { color: colors.muted, fontSize: fs(13) }]}>{p.hint}</Text>
+                    <View style={[styles.hintExpanded, { backgroundColor: `${colors.warning}08`, borderColor: `${colors.warning}25` }]}>
+                      <Text style={[styles.hintText, { color: colors.foreground, fontSize: fs(13) }]}>{p.hint}</Text>
+                    </View>
                   )}
                 </View>
               ))}
@@ -962,4 +1019,34 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   discussBtnText: { fontSize: 15, fontWeight: "700" },
+  workedExampleCard: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  workedExampleProblem: {
+    borderRadius: 10,
+    borderWidth: 1,
+    padding: 12,
+    marginBottom: 12,
+  },
+  workedExampleLabel: { fontSize: 11, fontWeight: "700", letterSpacing: 1, marginBottom: 6 },
+  workedExampleProblemText: { fontSize: 14, lineHeight: 21, fontWeight: "500" },
+  similarCopyBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+    marginTop: 1,
+  },
+  hintExpanded: {
+    marginLeft: 34,
+    padding: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
 });
