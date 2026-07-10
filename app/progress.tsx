@@ -34,6 +34,7 @@ import {
 import { BadgeUnlockModal } from "@/components/badge-unlock-modal";
 import { SubjectRing } from "@/components/subject-ring";
 import { getSubjectEmoji } from "@/lib/subjects";
+import { StreakShieldCard } from "@/components/streak-shield-card";
 
 
 const GOAL_OPTIONS = [1, 3, 5, 10];
@@ -210,6 +211,14 @@ export default function ProgressScreen() {
             </>
           )}
         </View>
+
+        {/* Streak Shield */}
+        {streak.currentStreak > 0 && (
+          <StreakShieldCard
+            currentStreak={streak.currentStreak}
+            onShieldEarned={() => loadProgress()}
+          />
+        )}
 
         {/* Weekly Activity */}
         <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>

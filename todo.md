@@ -100,3 +100,6 @@
 - [x] Study Planner screen with weekly schedule, time slots, and local notification reminders
 - [ ] Flashcard deck PDF export and sharing
 - [x] AI chat history persistence (AsyncStorage, 50-message rolling window)
+- [x] Study Planner today-widget card on home screen
+- [x] Streak Shield/Freeze system in Progress screen
+- [x] Push notifications for scheduled study reminders

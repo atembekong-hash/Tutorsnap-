@@ -19,6 +19,21 @@ import { trpc, createTRPCClient } from "@/lib/trpc";
 import { initManusRuntime, subscribeSafeAreaInsets } from "@/lib/_core/manus-runtime";
 import { OfflineBanner } from "@/components/offline-banner";
 import { FontSizeProvider } from "@/lib/font-size-provider";
+import * as Notifications from "expo-notifications";
+import { useRouter } from "expo-router";
+
+// Show notifications as banners when app is in foreground
+if (Platform.OS !== "web") {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+}
 
 const DEFAULT_WEB_INSETS: EdgeInsets = { top: 0, right: 0, bottom: 0, left: 0 };
 const DEFAULT_WEB_FRAME: Rect = { x: 0, y: 0, width: 0, height: 0 };
@@ -28,6 +43,7 @@ export const unstable_settings = {
 };
 
 export default function RootLayout() {
+  const router = useRouter();
   const initialInsets = initialWindowMetrics?.insets ?? DEFAULT_WEB_INSETS;
   const initialFrame = initialWindowMetrics?.frame ?? DEFAULT_WEB_FRAME;
   const [insets, setInsets] = useState<EdgeInsets>(initialInsets);
@@ -36,6 +52,19 @@ export default function RootLayout() {
   useEffect(() => {
     initManusRuntime();
   }, []);
+
+  // Handle notification taps — navigate to Study Planner
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data as Record<string, unknown>;
+      if (data?.slotId) {
+        // Tapped a study planner notification — open the planner
+        router.push("/study-planner" as any);
+      }
+    });
+    return () => sub.remove();
+  }, [router]);
 
   const handleSafeAreaUpdate = useCallback((metrics: Metrics) => {
     setInsets(metrics.insets);
@@ -131,6 +160,13 @@ export default function RootLayout() {
               }}
             />
             <Stack.Screen name="quiz-history" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="study-planner"
+              options={{
+                presentation: "card",
+                animation: "slide_from_right",
+              }}
+            />
             <Stack.Screen name="oauth/callback" />
           </Stack>
           <StatusBar style="auto" />

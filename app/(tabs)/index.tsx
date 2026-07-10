@@ -35,6 +35,7 @@ import { StudyTipCard } from "@/components/study-tip-card";
 import { AlmostThereBanner } from "@/components/almost-there-banner";
 import { StreakShieldCard } from "@/components/streak-shield-card";
 import { getAlmostBadges } from "@/lib/mastery-badges";
+import { TodayStudyWidget } from "@/components/today-study-widget";
 
 // Subject examples per category — shown dynamically based on selected subject
 const SUBJECT_EXAMPLES: Record<string, string[]> = {
@@ -346,6 +347,9 @@ function SolveScreenContent() {
               onShieldEarned={(count) => setShieldCount(count)}
             />
           )}
+          {/* Today's Study Plan Widget */}
+          <TodayStudyWidget />
+
           {/* Weekly Goals Card */}
           {weeklyData && (
             <WeeklyGoalsCard
