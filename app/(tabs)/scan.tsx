@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -10,7 +10,8 @@ import {
   Alert,
   ScrollView,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
+import { CameraView, useCameraPermissions } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
 import * as Haptics from "expo-haptics";
 import * as FileSystem from "expo-file-system/legacy";
@@ -24,13 +25,30 @@ import { SubjectPicker } from "@/components/subject-picker";
 import { type SubjectId } from "@/lib/subjects";
 import { useNetworkStatus } from "@/hooks/use-network-status";
 
+type ScanMode = "picker" | "camera" | "preview";
+
 export default function ScanScreen() {
   const colors = useColors();
   const router = useRouter();
+  const cameraRef = useRef<CameraView>(null);
+  const [mode, setMode] = useState<ScanMode>("picker");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedSubject, setSelectedSubject] = useState<SubjectId | null>(null);
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [facing, setFacing] = useState<"back" | "front">("back");
   const { isOnline } = useNetworkStatus();
+
+  // Camera permissions via hook
+  const [permission, requestPermission] = useCameraPermissions();
+
+  // Activate/deactivate camera based on screen focus to save resources
+  useFocusEffect(
+    useCallback(() => {
+      if (mode === "camera") setIsCameraActive(true);
+      return () => setIsCameraActive(false);
+    }, [mode])
+  );
 
   const solveMutation = trpc.academic.solveFromImage.useMutation({
     onSuccess: async (data) => {
@@ -70,27 +88,50 @@ export default function ScanScreen() {
     },
   });
 
-  const pickFromCamera = async () => {
+  // --- Camera mode: take photo ---
+  const openCamera = async () => {
     if (Platform.OS === "web") {
       Alert.alert("Camera not available on web", "Please use the gallery option.");
       return;
     }
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert("Permission Required", "Camera access is needed to scan problems.");
-      return;
+    if (!permission?.granted) {
+      const result = await requestPermission();
+      if (!result.granted) {
+        Alert.alert(
+          "Permission Required",
+          "Camera access is needed to scan problems. Please enable it in Settings.",
+          [{ text: "OK" }]
+        );
+        return;
+      }
     }
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.9,
-      allowsEditing: true,
-    });
-    if (!result.canceled && result.assets[0]) {
-      setSelectedImage(result.assets[0].uri);
-      solveMutation.reset();
+    setMode("camera");
+    setIsCameraActive(true);
+  };
+
+  const takePicture = async () => {
+    if (!cameraRef.current) return;
+    try {
+      if (Platform.OS !== "web") {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
+      const photo = await cameraRef.current.takePictureAsync({
+        quality: 0.85,
+        base64: false,
+        skipProcessing: false,
+      });
+      if (photo?.uri) {
+        setSelectedImage(photo.uri);
+        setIsCameraActive(false);
+        setMode("preview");
+        solveMutation.reset();
+      }
+    } catch (e) {
+      Alert.alert("Error", "Failed to take photo. Please try again.");
     }
   };
 
+  // --- Gallery picker ---
   const pickFromGallery = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
@@ -98,16 +139,18 @@ export default function ScanScreen() {
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ["images"],
       quality: 0.9,
       allowsEditing: true,
     });
     if (!result.canceled && result.assets[0]) {
       setSelectedImage(result.assets[0].uri);
+      setMode("preview");
       solveMutation.reset();
     }
   };
 
+  // --- Solve ---
   const handleSolve = async () => {
     if (!selectedImage) return;
     setIsProcessing(true);
@@ -132,7 +175,11 @@ export default function ScanScreen() {
           encoding: FileSystem.EncodingType.Base64,
         });
       }
-      solveMutation.mutate({ imageBase64: base64, mimeType: "image/jpeg", subject: selectedSubject ?? "other" });
+      solveMutation.mutate({
+        imageBase64: base64,
+        mimeType: "image/jpeg",
+        subject: selectedSubject ?? "other",
+      });
     } catch (e) {
       setIsProcessing(false);
       Alert.alert("Error", "Failed to process image. Please try again.");
@@ -141,9 +188,152 @@ export default function ScanScreen() {
 
   const handleClear = () => {
     setSelectedImage(null);
+    setMode("picker");
     solveMutation.reset();
   };
 
+  // ===== CAMERA VIEW =====
+  if (mode === "camera" && Platform.OS !== "web") {
+    return (
+      <View style={styles.cameraContainer}>
+        {isCameraActive && (
+          <CameraView
+            ref={cameraRef}
+            style={StyleSheet.absoluteFill}
+            facing={facing}
+          />
+        )}
+
+        {/* Top bar */}
+        <View style={styles.cameraTopBar}>
+          <TouchableOpacity
+            onPress={() => { setMode("picker"); setIsCameraActive(false); }}
+            style={styles.cameraTopBtn}
+          >
+            <IconSymbol size={22} name="xmark" color="#FFFFFF" />
+          </TouchableOpacity>
+          <Text style={styles.cameraTitle}>Scan Problem</Text>
+          <TouchableOpacity
+            onPress={() => setFacing(f => f === "back" ? "front" : "back")}
+            style={styles.cameraTopBtn}
+          >
+            <IconSymbol size={22} name="arrow.triangle.2.circlepath.camera" color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Viewfinder guide */}
+        <View style={styles.viewfinderGuide}>
+          <View style={[styles.corner, styles.cornerTL]} />
+          <View style={[styles.corner, styles.cornerTR]} />
+          <View style={[styles.corner, styles.cornerBL]} />
+          <View style={[styles.corner, styles.cornerBR]} />
+        </View>
+
+        {/* Hint */}
+        <Text style={styles.cameraHint}>Position the problem within the frame</Text>
+
+        {/* Shutter */}
+        <View style={styles.shutterRow}>
+          <TouchableOpacity onPress={takePicture} style={styles.shutterBtn} activeOpacity={0.8}>
+            <View style={styles.shutterInner} />
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  // ===== PREVIEW + SOLVE VIEW =====
+  if (mode === "preview" && selectedImage) {
+    return (
+      <ScreenContainer>
+        <View style={[styles.header, { borderBottomColor: colors.border }]}>
+          <Text style={[styles.title, { color: colors.foreground }]}>Review Photo</Text>
+          <Text style={[styles.subtitle, { color: colors.muted }]}>
+            Looks good? Tap Solve to get the answer.
+          </Text>
+        </View>
+
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+          {/* Image Preview */}
+          <View style={[styles.imagePreview, { borderColor: colors.border }]}>
+            <Image
+              source={{ uri: selectedImage }}
+              style={styles.previewImage}
+              resizeMode="contain"
+            />
+            <TouchableOpacity
+              onPress={handleClear}
+              style={[styles.clearOverlay, { backgroundColor: `${colors.error}E0` }]}
+            >
+              <IconSymbol size={16} name="xmark" color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
+
+          {solveMutation.isError && (
+            <View
+              style={[
+                styles.errorBox,
+                { backgroundColor: `${colors.error}15`, borderColor: `${colors.error}30` },
+              ]}
+            >
+              <IconSymbol size={16} name="exclamationmark.triangle.fill" color={colors.error} />
+              <Text style={[styles.errorText, { color: colors.error }]}>
+                Failed to analyze the image. Please try a clearer photo.
+              </Text>
+            </View>
+          )}
+
+          {/* Subject hint */}
+          <View style={{ marginBottom: 16 }}>
+            <Text style={[styles.sectionLabel, { color: colors.muted }]}>SUBJECT HINT (OPTIONAL)</Text>
+            <Text style={[styles.sectionHint, { color: colors.muted }]}>Helps the AI give a more accurate answer.</Text>
+            <SubjectPicker value={selectedSubject} onChange={setSelectedSubject} showAll />
+          </View>
+
+          {/* Solve Button */}
+          <TouchableOpacity
+            onPress={handleSolve}
+            disabled={isProcessing || solveMutation.isPending || !isOnline}
+            style={[
+              styles.solveBtn,
+              { backgroundColor: isOnline ? colors.primary : colors.muted },
+              (isProcessing || solveMutation.isPending || !isOnline) && { opacity: 0.7 },
+            ]}
+            activeOpacity={0.85}
+          >
+            {isProcessing || solveMutation.isPending ? (
+              <>
+                <ActivityIndicator color="#FFFFFF" size="small" />
+                <Text style={styles.solveBtnText}>Analyzing Image...</Text>
+              </>
+            ) : !isOnline ? (
+              <>
+                <IconSymbol size={20} name="wifi.slash" color="#FFFFFF" />
+                <Text style={styles.solveBtnText}>No Internet Connection</Text>
+              </>
+            ) : (
+              <>
+                <IconSymbol size={20} name="wand.and.stars" color="#FFFFFF" />
+                <Text style={styles.solveBtnText}>Solve This Problem</Text>
+              </>
+            )}
+          </TouchableOpacity>
+
+          {/* Retake */}
+          <TouchableOpacity
+            onPress={handleClear}
+            style={[styles.retakeBtn, { borderColor: colors.border }]}
+            activeOpacity={0.8}
+          >
+            <IconSymbol size={18} name="camera.fill" color={colors.muted} />
+            <Text style={[styles.retakeBtnText, { color: colors.muted }]}>Take Another Photo</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </ScreenContainer>
+    );
+  }
+
+  // ===== PICKER VIEW (default) =====
   return (
     <ScreenContainer>
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
@@ -154,151 +344,77 @@ export default function ScanScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
-        {!selectedImage ? (
-          <>
-            {/* Upload Area */}
-            <TouchableOpacity
-              onPress={pickFromCamera}
-              style={[
-                styles.uploadArea,
-                { borderColor: colors.primary, backgroundColor: `${colors.primary}08` },
-              ]}
-              activeOpacity={0.8}
-            >
-              <View style={[styles.uploadIcon, { backgroundColor: `${colors.primary}20` }]}>
-                <IconSymbol size={40} name="camera.fill" color={colors.primary} />
-              </View>
-              <Text style={[styles.uploadTitle, { color: colors.foreground }]}>
-                Tap to Take a Photo
-              </Text>
-              <Text style={[styles.uploadSubtitle, { color: colors.muted }]}>
-                Works with handwritten and printed problems
-              </Text>
-            </TouchableOpacity>
+        {/* Camera Button */}
+        <TouchableOpacity
+          onPress={openCamera}
+          style={[
+            styles.uploadArea,
+            { borderColor: colors.primary, backgroundColor: `${colors.primary}08` },
+          ]}
+          activeOpacity={0.8}
+        >
+          <View style={[styles.uploadIcon, { backgroundColor: `${colors.primary}20` }]}>
+            <IconSymbol size={40} name="camera.fill" color={colors.primary} />
+          </View>
+          <Text style={[styles.uploadTitle, { color: colors.foreground }]}>
+            {Platform.OS === "web" ? "Camera (Not Available on Web)" : "Tap to Take a Photo"}
+          </Text>
+          <Text style={[styles.uploadSubtitle, { color: colors.muted }]}>
+            Works with handwritten and printed problems
+          </Text>
+        </TouchableOpacity>
 
-            {/* Divider */}
-            <View style={styles.dividerRow}>
-              <View style={[styles.divider, { backgroundColor: colors.border }]} />
-              <Text style={[styles.dividerText, { color: colors.muted }]}>or</Text>
-              <View style={[styles.divider, { backgroundColor: colors.border }]} />
+        {/* Divider */}
+        <View style={styles.dividerRow}>
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+          <Text style={[styles.dividerText, { color: colors.muted }]}>or</Text>
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+        </View>
+
+        {/* Gallery Button */}
+        <TouchableOpacity
+          onPress={pickFromGallery}
+          style={[
+            styles.galleryBtn,
+            { borderColor: colors.border, backgroundColor: colors.surface },
+          ]}
+          activeOpacity={0.8}
+        >
+          <IconSymbol size={22} name="photo.on.rectangle" color={colors.primary} />
+          <Text style={[styles.galleryBtnText, { color: colors.foreground }]}>
+            Choose from Gallery
+          </Text>
+          <IconSymbol size={16} name="chevron.right" color={colors.muted} />
+        </TouchableOpacity>
+
+        {/* Tips */}
+        <View style={[styles.tipsBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={styles.tipsHeader}>
+            <IconSymbol size={16} name="lightbulb.fill" color={colors.warning} />
+            <Text style={[styles.tipsTitle, { color: colors.foreground }]}>
+              Tips for Best Results
+            </Text>
+          </View>
+          {[
+            "Ensure good lighting — avoid shadows",
+            "Keep the entire problem in frame",
+            "Avoid blurry or tilted images",
+            "Works with handwriting and printed text",
+            "Supports equations, graphs, and word problems",
+          ].map((tip, i) => (
+            <View key={i} style={styles.tipRow}>
+              <View style={[styles.tipDot, { backgroundColor: colors.success }]} />
+              <Text style={[styles.tipText, { color: colors.muted }]}>{tip}</Text>
             </View>
+          ))}
+        </View>
 
-            {/* Gallery Button */}
-            <TouchableOpacity
-              onPress={pickFromGallery}
-              style={[
-                styles.galleryBtn,
-                { borderColor: colors.border, backgroundColor: colors.surface },
-              ]}
-              activeOpacity={0.8}
-            >
-              <IconSymbol size={22} name="photo.on.rectangle" color={colors.primary} />
-              <Text style={[styles.galleryBtnText, { color: colors.foreground }]}>
-                Choose from Gallery
-              </Text>
-              <IconSymbol size={16} name="chevron.right" color={colors.muted} />
-            </TouchableOpacity>
-
-            {/* Tips */}
-            <View style={[styles.tipsBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <View style={styles.tipsHeader}>
-                <IconSymbol size={16} name="lightbulb.fill" color={colors.warning} />
-                <Text style={[styles.tipsTitle, { color: colors.foreground }]}>
-                  Tips for Best Results
-                </Text>
-              </View>
-              {[
-                "Ensure good lighting — avoid shadows",
-                "Keep the entire problem in frame",
-                "Avoid blurry or tilted images",
-                "Works with handwriting and printed text",
-                "Supports equations, graphs, and word problems",
-              ].map((tip, i) => (
-                <View key={i} style={styles.tipRow}>
-                  <View style={[styles.tipDot, { backgroundColor: colors.success }]} />
-                  <Text style={[styles.tipText, { color: colors.muted }]}>{tip}</Text>
-                </View>
-              ))}
-            </View>
-
-            {/* Subject Hint */}
-            <View style={{ marginTop: 16 }}>
-              <Text style={[{ fontSize: 12, fontWeight: '600', color: colors.muted, marginBottom: 8, letterSpacing: 0.5 }]}>SUBJECT HINT (OPTIONAL)</Text>
-              <Text style={[{ fontSize: 13, color: colors.muted, marginBottom: 10, lineHeight: 18 }]}>Helps the AI give a more accurate answer. Leave blank for auto-detect.</Text>
-              <SubjectPicker value={selectedSubject} onChange={setSelectedSubject} showAll />
-            </View>
-          </>
-        ) : (
-          <>
-            {/* Image Preview */}
-            <View style={[styles.imagePreview, { borderColor: colors.border }]}>
-              <Image
-                source={{ uri: selectedImage }}
-                style={styles.previewImage}
-                resizeMode="contain"
-              />
-              <TouchableOpacity
-                onPress={handleClear}
-                style={[styles.clearOverlay, { backgroundColor: `${colors.error}E0` }]}
-              >
-                <IconSymbol size={16} name="xmark" color="#FFFFFF" />
-              </TouchableOpacity>
-            </View>
-
-            {solveMutation.isError && (
-              <View
-                style={[
-                  styles.errorBox,
-                  { backgroundColor: `${colors.error}15`, borderColor: `${colors.error}30` },
-                ]}
-              >
-                <IconSymbol size={16} name="exclamationmark.triangle.fill" color={colors.error} />
-                <Text style={[styles.errorText, { color: colors.error }]}>
-                  Failed to analyze the image. Please try a clearer photo.
-                </Text>
-              </View>
-            )}
-
-            {/* Solve Button */}
-            <TouchableOpacity
-              onPress={handleSolve}
-              disabled={isProcessing || solveMutation.isPending || !isOnline}
-              style={[
-                styles.solveBtn,
-                { backgroundColor: isOnline ? colors.primary : colors.muted },
-                (isProcessing || solveMutation.isPending || !isOnline) && { opacity: 0.7 },
-              ]}
-              activeOpacity={0.85}
-            >
-              {isProcessing || solveMutation.isPending ? (
-                <>
-                  <ActivityIndicator color="#FFFFFF" size="small" />
-                  <Text style={styles.solveBtnText}>Analyzing Image...</Text>
-                </>
-              ) : !isOnline ? (
-                <>
-                  <IconSymbol size={20} name="wifi.slash" color="#FFFFFF" />
-                  <Text style={styles.solveBtnText}>No Internet Connection</Text>
-                </>
-              ) : (
-                <>
-                  <IconSymbol size={20} name="wand.and.stars" color="#FFFFFF" />
-                  <Text style={styles.solveBtnText}>Solve This Problem</Text>
-                </>
-              )}
-            </TouchableOpacity>
-
-            {/* Retake */}
-            <TouchableOpacity
-              onPress={handleClear}
-              style={[styles.retakeBtn, { borderColor: colors.border }]}
-              activeOpacity={0.8}
-            >
-              <IconSymbol size={18} name="camera.fill" color={colors.muted} />
-              <Text style={[styles.retakeBtnText, { color: colors.muted }]}>Take Another Photo</Text>
-            </TouchableOpacity>
-          </>
-        )}
+        {/* Subject Hint */}
+        <View style={{ marginTop: 16 }}>
+          <Text style={[styles.sectionLabel, { color: colors.muted }]}>SUBJECT HINT (OPTIONAL)</Text>
+          <Text style={[styles.sectionHint, { color: colors.muted }]}>Helps the AI give a more accurate answer. Leave blank for auto-detect.</Text>
+          <SubjectPicker value={selectedSubject} onChange={setSelectedSubject} showAll />
+        </View>
       </ScrollView>
     </ScreenContainer>
   );
@@ -313,6 +429,95 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 26, fontWeight: "800", letterSpacing: -0.5 },
   subtitle: { fontSize: 14, marginTop: 4 },
+  sectionLabel: { fontSize: 12, fontWeight: "600", marginBottom: 4, letterSpacing: 0.5 },
+  sectionHint: { fontSize: 13, marginBottom: 10, lineHeight: 18 },
+
+  // === Camera ===
+  cameraContainer: {
+    flex: 1,
+    backgroundColor: "#000",
+  },
+  cameraTopBar: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingTop: 56,
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    backgroundColor: "rgba(0,0,0,0.4)",
+  },
+  cameraTopBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cameraTitle: {
+    color: "#FFFFFF",
+    fontSize: 17,
+    fontWeight: "700",
+  },
+  viewfinderGuide: {
+    position: "absolute",
+    top: "25%",
+    left: "10%",
+    right: "10%",
+    bottom: "25%",
+    zIndex: 5,
+  },
+  corner: {
+    position: "absolute",
+    width: 28,
+    height: 28,
+    borderColor: "#FFFFFF",
+  },
+  cornerTL: { top: 0, left: 0, borderTopWidth: 3, borderLeftWidth: 3, borderTopLeftRadius: 4 },
+  cornerTR: { top: 0, right: 0, borderTopWidth: 3, borderRightWidth: 3, borderTopRightRadius: 4 },
+  cornerBL: { bottom: 0, left: 0, borderBottomWidth: 3, borderLeftWidth: 3, borderBottomLeftRadius: 4 },
+  cornerBR: { bottom: 0, right: 0, borderBottomWidth: 3, borderRightWidth: 3, borderBottomRightRadius: 4 },
+  cameraHint: {
+    position: "absolute",
+    bottom: "22%",
+    left: 0,
+    right: 0,
+    textAlign: "center",
+    color: "rgba(255,255,255,0.8)",
+    fontSize: 14,
+    zIndex: 10,
+  },
+  shutterRow: {
+    position: "absolute",
+    bottom: 48,
+    left: 0,
+    right: 0,
+    alignItems: "center",
+    zIndex: 10,
+  },
+  shutterBtn: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: "rgba(255,255,255,0.25)",
+    borderWidth: 3,
+    borderColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  shutterInner: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: "#FFFFFF",
+  },
+
+  // === Picker ===
   uploadArea: {
     borderWidth: 2,
     borderStyle: "dashed",
@@ -360,14 +565,8 @@ const styles = StyleSheet.create({
   tipRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 },
   tipDot: { width: 6, height: 6, borderRadius: 3 },
   tipText: { fontSize: 14, lineHeight: 20, flex: 1 },
-  supportedRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  supportedChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  supportedText: { fontSize: 12, fontWeight: "500" },
+
+  // === Preview ===
   imagePreview: {
     borderRadius: 20,
     borderWidth: 1,

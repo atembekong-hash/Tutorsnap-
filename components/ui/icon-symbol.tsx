@@ -26,7 +26,8 @@ const MAPPING = {
   "wand.and.stars": "auto-fix-high",
   "bolt.fill": "bolt",
   // Camera / Media
-  "camera.fill": "camera-alt",
+  "camera.fill": "photo-camera",
+  "arrow.triangle.2.circlepath.camera": "flip-camera-ios",
   "photo.on.rectangle": "photo-library",
   // UI
   "magnifyingglass": "search",

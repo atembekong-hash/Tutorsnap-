@@ -87,6 +87,21 @@ const config: ExpoConfig = {
   plugins: [
     "expo-router",
     [
+      "expo-image-picker",
+      {
+        "photosPermission": "Allow $(PRODUCT_NAME) to access your photos to scan problems.",
+        "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera to take photos of problems.",
+      },
+    ],
+    [
+      "expo-camera",
+      {
+        "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera.",
+        "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone.",
+        "recordAudioAndroid": false,
+      },
+    ],
+    [
       "expo-audio",
       {
         microphonePermission: "Allow $(PRODUCT_NAME) to access your microphone.",
