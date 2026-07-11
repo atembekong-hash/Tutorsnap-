@@ -113,6 +113,10 @@ const config: ExpoConfig = {
   },
   plugins: [
     "expo-router",
+    // expo-notifications has a valid app.plugin.js and must be listed here
+    "expo-notifications",
+    // expo-linear-gradient, expo-clipboard, expo-print, expo-sharing have no app.plugin.js
+    // — they are auto-linked by expo-modules-core and do NOT need a plugins entry
     [
       "expo-image-picker",
       {

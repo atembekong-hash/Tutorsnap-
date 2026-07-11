@@ -928,6 +928,14 @@ function ChatScreenContent() {
               />
             </TouchableOpacity>
             <TouchableOpacity
+              onPress={() => router.push("/(tabs)/notes")}
+              accessibilityLabel="My saved notes"
+              style={chatStyles.headerBtn}
+              activeOpacity={0.7}
+            >
+              <IconSymbol size={19} name="bookmark.fill" color={colors.muted} />
+            </TouchableOpacity>
+            <TouchableOpacity
               onPress={() => router.push("/chat-history")}
               accessibilityLabel="Chat history"
               style={chatStyles.headerBtn}
