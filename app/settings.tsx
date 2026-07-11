@@ -716,8 +716,8 @@ export default function SettingsScreen() {
         />
         <SettingsRow
           icon="paperplane.fill"
-          label="Refer a Friend"
-          subtitle="Give 7 days free, get 7 days free"
+          label="Affiliate & Referrals"
+          subtitle="Earn free days — 5 ways to earn, tier rewards"
           colors={colors}
           onPress={() => router.push("/refer" as any)}
         />

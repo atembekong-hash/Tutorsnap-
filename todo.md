@@ -425,3 +425,9 @@
 - [x] Build leaderboard tab screen with weekly rankings
 - [x] Add leaderboard tab to tab bar
 - [x] Add "Explain this differently" button on solve results
+
+## Round 46: Full Affiliate System
+- [x] lib/affiliate.ts — referral tracking, reward tiers, earning options, stats
+- [x] app/refer.tsx — full affiliate dashboard (earnings, history, tiers, sharing)
+- [x] app/affiliate-rewards.tsx — rewards redemption screen
+- [x] Settings affiliate section entry point
