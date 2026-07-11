@@ -1218,6 +1218,14 @@ function ChatScreenContent() {
             showsVerticalScrollIndicator={false}
             onScroll={handleChatScroll}
             scrollEventThrottle={16}
+            keyboardDismissMode="on-drag"
+            onTouchStart={() => {
+              // Tap anywhere on message list restores input bar if hidden
+              if (!inputBarVisible.current) {
+                inputBarVisible.current = true;
+                Animated.timing(inputBarAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start();
+              }
+            }}
             onContentSizeChange={() =>
               flatListRef.current?.scrollToEnd({ animated: false })
             }
@@ -1231,6 +1239,47 @@ function ChatScreenContent() {
           />
         )}
 
+        {/* ── Top fade gradient — content fades behind header overlay ── */}
+        <View
+          pointerEvents="none"
+          style={{
+            position: "absolute", top: HEADER_HEIGHT, left: 0, right: 0,
+            height: 28, zIndex: 5,
+            overflow: "hidden",
+          }}
+        >
+          {[0.55, 0.35, 0.18, 0.08, 0.02].map((opacity, i) => (
+            <View
+              key={i}
+              style={{
+                flex: 1,
+                backgroundColor: colors.background,
+                opacity,
+              }}
+            />
+          ))}
+        </View>
+        {/* ── Bottom fade gradient — content fades behind input bar overlay ── */}
+        <View
+          pointerEvents="none"
+          style={{
+            position: "absolute", bottom: 0, left: 0, right: 0,
+            height: 36, zIndex: 5,
+            overflow: "hidden",
+            flexDirection: "column-reverse",
+          }}
+        >
+          {[0.55, 0.35, 0.18, 0.08, 0.02].map((opacity, i) => (
+            <View
+              key={i}
+              style={{
+                flex: 1,
+                backgroundColor: colors.background,
+                opacity,
+              }}
+            />
+          ))}
+        </View>
         {/* ── Scroll-to-bottom button ── */}
         {showScrollBtn && (
           <TouchableOpacity
