@@ -40,8 +40,9 @@ import {
   Animated,
   Easing,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
+// expo-linear-gradient removed — uses requireNativeViewManager which needs a native rebuild.
+// Gradient avatar is implemented with pure React Native Views instead.
 // expo-clipboard, expo-print, expo-sharing are loaded lazily inside handlers
 // to avoid native module crashes on Android when the tab is first mounted.
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -195,25 +196,23 @@ const typingStyles = StyleSheet.create({
   dot: { width: 8, height: 8, borderRadius: 4 },
 });
 
-// ─── Gradient AI Avatar ───────────────────────────────────────────────────────
-
+// ─── AI Avatar (pure RN, no native gradient) ─────────────────────────────────
+// Uses a solid purple circle with a ✦ symbol — no expo-linear-gradient needed.
 function AIAvatar({ size = 30 }: { size?: number }) {
   return (
-    <LinearGradient
-      colors={["#7C3AED", "#2563EB"]}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
+    <View
       style={{
         width: size,
         height: size,
         borderRadius: size / 2,
+        backgroundColor: "#7C3AED",
         alignItems: "center",
         justifyContent: "center",
         flexShrink: 0,
       }}
     >
-      <Text style={{ fontSize: size * 0.42, lineHeight: size * 0.55 }}>✦</Text>
-    </LinearGradient>
+      <Text style={{ fontSize: size * 0.42, lineHeight: size * 0.55, color: "#fff" }}>✦</Text>
+    </View>
   );
 }
 
