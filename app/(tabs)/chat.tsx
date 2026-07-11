@@ -1055,12 +1055,14 @@ function ChatScreenContent() {
         style={{ flex: 1 }}
         keyboardVerticalOffset={TAB_BAR_HEIGHT}
       >
-        {/* ── Slim header with gradient avatar (auto-hides on scroll down) ── */}
+        {/* ── Slim header — absolutely positioned so it takes zero layout space ── */}
         <Animated.View
           style={[
             chatStyles.header,
-            { borderBottomColor: colors.border, backgroundColor: colors.background },
             {
+              position: "absolute", top: 0, left: 0, right: 0, zIndex: 10,
+              borderBottomColor: colors.border,
+              backgroundColor: colors.background,
               opacity: headerAnim,
               transform: [{ translateY: headerAnim.interpolate({ inputRange: [0, 1], outputRange: [-HEADER_HEIGHT, 0] }) }],
             },
@@ -1212,7 +1214,7 @@ function ChatScreenContent() {
                 onLongPressAI={handleLongPressAI}
               />
             )}
-            contentContainerStyle={{ paddingTop: 4, paddingBottom: 8 }}
+            contentContainerStyle={{ paddingTop: HEADER_HEIGHT + 4, paddingBottom: TAB_BAR_HEIGHT + 80 }}
             showsVerticalScrollIndicator={false}
             onScroll={handleChatScroll}
             scrollEventThrottle={16}
@@ -1271,12 +1273,14 @@ function ChatScreenContent() {
             )}
           </View>
         )}
-        {/* ── Floating input bar (auto-hides when reading, overlays message list) ── */}
+        {/* ── Floating input bar — absolutely positioned overlay, takes zero layout space ── */}
         <Animated.View
           style={[
             chatStyles.floatingBarWrapper,
-            { paddingBottom: Platform.OS === "ios" ? 10 : 8 },
             {
+              position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 10,
+              paddingBottom: Platform.OS === "ios" ? Math.max(insets.bottom, 8) + 4 : 8,
+              backgroundColor: "transparent",
               opacity: inputBarAnim,
               transform: [{ translateY: inputBarAnim.interpolate({ inputRange: [0, 1], outputRange: [80, 0] }) }],
             },
@@ -1755,7 +1759,7 @@ const chatStyles = StyleSheet.create({
   scrollBtn: {
     position: "absolute",
     right: 16,
-    bottom: 80,
+    bottom: 90,
     width: 34,
     height: 34,
     borderRadius: 17,
