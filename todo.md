@@ -431,3 +431,8 @@
 - [x] app/refer.tsx — full affiliate dashboard (earnings, history, tiers, sharing)
 - [x] app/affiliate-rewards.tsx — rewards redemption screen
 - [x] Settings affiliate section entry point
+
+## Round 47: Affiliate Polish
+- [x] Friend-joined push notification in lib/affiliate.ts
+- [x] Home screen affiliate earnings widget
+- [x] Share tier badge feature on affiliate dashboard

@@ -464,7 +464,7 @@ export default function ReferScreen() {
         )}
 
         <Text style={[styles.legalNote, { color: colors.muted }]}>
-          Bonus days are added to your pending balance and applied when you tap "Apply Days". Limit: 50 referrals per account. Social share reward resets every 24 hours. Content creator reward limited to 5 claims.
+          Bonus days are added to your pending balance and applied when you tap "Apply Days". Limit: 100 referrals per account. Social share reward resets every 24 hours. Content creator reward limited to 10 claims.
         </Text>
       </ScrollView>
 
@@ -544,6 +544,17 @@ const styles = StyleSheet.create({
   perksRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   perkChip: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, borderWidth: 1 },
   perkText: { fontSize: 11, fontWeight: "600" },
+
+  // Share Badge Button
+  shareBadgeBtn: {
+    marginTop: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    alignItems: "center" as const,
+  },
+  shareBadgeBtnText: { fontSize: 13, fontWeight: "700" },
 
   // Code
   codeCard: { borderRadius: 16, borderWidth: 1, padding: 16, gap: 8 },

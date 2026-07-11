@@ -33,6 +33,7 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import { WeeklyGoalsCard } from "@/components/weekly-goals-card";
 import { getWeeklyData, type WeeklyData } from "@/lib/weekly-goals";
 import { StudyTipCard } from "@/components/study-tip-card";
+import { AffiliateEarningsWidget } from "@/components/affiliate-earnings-widget";
 import { AlmostThereBanner } from "@/components/almost-there-banner";
 import { StreakShieldCard } from "@/components/streak-shield-card";
 import { getAlmostBadges, computeMasteryBadges, getSeenBadges, markBadgeSeen, type BadgeTier } from "@/lib/mastery-badges";
@@ -614,6 +615,9 @@ function SolveScreenContent() {
           {isOnline && selectedSubject && (
             <StudyTipCard subject={selectedSubject} />
           )}
+
+            {/* Affiliate earnings widget — only shows when pending days > 0 */}
+            <AffiliateEarningsWidget />
 
           {/* Subject Picker */}
           <View style={styles.subjectRow}>

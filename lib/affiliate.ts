@@ -20,6 +20,8 @@
  */
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Notifications from "expo-notifications";
+import { Platform } from "react-native";
 
 // ─── Keys ────────────────────────────────────────────────────────────────────
 const KEYS = {
@@ -174,6 +176,8 @@ export async function recordReferral(): Promise<{ daysEarned: number; milestoneB
   await addEvent({ type: "referral", daysEarned, label: `Friend joined with your code (+${daysEarned} days)` });
 
   const newTier = getTier(stats.totalReferrals);
+  // Fire push notification (non-blocking)
+  sendFriendJoinedNotification(daysEarned + milestoneBonus, newTier).catch(() => {});
   return { daysEarned, milestoneBonus, newTier };
 }
 
@@ -247,6 +251,38 @@ export async function redeemPendingDays(): Promise<number> {
   await saveStats(stats);
   await addEvent({ type: "referral", daysEarned: 0, label: `Redeemed ${toRedeem} days to your subscription` });
   return toRedeem;
+}
+
+/** Send a local push notification when a referred friend joins. */
+export async function sendFriendJoinedNotification(daysEarned: number, newTier?: RewardTier): Promise<void> {
+  if (Platform.OS === "web") return;
+  try {
+    const { status } = await Notifications.getPermissionsAsync();
+    if (status !== "granted") {
+      const { status: asked } = await Notifications.requestPermissionsAsync();
+      if (asked !== "granted") return;
+    }
+    if (Platform.OS === "android") {
+      await Notifications.setNotificationChannelAsync("affiliate", {
+        name: "Affiliate Rewards",
+        importance: Notifications.AndroidImportance.HIGH,
+        vibrationPattern: [0, 250, 250, 250],
+      });
+    }
+    const tierMsg = newTier && newTier !== "starter"
+      ? ` You've reached ${TIER_META[newTier].emoji} ${TIER_META[newTier].label} tier!`
+      : "";
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: "🎁 A friend just joined TutorSnap!",
+        body: `You earned +${daysEarned} free days.${tierMsg} Keep sharing to earn more!`,
+        sound: true,
+        data: { screen: "/refer" },
+        ...(Platform.OS === "android" ? { channelId: "affiliate" } : {}),
+      },
+      trigger: null, // immediate
+    });
+  } catch { /* silently ignore */ }
 }
 
 /** Build the list of earning options with live availability. */
