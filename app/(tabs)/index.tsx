@@ -42,6 +42,7 @@ import { getMyClassroom, getJoinedClassroom, getClassroomFeed, type ClassroomPro
 import * as Notifications from "expo-notifications";
 import { usePremium } from "@/hooks/use-premium";
 import { FREE_LIMITS } from "@/lib/subscription";
+import { UpsellNudgeBanner } from "@/components/upsell-nudge-banner";
 
 // Subject examples per category — shown dynamically based on selected subject
 const SUBJECT_EXAMPLES: Record<string, string[]> = {
@@ -655,14 +656,12 @@ function SolveScreenContent() {
             </View>
           </TouchableOpacity>
 
-          {/* Free-tier daily usage counter */}
-          {!isPremium && !isDevMode && (
-            <View style={{ marginHorizontal: 16, marginTop: 8, alignItems: "center" }}>
-              <Text style={{ fontSize: 12, color: colors.muted }}>
-                {Math.max(0, FREE_LIMITS.solvesPerDay - usage.solves)} of {FREE_LIMITS.solvesPerDay} free solves remaining today
-              </Text>
-            </View>
-          )}
+          {/* Upsell nudge banner — shown after first solve, hidden for premium/dev */}
+          <UpsellNudgeBanner
+            solvesUsed={usage.solves}
+            isPremium={isPremium}
+            isDevMode={isDevMode}
+          />
 
           {solveMutation.isError && (
             <View
