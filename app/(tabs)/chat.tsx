@@ -25,6 +25,7 @@ import React, {
   useMemo,
 } from "react";
 import { useFocusEffect } from "expo-router";
+import { useAudioRecorder, RecordingPresets, AudioModule } from "expo-audio";
 import {
   View,
   Text,
@@ -487,6 +488,10 @@ function ChatScreenContent() {
   const flatListRef = useRef<FlatList>(null);
   const { isOnline } = useNetworkStatus();
   const [unseenNotesCount, setUnseenNotesCount] = useState(0);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [showScrollBtn, setShowScrollBtn] = useState(false);
+  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   // Load unseen notes count whenever the screen is focused
   useFocusEffect(
     useCallback(() => {
@@ -592,6 +597,7 @@ function ChatScreenContent() {
 
   // ── Chat mutation ───────────────────────────────────────────────────────────
 
+  const transcribeMutation = trpc.voice.transcribe.useMutation();
   const chatMutation = trpc.academic.chat.useMutation({
     onSuccess: (data) => {
       const aiMessage: ChatMessage = {
@@ -864,6 +870,59 @@ function ChatScreenContent() {
     ]);
   }, [session, selectedSubject]);
 
+  // ── Voice input ────────────────────────────────────────────────────────────
+  const handleVoiceInput = useCallback(async () => {
+    if (Platform.OS === "web") {
+      Alert.alert("Voice Input", "Voice input is not available on web.");
+      return;
+    }
+    if (isRecording) {
+      // Stop recording and transcribe
+      try {
+        audioRecorder.stop();
+        setIsRecording(false);
+        setIsTranscribing(true);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        // Get the recording URI
+        const uri = audioRecorder.uri;
+        if (!uri) { setIsTranscribing(false); return; }
+        // Read as base64
+        const FSModule = await import("expo-file-system/legacy");
+        const base64 = await FSModule.readAsStringAsync(uri, { encoding: FSModule.EncodingType.Base64 });
+        // Upload to server
+        const API_BASE = process.env.EXPO_PUBLIC_API_URL || "http://127.0.0.1:3000";
+        const uploadResp = await fetch(`${API_BASE}/api/voice/upload`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ base64, mimeType: "audio/m4a" }),
+        });
+        if (!uploadResp.ok) throw new Error("Upload failed");
+        const { url: audioUrl } = await uploadResp.json();
+        // Transcribe via tRPC
+        const result = await transcribeMutation.mutateAsync({ audioUrl });
+        if (result.text) {
+          setInputText((prev) => (prev ? prev + " " + result.text : result.text));
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
+      } catch (err) {
+        Alert.alert("Transcription failed", "Could not transcribe audio. Please try again.");
+      } finally {
+        setIsTranscribing(false);
+      }
+    } else {
+      // Start recording
+      try {
+        await AudioModule.requestRecordingPermissionsAsync();
+        await audioRecorder.prepareToRecordAsync();
+        audioRecorder.record();
+        setIsRecording(true);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      } catch (err) {
+        Alert.alert("Microphone", "Could not access microphone. Please check permissions.");
+      }
+    }
+  }, [isRecording, audioRecorder]);
+
     // ── Follow-up chips ────────────────────────────────────────────────────────
   // Show 3 contextual follow-up chips after the last AI response
   const GENERIC_FOLLOWUPS = [
@@ -1068,6 +1127,12 @@ function ChatScreenContent() {
             )}
             contentContainerStyle={{ paddingTop: 12, paddingBottom: 16 }}
             showsVerticalScrollIndicator={false}
+            onScroll={(e) => {
+              const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+              const distFromBottom = contentSize.height - contentOffset.y - layoutMeasurement.height;
+              setShowScrollBtn(distFromBottom > 120);
+            }}
+            scrollEventThrottle={100}
             onContentSizeChange={() =>
               flatListRef.current?.scrollToEnd({ animated: false })
             }
@@ -1086,6 +1151,16 @@ function ChatScreenContent() {
           />
         )}
 
+        {/* ── Scroll-to-bottom button ── */}
+        {showScrollBtn && (
+          <TouchableOpacity
+            onPress={() => flatListRef.current?.scrollToEnd({ animated: true })}
+            style={[chatStyles.scrollBtn, { backgroundColor: colors.surface, borderColor: colors.border, shadowColor: "#000" }]}
+            activeOpacity={0.8}
+          >
+            <IconSymbol size={18} name="chevron.down" color={colors.primary} />
+          </TouchableOpacity>
+        )}
         {/* ── Follow-up chips ── */}
         {followUpChips.length > 0 && (
           <View style={chatStyles.followUpRow}>
@@ -1177,11 +1252,10 @@ function ChatScreenContent() {
                 color={selectedSubject ? colors.primary : colors.muted}
               />
             </TouchableOpacity>
-
             <TextInput
               style={[
                 chatStyles.input,
-                { color: colors.foreground, fontSize: fs(15), lineHeight: fs(15) * 1.45 },
+                { color: colors.foreground, fontSize: fs(14), lineHeight: fs(14) * 1.4 },
               ]}
               placeholder={isAtLimit ? "Upgrade to keep chatting…" : "Ask anything…"}
               placeholderTextColor={colors.muted}
@@ -1193,7 +1267,33 @@ function ChatScreenContent() {
               onSubmitEditing={() => handleSend()}
               editable={!isAtLimit}
             />
-
+            {/* Mic button — hidden when text is typed */}
+            {!inputText.trim() && (
+              <TouchableOpacity
+                accessibilityLabel={isRecording ? "Stop recording" : "Voice input"}
+                onPress={handleVoiceInput}
+                disabled={isTranscribing}
+                style={[
+                  chatStyles.micBtn,
+                  {
+                    backgroundColor: isRecording
+                      ? `${colors.error}20`
+                      : `${colors.primary}14`,
+                  },
+                ]}
+                activeOpacity={0.75}
+              >
+                {isTranscribing ? (
+                  <ActivityIndicator size={14} color={colors.primary} />
+                ) : (
+                  <IconSymbol
+                    size={15}
+                    name={isRecording ? "mic.slash.fill" : "mic.fill"}
+                    color={isRecording ? colors.error : colors.primary}
+                  />
+                )}
+              </TouchableOpacity>
+            )}
             <TouchableOpacity
               accessibilityLabel="Send message"
               onPress={() => handleSend()}
@@ -1560,5 +1660,28 @@ const chatStyles = StyleSheet.create({
   },
   followUpChipText: {
     fontWeight: "600",
+  },
+  scrollBtn: {
+    position: "absolute",
+    right: 16,
+    bottom: 80,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  micBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
   },
 });
