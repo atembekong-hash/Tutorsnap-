@@ -22,6 +22,7 @@ import { saveQuizResult } from "@/lib/quiz-history";
 import { recordQuizBonus } from "@/lib/progress";
 import { usePremium } from "@/hooks/use-premium";
 import { FREE_LIMITS } from "@/lib/subscription";
+import { QuizNudgeBanner } from "@/components/quiz-nudge-banner";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -492,6 +493,13 @@ export default function QuizScreen() {
           <View style={[styles.questionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Text style={[styles.questionText, { color: colors.foreground }]}>{q.problem}</Text>
           </View>
+
+          {/* Quiz nudge banner — shown after first question answered, hidden for premium/dev */}
+          <QuizNudgeBanner
+            questionsAnswered={quizQuestionsAnswered}
+            isPremium={isPremium}
+            isDevMode={isDevMode}
+          />
 
           {/* Options */}
           {(["A", "B", "C", "D"] as OptionKey[]).map((key) => (

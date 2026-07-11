@@ -398,3 +398,9 @@
 - [x] Add chat nudge banner above input bar in chat.tsx (messages used / remaining, amber→red, taps to paywall)
 - [x] Add premium crown badge to home screen header (gold crown taps to paywall; filled crown for premium users)
 - [x] Add paywall slide to onboarding flow as final step ("Start your 14-day free trial")
+
+## Round 42: Subscription Conversion Polish
+- [x] Wire onboarding "Start Free Trial" CTA to push /paywall before finishing onboarding
+- [x] Build post-purchase celebration screen (app/premium-welcome.tsx) with confetti + welcome message
+- [x] Wire paywall to push /premium-welcome after successful purchase
+- [x] Add quiz nudge banner above answer options in quiz.tsx

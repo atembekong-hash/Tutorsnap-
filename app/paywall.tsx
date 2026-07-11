@@ -113,11 +113,8 @@ export default function PaywallScreen() {
         if (Platform.OS !== "web") {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         }
-        Alert.alert(
-          "Welcome to Premium! 🎉",
-          "Your 14-day free trial has started. Enjoy unlimited access to all TutorSnap features.",
-          [{ text: "Let's Go!", onPress: () => router.back() }]
-        );
+        // Navigate to the celebration screen instead of a plain Alert
+        router.replace("/premium-welcome" as any);
       } else if (!result.cancelled) {
         Alert.alert(
           "Purchase Failed",

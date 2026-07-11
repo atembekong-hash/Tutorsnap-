@@ -72,12 +72,32 @@ export default function OnboardingScreen() {
   const goNext = () => {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (isLastSlide) {
-      finishOnboarding();
+      // On the trial slide, push to paywall first so users can start their trial
+      // finishOnboarding is called after the paywall is dismissed (or skipped)
+      finishOnboardingAndShowPaywall();
     } else {
       const next = currentSlide + 1;
       setCurrentSlide(next);
       scrollRef.current?.scrollTo({ x: next * SCREEN_WIDTH, animated: true });
     }
+  };
+
+  const finishOnboardingAndShowPaywall = async () => {
+    // Mark onboarding done first so back-navigation lands on the home tab
+    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    await AsyncStorage.setItem(ONBOARDING_DONE_KEY, "true");
+    if (selectedCategories.size > 0) {
+      await AsyncStorage.setItem(
+        "@tutorsnap/preferredCategories",
+        JSON.stringify(Array.from(selectedCategories))
+      );
+    }
+    // Replace to home first, then push paywall so dismissing paywall lands on home
+    router.replace("/(tabs)" as any);
+    // Small delay so the tab navigator is mounted before pushing the modal
+    setTimeout(() => {
+      router.push("/paywall" as any);
+    }, 300);
   };
 
   const finishOnboarding = async () => {

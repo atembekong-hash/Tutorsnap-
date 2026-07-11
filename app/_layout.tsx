@@ -296,6 +296,15 @@ export default function RootLayout() {
                 animation: "slide_from_bottom",
               }}
             />
+            <Stack.Screen
+              name="premium-welcome"
+              options={{
+                presentation: "fullScreenModal",
+                animation: "fade",
+                gestureEnabled: false,
+                headerShown: false,
+              }}
+            />
           </Stack>
           <StatusBar style="auto" />
         </QueryClientProvider>
