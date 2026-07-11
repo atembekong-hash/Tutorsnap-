@@ -40,17 +40,16 @@ import {
 } from "@/lib/chat-sessions";
 import { usePremium } from "@/hooks/use-premium";
 import { FREE_LIMITS } from "@/lib/subscription";
-import { ChatNudgeBanner } from "@/components/chat-nudge-banner";
 
 // ─── Quick Prompts ────────────────────────────────────────────────────────────
 
 const QUICK_PROMPTS = [
-  "Explain the quadratic formula",
-  "What is photosynthesis?",
-  "Summarize Romeo and Juliet",
-  "What caused World War I?",
-  "Explain Newton's laws of motion",
-  "What is supply and demand?",
+  { label: "Quadratic formula", text: "Explain the quadratic formula" },
+  { label: "Photosynthesis", text: "What is photosynthesis?" },
+  { label: "Romeo & Juliet", text: "Summarize Romeo and Juliet" },
+  { label: "World War I", text: "What caused World War I?" },
+  { label: "Newton's laws", text: "Explain Newton's laws of motion" },
+  { label: "Supply & demand", text: "What is supply and demand?" },
 ];
 
 // ─── Message Bubble ───────────────────────────────────────────────────────────
@@ -61,7 +60,7 @@ function MessageBubble({
   fs,
 }: {
   message: ChatMessage;
-  colors: any;
+  colors: ReturnType<typeof useColors>;
   fs: (n: number) => number;
 }) {
   const isUser = message.role === "user";
@@ -78,7 +77,7 @@ function MessageBubble({
     >
       {!isUser && (
         <View style={[styles.aiAvatar, { backgroundColor: `${colors.primary}20` }]}>
-          <Text style={{ fontSize: 12 }}>🧮</Text>
+          <Text style={{ fontSize: 13 }}>🧮</Text>
         </View>
       )}
       <View style={styles.bubbleContent}>
@@ -110,7 +109,7 @@ function MessageBubble({
         <Text
           style={[
             styles.messageTime,
-            { color: isUser ? "rgba(255,255,255,0.6)" : colors.muted, fontSize: fs(11) },
+            { color: isUser ? "rgba(255,255,255,0.55)" : colors.muted, fontSize: fs(11) },
           ]}
         >
           {new Date(message.timestamp).toLocaleTimeString([], {
@@ -153,6 +152,7 @@ function ChatScreenContent() {
   const [sessionLoaded, setSessionLoaded] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
+  const [showSubjectPicker, setShowSubjectPicker] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [showPaywallModal, setShowPaywallModal] = useState(false);
   const [sessionMessageCount, setSessionMessageCount] = useState(0);
@@ -167,11 +167,9 @@ function ChatScreenContent() {
     let cancelled = false;
 
     async function init() {
-      // Run migration once (no-op if already done)
       await migrateOldChatHistory();
 
       if (params.newSession === "1" || !params.sessionId) {
-        // Start a brand-new session
         const newSession = await createSession(null);
         const welcome = makeWelcomeMessage(null);
         const withWelcome: ChatSession = { ...newSession, messages: [welcome] };
@@ -181,7 +179,6 @@ function ChatScreenContent() {
           setSessionLoaded(true);
         }
       } else {
-        // Resume an existing session
         const existing = await loadSession(params.sessionId);
         if (!cancelled) {
           if (existing) {
@@ -193,7 +190,6 @@ function ChatScreenContent() {
             );
             setSelectedSubject((existing.subject as SubjectId | null) ?? null);
           } else {
-            // Session not found — create new
             const newSession = await createSession(null);
             const welcome = makeWelcomeMessage(null);
             setSession({ ...newSession, messages: [welcome] });
@@ -209,14 +205,13 @@ function ChatScreenContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Auto-send seed message (from Discuss with Tutor) ────────────────────────
+  // ── Auto-send seed message ──────────────────────────────────────────────────
 
   useEffect(() => {
     if (!sessionLoaded || !session || !isOnline || seedSentRef.current) return;
     const seed = params.seedMessage;
     if (!seed || !seed.trim()) return;
     seedSentRef.current = true;
-    // Small delay so the UI settles before sending
     const timer = setTimeout(() => handleSend(seed), 600);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -232,12 +227,9 @@ function ChatScreenContent() {
         messageCount: msgs.length,
         updatedAt: Date.now(),
       };
-      // Auto-title from first user message
       if (updated.title === "New Chat") {
         const firstUser = msgs.find((m) => m.role === "user");
-        if (firstUser) {
-          updated.title = generateSessionTitle(firstUser.content);
-        }
+        if (firstUser) updated.title = generateSessionTitle(firstUser.content);
       }
       setSession(updated);
       await saveSession(updated);
@@ -271,7 +263,6 @@ function ChatScreenContent() {
       const messageText = (text || inputText).trim();
       if (!messageText || !isOnline || !session) return;
 
-      // Chat message limit for free tier (per session)
       if (!isPremium && !isDevMode) {
         if (sessionMessageCount >= FREE_LIMITS.chatMessagesPerSession) {
           setShowPaywallModal(true);
@@ -323,12 +314,11 @@ function ChatScreenContent() {
     setMessages([welcome]);
     setSelectedSubject(null);
     setInputText("");
+    setSessionMessageCount(0);
     await saveSession(withWelcome);
   }, []);
 
-  // ── Share chat ──────────────────────────────────────────────────────────────
-
-  // ── Build share text helper ───────────────────────────────────────────────
+  // ── Build share text ────────────────────────────────────────────────────────
 
   const buildShareText = useCallback(() => {
     if (!session) return "";
@@ -359,7 +349,7 @@ function ChatScreenContent() {
     return lines.join("\n");
   }, [session, messages, selectedSubject]);
 
-  // ── Share as PDF ──────────────────────────────────────────────────────────
+  // ── Share as PDF ────────────────────────────────────────────────────────────
 
   const handleSharePDF = useCallback(async () => {
     if (!session) return;
@@ -403,7 +393,7 @@ function ChatScreenContent() {
     }
   }, [session, messages, selectedSubject]);
 
-  // ── Share as text ──────────────────────────────────────────────────────────
+  // ── Share as text ───────────────────────────────────────────────────────────
 
   const handleShareText = useCallback(async () => {
     setShowShareMenu(false);
@@ -421,23 +411,16 @@ function ChatScreenContent() {
     } catch { /* user cancelled */ }
   }, [buildShareText]);
 
-  // ── Share chat (opens menu) ───────────────────────────────────────────────
-
-  const handleShare = useCallback(() => {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setShowShareMenu(true);
-  }, []);
-
   // ── Subject change ──────────────────────────────────────────────────────────
 
   const handleSubjectChange = useCallback(
     async (id: SubjectId | null) => {
       setSelectedSubject(id);
+      setShowSubjectPicker(false);
       if (!session) return;
       const updated: ChatSession = { ...session, subject: id };
       setSession(updated);
       await saveSession(updated);
-      // If chat is empty, update the welcome message
       if (messages.filter((m) => !m.id.startsWith("welcome")).length === 0) {
         const welcome = makeWelcomeMessage(id);
         setMessages([welcome]);
@@ -458,129 +441,129 @@ function ChatScreenContent() {
         onPress: async () => {
           const welcome = makeWelcomeMessage(selectedSubject);
           setMessages([welcome]);
-          if (session) {
-            await saveSession({ ...session, messages: [welcome], messageCount: 1 });
-          }
+          setSessionMessageCount(0);
+          if (session) await saveSession({ ...session, messages: [welcome], messageCount: 1 });
         },
       },
     ]);
   }, [session, selectedSubject]);
 
-  // ── Render ──────────────────────────────────────────────────────────────────
+  // ── Derived ─────────────────────────────────────────────────────────────────
 
   const userMessageCount = messages.filter((m) => m.role === "user").length;
+  const isAtLimit = !isPremium && !isDevMode && sessionMessageCount >= FREE_LIMITS.chatMessagesPerSession;
+  const messagesLeft = Math.max(0, FREE_LIMITS.chatMessagesPerSession - sessionMessageCount);
+
+  // ── Quick prompts as list header ────────────────────────────────────────────
+
+  const ListHeader = sessionLoaded && userMessageCount === 0 ? (
+    <View style={styles.quickPromptsWrap}>
+      <Text style={[styles.quickPromptsLabel, { color: colors.muted, fontSize: fs(11) }]}>
+        TRY ASKING
+      </Text>
+      <View style={styles.quickPromptsGrid}>
+        {QUICK_PROMPTS.map((p, i) => (
+          <TouchableOpacity
+            key={i}
+            accessibilityLabel={`Ask: ${p.text}`}
+            onPress={() => handleSend(p.text)}
+            style={[
+              styles.quickChip,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.quickChipText, { color: colors.foreground, fontSize: fs(13) }]} numberOfLines={1}>
+              {p.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    </View>
+  ) : null;
+
+  // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
     <ScreenContainer>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
+        keyboardVerticalOffset={0}
       >
-        {/* Header */}
-        <View style={[styles.header, { borderBottomColor: colors.border }]}>
+        {/* ── Slim fixed header ── */}
+        <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.background }]}>
+          {/* Left: avatar + title + status */}
           <View style={styles.headerLeft}>
-            <View style={[styles.aiIcon, { backgroundColor: `${colors.primary}20` }]}>
-              <Text style={{ fontSize: 20 }}>🧮</Text>
+            <View style={[styles.aiIcon, { backgroundColor: `${colors.primary}18` }]}>
+              <Text style={{ fontSize: 18 }}>🧮</Text>
             </View>
-            <View>
+            <View style={{ flex: 1, minWidth: 0 }}>
               <Text
-                style={[styles.headerTitle, { color: colors.foreground, fontSize: fs(17) }]}
+                style={[styles.headerTitle, { color: colors.foreground, fontSize: fs(16) }]}
                 numberOfLines={1}
               >
-                {session?.title && session.title !== "New Chat"
-                  ? session.title
-                  : "AI Tutor"}
+                {session?.title && session.title !== "New Chat" ? session.title : "AI Tutor"}
               </Text>
-              <View style={styles.onlineRow}>
-                <View
-                  style={[
-                    styles.onlineDot,
-                    { backgroundColor: isOnline ? colors.success : colors.error },
-                  ]}
-                />
-                <Text
-                  style={[
-                    styles.onlineText,
-                    {
-                      color: isOnline ? colors.success : colors.error,
-                      fontSize: fs(12),
-                    },
-                  ]}
-                >
+              <View style={styles.statusRow}>
+                <View style={[styles.statusDot, { backgroundColor: isOnline ? colors.success : colors.error }]} />
+                <Text style={[styles.statusText, { color: isOnline ? colors.success : colors.error, fontSize: fs(11) }]}>
                   {isOnline ? "Online" : "Offline"}
                 </Text>
+                {selectedSubject && (
+                  <>
+                    <Text style={[styles.statusSep, { color: colors.border }]}>·</Text>
+                    <Text style={[styles.statusText, { color: colors.muted, fontSize: fs(11) }]} numberOfLines={1}>
+                      {getSubjectLabel(selectedSubject)}
+                    </Text>
+                  </>
+                )}
               </View>
             </View>
           </View>
 
-          {/* Header action buttons */}
+          {/* Right: action icons */}
           <View style={styles.headerActions}>
-            {/* Share */}
             <TouchableOpacity
-              onPress={handleShare}
-              accessibilityLabel={Platform.OS === "web" ? "Copy chat to clipboard" : "Share chat"}
+              onPress={() => setShowSubjectPicker(true)}
+              accessibilityLabel="Change subject"
+              style={styles.headerBtn}
+              activeOpacity={0.7}
+            >
+              <IconSymbol size={19} name="book.fill" color={selectedSubject ? colors.primary : colors.muted} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => router.push("/chat-history")}
+              accessibilityLabel="Chat history"
+              style={styles.headerBtn}
+              activeOpacity={0.7}
+            >
+              <IconSymbol size={19} name="clock.fill" color={colors.muted} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setShowShareMenu(true)}
+              accessibilityLabel="Share chat"
               style={styles.headerBtn}
               activeOpacity={0.7}
             >
               <IconSymbol
-                size={20}
+                size={19}
                 name={shareCopied ? "checkmark.circle.fill" : "square.and.arrow.up.fill"}
                 color={shareCopied ? colors.success : colors.muted}
               />
             </TouchableOpacity>
-
-            {/* History */}
-            <TouchableOpacity
-              onPress={() => router.push("/chat-history")}
-              accessibilityLabel="View chat history"
-              style={styles.headerBtn}
-              activeOpacity={0.7}
-            >
-              <IconSymbol size={20} name="clock.fill" color={colors.muted} />
-            </TouchableOpacity>
-
-            {/* New chat */}
             <TouchableOpacity
               onPress={handleNewChat}
-              accessibilityLabel="Start new chat"
-              style={styles.headerBtn}
+              accessibilityLabel="New chat"
+              style={[styles.headerBtn, styles.newChatBtn, { backgroundColor: `${colors.primary}18` }]}
               activeOpacity={0.7}
             >
-              <IconSymbol size={20} name="plus" color={colors.primary} />
+              <IconSymbol size={17} name="plus" color={colors.primary} />
             </TouchableOpacity>
-
-            {/* Clear */}
-            {userMessageCount > 0 && (
-              <TouchableOpacity
-                onPress={handleClearChat}
-                accessibilityLabel="Clear chat"
-                style={styles.headerBtn}
-                activeOpacity={0.7}
-              >
-                <IconSymbol size={20} name="trash.fill" color={colors.muted} />
-              </TouchableOpacity>
-            )}
           </View>
         </View>
 
-        {/* Subject Context Row */}
-        <View
-          style={[
-            styles.subjectRow,
-            { borderBottomColor: colors.border, backgroundColor: colors.background },
-          ]}
-        >
-          <Text style={[styles.subjectRowLabel, { color: colors.muted, fontSize: fs(12) }]}>
-            Focus:
-          </Text>
-          <SubjectPicker
-            value={selectedSubject}
-            onChange={handleSubjectChange}
-            showAll
-          />
-        </View>
-
-        {/* Messages */}
+        {/* ── Message list (max scroll area) ── */}
         {!sessionLoaded ? (
           <View style={styles.loadingCenter}>
             <ActivityIndicator size="large" color={colors.primary} />
@@ -593,24 +576,16 @@ function ChatScreenContent() {
             renderItem={({ item }) => (
               <MessageBubble message={item} colors={colors} fs={fs} />
             )}
-            contentContainerStyle={{ padding: 16, paddingBottom: 8 }}
+            ListHeaderComponent={ListHeader}
+            contentContainerStyle={styles.messageList}
             showsVerticalScrollIndicator={false}
-            onContentSizeChange={() =>
-              flatListRef.current?.scrollToEnd({ animated: false })
-            }
+            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
             ListFooterComponent={
               chatMutation.isPending ? (
-                <View
-                  style={[
-                    styles.typingIndicator,
-                    { backgroundColor: colors.surface, borderColor: colors.border },
-                  ]}
-                >
+                <View style={[styles.typingBubble, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                   <ActivityIndicator size="small" color={colors.primary} />
-                  <Text
-                    style={[styles.typingText, { color: colors.muted, fontSize: fs(13) }]}
-                  >
-                    TutorSnap is thinking…
+                  <Text style={[styles.typingText, { color: colors.muted, fontSize: fs(13) }]}>
+                    Thinking…
                   </Text>
                 </View>
               ) : null
@@ -618,175 +593,186 @@ function ChatScreenContent() {
           />
         )}
 
-        {/* Quick Prompts */}
-        {sessionLoaded && userMessageCount === 0 && (
-          <View style={styles.quickPromptsContainer}>
-            <Text
-              style={[styles.quickPromptsLabel, { color: colors.muted, fontSize: fs(12) }]}
-            >
-              Try asking:
-            </Text>
-            <View style={styles.quickPrompts}>
-              {QUICK_PROMPTS.map((prompt, i) => (
-                <TouchableOpacity
-                  accessibilityLabel={`Ask: ${prompt}`}
-                  key={i}
-                  onPress={() => handleSend(prompt)}
-                  style={[
-                    styles.quickPromptChip,
-                    {
-                      backgroundColor: `${colors.primary}15`,
-                      borderColor: `${colors.primary}30`,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.quickPromptText,
-                      { color: colors.primary, fontSize: fs(13) },
-                    ]}
-                    numberOfLines={1}
-                  >
-                    {prompt}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        )}
-
-        {/* Chat nudge banner — shown after first message, hidden for premium/dev */}
-        <ChatNudgeBanner
-          messagesUsed={sessionMessageCount}
-          isPremium={isPremium}
-          isDevMode={isDevMode}
-        />
-
-        {/* Input */}
-        <View
-          style={[
-            styles.inputContainer,
-            { backgroundColor: colors.surface, borderTopColor: colors.border },
-          ]}
-        >
-          <View
-            style={[
-              styles.inputWrapper,
-              { backgroundColor: colors.background, borderColor: colors.border },
-            ]}
-          >
-            <TextInput
+        {/* ── Input bar ── */}
+        <View style={[styles.inputBar, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
+          {/* Limit nudge — only shown when approaching/at limit, no extra chrome */}
+          {!isPremium && !isDevMode && sessionMessageCount > 0 && (
+            <TouchableOpacity
+              onPress={() => setShowPaywallModal(true)}
+              activeOpacity={0.8}
               style={[
-                styles.input,
-                { color: colors.foreground, fontSize: fs(15), lineHeight: fs(15) * 1.47 },
+                styles.limitStrip,
+                {
+                  backgroundColor: isAtLimit ? `${colors.error}18` : `${colors.warning}14`,
+                  borderColor: isAtLimit ? `${colors.error}40` : `${colors.warning}30`,
+                },
               ]}
-              placeholder="Ask about any subject…"
-              placeholderTextColor={colors.muted}
-              value={inputText}
-              onChangeText={setInputText}
-              multiline
-              maxLength={2000}
-              returnKeyType="send"
-              onSubmitEditing={() => handleSend()}
-            />
+            >
+              <Text style={[styles.limitText, { color: isAtLimit ? colors.error : colors.warning, fontSize: fs(12) }]}>
+                {isAtLimit
+                  ? "Message limit reached — Upgrade for unlimited chat"
+                  : `${messagesLeft} message${messagesLeft === 1 ? "" : "s"} left this session · Upgrade`}
+              </Text>
+              <IconSymbol size={13} name="chevron.right" color={isAtLimit ? colors.error : colors.warning} />
+            </TouchableOpacity>
+          )}
+
+          <View style={styles.inputRow}>
+            {/* Subject pill */}
+            <TouchableOpacity
+              onPress={() => setShowSubjectPicker(true)}
+              style={[styles.subjectPill, { backgroundColor: colors.surface, borderColor: colors.border }]}
+              activeOpacity={0.7}
+            >
+              <IconSymbol size={14} name="book.fill" color={selectedSubject ? colors.primary : colors.muted} />
+            </TouchableOpacity>
+
+            {/* Text input */}
+            <View style={[styles.inputWrapper, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <TextInput
+                style={[styles.input, { color: colors.foreground, fontSize: fs(15), lineHeight: fs(15) * 1.4 }]}
+                placeholder={isAtLimit ? "Upgrade to keep chatting…" : "Ask about any subject…"}
+                placeholderTextColor={colors.muted}
+                value={inputText}
+                onChangeText={setInputText}
+                multiline
+                maxLength={2000}
+                returnKeyType="send"
+                onSubmitEditing={() => handleSend()}
+                editable={!isAtLimit}
+              />
+            </View>
+
+            {/* Send button */}
+            <TouchableOpacity
+              accessibilityLabel="Send message"
+              onPress={() => handleSend()}
+              disabled={!inputText.trim() || chatMutation.isPending || !isOnline || isAtLimit}
+              style={[
+                styles.sendBtn,
+                { backgroundColor: isOnline && !isAtLimit ? colors.primary : colors.muted },
+                (!inputText.trim() || chatMutation.isPending || !isOnline || isAtLimit) && { opacity: 0.45 },
+              ]}
+              activeOpacity={0.8}
+            >
+              <IconSymbol
+                size={19}
+                name={isOnline ? "paperplane.fill" : "wifi.slash"}
+                color="#FFFFFF"
+              />
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity
-            accessibilityLabel="Send message"
-            onPress={() => handleSend()}
-            disabled={!inputText.trim() || chatMutation.isPending || !isOnline}
-            style={[
-              styles.sendBtn,
-              { backgroundColor: isOnline ? colors.primary : colors.muted },
-              (!inputText.trim() || chatMutation.isPending || !isOnline) && { opacity: 0.5 },
-            ]}
-          >
-            <IconSymbol
-              size={20}
-              name={isOnline ? "paperplane.fill" : "wifi.slash"}
-              color="#FFFFFF"
-            />
-          </TouchableOpacity>
+
+          {/* Clear button — only when there are messages */}
+          {userMessageCount > 0 && (
+            <TouchableOpacity
+              onPress={handleClearChat}
+              style={styles.clearRow}
+              activeOpacity={0.6}
+            >
+              <Text style={[styles.clearText, { color: colors.muted, fontSize: fs(11) }]}>
+                Clear conversation
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
       </KeyboardAvoidingView>
 
-      {/* PDF loading overlay */}
-      {pdfLoading && (
-        <View style={StyleSheet.absoluteFillObject} pointerEvents="box-only"
-          // @ts-ignore — pointerEvents on View is valid RN
-        >
-          <View style={[styles.pdfOverlay, { backgroundColor: "rgba(0,0,0,0.45)" }]}>
-            <View style={[styles.pdfCard, { backgroundColor: colors.surface }]}>
-              <ActivityIndicator size="large" color={colors.primary} />
-              <Text style={[styles.pdfCardText, { color: colors.foreground, fontSize: fs(15) }]}>
-                Generating PDF…
-              </Text>
-            </View>
+      {/* ── Subject picker sheet ── */}
+      {showSubjectPicker && (
+        <View style={StyleSheet.absoluteFillObject}>
+          <TouchableOpacity
+            style={[styles.backdrop, { backgroundColor: "rgba(0,0,0,0.45)" }]}
+            activeOpacity={1}
+            onPress={() => setShowSubjectPicker(false)}
+          />
+          <View style={[styles.sheet, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={[styles.sheetHandle, { backgroundColor: colors.border }]} />
+            <Text style={[styles.sheetTitle, { color: colors.foreground, fontSize: fs(16) }]}>
+              Focus Subject
+            </Text>
+            <SubjectPicker
+              value={selectedSubject}
+              onChange={handleSubjectChange}
+              showAll
+            />
+            <TouchableOpacity
+              style={[styles.sheetCancel, { borderColor: colors.border }]}
+              onPress={() => setShowSubjectPicker(false)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.sheetCancelText, { color: colors.muted, fontSize: fs(15) }]}>Cancel</Text>
+            </TouchableOpacity>
           </View>
         </View>
       )}
 
-      {/* Share menu bottom sheet */}
+      {/* ── Share menu sheet ── */}
       {showShareMenu && (
         <View style={StyleSheet.absoluteFillObject}>
           <TouchableOpacity
-            style={[styles.shareBackdrop, { backgroundColor: "rgba(0,0,0,0.45)" }]}
+            style={[styles.backdrop, { backgroundColor: "rgba(0,0,0,0.45)" }]}
             activeOpacity={1}
             onPress={() => setShowShareMenu(false)}
           />
-          <View style={[styles.shareSheet, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <View style={[styles.shareHandle, { backgroundColor: colors.border }]} />
-            <Text style={[styles.shareTitle, { color: colors.foreground, fontSize: fs(16) }]}>
+          <View style={[styles.sheet, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={[styles.sheetHandle, { backgroundColor: colors.border }]} />
+            <Text style={[styles.sheetTitle, { color: colors.foreground, fontSize: fs(16) }]}>
               Share Chat
             </Text>
             {Platform.OS !== "web" && (
               <TouchableOpacity
-                style={[styles.shareOption, { borderColor: colors.border }]}
+                style={[styles.sheetOption, { borderColor: colors.border }]}
                 onPress={handleSharePDF}
                 activeOpacity={0.7}
               >
                 <IconSymbol size={22} name="doc.fill" color={colors.error} />
-                <View style={styles.shareOptionText}>
-                  <Text style={[styles.shareOptionTitle, { color: colors.foreground, fontSize: fs(15) }]}>
-                    Save as PDF
-                  </Text>
-                  <Text style={[styles.shareOptionSub, { color: colors.muted, fontSize: fs(12) }]}>
-                    Export a formatted PDF of this conversation
-                  </Text>
+                <View style={styles.sheetOptionText}>
+                  <Text style={[styles.sheetOptionTitle, { color: colors.foreground, fontSize: fs(15) }]}>Save as PDF</Text>
+                  <Text style={[styles.sheetOptionSub, { color: colors.muted, fontSize: fs(12) }]}>Export a formatted PDF of this conversation</Text>
                 </View>
               </TouchableOpacity>
             )}
             <TouchableOpacity
-              style={[styles.shareOption, { borderColor: colors.border }]}
+              style={[styles.sheetOption, { borderColor: colors.border }]}
               onPress={handleShareText}
               activeOpacity={0.7}
             >
               <IconSymbol size={22} name="square.and.arrow.up.fill" color={colors.primary} />
-              <View style={styles.shareOptionText}>
-                <Text style={[styles.shareOptionTitle, { color: colors.foreground, fontSize: fs(15) }]}>
+              <View style={styles.sheetOptionText}>
+                <Text style={[styles.sheetOptionTitle, { color: colors.foreground, fontSize: fs(15) }]}>
                   {Platform.OS === "web" ? "Copy as Text" : "Share as Text"}
                 </Text>
-                <Text style={[styles.shareOptionSub, { color: colors.muted, fontSize: fs(12) }]}>
+                <Text style={[styles.sheetOptionSub, { color: colors.muted, fontSize: fs(12) }]}>
                   {Platform.OS === "web" ? "Copy conversation to clipboard" : "Share via messages, email, or notes"}
                 </Text>
               </View>
-              {shareCopied && (
-                <IconSymbol size={18} name="checkmark.circle.fill" color={colors.success} />
-              )}
+              {shareCopied && <IconSymbol size={18} name="checkmark.circle.fill" color={colors.success} />}
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.shareCancelBtn, { borderColor: colors.border }]}
+              style={[styles.sheetCancel, { borderColor: colors.border }]}
               onPress={() => setShowShareMenu(false)}
               activeOpacity={0.7}
             >
-              <Text style={[styles.shareCancelText, { color: colors.muted, fontSize: fs(15) }]}>
-                Cancel
-              </Text>
+              <Text style={[styles.sheetCancelText, { color: colors.muted, fontSize: fs(15) }]}>Cancel</Text>
             </TouchableOpacity>
           </View>
         </View>
       )}
 
-      {/* Paywall Modal — shown when free chat message limit is reached */}
+      {/* ── PDF loading overlay ── */}
+      {pdfLoading && (
+        <View style={[StyleSheet.absoluteFillObject, styles.pdfOverlay]}>
+          <View style={[styles.pdfCard, { backgroundColor: colors.surface }]}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={[styles.pdfCardText, { color: colors.foreground, fontSize: fs(15) }]}>
+              Generating PDF…
+            </Text>
+          </View>
+        </View>
+      )}
+
+      {/* ── Paywall modal ── */}
       {showPaywallModal && (
         <Modal
           visible={showPaywallModal}
@@ -800,7 +786,7 @@ function ChatScreenContent() {
               style={{ position: "absolute", top: 16, right: 20, zIndex: 10, padding: 8 }}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Text style={{ fontSize: 16, color: colors.muted }}>✕</Text>
+              <Text style={{ fontSize: 16, color: "#9BA1A6" }}>✕</Text>
             </TouchableOpacity>
             {React.createElement(require("../paywall").default)}
           </View>
@@ -823,160 +809,181 @@ export default function ChatScreen() {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  subjectRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    gap: 10,
-    borderBottomWidth: 0.5,
-  },
-  subjectRowLabel: {
-    fontWeight: "600",
-    letterSpacing: 0.5,
-    textTransform: "uppercase",
-    minWidth: 40,
-  },
+  // Header
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 10,
     borderBottomWidth: 0.5,
   },
-  headerLeft: { flexDirection: "row", alignItems: "center", gap: 12, flex: 1, minWidth: 0 },
+  headerLeft: { flexDirection: "row", alignItems: "center", gap: 10, flex: 1, minWidth: 0 },
   aiIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+    width: 38,
+    height: 38,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
   },
   headerTitle: { fontWeight: "700" },
-  onlineRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 2 },
-  onlineDot: { width: 6, height: 6, borderRadius: 3 },
-  onlineText: { fontWeight: "600" },
+  statusRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 1 },
+  statusDot: { width: 6, height: 6, borderRadius: 3 },
+  statusText: { fontWeight: "500" },
+  statusSep: { fontSize: 10, marginHorizontal: 2 },
   headerActions: { flexDirection: "row", alignItems: "center", gap: 2 },
   headerBtn: { padding: 8 },
+  newChatBtn: { borderRadius: 10, padding: 7 },
+
+  // Messages
   loadingCenter: { flex: 1, alignItems: "center", justifyContent: "center" },
+  messageList: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 },
   messageBubble: {
     flexDirection: "row",
-    marginBottom: 12,
+    marginBottom: 10,
     maxWidth: "85%",
     borderRadius: 18,
     borderWidth: 1,
-    padding: 12,
+    padding: 11,
     gap: 8,
   },
-  userBubble: { alignSelf: "flex-end", borderRadius: 18 },
+  userBubble: { alignSelf: "flex-end" },
   aiBubble: { alignSelf: "flex-start" },
   aiAvatar: {
-    width: 28,
-    height: 28,
-    borderRadius: 10,
+    width: 26,
+    height: 26,
+    borderRadius: 9,
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
+    marginTop: 1,
   },
   bubbleContent: { flex: 1 },
   messageText: {},
   messageTime: { marginTop: 4, textAlign: "right" },
-  typingIndicator: {
+  typingBubble: {
     flexDirection: "row",
     alignItems: "center",
     alignSelf: "flex-start",
-    padding: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     borderRadius: 16,
     borderWidth: 1,
     gap: 8,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   typingText: {},
-  quickPromptsContainer: { paddingHorizontal: 16, paddingBottom: 8 },
+
+  // Quick prompts (inside list header)
+  quickPromptsWrap: { paddingBottom: 16 },
   quickPromptsLabel: {
-    fontWeight: "600",
-    marginBottom: 8,
-    letterSpacing: 0.5,
-    textTransform: "uppercase",
+    fontWeight: "700",
+    letterSpacing: 0.8,
+    marginBottom: 10,
   },
-  quickPrompts: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  quickPromptChip: {
+  quickPromptsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  quickChip: {
     paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingVertical: 9,
     borderRadius: 20,
     borderWidth: 1,
-    maxWidth: "48%",
   },
-  quickPromptText: { fontWeight: "500" },
-  inputContainer: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    padding: 12,
+  quickChipText: { fontWeight: "500" },
+
+  // Input bar
+  inputBar: {
     borderTopWidth: 0.5,
-    gap: 10,
+    paddingTop: 8,
+    paddingBottom: Platform.OS === "ios" ? 20 : 10,
+    paddingHorizontal: 14,
+    gap: 6,
+  },
+  limitStrip: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  limitText: { fontWeight: "600", flex: 1 },
+  inputRow: { flexDirection: "row", alignItems: "flex-end", gap: 8 },
+  subjectPill: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
   },
   inputWrapper: {
     flex: 1,
     borderRadius: 20,
     borderWidth: 1,
     paddingHorizontal: 14,
-    paddingVertical: 10,
-    maxHeight: 120,
+    paddingVertical: 9,
+    maxHeight: 110,
   },
   input: {},
   sendBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
+    flexShrink: 0,
   },
-  // Share menu
-  shareBackdrop: { ...StyleSheet.absoluteFillObject },
-  shareSheet: {
+  clearRow: { alignItems: "center", paddingTop: 2 },
+  clearText: { textDecorationLine: "underline" },
+
+  // Sheets (subject picker + share menu)
+  backdrop: { ...StyleSheet.absoluteFillObject },
+  sheet: {
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
     borderTopWidth: 1,
     paddingTop: 12,
-    paddingBottom: 32,
+    paddingBottom: 36,
     paddingHorizontal: 20,
   },
-  shareHandle: {
+  sheetHandle: {
     width: 36,
     height: 4,
     borderRadius: 2,
     alignSelf: "center",
     marginBottom: 16,
   },
-  shareTitle: { fontWeight: "700", marginBottom: 16 },
-  shareOption: {
+  sheetTitle: { fontWeight: "700", marginBottom: 16 },
+  sheetOption: {
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
     paddingVertical: 14,
     borderBottomWidth: 0.5,
   },
-  shareOptionText: { flex: 1 },
-  shareOptionTitle: { fontWeight: "600", marginBottom: 2 },
-  shareOptionSub: {},
-  shareCancelBtn: {
+  sheetOptionText: { flex: 1 },
+  sheetOptionTitle: { fontWeight: "600", marginBottom: 2 },
+  sheetOptionSub: {},
+  sheetCancel: {
     marginTop: 12,
     paddingVertical: 14,
     alignItems: "center",
     borderTopWidth: 0.5,
   },
-  shareCancelText: { fontWeight: "500" },
+  sheetCancelText: { fontWeight: "500" },
+
   // PDF overlay
   pdfOverlay: {
-    ...StyleSheet.absoluteFillObject as object,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.45)",
   },
   pdfCard: {
     borderRadius: 16,
