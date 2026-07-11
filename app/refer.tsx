@@ -48,6 +48,8 @@ import {
   type AffiliateEvent,
   type EarningOption,
   type RewardTier,
+  shouldShowExpiryWarning,
+  recordAffiliateActivity,
 } from "@/lib/affiliate";
 
 const APP_URL = "https://tutorsnapai.tech";
@@ -256,6 +258,7 @@ export default function ReferScreen() {
   const [copied, setCopied] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [expiryWarning, setExpiryWarning] = useState<{ show: boolean; daysIdle: number; pendingDays: number } | null>(null);
   const [redeeming, setRedeeming] = useState(false);
 
   const showToast = (msg: string) => {
@@ -274,6 +277,8 @@ export default function ReferScreen() {
     setHistory(h);
     const opts = await getEarningOptions(s);
     setOptions(opts);
+    const expiry = await shouldShowExpiryWarning();
+    setExpiryWarning(expiry);
   }, []);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
@@ -366,6 +371,7 @@ export default function ReferScreen() {
     setRedeeming(true);
     if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     const redeemed = await redeemPendingDays();
+    await recordAffiliateActivity();
     await load();
     setRedeeming(false);
     showToast(`${redeemed} days added to your subscription! 🎉`);
@@ -434,6 +440,27 @@ export default function ReferScreen() {
             </TouchableOpacity>
           )}
         </View>
+
+        {/* ── Expiry Warning Banner ── */}
+        {expiryWarning?.show && (
+          <TouchableOpacity
+            onPress={handleRedeem}
+            activeOpacity={0.85}
+            style={[styles.expiryBanner, { backgroundColor: `${colors.warning}18`, borderColor: `${colors.warning}50` }]}
+            accessibilityLabel={`Warning: ${expiryWarning.pendingDays} pending days idle for ${expiryWarning.daysIdle} days. Tap to redeem.`}
+          >
+            <Text style={{ fontSize: 18 }}>⚠️</Text>
+            <View style={{ flex: 1, marginLeft: 10 }}>
+              <Text style={[styles.expiryTitle, { color: colors.warning }]}>
+                Your {expiryWarning.pendingDays} pending days expire soon
+              </Text>
+              <Text style={[styles.expirySubtitle, { color: colors.muted }]}>
+                No activity for {expiryWarning.daysIdle} days — tap to apply your days now
+              </Text>
+            </View>
+            <IconSymbol size={16} name="chevron.right" color={colors.warning} />
+          </TouchableOpacity>
+        )}
 
         {/* ── Tier Progress ── */}
         <TierProgressBar stats={stats} colors={colors} />
@@ -688,4 +715,14 @@ const styles = StyleSheet.create({
 
   // Legal
   legalNote: { fontSize: 11, textAlign: "center", lineHeight: 17 },
+  expiryBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 14,
+    marginTop: 16,
+  },
+  expiryTitle: { fontSize: 14, fontWeight: "700", marginBottom: 2 },
+  expirySubtitle: { fontSize: 12, lineHeight: 17 },
 });

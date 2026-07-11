@@ -344,3 +344,84 @@ export async function getEarningOptions(stats: AffiliateStats): Promise<EarningO
     },
   ];
 }
+
+// ─── Weekly Digest Notification ──────────────────────────────────────────────
+
+const WEEKLY_DIGEST_ID = "affiliate_weekly_digest";
+
+/**
+ * Schedule a weekly Monday 9 AM affiliate digest notification.
+ * Cancels any previous one before scheduling a fresh one.
+ * Call this once on app launch (after notification permissions are granted).
+ */
+export async function scheduleWeeklyAffiliateDigest(): Promise<void> {
+  if (Platform.OS === "web") return;
+  try {
+    // Cancel the previous digest notification if it exists
+    await Notifications.cancelScheduledNotificationAsync(WEEKLY_DIGEST_ID).catch(() => {});
+
+    const stats = await getAffiliateStats();
+    if (stats.pendingDays === 0 && stats.totalReferrals === 0) return; // nothing to report yet
+
+    const body = stats.pendingDays > 0
+      ? `You have ${stats.pendingDays} pending days — tap to redeem! ${stats.totalReferrals} friend${stats.totalReferrals !== 1 ? "s" : ""} referred so far.`
+      : `You've referred ${stats.totalReferrals} friend${stats.totalReferrals !== 1 ? "s" : ""} — keep sharing to earn more free days!`;
+
+    await Notifications.scheduleNotificationAsync({
+      identifier: WEEKLY_DIGEST_ID,
+      content: {
+        title: "🎁 Your Weekly Affiliate Summary",
+        body,
+        data: { screen: "refer", type: "affiliate_digest" },
+        ...(Platform.OS === "android" ? { channelId: "affiliate" } : {}),
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
+        weekday: 2, // Monday (1=Sunday, 2=Monday)
+        hour: 9,
+        minute: 0,
+      },
+    });
+  } catch { /* non-critical */ }
+}
+
+// ─── Pending Days Expiry Warning ─────────────────────────────────────────────
+
+const EXPIRY_WARNING_KEY = "@tutorsnap/affiliateLastActivity";
+const EXPIRY_DAYS = 90; // warn after 90 days of no redemption
+
+/**
+ * Record the current timestamp as the last affiliate activity.
+ * Call this whenever the user earns or redeems days.
+ */
+export async function recordAffiliateActivity(): Promise<void> {
+  await AsyncStorage.setItem(EXPIRY_WARNING_KEY, Date.now().toString());
+}
+
+/**
+ * Returns true if the user has pending days that have been idle for >= 90 days.
+ * Used to show the expiry warning banner on the affiliate dashboard.
+ */
+export async function shouldShowExpiryWarning(): Promise<{ show: boolean; daysIdle: number; pendingDays: number }> {
+  try {
+    const stats = await getAffiliateStats();
+    if (stats.pendingDays === 0) return { show: false, daysIdle: 0, pendingDays: 0 };
+
+    const lastRaw = await AsyncStorage.getItem(EXPIRY_WARNING_KEY);
+    if (!lastRaw) {
+      // No activity recorded — record now and don't warn yet
+      await recordAffiliateActivity();
+      return { show: false, daysIdle: 0, pendingDays: stats.pendingDays };
+    }
+
+    const last = parseInt(lastRaw, 10);
+    const daysIdle = Math.floor((Date.now() - last) / (1000 * 60 * 60 * 24));
+    return {
+      show: daysIdle >= EXPIRY_DAYS,
+      daysIdle,
+      pendingDays: stats.pendingDays,
+    };
+  } catch {
+    return { show: false, daysIdle: 0, pendingDays: 0 };
+  }
+}

@@ -441,3 +441,13 @@
 - [x] Top Affiliates leaderboard section on affiliate dashboard
 - [x] Referral deep-link handler and welcome banner
 - [x] Solve result share button
+
+## Round 49: Affiliate follow-ups + Full Audit
+- [ ] Redeem a friend's code input in Settings
+- [ ] Weekly affiliate digest notification (Monday 9am)
+- [ ] Pending days expiry warning banner (90-day idle)
+- [ ] Full audit: TypeScript / broken imports / null safety
+- [ ] Full audit: functional — every screen, button, modal
+- [ ] Full audit: visual — spacing, alignment, font sizes
+- [ ] Full audit: accessibility — accessibilityLabel coverage
+- [ ] Full audit: state integrity — stale data, error recovery

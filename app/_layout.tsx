@@ -27,7 +27,7 @@ import * as Linking from "expo-linking";
 import { syncAllStreakNotifications } from "@/lib/streak-notifications";
 import { initRevenueCat, getSubscriptionStatus } from "@/lib/subscription";
 import { recordFirstLaunch } from "@/lib/review-prompt";
-import { recordReferral, getOrCreateReferralCode } from "@/lib/affiliate";
+import { recordReferral, getOrCreateReferralCode, scheduleWeeklyAffiliateDigest } from "@/lib/affiliate";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Alert } from "react-native";
 
@@ -64,6 +64,8 @@ export default function RootLayout() {
     recordFirstLaunch().catch(() => {});
     // Sync streak alert and weekly report notifications on every app launch
     syncAllStreakNotifications().catch(() => {});
+    // Schedule weekly affiliate digest (Monday 9 AM)
+    scheduleWeeklyAffiliateDigest().catch(() => {});
     // Initialise RevenueCat and check trial / subscription status
     initRevenueCat().then(async () => {
       try {

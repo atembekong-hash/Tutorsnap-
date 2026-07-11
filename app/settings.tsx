@@ -9,6 +9,7 @@ import {
   Platform,
   Modal,
   Alert,
+  TextInput,
   type ScrollView as ScrollViewType,
 } from "react-native";
 import { useRef } from "react";
@@ -150,6 +151,47 @@ export default function SettingsScreen() {
   // Subscription status
   const [subStatus, setSubStatus] = useState<SubscriptionStatus | null>(null);
   const [restoringPurchases, setRestoringPurchases] = useState(false);
+
+  // Redeem referral code
+  const [showRedeemModal, setShowRedeemModal] = useState(false);
+  const [redeemCode, setRedeemCode] = useState("");
+  const [redeemLoading, setRedeemLoading] = useState(false);
+
+  const handleRedeemCode = async () => {
+    const code = redeemCode.trim().toUpperCase();
+    if (!code || code.length < 4) {
+      Alert.alert("Invalid Code", "Please enter a valid referral code.");
+      return;
+    }
+    setRedeemLoading(true);
+    try {
+      const { getOrCreateReferralCode } = await import("@/lib/affiliate");
+      const myCode = await getOrCreateReferralCode();
+      if (code === myCode.toUpperCase()) {
+        Alert.alert("Oops!", "You cannot use your own referral code.");
+        setRedeemLoading(false);
+        return;
+      }
+      const applied = await AsyncStorage.getItem("@referral_applied");
+      if (applied) {
+        Alert.alert("Already Applied", "You have already redeemed a referral code on this device.");
+        setRedeemLoading(false);
+        return;
+      }
+      await AsyncStorage.setItem("@referral_applied", code);
+      setShowRedeemModal(false);
+      setRedeemCode("");
+      Alert.alert(
+        "🎁 Code Applied!",
+        `Your 14-day free trial has been activated. Enjoy unlimited TutorSnap!`,
+        [{ text: "Start Learning 🚀" }]
+      );
+    } catch {
+      Alert.alert("Error", "Could not apply code. Please try again.");
+    } finally {
+      setRedeemLoading(false);
+    }
+  };
 
   // Auto-scroll to What's New when opened via notification deep link
   useEffect(() => {
@@ -626,7 +668,7 @@ export default function SettingsScreen() {
           label="Streak Leaderboard"
           subtitle="Compare streaks with friends"
           colors={colors}
-          onPress={() => router.push("/leaderboard" as any)}
+          onPress={() => router.push("/(tabs)/leaderboard" as any)}
         />
         <SettingsRow
           icon="person.2.fill"
@@ -640,7 +682,7 @@ export default function SettingsScreen() {
           label="Classroom"
           subtitle="Share problems with your class or join one"
           colors={colors}
-          onPress={() => router.push("/classroom" as any)}
+          onPress={() => router.push("/(tabs)/classroom" as any)}
         />
         <SettingsRow
           icon="square.and.arrow.up.fill"
@@ -727,6 +769,13 @@ export default function SettingsScreen() {
           subtitle="See the weekly top learners"
           colors={colors}
           onPress={() => router.push("/(tabs)/leaderboard" as any)}
+        />
+        <SettingsRow
+          icon="gift.fill"
+          label="Redeem a Friend's Code"
+          subtitle="Enter a referral code to activate your free trial"
+          colors={colors}
+          onPress={() => setShowRedeemModal(true)}
         />
 
         {/* About */}
@@ -1067,6 +1116,55 @@ export default function SettingsScreen() {
         </View>
       </Modal>
 
+      {/* Redeem Code Modal */}
+      <Modal
+        visible={showRedeemModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowRedeemModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowRedeemModal(false)}
+        >
+          <View
+            style={[styles.redeemSheet, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            onStartShouldSetResponder={() => true}
+          >
+            <Text style={[styles.redeemTitle, { color: colors.foreground }]}>🎁 Redeem a Friend's Code</Text>
+            <Text style={[styles.redeemSubtitle, { color: colors.muted }]}>
+              Enter the referral code your friend shared with you to activate your 14-day free trial.
+            </Text>
+            <TextInput
+              style={[styles.redeemInput, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
+              placeholder="Enter code (e.g. AB12CD34)"
+              placeholderTextColor={colors.muted}
+              value={redeemCode}
+              onChangeText={(t) => setRedeemCode(t.toUpperCase())}
+              autoCapitalize="characters"
+              autoCorrect={false}
+              maxLength={12}
+              returnKeyType="done"
+              onSubmitEditing={handleRedeemCode}
+            />
+            <TouchableOpacity
+              style={[styles.redeemBtn, { backgroundColor: colors.primary, opacity: redeemLoading ? 0.6 : 1 }]}
+              onPress={handleRedeemCode}
+              disabled={redeemLoading}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.redeemBtnText, { color: "#fff" }]}>
+                {redeemLoading ? "Applying..." : "Apply Code"}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setShowRedeemModal(false)} style={{ marginTop: 12, alignItems: "center" }}>
+              <Text style={[styles.redeemBtnText, { color: colors.muted }]}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+
     </ScreenContainer>
   );
 }
@@ -1257,4 +1355,29 @@ const styles = StyleSheet.create({
   changelogContent: { flex: 1 },
   changelogLabel: { fontSize: 14, fontWeight: "600", marginBottom: 2 },
   changelogDesc: { fontSize: 13, lineHeight: 18 },
+  redeemSheet: {
+    margin: 24,
+    borderRadius: 20,
+    padding: 24,
+    borderWidth: 1,
+    gap: 12,
+  },
+  redeemTitle: { fontSize: 18, fontWeight: "700" },
+  redeemSubtitle: { fontSize: 14, lineHeight: 20 },
+  redeemInput: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 16,
+    fontWeight: "600",
+    letterSpacing: 2,
+    textAlign: "center",
+  },
+  redeemBtn: {
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  redeemBtnText: { fontSize: 15, fontWeight: "700" },
 });
