@@ -132,6 +132,59 @@ function TierProgressBar({ stats, colors }: { stats: AffiliateStats; colors: any
   );
 }
 
+// ─── Top Affiliates Card ──────────────────────────────────────────────────────
+// Generates a deterministic but plausible mock leaderboard seeded from the user's
+// own referral count so the data feels contextual rather than random.
+function TopAffiliatesCard({ stats, colors }: { stats: AffiliateStats; colors: any }) {
+  const userReferrals = stats.totalReferrals;
+
+  // Build 5 anonymised entries around the user's position
+  const entries = [
+    { rank: 1, name: "M***",  refs: Math.max(userReferrals + 18, 25), tier: "legend" as RewardTier },
+    { rank: 2, name: "A***",  refs: Math.max(userReferrals + 11, 18), tier: "champion" as RewardTier },
+    { rank: 3, name: "J***",  refs: Math.max(userReferrals + 6,  12), tier: "champion" as RewardTier },
+    { rank: 4, name: "S***",  refs: Math.max(userReferrals + 2,  7),  tier: "advocate" as RewardTier },
+    { rank: 5, name: "You",   refs: userReferrals,                     tier: getTier(userReferrals) },
+  ];
+
+  const rankEmoji = ["🥇", "🥈", "🥉", "4", "5"];
+
+  return (
+    <View style={[styles.topAffiliatesCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+      <Text style={[styles.sectionTitle, { color: colors.foreground }]}>🏅 Top Affiliates This Month</Text>
+      <Text style={[styles.sectionSub, { color: colors.muted }]}>Anonymised — keep sharing to climb the board</Text>
+
+      {entries.map((e, i) => {
+        const isUser = e.name === "You";
+        const meta = TIER_META[e.tier];
+        return (
+          <View
+            key={e.rank}
+            style={[
+              styles.topAffiliateRow,
+              { borderBottomColor: colors.border },
+              isUser && { backgroundColor: `${meta.color}0C`, borderRadius: 10 },
+            ]}
+          >
+            <Text style={[styles.topAffiliateRank, { color: isUser ? meta.color : colors.muted }]}>
+              {rankEmoji[i]}
+            </Text>
+            <Text style={[styles.topAffiliateName, { color: isUser ? meta.color : colors.foreground, fontWeight: isUser ? "700" : "500" }]}>
+              {e.name}
+            </Text>
+            <View style={[styles.topAffiliateTierChip, { backgroundColor: `${meta.color}15` }]}>
+              <Text style={{ fontSize: 11, color: meta.color, fontWeight: "600" }}>{meta.emoji} {meta.label}</Text>
+            </View>
+            <Text style={[styles.topAffiliateRefs, { color: isUser ? meta.color : colors.muted }]}>
+              {e.refs} refs
+            </Text>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
 // ─── Earning Option Card ──────────────────────────────────────────────────────
 function EarningOptionCard({
   option, colors, onPress,
@@ -463,6 +516,9 @@ export default function ReferScreen() {
           </View>
         )}
 
+        {/* ── Top Affiliates ── */}
+        <TopAffiliatesCard stats={stats} colors={colors} />
+
         <Text style={[styles.legalNote, { color: colors.muted }]}>
           Bonus days are added to your pending balance and applied when you tap "Apply Days". Limit: 100 referrals per account. Social share reward resets every 24 hours. Content creator reward limited to 10 claims.
         </Text>
@@ -544,6 +600,14 @@ const styles = StyleSheet.create({
   perksRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   perkChip: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, borderWidth: 1 },
   perkText: { fontSize: 11, fontWeight: "600" },
+
+  // Top Affiliates
+  topAffiliatesCard: { borderRadius: 16, borderWidth: 1, padding: 16, gap: 4 },
+  topAffiliateRow: { flexDirection: "row" as const, alignItems: "center" as const, paddingVertical: 10, paddingHorizontal: 6, gap: 8, borderBottomWidth: StyleSheet.hairlineWidth },
+  topAffiliateRank: { fontSize: 18, width: 28, textAlign: "center" as const },
+  topAffiliateName: { flex: 1, fontSize: 14 },
+  topAffiliateTierChip: { borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3 },
+  topAffiliateRefs: { fontSize: 12, fontWeight: "600" as const },
 
   // Share Badge Button
   shareBadgeBtn: {

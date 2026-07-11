@@ -977,6 +977,32 @@ export default function SolutionScreen() {
             Discuss with Tutor
           </Text>
         </TouchableOpacity>
+
+        {/* Share result + invite */}
+        <TouchableOpacity
+          accessibilityLabel="Share this result with your invite code"
+          onPress={async () => {
+            if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            const { getOrCreateReferralCode } = await import("@/lib/affiliate");
+            const code = await getOrCreateReferralCode();
+            const msg = `TutorSnap just solved this for me in seconds 🤯\n\n“${solution?.problem ?? "a tough problem"}”\n\nTry it free with my code: ${code}\nhttps://tutorsnapai.tech`;
+            try {
+              if (Platform.OS !== "web") {
+                await Share.share({ message: msg });
+              } else {
+                await Clipboard.setStringAsync(msg);
+                Alert.alert("Copied!", "Message copied to clipboard.");
+              }
+            } catch { /* user cancelled */ }
+          }}
+          style={[styles.inviteShareBtn, { backgroundColor: `${colors.warning}0E`, borderColor: `${colors.warning}30` }]}
+          activeOpacity={0.8}
+        >
+          <IconSymbol size={16} name="square.and.arrow.up" color={colors.warning} />
+          <Text style={[styles.inviteShareBtnText, { color: colors.warning }]}>
+            Share this result + invite a friend
+          </Text>
+        </TouchableOpacity>
       </ScrollView>
     </ScreenContainer>
   );
@@ -1272,4 +1298,17 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
   },
+  inviteShareBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 20,
+    paddingVertical: 13,
+    paddingHorizontal: 18,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  inviteShareBtnText: { fontSize: 14, fontWeight: "600" },
 });

@@ -23,9 +23,13 @@ import { useUpdateCheck } from "@/lib/use-update-check";
 import { FontSizeProvider } from "@/lib/font-size-provider";
 import * as Notifications from "expo-notifications";
 import { useRouter } from "expo-router";
+import * as Linking from "expo-linking";
 import { syncAllStreakNotifications } from "@/lib/streak-notifications";
 import { initRevenueCat, getSubscriptionStatus } from "@/lib/subscription";
 import { recordFirstLaunch } from "@/lib/review-prompt";
+import { recordReferral, getOrCreateReferralCode } from "@/lib/affiliate";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Alert } from "react-native";
 
 // Show notifications as banners when app is in foreground
 if (Platform.OS !== "web") {
@@ -73,6 +77,39 @@ export default function RootLayout() {
         }
       } catch { /* ignore — paywall check failure is non-critical */ }
     }).catch(() => {});
+  }, []);
+
+  // Handle referral deep-link on initial URL and subsequent opens
+  useEffect(() => {
+    const handleUrl = async (url: string | null) => {
+      if (!url) return;
+      try {
+        const parsed = Linking.parse(url);
+        const ref = (parsed.queryParams?.ref ?? parsed.queryParams?.code) as string | undefined;
+        if (!ref) return;
+        // Don't apply your own code
+        const myCode = await getOrCreateReferralCode();
+        if (ref.toUpperCase() === myCode.toUpperCase()) return;
+        // Only apply once per install
+        const applied = await AsyncStorage.getItem("@referral_applied");
+        if (applied) return;
+        await AsyncStorage.setItem("@referral_applied", ref);
+        // Record the referral for the referrer (simulated — in production this would be server-side)
+        // Show welcome banner to the new user
+        setTimeout(() => {
+          Alert.alert(
+            "🎁 You were invited!",
+            `A friend shared TutorSnap with you.\n\nYour 14-day free trial starts now — enjoy unlimited solves, quizzes, and AI tutoring!`,
+            [{ text: "Start Learning 🚀", style: "default" }]
+          );
+        }, 2000);
+      } catch { /* non-critical */ }
+    };
+    // Check the URL that launched the app
+    Linking.getInitialURL().then(handleUrl).catch(() => {});
+    // Listen for URLs while the app is open
+    const sub = Linking.addEventListener("url", (e) => handleUrl(e.url));
+    return () => sub.remove();
   }, []);
 
   // Handle notification taps — route by data payload

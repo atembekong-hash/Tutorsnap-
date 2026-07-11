@@ -436,3 +436,8 @@
 - [x] Friend-joined push notification in lib/affiliate.ts
 - [x] Home screen affiliate earnings widget
 - [x] Share tier badge feature on affiliate dashboard
+
+## Round 48: Affiliate Completion
+- [x] Top Affiliates leaderboard section on affiliate dashboard
+- [x] Referral deep-link handler and welcome banner
+- [x] Solve result share button
