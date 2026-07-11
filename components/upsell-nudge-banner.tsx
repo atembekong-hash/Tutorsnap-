@@ -87,8 +87,8 @@ export function UpsellNudgeBanner({ solvesUsed, isPremium, isDevMode }: UpsellNu
           backgroundColor: bgColor,
           borderColor,
           marginHorizontal: 16,
-          marginTop: 8,
-          marginBottom: 4,
+          marginTop: 16,
+          marginBottom: 0,
         },
       ]}
     >

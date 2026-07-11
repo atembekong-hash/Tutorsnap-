@@ -125,7 +125,7 @@ export function StudyTipCard({ subject }: StudyTipCardProps) {
 const styles = StyleSheet.create({
   card: {
     marginHorizontal: 16,
-    marginTop: 12,
+    marginTop: 20,
     borderRadius: 16,
     borderWidth: 1,
     padding: 14,

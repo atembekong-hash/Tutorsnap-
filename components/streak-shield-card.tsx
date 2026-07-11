@@ -130,7 +130,7 @@ export function StreakShieldCard({ currentStreak, onShieldEarned }: Props) {
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: 16, borderWidth: 1, padding: 16, marginBottom: 12 },
+  card: { borderRadius: 16, borderWidth: 1, padding: 16, marginHorizontal: 16, marginTop: 20, marginBottom: 0 },
   row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
   left: { flexDirection: "row", alignItems: "center", gap: 10, flex: 1 },
   icon: { fontSize: 28 },

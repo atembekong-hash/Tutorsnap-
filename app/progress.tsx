@@ -129,16 +129,16 @@ export default function ProgressScreen() {
 
   return (
     <ScreenContainer>
-      {/* Header */}
-      <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <IconSymbol size={24} name="arrow.left" color={colors.foreground} />
-        </TouchableOpacity>
-        <Text style={[styles.title, { color: colors.foreground }]}>Progress</Text>
-        <View style={{ width: 40 }} />
-      </View>
-
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+            <IconSymbol size={24} name="arrow.left" color={colors.foreground} />
+          </TouchableOpacity>
+          <Text style={[styles.title, { color: colors.foreground }]}>Progress</Text>
+          <View style={{ width: 40 }} />
+        </View>
+        <View style={{ paddingHorizontal: 16 }}>
 
         {/* Streak Card */}
         <View style={[styles.streakCard, { backgroundColor: `${colors.warning}12`, borderColor: `${colors.warning}30` }]}>
@@ -480,6 +480,7 @@ export default function ProgressScreen() {
             </TouchableOpacity>
           </View>
         )}
+        </View>
       </ScrollView>
       {/* Badge Unlock Modal */}
       <BadgeUnlockModal
@@ -497,9 +498,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingVertical: 14,
-    borderBottomWidth: 0.5,
   },
   backBtn: { padding: 4 },
   title: { fontSize: 18, fontWeight: "800" },

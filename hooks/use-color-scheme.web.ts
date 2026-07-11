@@ -16,9 +16,9 @@ function getInitialColorScheme(): "light" | "dark" {
   } catch {
     // localStorage may be unavailable (private browsing, security policy)
   }
-  // Fall back to OS preference
+  // Fall back to OS preference, then default to dark
   if (window.matchMedia?.("(prefers-color-scheme: dark)").matches) return "dark";
-  return "light";
+  return "dark"; // default to dark mode
 }
 
 /**
@@ -35,8 +35,8 @@ export function useColorScheme() {
     const persisted = localStorage.getItem(THEME_STORAGE_KEY);
     if (persisted === "dark" || persisted === "light") {
       setColorScheme(persisted);
-    } else if (systemScheme) {
-      setColorScheme(systemScheme as "light" | "dark");
+    } else {
+      setColorScheme("dark"); // default to dark mode
     }
   }, [systemScheme]);
 

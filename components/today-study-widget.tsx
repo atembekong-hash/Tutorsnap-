@@ -153,6 +153,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: 16,
     gap: 12,
+    marginHorizontal: 16,
+    marginTop: 20,
   },
   header: {
     flexDirection: "row",

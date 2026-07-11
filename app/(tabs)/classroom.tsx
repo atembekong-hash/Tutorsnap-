@@ -1808,7 +1808,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 24,
     borderWidth: 1,
     padding: 24,
-    paddingBottom: 40,
+    paddingBottom: 80,
     gap: 12,
   },
   modalHandle: {
@@ -1930,7 +1930,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
-    paddingBottom: 36,
+    paddingBottom: 80,
   },
   sortMenuTitle: {
     fontSize: 16,

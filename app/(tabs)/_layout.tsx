@@ -80,8 +80,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="history"
         options={{
-          title: "History",
-          tabBarIcon: ({ color }) => <IconSymbol size={24} name="clock.fill" color={color} />,
+          href: null,
         }}
       />
       <Tabs.Screen

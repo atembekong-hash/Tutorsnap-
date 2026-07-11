@@ -109,7 +109,8 @@ export function StreakProtectionBanner({
             backgroundColor: `${colors.warning}14`,
             borderColor: `${colors.warning}45`,
             marginHorizontal: 16,
-            marginBottom: 10,
+            marginTop: 20,
+            marginBottom: 0,
           },
         ]}
       >

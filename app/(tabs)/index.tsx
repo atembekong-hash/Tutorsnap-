@@ -146,7 +146,7 @@ function DailyChallengeCard() {
 }
 
 const dcStyles = StyleSheet.create({
-  card: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderRadius: 16, borderWidth: 1.5, padding: 14, gap: 12 },
+  card: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderRadius: 16, borderWidth: 1.5, padding: 14, gap: 12, marginHorizontal: 16, marginTop: 20 },
   left: { flexDirection: "row", alignItems: "center", gap: 12, flex: 1 },
   emoji: { fontSize: 28 },
   textBlock: { flex: 1, gap: 3 },
@@ -411,20 +411,13 @@ function SolveScreenContent() {
                 </TouchableOpacity>
               )}
               <TouchableOpacity
-                accessibilityLabel="Open notification center"
-                onPress={() => router.push("/notification-center" as any)}
-                style={[styles.iconBtn, { position: "relative" }]}
+                accessibilityLabel="View history"
+                onPress={() => router.push("/(tabs)/history" as any)}
+                style={styles.iconBtn}
                 activeOpacity={0.7}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <IconSymbol size={22} name="bell.fill" color={colors.foreground} />
-                {pendingNotifCount > 0 && (
-                  <View style={[styles.notifBadge, { backgroundColor: colors.error }]}>
-                    <Text style={styles.notifBadgeText}>
-                      {pendingNotifCount > 9 ? "9+" : String(pendingNotifCount)}
-                    </Text>
-                  </View>
-                )}
+                <IconSymbol size={22} name="clock.fill" color={colors.foreground} />
               </TouchableOpacity>
               <TouchableOpacity
                 accessibilityLabel="Toggle color scheme"
@@ -923,7 +916,7 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 8,
+    paddingBottom: 12,
   },
   iconBtn: {
     width: 36,
@@ -959,7 +952,7 @@ const styles = StyleSheet.create({
   streakLabel: { fontSize: 10, fontWeight: "600", letterSpacing: 0.3 },
   goalBar: {
     marginHorizontal: 16,
-    marginTop: 12,
+    marginTop: 20,
     padding: 12,
     borderRadius: 14,
     borderWidth: 1,
@@ -984,7 +977,7 @@ const styles = StyleSheet.create({
   goalBarPct: { fontSize: 11, fontWeight: "700" },
   subjectRow: {
     paddingHorizontal: 16,
-    marginTop: 16,
+    marginTop: 20,
   },
   sectionLabel: {
     fontSize: 12,
@@ -1041,15 +1034,15 @@ const styles = StyleSheet.create({
   clearBtn: { padding: 2 },
   solveBtn: {
     marginHorizontal: 16,
-    marginTop: 14,
-    borderRadius: 18,
+    marginTop: 16,
+    borderRadius: 16,
     overflow: "hidden",
   },
   solveBtnInner: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 17,
+    paddingVertical: 16,
     gap: 10,
   },
   solveBtnText: {
@@ -1061,7 +1054,7 @@ const styles = StyleSheet.create({
   featureRow: {
     flexDirection: "row",
     paddingHorizontal: 16,
-    marginTop: 20,
+    marginTop: 24,
     gap: 10,
   },
   featureCard: {
@@ -1083,7 +1076,7 @@ const styles = StyleSheet.create({
   featureDesc: { fontSize: 11, textAlign: "center", lineHeight: 15 },
   examplesSection: {
     paddingHorizontal: 16,
-    marginTop: 24,
+    marginTop: 28,
   },
   sectionHeader: {
     flexDirection: "row",
@@ -1114,10 +1107,10 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   offlineWarningText: { fontSize: 13, fontWeight: "600", flex: 1 },
-  shieldToast: { borderRadius: 12, borderWidth: 1, padding: 12, marginBottom: 8, alignItems: "center" },
+  shieldToast: { borderRadius: 14, borderWidth: 1, padding: 14, marginHorizontal: 16, marginBottom: 12, alignItems: "center" },
   shieldToastText: { fontSize: 14, fontWeight: "700", textAlign: "center" },
   homeworkBanner: {
-    borderRadius: 14, borderWidth: 1, padding: 12, marginBottom: 10,
+    borderRadius: 14, borderWidth: 1, padding: 14, marginHorizontal: 16, marginBottom: 12,
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
   },
   homeworkBannerLeft: { flexDirection: "row", alignItems: "center", gap: 10, flex: 1 },

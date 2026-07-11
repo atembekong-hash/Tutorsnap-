@@ -174,10 +174,10 @@ function HistoryScreenContent() {
     );
   };
 
-  return (
-    <ScreenContainer>
+  const ListHeader = (
+    <View>
       {/* Header */}
-      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+      <View style={styles.header}>
         <View style={styles.headerTop}>
           <Text style={[styles.title, { color: colors.foreground }]}>History</Text>
           {history.length > 0 && (
@@ -272,29 +272,44 @@ function HistoryScreenContent() {
           )}
         </>
       )}
+    </View>
+  );
 
+  return (
+    <ScreenContainer>
       {filteredHistory.length === 0 ? (
-        <View style={styles.emptyState}>
-          <View style={[styles.emptyIcon, { backgroundColor: `${colors.primary}15` }]}>
-            <IconSymbol size={40} name="clock.fill" color={colors.primary} />
-          </View>
-          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
-            {history.length === 0 ? "No History Yet" : "No Results Found"}
-          </Text>
-          <Text style={[styles.emptySubtitle, { color: colors.muted }]}>
-            {history.length === 0
-              ? "Solve your first problem to see it here"
-              : "Try a different search or filter"}
-          </Text>
-        </View>
+        <FlatList
+          data={[]}
+          keyExtractor={(item) => item}
+          renderItem={null}
+          ListHeaderComponent={ListHeader}
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <View style={[styles.emptyIcon, { backgroundColor: `${colors.primary}15` }]}>
+                <IconSymbol size={40} name="clock.fill" color={colors.primary} />
+              </View>
+              <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
+                {history.length === 0 ? "No History Yet" : "No Results Found"}
+              </Text>
+              <Text style={[styles.emptySubtitle, { color: colors.muted }]}>
+                {history.length === 0
+                  ? "Solve your first problem to see it here"
+                  : "Try a different search or filter"}
+              </Text>
+            </View>
+          }
+          contentContainerStyle={{ paddingBottom: 40 }}
+          showsVerticalScrollIndicator={false}
+        />
       ) : (
         <FlatList
           data={filteredHistory}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
-          contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+          ListHeaderComponent={ListHeader}
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }}
           showsVerticalScrollIndicator={false}
-          ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
+          ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
         />
       )}
     </ScreenContainer>
@@ -313,8 +328,7 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 0.5,
+    paddingBottom: 8,
   },
   headerTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   title: { fontSize: 28, fontWeight: "800", letterSpacing: -0.5 },

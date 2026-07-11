@@ -48,10 +48,10 @@ type ThemeContextValue = {
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const systemScheme = (useSystemColorScheme() ?? "light") as ColorScheme;
+  const systemScheme = (useSystemColorScheme() ?? "dark") as ColorScheme;
 
   // On web: read localStorage synchronously so first render is correct.
-  // On native: start with system scheme; AsyncStorage load will correct it.
+  // On native: start with dark mode; AsyncStorage load will correct it if user changed it.
   const [colorScheme, setColorSchemeState] = useState<ColorScheme>(() => {
     const webInitial = getWebInitialScheme();
     if (webInitial) {
@@ -59,7 +59,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       applySchemeToDOM(webInitial);
       return webInitial;
     }
-    return systemScheme;
+    // Default to dark mode for first-time users
+    applySchemeToDOM("dark");
+    return "dark";
   });
 
   const [loaded, setLoaded] = useState(false);
@@ -79,7 +81,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     AsyncStorage.getItem(THEME_STORAGE_KEY)
       .then((saved) => {
         const scheme: ColorScheme =
-          saved === "dark" || saved === "light" ? saved : systemScheme;
+          saved === "dark" || saved === "light" ? saved : "dark"; // default to dark
         setColorSchemeState(scheme);
         applyScheme(scheme);
         setLoaded(true);
