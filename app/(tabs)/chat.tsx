@@ -1238,13 +1238,6 @@ function ChatScreenContent() {
           <View style={chatStyles.loadingCenter}>
             <ActivityIndicator size="large" color={colors.primary} />
           </View>
-        ) : showWelcome ? (
-          <WelcomeCard
-            colors={colors}
-            fs={fs}
-            subject={selectedSubject}
-            onPrompt={(t) => handleSend(t)}
-          />
         ) : (
           <FlatList
             ref={flatListRef}
@@ -1259,7 +1252,17 @@ function ChatScreenContent() {
                 onLongPressAI={handleLongPressAI}
               />
             )}
-            contentContainerStyle={{ paddingTop: HEADER_HEIGHT + 4, paddingBottom: TAB_BAR_HEIGHT + 80 }}
+            ListEmptyComponent={
+              showWelcome ? (
+                <WelcomeCard
+                  colors={colors}
+                  fs={fs}
+                  subject={selectedSubject}
+                  onPrompt={(t) => handleSend(t)}
+                />
+              ) : null
+            }
+            contentContainerStyle={{ paddingTop: HEADER_HEIGHT + 4, paddingBottom: TAB_BAR_HEIGHT + 80, flexGrow: 1 }}
             showsVerticalScrollIndicator={false}
             onScroll={handleChatScroll}
             scrollEventThrottle={16}
@@ -1380,36 +1383,7 @@ function ChatScreenContent() {
             },
           ]}
         >
-          {/* Limit nudge strip — only shown when 2 or fewer messages remain, or at limit */}
-          {!isPremium && !isDevMode && (isAtLimit || messagesLeft <= 2) && (
-            <TouchableOpacity
-              onPress={() => setShowPaywallModal(true)}
-              activeOpacity={0.8}
-              style={[
-                chatStyles.limitStrip,
-                {
-                  backgroundColor: isAtLimit ? `${colors.error}15` : `${colors.warning}12`,
-                  borderColor: isAtLimit ? `${colors.error}35` : `${colors.warning}28`,
-                },
-              ]}
-            >
-              <Text
-                style={[
-                  chatStyles.limitText,
-                  { color: isAtLimit ? colors.error : colors.warning, fontSize: fs(12) },
-                ]}
-              >
-                {isAtLimit
-                  ? "Message limit reached — Upgrade for unlimited chat"
-                  : `${messagesLeft} message${messagesLeft === 1 ? "" : "s"} left · Upgrade`}
-              </Text>
-              <IconSymbol
-                size={12}
-                name="chevron.right"
-                color={isAtLimit ? colors.error : colors.warning}
-              />
-            </TouchableOpacity>
-          )}
+          {/* No limit strip — limit is communicated silently via lock icon on send button */}
 
           {/* Pill input card */}
           <View
@@ -1446,7 +1420,7 @@ function ChatScreenContent() {
                 chatStyles.input,
                 { color: colors.foreground, fontSize: fs(14), lineHeight: fs(14) * 1.4 },
               ]}
-              placeholder={isAtLimit ? "Upgrade to keep chatting…" : "Ask anything…"}
+              placeholder="Ask anything…"
               placeholderTextColor={colors.muted}
               value={inputText}
               onChangeText={setInputText}
@@ -1523,14 +1497,16 @@ function ChatScreenContent() {
               </View>
             )}
             <TouchableOpacity
-              accessibilityLabel="Send message"
-              onPress={() => handleSend()}
-              disabled={!inputText.trim() || chatMutation.isPending || !isOnline || isAtLimit}
+              accessibilityLabel={isAtLimit ? "Upgrade to unlock" : "Send message"}
+              onPress={() => isAtLimit ? setShowPaywallModal(true) : handleSend()}
+              disabled={(!inputText.trim() && !isAtLimit) || chatMutation.isPending || !isOnline}
               style={[
                 chatStyles.sendBtn,
                 {
                   backgroundColor:
-                    isOnline && !isAtLimit && inputText.trim()
+                    isAtLimit
+                      ? `${colors.muted}22`
+                      : isOnline && inputText.trim()
                       ? colors.primary
                       : colors.border,
                 },
@@ -1539,9 +1515,11 @@ function ChatScreenContent() {
             >
               <IconSymbol
                 size={17}
-                name={isOnline ? "paperplane.fill" : "wifi.slash"}
+                name={isAtLimit ? "lock.fill" : isOnline ? "paperplane.fill" : "wifi.slash"}
                 color={
-                  isOnline && !isAtLimit && inputText.trim() ? "#FFFFFF" : colors.muted
+                  isAtLimit
+                    ? colors.muted
+                    : isOnline && inputText.trim() ? "#FFFFFF" : colors.muted
                 }
               />
             </TouchableOpacity>
