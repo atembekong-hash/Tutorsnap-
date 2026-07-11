@@ -59,10 +59,12 @@ export function getTrialDaysRemaining(trialStartMs: number): number {
 }
 
 // ─── Usage limits (free / trial tier) ────────────────────────────────────────
+// Free users get 2 solves/day, 3 quiz questions/day, 3 chat messages/session.
+// Premium (paid or trial) users have no limits.
 export const FREE_LIMITS = {
-  solvesPerDay: 3,
-  quizQuestionsPerDay: 5,
-  chatMessagesPerSession: 5,
+  solvesPerDay: 2,
+  quizQuestionsPerDay: 3,
+  chatMessagesPerSession: 3,
 } as const;
 
 const USAGE_KEY = (type: string) => `@tutorsnap/usage/${type}/${new Date().toDateString()}`;
@@ -100,6 +102,10 @@ export async function initRevenueCat(): Promise<void> {
     return;
   }
 
+  // Keys are read from environment variables set via `webdev_request_secrets`.
+  // Set EXPO_PUBLIC_RC_API_KEY_IOS and EXPO_PUBLIC_RC_API_KEY_ANDROID in your
+  // project secrets (use the test key during development; replace with the
+  // production key before publishing to the stores).
   const iosKey = process.env.EXPO_PUBLIC_RC_API_KEY_IOS ?? "";
   const androidKey = process.env.EXPO_PUBLIC_RC_API_KEY_ANDROID ?? "";
   const apiKey = Platform.OS === "ios" ? iosKey : androidKey;
