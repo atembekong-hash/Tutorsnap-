@@ -1,4 +1,33 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+/**
+ * AI Tutor Chat Screen
+ *
+ * Visual improvements applied:
+ *  1. iMessage-style borderless bubbles — user: solid primary fill, AI: transparent/no card
+ *  2. Avatar only on the first AI bubble in a consecutive run (like WhatsApp/iMessage)
+ *  3. Gradient AI avatar badge (purple→blue sparkle) instead of emoji-in-box
+ *  4. Floating pill input bar with shadow, floating above the tab bar
+ *  5. Centred welcome empty-state card (ChatGPT-style) with 2-col prompt grid
+ *  6. Animated three-dot typing indicator instead of spinner
+ *
+ * All existing features preserved:
+ *  - Session persistence (create / load / save)
+ *  - Subject picker (bottom sheet)
+ *  - Share chat (text + PDF)
+ *  - Chat history navigation
+ *  - Free-tier message limit + paywall modal
+ *  - Seed message auto-send (from Discuss with Tutor)
+ *  - Clear conversation
+ *  - Offline detection
+ *  - Font-size scaling
+ */
+
+import React, {
+  useState,
+  useRef,
+  useEffect,
+  useCallback,
+  useReducer,
+} from "react";
 import {
   View,
   Text,
@@ -13,12 +42,16 @@ import {
   Share,
   Alert,
   Modal,
+  Animated,
+  Easing,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
@@ -29,7 +62,10 @@ import { type SubjectId, getSubjectLabel } from "@/lib/subjects";
 import { useNetworkStatus } from "@/hooks/use-network-status";
 import { useFontSize } from "@/lib/font-size-provider";
 import { ErrorBoundary } from "@/components/error-boundary";
-import { AIResponseRenderer, AIResponseErrorBoundary } from "@/components/ai-response-renderer";
+import {
+  AIResponseRenderer,
+  AIResponseErrorBoundary,
+} from "@/components/ai-response-renderer";
 import {
   createSession,
   loadSession,
@@ -52,64 +88,167 @@ const QUICK_PROMPTS = [
   { label: "Supply & demand", text: "What is supply and demand?" },
 ];
 
+// ─── Animated three-dot typing indicator ─────────────────────────────────────
+
+function TypingDots({ color }: { color: string }) {
+  const dots = [
+    useRef(new Animated.Value(0)).current,
+    useRef(new Animated.Value(0)).current,
+    useRef(new Animated.Value(0)).current,
+  ];
+
+  useEffect(() => {
+    const animations = dots.map((dot, i) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(i * 140),
+          Animated.timing(dot, {
+            toValue: 1,
+            duration: 300,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+          Animated.timing(dot, {
+            toValue: 0,
+            duration: 300,
+            easing: Easing.inOut(Easing.ease),
+            useNativeDriver: true,
+          }),
+          Animated.delay((2 - i) * 140),
+        ])
+      )
+    );
+    const parallel = Animated.parallel(animations);
+    parallel.start();
+    return () => parallel.stop();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <View style={typingStyles.row}>
+      {dots.map((dot, i) => (
+        <Animated.View
+          key={i}
+          style={[
+            typingStyles.dot,
+            { backgroundColor: color },
+            {
+              transform: [
+                {
+                  translateY: dot.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, -5],
+                  }),
+                },
+              ],
+              opacity: dot.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0.4, 1],
+              }),
+            },
+          ]}
+        />
+      ))}
+    </View>
+  );
+}
+
+const typingStyles = StyleSheet.create({
+  row: { flexDirection: "row", alignItems: "center", gap: 5, paddingVertical: 4 },
+  dot: { width: 8, height: 8, borderRadius: 4 },
+});
+
+// ─── Gradient AI Avatar ───────────────────────────────────────────────────────
+
+function AIAvatar({ size = 30 }: { size?: number }) {
+  return (
+    <LinearGradient
+      colors={["#7C3AED", "#2563EB"]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={{
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        alignItems: "center",
+        justifyContent: "center",
+        flexShrink: 0,
+      }}
+    >
+      <Text style={{ fontSize: size * 0.45, lineHeight: size * 0.55 }}>✦</Text>
+    </LinearGradient>
+  );
+}
+
 // ─── Message Bubble ───────────────────────────────────────────────────────────
 
 function MessageBubble({
   message,
+  isFirstInRun,
   colors,
   fs,
 }: {
   message: ChatMessage;
+  isFirstInRun: boolean;
   colors: ReturnType<typeof useColors>;
   fs: (n: number) => number;
 }) {
   const isUser = message.role === "user";
-  return (
-    <View
-      style={[
-        styles.messageBubble,
-        isUser ? styles.userBubble : styles.aiBubble,
-        {
-          backgroundColor: isUser ? colors.primary : colors.surface,
-          borderColor: isUser ? colors.primary : colors.border,
-        },
-      ]}
-    >
-      {!isUser && (
-        <View style={[styles.aiAvatar, { backgroundColor: `${colors.primary}20` }]}>
-          <Text style={{ fontSize: 13 }}>🧮</Text>
-        </View>
-      )}
-      <View style={styles.bubbleContent}>
-        {isUser ? (
+
+  if (isUser) {
+    return (
+      <View style={[bubbleStyles.userRow]}>
+        <View
+          style={[
+            bubbleStyles.userBubble,
+            { backgroundColor: colors.primary },
+          ]}
+        >
           <Text
             style={[
-              styles.messageText,
-              { color: "#FFFFFF", fontSize: fs(15), lineHeight: fs(15) * 1.47 },
+              bubbleStyles.userText,
+              { color: "#FFFFFF", fontSize: fs(15), lineHeight: fs(15) * 1.5 },
             ]}
           >
             {message.content}
           </Text>
-        ) : (
-          <AIResponseErrorBoundary
-            fallbackText={message.content}
+          <Text style={[bubbleStyles.timeText, { color: "rgba(255,255,255,0.55)", fontSize: fs(10) }]}>
+            {new Date(message.timestamp).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  // AI bubble — full width, no card background, avatar only on first in run
+  return (
+    <View style={bubbleStyles.aiRow}>
+      {/* Avatar column — always reserve space so text aligns */}
+      <View style={bubbleStyles.avatarCol}>
+        {isFirstInRun ? <AIAvatar size={30} /> : null}
+      </View>
+      <View style={bubbleStyles.aiContent}>
+        <AIResponseErrorBoundary
+          fallbackText={message.content}
+          fontSize={fs(15)}
+          color={colors.foreground}
+        >
+          <AIResponseRenderer
+            markdown={message.content}
             fontSize={fs(15)}
             color={colors.foreground}
-          >
-            <AIResponseRenderer
-              markdown={message.content}
-              fontSize={fs(15)}
-              color={colors.foreground}
-              codeBackground={colors.background}
-              flavor="github"
-              stripPreamble
-            />
-          </AIResponseErrorBoundary>
-        )}
+            codeBackground={colors.surface}
+            flavor="github"
+            stripPreamble
+          />
+        </AIResponseErrorBoundary>
         <Text
           style={[
-            styles.messageTime,
-            { color: isUser ? "rgba(255,255,255,0.55)" : colors.muted, fontSize: fs(11) },
+            bubbleStyles.timeText,
+            { color: colors.muted, fontSize: fs(10), marginTop: 4 },
           ]}
         >
           {new Date(message.timestamp).toLocaleTimeString([], {
@@ -121,6 +260,117 @@ function MessageBubble({
     </View>
   );
 }
+
+const bubbleStyles = StyleSheet.create({
+  // User
+  userRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    paddingHorizontal: 16,
+    marginBottom: 4,
+  },
+  userBubble: {
+    maxWidth: "78%",
+    borderRadius: 20,
+    borderBottomRightRadius: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  userText: { fontWeight: "400" },
+  // AI
+  aiRow: {
+    flexDirection: "row",
+    paddingHorizontal: 12,
+    marginBottom: 4,
+    alignItems: "flex-start",
+  },
+  avatarCol: {
+    width: 38,
+    alignItems: "center",
+    paddingTop: 2,
+    flexShrink: 0,
+  },
+  aiContent: {
+    flex: 1,
+    paddingRight: 8,
+  },
+  timeText: { textAlign: "right" },
+});
+
+// ─── Welcome empty-state card ─────────────────────────────────────────────────
+
+function WelcomeCard({
+  colors,
+  fs,
+  onPrompt,
+}: {
+  colors: ReturnType<typeof useColors>;
+  fs: (n: number) => number;
+  onPrompt: (text: string) => void;
+}) {
+  return (
+    <View style={welcomeStyles.container}>
+      <AIAvatar size={64} />
+      <Text style={[welcomeStyles.title, { color: colors.foreground, fontSize: fs(22) }]}>
+        TutorSnap AI
+      </Text>
+      <Text style={[welcomeStyles.subtitle, { color: colors.muted, fontSize: fs(14) }]}>
+        Ask me anything — Math, Science, English, History, and more.
+      </Text>
+      <View style={welcomeStyles.grid}>
+        {QUICK_PROMPTS.map((p, i) => (
+          <TouchableOpacity
+            key={i}
+            onPress={() => onPrompt(p.text)}
+            accessibilityLabel={`Ask: ${p.text}`}
+            style={[
+              welcomeStyles.chip,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+            activeOpacity={0.7}
+          >
+            <Text
+              style={[welcomeStyles.chipText, { color: colors.foreground, fontSize: fs(13) }]}
+              numberOfLines={1}
+            >
+              {p.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+const welcomeStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+    paddingVertical: 32,
+    gap: 12,
+  },
+  title: { fontWeight: "700", textAlign: "center" },
+  subtitle: { textAlign: "center", lineHeight: 22, maxWidth: 280 },
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    justifyContent: "center",
+    marginTop: 8,
+    width: "100%",
+  },
+  chip: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 22,
+    borderWidth: 1,
+    maxWidth: "47%",
+    minWidth: "40%",
+  },
+  chipText: { fontWeight: "500", textAlign: "center" },
+});
 
 // ─── Welcome message factory ──────────────────────────────────────────────────
 
@@ -142,7 +392,12 @@ function ChatScreenContent() {
   const colors = useColors();
   const { fs } = useFontSize();
   const router = useRouter();
-  const params = useLocalSearchParams<{ sessionId?: string; newSession?: string; seedMessage?: string }>();
+  const insets = useSafeAreaInsets();
+  const params = useLocalSearchParams<{
+    sessionId?: string;
+    newSession?: string;
+    seedMessage?: string;
+  }>();
   const seedSentRef = useRef(false);
 
   const [session, setSession] = useState<ChatSession | null>(null);
@@ -160,6 +415,10 @@ function ChatScreenContent() {
 
   const flatListRef = useRef<FlatList>(null);
   const { isOnline } = useNetworkStatus();
+
+  // Tab bar height for floating input offset
+  const bottomPadding = Platform.OS === "web" ? 12 : Math.max(insets.bottom, 8);
+  const TAB_BAR_HEIGHT = 60 + bottomPadding;
 
   // ── Session init ────────────────────────────────────────────────────────────
 
@@ -201,7 +460,9 @@ function ChatScreenContent() {
     }
 
     init();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -324,7 +585,9 @@ function ChatScreenContent() {
     if (!session) return "";
     const subjectLabel = selectedSubject ? getSubjectLabel(selectedSubject) : "General";
     const dateStr = new Date(session.createdAt).toLocaleDateString(undefined, {
-      month: "long", day: "numeric", year: "numeric",
+      month: "long",
+      day: "numeric",
+      year: "numeric",
     });
     const lines: string[] = [
       `📚 TutorSnap Chat — ${session.title}`,
@@ -334,7 +597,10 @@ function ChatScreenContent() {
     for (const msg of messages) {
       if (msg.id.startsWith("welcome")) continue;
       const role = msg.role === "user" ? "You" : "TutorSnap";
-      const time = new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      const time = new Date(msg.timestamp).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
       const text = msg.content
         .replace(/\$\$[\s\S]*?\$\$/g, "[equation]")
         .replace(/\$[^$\n]+\$/g, "[math]")
@@ -358,13 +624,18 @@ function ChatScreenContent() {
     try {
       const subjectLabel = selectedSubject ? getSubjectLabel(selectedSubject) : "General";
       const dateStr = new Date(session.createdAt).toLocaleDateString(undefined, {
-        month: "long", day: "numeric", year: "numeric",
+        month: "long",
+        day: "numeric",
+        year: "numeric",
       });
       const bubbles = messages
         .filter((m) => !m.id.startsWith("welcome"))
         .map((m) => {
           const isUser = m.role === "user";
-          const time = new Date(m.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+          const time = new Date(m.timestamp).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          });
           const text = m.content
             .replace(/\$\$[\s\S]*?\$\$/g, "[equation]")
             .replace(/\$[^$\n]+\$/g, "[math]")
@@ -372,17 +643,33 @@ function ChatScreenContent() {
             .replace(/\*\*|__/g, "")
             .replace(/\*|_/g, "")
             .replace(/`{1,3}/g, "")
-            .replace(/</g, "&lt;").replace(/>/g, "&gt;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
             .trim();
-          return `<div class="bubble ${isUser ? "user" : "ai"}"><div class="role">${isUser ? "You" : "TutorSnap AI"} <span class="time">${time}</span></div><div class="text">${text.replace(/\n/g, "<br/>")}</div></div>`;
+          return `<div class="bubble ${isUser ? "user" : "ai"}"><div class="role">${
+            isUser ? "You" : "TutorSnap AI"
+          } <span class="time">${time}</span></div><div class="text">${text.replace(
+            /\n/g,
+            "<br/>"
+          )}</div></div>`;
         })
         .join("");
 
-      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:-apple-system,sans-serif;margin:0;padding:32px;background:#fff;color:#1a1a1a}.header{border-bottom:2px solid #6366f1;padding-bottom:16px;margin-bottom:24px}.header h1{margin:0 0 4px;font-size:20px;color:#6366f1}.header p{margin:0;font-size:13px;color:#666}.bubble{margin-bottom:16px;max-width:80%}.bubble.user{margin-left:auto}.role{font-size:11px;font-weight:700;color:#888;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px}.bubble.user .role{text-align:right}.time{font-weight:400;margin-left:6px}.text{background:#f5f5f5;border-radius:12px;padding:12px 16px;font-size:14px;line-height:1.6}.bubble.user .text{background:#6366f1;color:#fff}.footer{margin-top:32px;padding-top:16px;border-top:1px solid #eee;font-size:11px;color:#aaa;text-align:center}</style></head><body><div class="header"><h1>${session.title.replace(/</g, "&lt;")}</h1><p>Subject: ${subjectLabel} &middot; ${dateStr} &middot; ${messages.filter(m => !m.id.startsWith("welcome")).length} messages</p></div>${bubbles || "<p style=\"color:#aaa\">No messages yet.</p>"}<div class="footer">Exported from TutorSnap &middot; tutorsnapai.tech</div></body></html>`;
+      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:-apple-system,sans-serif;margin:0;padding:32px;background:#fff;color:#1a1a1a}.header{border-bottom:2px solid #7C3AED;padding-bottom:16px;margin-bottom:24px}.header h1{margin:0 0 4px;font-size:20px;color:#7C3AED}.header p{margin:0;font-size:13px;color:#666}.bubble{margin-bottom:16px;max-width:80%}.bubble.user{margin-left:auto}.role{font-size:11px;font-weight:700;color:#888;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px}.bubble.user .role{text-align:right}.time{font-weight:400;margin-left:6px}.text{background:#f5f5f5;border-radius:12px;padding:12px 16px;font-size:14px;line-height:1.6}.bubble.user .text{background:#7C3AED;color:#fff}.footer{margin-top:32px;padding-top:16px;border-top:1px solid #eee;font-size:11px;color:#aaa;text-align:center}</style></head><body><div class="header"><h1>${session.title.replace(
+        /</g,
+        "&lt;"
+      )}</h1><p>Subject: ${subjectLabel} &middot; ${dateStr} &middot; ${
+        messages.filter((m) => !m.id.startsWith("welcome")).length
+      } messages</p></div>${
+        bubbles || '<p style="color:#aaa">No messages yet.</p>'
+      }<div class="footer">Exported from TutorSnap &middot; tutorsnapai.tech</div></body></html>`;
 
       const { uri } = await Print.printToFileAsync({ html, base64: false });
       if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, { mimeType: "application/pdf", dialogTitle: "Save Chat PDF" });
+        await Sharing.shareAsync(uri, {
+          mimeType: "application/pdf",
+          dialogTitle: "Save Chat PDF",
+        });
       } else {
         Alert.alert("PDF Saved", "Your chat has been saved as a PDF.");
       }
@@ -442,7 +729,9 @@ function ChatScreenContent() {
           const welcome = makeWelcomeMessage(selectedSubject);
           setMessages([welcome]);
           setSessionMessageCount(0);
-          if (session) await saveSession({ ...session, messages: [welcome], messageCount: 1 });
+          if (session) {
+            await saveSession({ ...session, messages: [welcome], messageCount: 1 });
+          }
         },
       },
     ]);
@@ -451,69 +740,81 @@ function ChatScreenContent() {
   // ── Derived ─────────────────────────────────────────────────────────────────
 
   const userMessageCount = messages.filter((m) => m.role === "user").length;
-  const isAtLimit = !isPremium && !isDevMode && sessionMessageCount >= FREE_LIMITS.chatMessagesPerSession;
+  const isAtLimit =
+    !isPremium && !isDevMode && sessionMessageCount >= FREE_LIMITS.chatMessagesPerSession;
   const messagesLeft = Math.max(0, FREE_LIMITS.chatMessagesPerSession - sessionMessageCount);
+  const showWelcome = sessionLoaded && userMessageCount === 0;
 
-  // ── Quick prompts as list header ────────────────────────────────────────────
+  // ── Render helpers ──────────────────────────────────────────────────────────
 
-  const ListHeader = sessionLoaded && userMessageCount === 0 ? (
-    <View style={styles.quickPromptsWrap}>
-      <Text style={[styles.quickPromptsLabel, { color: colors.muted, fontSize: fs(11) }]}>
-        TRY ASKING
-      </Text>
-      <View style={styles.quickPromptsGrid}>
-        {QUICK_PROMPTS.map((p, i) => (
-          <TouchableOpacity
-            key={i}
-            accessibilityLabel={`Ask: ${p.text}`}
-            onPress={() => handleSend(p.text)}
-            style={[
-              styles.quickChip,
-              { backgroundColor: colors.surface, borderColor: colors.border },
-            ]}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.quickChipText, { color: colors.foreground, fontSize: fs(13) }]} numberOfLines={1}>
-              {p.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-    </View>
-  ) : null;
+  // Determine if a message is the first in a consecutive AI run
+  const isFirstInRun = useCallback(
+    (index: number): boolean => {
+      if (messages[index].role !== "assistant") return false;
+      if (index === 0) return true;
+      return messages[index - 1].role !== "assistant";
+    },
+    [messages]
+  );
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
-    <ScreenContainer>
+    <ScreenContainer edges={["top", "left", "right"]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
-        keyboardVerticalOffset={0}
+        keyboardVerticalOffset={TAB_BAR_HEIGHT}
       >
-        {/* ── Slim fixed header ── */}
-        <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.background }]}>
-          {/* Left: avatar + title + status */}
-          <View style={styles.headerLeft}>
-            <View style={[styles.aiIcon, { backgroundColor: `${colors.primary}18` }]}>
-              <Text style={{ fontSize: 18 }}>🧮</Text>
-            </View>
+        {/* ── Slim header ── */}
+        <View
+          style={[
+            chatStyles.header,
+            {
+              borderBottomColor: colors.border,
+              backgroundColor: colors.background,
+            },
+          ]}
+        >
+          <View style={chatStyles.headerLeft}>
+            <AIAvatar size={34} />
             <View style={{ flex: 1, minWidth: 0 }}>
               <Text
-                style={[styles.headerTitle, { color: colors.foreground, fontSize: fs(16) }]}
+                style={[
+                  chatStyles.headerTitle,
+                  { color: colors.foreground, fontSize: fs(16) },
+                ]}
                 numberOfLines={1}
               >
-                {session?.title && session.title !== "New Chat" ? session.title : "AI Tutor"}
+                {session?.title && session.title !== "New Chat"
+                  ? session.title
+                  : "AI Tutor"}
               </Text>
-              <View style={styles.statusRow}>
-                <View style={[styles.statusDot, { backgroundColor: isOnline ? colors.success : colors.error }]} />
-                <Text style={[styles.statusText, { color: isOnline ? colors.success : colors.error, fontSize: fs(11) }]}>
+              <View style={chatStyles.statusRow}>
+                <View
+                  style={[
+                    chatStyles.statusDot,
+                    { backgroundColor: isOnline ? colors.success : colors.error },
+                  ]}
+                />
+                <Text
+                  style={[
+                    chatStyles.statusText,
+                    {
+                      color: isOnline ? colors.success : colors.error,
+                      fontSize: fs(11),
+                    },
+                  ]}
+                >
                   {isOnline ? "Online" : "Offline"}
                 </Text>
                 {selectedSubject && (
                   <>
-                    <Text style={[styles.statusSep, { color: colors.border }]}>·</Text>
-                    <Text style={[styles.statusText, { color: colors.muted, fontSize: fs(11) }]} numberOfLines={1}>
+                    <Text style={[chatStyles.statusSep, { color: colors.border }]}>·</Text>
+                    <Text
+                      style={[chatStyles.statusText, { color: colors.muted, fontSize: fs(11) }]}
+                      numberOfLines={1}
+                    >
                       {getSubjectLabel(selectedSubject)}
                     </Text>
                   </>
@@ -522,20 +823,23 @@ function ChatScreenContent() {
             </View>
           </View>
 
-          {/* Right: action icons */}
-          <View style={styles.headerActions}>
+          <View style={chatStyles.headerActions}>
             <TouchableOpacity
               onPress={() => setShowSubjectPicker(true)}
               accessibilityLabel="Change subject"
-              style={styles.headerBtn}
+              style={chatStyles.headerBtn}
               activeOpacity={0.7}
             >
-              <IconSymbol size={19} name="book.fill" color={selectedSubject ? colors.primary : colors.muted} />
+              <IconSymbol
+                size={19}
+                name="book.fill"
+                color={selectedSubject ? colors.primary : colors.muted}
+              />
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => router.push("/chat-history")}
               accessibilityLabel="Chat history"
-              style={styles.headerBtn}
+              style={chatStyles.headerBtn}
               activeOpacity={0.7}
             >
               <IconSymbol size={19} name="clock.fill" color={colors.muted} />
@@ -543,19 +847,27 @@ function ChatScreenContent() {
             <TouchableOpacity
               onPress={() => setShowShareMenu(true)}
               accessibilityLabel="Share chat"
-              style={styles.headerBtn}
+              style={chatStyles.headerBtn}
               activeOpacity={0.7}
             >
               <IconSymbol
                 size={19}
-                name={shareCopied ? "checkmark.circle.fill" : "square.and.arrow.up.fill"}
+                name={
+                  shareCopied
+                    ? "checkmark.circle.fill"
+                    : "square.and.arrow.up.fill"
+                }
                 color={shareCopied ? colors.success : colors.muted}
               />
             </TouchableOpacity>
             <TouchableOpacity
               onPress={handleNewChat}
               accessibilityLabel="New chat"
-              style={[styles.headerBtn, styles.newChatBtn, { backgroundColor: `${colors.primary}18` }]}
+              style={[
+                chatStyles.headerBtn,
+                chatStyles.newChatBtn,
+                { backgroundColor: `${colors.primary}18` },
+              ]}
               activeOpacity={0.7}
             >
               <IconSymbol size={17} name="plus" color={colors.primary} />
@@ -563,114 +875,201 @@ function ChatScreenContent() {
           </View>
         </View>
 
-        {/* ── Message list (max scroll area) ── */}
+        {/* ── Message area ── */}
         {!sessionLoaded ? (
-          <View style={styles.loadingCenter}>
+          <View style={chatStyles.loadingCenter}>
             <ActivityIndicator size="large" color={colors.primary} />
           </View>
+        ) : showWelcome ? (
+          // Empty state — centred welcome card
+          <WelcomeCard colors={colors} fs={fs} onPrompt={(t) => handleSend(t)} />
         ) : (
           <FlatList
             ref={flatListRef}
             data={messages}
             keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <MessageBubble message={item} colors={colors} fs={fs} />
+            renderItem={({ item, index }) => (
+              <MessageBubble
+                message={item}
+                isFirstInRun={isFirstInRun(index)}
+                colors={colors}
+                fs={fs}
+              />
             )}
-            ListHeaderComponent={ListHeader}
-            contentContainerStyle={styles.messageList}
+            contentContainerStyle={{
+              paddingTop: 12,
+              paddingBottom: 16,
+            }}
             showsVerticalScrollIndicator={false}
-            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
+            onContentSizeChange={() =>
+              flatListRef.current?.scrollToEnd({ animated: false })
+            }
             ListFooterComponent={
               chatMutation.isPending ? (
-                <View style={[styles.typingBubble, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                  <ActivityIndicator size="small" color={colors.primary} />
-                  <Text style={[styles.typingText, { color: colors.muted, fontSize: fs(13) }]}>
-                    Thinking…
-                  </Text>
+                <View style={chatStyles.typingRow}>
+                  <View style={chatStyles.typingAvatarCol}>
+                    <AIAvatar size={30} />
+                  </View>
+                  <View
+                    style={[
+                      chatStyles.typingBubble,
+                      { backgroundColor: colors.surface },
+                    ]}
+                  >
+                    <TypingDots color={colors.primary} />
+                  </View>
                 </View>
               ) : null
             }
           />
         )}
 
-        {/* ── Input bar ── */}
-        <View style={[styles.inputBar, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
-          {/* Limit nudge — only shown when approaching/at limit, no extra chrome */}
+        {/* ── Floating input bar ── */}
+        <View
+          style={[
+            chatStyles.floatingBarWrapper,
+            { paddingBottom: Platform.OS === "ios" ? 8 : 6 },
+          ]}
+        >
+          {/* Limit nudge strip */}
           {!isPremium && !isDevMode && sessionMessageCount > 0 && (
             <TouchableOpacity
               onPress={() => setShowPaywallModal(true)}
               activeOpacity={0.8}
               style={[
-                styles.limitStrip,
+                chatStyles.limitStrip,
                 {
-                  backgroundColor: isAtLimit ? `${colors.error}18` : `${colors.warning}14`,
-                  borderColor: isAtLimit ? `${colors.error}40` : `${colors.warning}30`,
+                  backgroundColor: isAtLimit
+                    ? `${colors.error}15`
+                    : `${colors.warning}12`,
+                  borderColor: isAtLimit
+                    ? `${colors.error}35`
+                    : `${colors.warning}28`,
                 },
               ]}
             >
-              <Text style={[styles.limitText, { color: isAtLimit ? colors.error : colors.warning, fontSize: fs(12) }]}>
+              <Text
+                style={[
+                  chatStyles.limitText,
+                  {
+                    color: isAtLimit ? colors.error : colors.warning,
+                    fontSize: fs(12),
+                  },
+                ]}
+              >
                 {isAtLimit
                   ? "Message limit reached — Upgrade for unlimited chat"
-                  : `${messagesLeft} message${messagesLeft === 1 ? "" : "s"} left this session · Upgrade`}
+                  : `${messagesLeft} message${messagesLeft === 1 ? "" : "s"} left · Upgrade`}
               </Text>
-              <IconSymbol size={13} name="chevron.right" color={isAtLimit ? colors.error : colors.warning} />
+              <IconSymbol
+                size={12}
+                name="chevron.right"
+                color={isAtLimit ? colors.error : colors.warning}
+              />
             </TouchableOpacity>
           )}
 
-          <View style={styles.inputRow}>
-            {/* Subject pill */}
+          {/* Pill input card */}
+          <View
+            style={[
+              chatStyles.inputCard,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+                shadowColor: "#000",
+              },
+            ]}
+          >
+            {/* Subject pill button */}
             <TouchableOpacity
               onPress={() => setShowSubjectPicker(true)}
-              style={[styles.subjectPill, { backgroundColor: colors.surface, borderColor: colors.border }]}
+              style={[
+                chatStyles.subjectPill,
+                {
+                  backgroundColor: selectedSubject
+                    ? `${colors.primary}18`
+                    : colors.background,
+                  borderColor: selectedSubject ? colors.primary : colors.border,
+                },
+              ]}
               activeOpacity={0.7}
             >
-              <IconSymbol size={14} name="book.fill" color={selectedSubject ? colors.primary : colors.muted} />
+              <IconSymbol
+                size={15}
+                name="book.fill"
+                color={selectedSubject ? colors.primary : colors.muted}
+              />
             </TouchableOpacity>
 
             {/* Text input */}
-            <View style={[styles.inputWrapper, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <TextInput
-                style={[styles.input, { color: colors.foreground, fontSize: fs(15), lineHeight: fs(15) * 1.4 }]}
-                placeholder={isAtLimit ? "Upgrade to keep chatting…" : "Ask about any subject…"}
-                placeholderTextColor={colors.muted}
-                value={inputText}
-                onChangeText={setInputText}
-                multiline
-                maxLength={2000}
-                returnKeyType="send"
-                onSubmitEditing={() => handleSend()}
-                editable={!isAtLimit}
-              />
-            </View>
+            <TextInput
+              style={[
+                chatStyles.input,
+                {
+                  color: colors.foreground,
+                  fontSize: fs(15),
+                  lineHeight: fs(15) * 1.45,
+                },
+              ]}
+              placeholder={
+                isAtLimit ? "Upgrade to keep chatting…" : "Ask anything…"
+              }
+              placeholderTextColor={colors.muted}
+              value={inputText}
+              onChangeText={setInputText}
+              multiline
+              maxLength={2000}
+              returnKeyType="send"
+              onSubmitEditing={() => handleSend()}
+              editable={!isAtLimit}
+            />
 
             {/* Send button */}
             <TouchableOpacity
               accessibilityLabel="Send message"
               onPress={() => handleSend()}
-              disabled={!inputText.trim() || chatMutation.isPending || !isOnline || isAtLimit}
+              disabled={
+                !inputText.trim() ||
+                chatMutation.isPending ||
+                !isOnline ||
+                isAtLimit
+              }
               style={[
-                styles.sendBtn,
-                { backgroundColor: isOnline && !isAtLimit ? colors.primary : colors.muted },
-                (!inputText.trim() || chatMutation.isPending || !isOnline || isAtLimit) && { opacity: 0.45 },
+                chatStyles.sendBtn,
+                {
+                  backgroundColor:
+                    isOnline && !isAtLimit && inputText.trim()
+                      ? colors.primary
+                      : colors.border,
+                },
               ]}
               activeOpacity={0.8}
             >
               <IconSymbol
-                size={19}
+                size={17}
                 name={isOnline ? "paperplane.fill" : "wifi.slash"}
-                color="#FFFFFF"
+                color={
+                  isOnline && !isAtLimit && inputText.trim()
+                    ? "#FFFFFF"
+                    : colors.muted
+                }
               />
             </TouchableOpacity>
           </View>
 
-          {/* Clear button — only when there are messages */}
+          {/* Clear link — only when there are messages */}
           {userMessageCount > 0 && (
             <TouchableOpacity
               onPress={handleClearChat}
-              style={styles.clearRow}
+              style={chatStyles.clearRow}
               activeOpacity={0.6}
             >
-              <Text style={[styles.clearText, { color: colors.muted, fontSize: fs(11) }]}>
+              <Text
+                style={[
+                  chatStyles.clearText,
+                  { color: colors.muted, fontSize: fs(11) },
+                ]}
+              >
                 Clear conversation
               </Text>
             </TouchableOpacity>
@@ -682,13 +1081,23 @@ function ChatScreenContent() {
       {showSubjectPicker && (
         <View style={StyleSheet.absoluteFillObject}>
           <TouchableOpacity
-            style={[styles.backdrop, { backgroundColor: "rgba(0,0,0,0.45)" }]}
+            style={[chatStyles.backdrop, { backgroundColor: "rgba(0,0,0,0.5)" }]}
             activeOpacity={1}
             onPress={() => setShowSubjectPicker(false)}
           />
-          <View style={[styles.sheet, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <View style={[styles.sheetHandle, { backgroundColor: colors.border }]} />
-            <Text style={[styles.sheetTitle, { color: colors.foreground, fontSize: fs(16) }]}>
+          <View
+            style={[
+              chatStyles.sheet,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+          >
+            <View style={[chatStyles.sheetHandle, { backgroundColor: colors.border }]} />
+            <Text
+              style={[
+                chatStyles.sheetTitle,
+                { color: colors.foreground, fontSize: fs(16) },
+              ]}
+            >
               Focus Subject
             </Text>
             <SubjectPicker
@@ -697,11 +1106,15 @@ function ChatScreenContent() {
               showAll
             />
             <TouchableOpacity
-              style={[styles.sheetCancel, { borderColor: colors.border }]}
+              style={[chatStyles.sheetCancel, { borderColor: colors.border }]}
               onPress={() => setShowSubjectPicker(false)}
               activeOpacity={0.7}
             >
-              <Text style={[styles.sheetCancelText, { color: colors.muted, fontSize: fs(15) }]}>Cancel</Text>
+              <Text
+                style={[chatStyles.sheetCancelText, { color: colors.muted, fontSize: fs(15) }]}
+              >
+                Cancel
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -711,50 +1124,103 @@ function ChatScreenContent() {
       {showShareMenu && (
         <View style={StyleSheet.absoluteFillObject}>
           <TouchableOpacity
-            style={[styles.backdrop, { backgroundColor: "rgba(0,0,0,0.45)" }]}
+            style={[chatStyles.backdrop, { backgroundColor: "rgba(0,0,0,0.5)" }]}
             activeOpacity={1}
             onPress={() => setShowShareMenu(false)}
           />
-          <View style={[styles.sheet, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <View style={[styles.sheetHandle, { backgroundColor: colors.border }]} />
-            <Text style={[styles.sheetTitle, { color: colors.foreground, fontSize: fs(16) }]}>
+          <View
+            style={[
+              chatStyles.sheet,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+          >
+            <View style={[chatStyles.sheetHandle, { backgroundColor: colors.border }]} />
+            <Text
+              style={[
+                chatStyles.sheetTitle,
+                { color: colors.foreground, fontSize: fs(16) },
+              ]}
+            >
               Share Chat
             </Text>
             {Platform.OS !== "web" && (
               <TouchableOpacity
-                style={[styles.sheetOption, { borderColor: colors.border }]}
+                style={[chatStyles.sheetOption, { borderColor: colors.border }]}
                 onPress={handleSharePDF}
                 activeOpacity={0.7}
               >
                 <IconSymbol size={22} name="doc.fill" color={colors.error} />
-                <View style={styles.sheetOptionText}>
-                  <Text style={[styles.sheetOptionTitle, { color: colors.foreground, fontSize: fs(15) }]}>Save as PDF</Text>
-                  <Text style={[styles.sheetOptionSub, { color: colors.muted, fontSize: fs(12) }]}>Export a formatted PDF of this conversation</Text>
+                <View style={chatStyles.sheetOptionText}>
+                  <Text
+                    style={[
+                      chatStyles.sheetOptionTitle,
+                      { color: colors.foreground, fontSize: fs(15) },
+                    ]}
+                  >
+                    Save as PDF
+                  </Text>
+                  <Text
+                    style={[
+                      chatStyles.sheetOptionSub,
+                      { color: colors.muted, fontSize: fs(12) },
+                    ]}
+                  >
+                    Export a formatted PDF of this conversation
+                  </Text>
                 </View>
               </TouchableOpacity>
             )}
             <TouchableOpacity
-              style={[styles.sheetOption, { borderColor: colors.border }]}
+              style={[chatStyles.sheetOption, { borderColor: colors.border }]}
               onPress={handleShareText}
               activeOpacity={0.7}
             >
-              <IconSymbol size={22} name="square.and.arrow.up.fill" color={colors.primary} />
-              <View style={styles.sheetOptionText}>
-                <Text style={[styles.sheetOptionTitle, { color: colors.foreground, fontSize: fs(15) }]}>
+              <IconSymbol
+                size={22}
+                name="square.and.arrow.up.fill"
+                color={colors.primary}
+              />
+              <View style={chatStyles.sheetOptionText}>
+                <Text
+                  style={[
+                    chatStyles.sheetOptionTitle,
+                    { color: colors.foreground, fontSize: fs(15) },
+                  ]}
+                >
                   {Platform.OS === "web" ? "Copy as Text" : "Share as Text"}
                 </Text>
-                <Text style={[styles.sheetOptionSub, { color: colors.muted, fontSize: fs(12) }]}>
-                  {Platform.OS === "web" ? "Copy conversation to clipboard" : "Share via messages, email, or notes"}
+                <Text
+                  style={[
+                    chatStyles.sheetOptionSub,
+                    { color: colors.muted, fontSize: fs(12) },
+                  ]}
+                >
+                  {Platform.OS === "web"
+                    ? "Copy conversation to clipboard"
+                    : "Share via messages, email, or notes"}
                 </Text>
               </View>
-              {shareCopied && <IconSymbol size={18} name="checkmark.circle.fill" color={colors.success} />}
+              {shareCopied && (
+                <IconSymbol
+                  size={18}
+                  name="checkmark.circle.fill"
+                  color={colors.success}
+                />
+              )}
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.sheetCancel, { borderColor: colors.border }]}
+              style={[chatStyles.sheetCancel, { borderColor: colors.border }]}
               onPress={() => setShowShareMenu(false)}
               activeOpacity={0.7}
             >
-              <Text style={[styles.sheetCancelText, { color: colors.muted, fontSize: fs(15) }]}>Cancel</Text>
+              <Text
+                style={[
+                  chatStyles.sheetCancelText,
+                  { color: colors.muted, fontSize: fs(15) },
+                ]}
+              >
+                Cancel
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -762,10 +1228,15 @@ function ChatScreenContent() {
 
       {/* ── PDF loading overlay ── */}
       {pdfLoading && (
-        <View style={[StyleSheet.absoluteFillObject, styles.pdfOverlay]}>
-          <View style={[styles.pdfCard, { backgroundColor: colors.surface }]}>
+        <View style={[StyleSheet.absoluteFillObject, chatStyles.pdfOverlay]}>
+          <View style={[chatStyles.pdfCard, { backgroundColor: colors.surface }]}>
             <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={[styles.pdfCardText, { color: colors.foreground, fontSize: fs(15) }]}>
+            <Text
+              style={[
+                chatStyles.pdfCardText,
+                { color: colors.foreground, fontSize: fs(15) },
+              ]}
+            >
               Generating PDF…
             </Text>
           </View>
@@ -783,7 +1254,13 @@ function ChatScreenContent() {
           <View style={{ flex: 1 }}>
             <TouchableOpacity
               onPress={() => setShowPaywallModal(false)}
-              style={{ position: "absolute", top: 16, right: 20, zIndex: 10, padding: 8 }}
+              style={{
+                position: "absolute",
+                top: 16,
+                right: 20,
+                zIndex: 10,
+                padding: 8,
+              }}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
               <Text style={{ fontSize: 16, color: "#9BA1A6" }}>✕</Text>
@@ -808,7 +1285,7 @@ export default function ChatScreen() {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
+const chatStyles = StyleSheet.create({
   // Header
   header: {
     flexDirection: "row",
@@ -818,14 +1295,12 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderBottomWidth: 0.5,
   },
-  headerLeft: { flexDirection: "row", alignItems: "center", gap: 10, flex: 1, minWidth: 0 },
-  aiIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
+  headerLeft: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
+    gap: 10,
+    flex: 1,
+    minWidth: 0,
   },
   headerTitle: { fontWeight: "700" },
   statusRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 1 },
@@ -838,65 +1313,30 @@ const styles = StyleSheet.create({
 
   // Messages
   loadingCenter: { flex: 1, alignItems: "center", justifyContent: "center" },
-  messageList: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 },
-  messageBubble: {
+
+  // Typing indicator
+  typingRow: {
     flexDirection: "row",
-    marginBottom: 10,
-    maxWidth: "85%",
-    borderRadius: 18,
-    borderWidth: 1,
-    padding: 11,
-    gap: 8,
+    paddingHorizontal: 12,
+    marginBottom: 8,
+    alignItems: "flex-end",
   },
-  userBubble: { alignSelf: "flex-end" },
-  aiBubble: { alignSelf: "flex-start" },
-  aiAvatar: {
-    width: 26,
-    height: 26,
-    borderRadius: 9,
+  typingAvatarCol: {
+    width: 38,
     alignItems: "center",
-    justifyContent: "center",
+    paddingBottom: 4,
     flexShrink: 0,
-    marginTop: 1,
   },
-  bubbleContent: { flex: 1 },
-  messageText: {},
-  messageTime: { marginTop: 4, textAlign: "right" },
   typingBubble: {
-    flexDirection: "row",
-    alignItems: "center",
-    alignSelf: "flex-start",
-    paddingHorizontal: 14,
+    borderRadius: 18,
+    paddingHorizontal: 16,
     paddingVertical: 10,
-    borderRadius: 16,
-    borderWidth: 1,
-    gap: 8,
-    marginBottom: 10,
   },
-  typingText: {},
 
-  // Quick prompts (inside list header)
-  quickPromptsWrap: { paddingBottom: 16 },
-  quickPromptsLabel: {
-    fontWeight: "700",
-    letterSpacing: 0.8,
-    marginBottom: 10,
-  },
-  quickPromptsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  quickChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  quickChipText: { fontWeight: "500" },
-
-  // Input bar
-  inputBar: {
-    borderTopWidth: 0.5,
-    paddingTop: 8,
-    paddingBottom: Platform.OS === "ios" ? 20 : 10,
-    paddingHorizontal: 14,
+  // Floating input bar
+  floatingBarWrapper: {
+    paddingHorizontal: 12,
+    paddingTop: 6,
     gap: 6,
   },
   limitStrip: {
@@ -907,39 +1347,50 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingHorizontal: 12,
     paddingVertical: 7,
+    gap: 6,
   },
   limitText: { fontWeight: "600", flex: 1 },
-  inputRow: { flexDirection: "row", alignItems: "flex-end", gap: 8 },
+  inputCard: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    borderRadius: 26,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    gap: 8,
+    // Shadow
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 4,
+  },
   subjectPill: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  input: {
+    flex: 1,
+    maxHeight: 120,
+    paddingTop: Platform.OS === "ios" ? 6 : 4,
+    paddingBottom: Platform.OS === "ios" ? 6 : 4,
+  },
+  sendBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
   },
-  inputWrapper: {
-    flex: 1,
-    borderRadius: 20,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    maxHeight: 110,
-  },
-  input: {},
-  sendBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-  },
-  clearRow: { alignItems: "center", paddingTop: 2 },
+  clearRow: { alignItems: "center", paddingBottom: 2 },
   clearText: { textDecorationLine: "underline" },
 
-  // Sheets (subject picker + share menu)
+  // Sheets
   backdrop: { ...StyleSheet.absoluteFillObject },
   sheet: {
     position: "absolute",
@@ -950,7 +1401,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 22,
     borderTopWidth: 1,
     paddingTop: 12,
-    paddingBottom: 36,
+    paddingBottom: 40,
     paddingHorizontal: 20,
   },
   sheetHandle: {
@@ -983,7 +1434,7 @@ const styles = StyleSheet.create({
   pdfOverlay: {
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(0,0,0,0.45)",
+    backgroundColor: "rgba(0,0,0,0.5)",
   },
   pdfCard: {
     borderRadius: 16,
