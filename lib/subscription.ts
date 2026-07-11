@@ -13,6 +13,13 @@
  * If the key is not yet set (EXPO_PUBLIC_RC_API_KEY_IOS / _ANDROID), the module
  * falls back to a "dev mode" where every user is treated as premium so
  * development is not blocked.
+ *
+ * RELEASE-BUILD SAFETY:
+ * RevenueCat rejects test keys (prefix "test_") in production/release builds and
+ * crashes the app. When a test key is detected on a non-__DEV__ build we skip
+ * Purchases.configure() entirely and run in "rc-disabled" mode: the paywall UI
+ * still renders with static pricing, but purchases return a graceful error
+ * instead of crashing. Replace the keys with production keys before publishing.
  */
 
 import { Platform } from "react-native";
@@ -93,6 +100,7 @@ export async function incrementUsage(type: "solves" | "quiz" | "chat"): Promise<
 
 let _rcInitialised = false;
 let _devMode = false; // true when no API key is configured
+let _rcDisabled = false; // true when test key detected on a release build
 
 export async function initRevenueCat(): Promise<void> {
   if (_rcInitialised) return;
@@ -113,6 +121,18 @@ export async function initRevenueCat(): Promise<void> {
   if (!apiKey) {
     // No key configured yet — run in dev mode (all features unlocked)
     _devMode = true;
+    _rcInitialised = true;
+    return;
+  }
+
+  // If this is a test key and we are NOT in a debug build, skip initialisation
+  // to prevent RevenueCat from crashing the release APK/IPA.
+  // In __DEV__ mode (Expo Go / debug build) the test key works fine.
+  const isTestKey = apiKey.startsWith("test_");
+  if (isTestKey && !__DEV__) {
+    // Release build with test key — disable RC to avoid crash.
+    // Paywall UI will still render; purchases return a graceful error.
+    _rcDisabled = true;
     _rcInitialised = true;
     return;
   }
@@ -145,6 +165,17 @@ export async function getSubscriptionStatus(): Promise<SubscriptionStatus> {
   const trialStart = await getTrialStartDate();
   const trialDaysRemaining = trialStart ? getTrialDaysRemaining(trialStart) : 14;
   const isTrialActive = trialDaysRemaining > 0;
+
+  // RC disabled on release build with test key — treat as free user
+  if (_rcDisabled) {
+    return {
+      isPremium: false,
+      isTrialActive,
+      trialDaysRemaining,
+      activeProductId: null,
+      isDevMode: false,
+    };
+  }
 
   if (_devMode) {
     return {
@@ -191,6 +222,13 @@ export async function purchaseProduct(productId: string): Promise<PurchaseResult
   if (_devMode || Platform.OS === "web") {
     return { success: true, productId };
   }
+  if (_rcDisabled) {
+    return {
+      success: false,
+      cancelled: false,
+      error: "Purchases are not available in this build. Please update to the latest version.",
+    };
+  }
   try {
     const Purchases = (await import("react-native-purchases")).default;
     const offerings = await Purchases.getOfferings();
@@ -215,6 +253,7 @@ export async function purchaseProduct(productId: string): Promise<PurchaseResult
 
 export async function restorePurchases(): Promise<boolean> {
   if (_devMode || Platform.OS === "web") return false;
+  if (_rcDisabled) return false;
   try {
     const Purchases = (await import("react-native-purchases")).default;
     const info = await Purchases.restorePurchases();
@@ -226,6 +265,7 @@ export async function restorePurchases(): Promise<boolean> {
 
 export async function openManageSubscriptions(): Promise<void> {
   if (_devMode || Platform.OS === "web") return;
+  if (_rcDisabled) return;
   try {
     const Purchases = (await import("react-native-purchases")).default;
     await Purchases.showManageSubscriptions();
@@ -242,7 +282,7 @@ export interface OfferingPackage {
 }
 
 export async function getOfferings(): Promise<OfferingPackage[]> {
-  if (_devMode || Platform.OS === "web") {
+  if (_devMode || _rcDisabled || Platform.OS === "web") {
     // Return mock data so the paywall renders correctly in dev/web
     return [
       {
