@@ -382,19 +382,76 @@ function SolveScreenContent() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 40 }}
         >
-          {/* Header */}
+          {/* Header — Row 1: app name + action icons */}
           <View style={styles.header}>
-            {/* Single row: title left, icons right */}
-            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-              {/* Title — two lines so it never overflows */}
-              <View style={{ flex: 1, marginRight: 8 }}>
-                <Text style={[styles.greeting, { color: colors.muted }]}>TutorSnap</Text>
-                <Text style={[styles.title, { color: colors.foreground }]}>
-                  Solve Any{"\n"}
-                  <Text style={{ color: colors.primary }}>Problem</Text>
-                </Text>
+            <View style={styles.headerRow1}>
+              <Text style={[styles.greeting, { color: colors.muted }]}>TutorSnap</Text>
+              <View style={styles.headerIcons}>
+                <TouchableOpacity
+                  accessibilityLabel="View history"
+                  onPress={() => router.push("/(tabs)/history" as any)}
+                  style={styles.iconBtn}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <IconSymbol size={20} name="clock.fill" color={colors.foreground} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  accessibilityLabel="Toggle color scheme"
+                  onPress={() => {
+                    const next = colorScheme === "dark" ? "light" : "dark";
+                    setColorScheme(next);
+                    if (Platform.OS !== "web") {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    }
+                  }}
+                  style={styles.iconBtn}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <IconSymbol
+                    size={20}
+                    name={colorScheme === "dark" ? "sun.max.fill" : "moon.fill"}
+                    color={colors.foreground}
+                  />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  accessibilityLabel={isPremium ? "Premium member" : "Upgrade to Premium"}
+                  onPress={() => {
+                    if (!isPremium && !isDevMode) {
+                      if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      router.push("/paywall" as any);
+                    }
+                  }}
+                  style={[
+                    styles.iconBtn,
+                    isPremium || isDevMode
+                      ? { backgroundColor: `#F59E0B18` }
+                      : { backgroundColor: `${colors.primary}12` },
+                  ]}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Text style={{ fontSize: 17, lineHeight: 20 }}>
+                    {isPremium || isDevMode ? "👑" : "⭐"}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  accessibilityLabel="Open settings"
+                  onPress={() => router.push("/settings" as any)}
+                  style={styles.iconBtn}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <IconSymbol size={20} name="gear" color={colors.foreground} />
+                </TouchableOpacity>
               </View>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 4, flexShrink: 0 }}>
+            </View>
+            {/* Row 2: title left, streak badge right */}
+            <View style={styles.headerRow2}>
+              <Text style={[styles.title, { color: colors.foreground }]}>
+                Solve Any <Text style={{ color: colors.primary }}>Problem</Text>
+              </Text>
               {streak && streak.currentStreak > 0 && (
                 <TouchableOpacity
                   accessibilityLabel="View progress"
@@ -410,66 +467,6 @@ function SolveScreenContent() {
                   </View>
                 </TouchableOpacity>
               )}
-              <TouchableOpacity
-                accessibilityLabel="View history"
-                onPress={() => router.push("/(tabs)/history" as any)}
-                style={styles.iconBtn}
-                activeOpacity={0.7}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <IconSymbol size={22} name="clock.fill" color={colors.foreground} />
-              </TouchableOpacity>
-              <TouchableOpacity
-                accessibilityLabel="Toggle color scheme"
-                onPress={() => {
-                  const next = colorScheme === "dark" ? "light" : "dark";
-                  setColorScheme(next);
-                  if (Platform.OS !== "web") {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  }
-                }}
-                style={styles.iconBtn}
-                activeOpacity={0.7}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <IconSymbol
-                  size={22}
-                  name={colorScheme === "dark" ? "sun.max.fill" : "moon.fill"}
-                  color={colors.foreground}
-                />
-              </TouchableOpacity>
-              {/* Premium crown badge — gold for premium, outline for free */}
-              <TouchableOpacity
-                accessibilityLabel={isPremium ? "Premium member" : "Upgrade to Premium"}
-                onPress={() => {
-                  if (!isPremium && !isDevMode) {
-                    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    router.push("/paywall" as any);
-                  }
-                }}
-                style={[
-                  styles.iconBtn,
-                  isPremium || isDevMode
-                    ? { backgroundColor: `#F59E0B18` }
-                    : { backgroundColor: `${colors.primary}12` },
-                ]}
-                activeOpacity={0.7}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Text style={{ fontSize: 18, lineHeight: 22 }}>
-                  {isPremium || isDevMode ? "👑" : "⭐"}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                accessibilityLabel="Open settings"
-                onPress={() => router.push("/settings" as any)}
-                style={styles.iconBtn}
-                activeOpacity={0.7}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <IconSymbol size={22} name="gear" color={colors.foreground} />
-              </TouchableOpacity>
-              </View>
             </View>
           </View>
           {/* Daily Goal Progress */}
@@ -918,6 +915,22 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 12,
   },
+  headerRow1: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 6,
+  },
+  headerRow2: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  headerIcons: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
   iconBtn: {
     width: 36,
     height: 36,
@@ -932,10 +945,9 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
   },
   title: {
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: "800",
-    marginTop: 2,
-    letterSpacing: -0.5,
+    letterSpacing: -0.3,
   },
   streakBadge: {
     flexDirection: "row",
@@ -947,9 +959,9 @@ const styles = StyleSheet.create({
     marginTop: 4,
     gap: 6,
   },
-  streakEmoji: { fontSize: 20 },
-  streakNumber: { fontSize: 20, fontWeight: "800", lineHeight: 24 },
-  streakLabel: { fontSize: 10, fontWeight: "600", letterSpacing: 0.3 },
+  streakEmoji: { fontSize: 17 },
+  streakNumber: { fontSize: 17, fontWeight: "800", lineHeight: 20 },
+  streakLabel: { fontSize: 9, fontWeight: "600", letterSpacing: 0.3 },
   goalBar: {
     marginHorizontal: 16,
     marginTop: 20,
