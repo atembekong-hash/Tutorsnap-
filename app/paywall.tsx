@@ -138,11 +138,8 @@ export default function PaywallScreen() {
         if (Platform.OS !== "web") {
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         }
-        Alert.alert(
-          "Purchases Restored",
-          "Your premium subscription has been restored.",
-          [{ text: "OK", onPress: () => router.back() }]
-        );
+        // Navigate to the celebration screen with restored variant
+        router.replace(("/premium-welcome?restored=true") as any);
       } else {
         Alert.alert(
           "No Purchases Found",

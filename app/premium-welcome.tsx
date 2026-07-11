@@ -17,7 +17,7 @@ import {
   Dimensions,
   Platform,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import * as Haptics from "expo-haptics";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/use-colors";
@@ -94,6 +94,8 @@ function ConfettiParticle({ index }: { index: number }) {
 export default function PremiumWelcomeScreen() {
   const colors = useColors();
   const router = useRouter();
+  const { restored } = useLocalSearchParams<{ restored?: string }>();
+  const isRestored = restored === "true";
 
   // Entrance animations
   const crownScale = useRef(new Animated.Value(0)).current;
@@ -171,13 +173,15 @@ export default function PremiumWelcomeScreen() {
         {/* Text block */}
         <Animated.View style={[styles.textBlock, { opacity: textOpacity }]}>
           <Text style={[styles.headline, { color: colors.foreground }]}>
-            Welcome to Premium!
+            {isRestored ? "Welcome Back!" : "Welcome to Premium!"}
           </Text>
           <Text style={[styles.subheadline, { color: "#F59E0B" }]}>
-            🎉 Your 14-day free trial has started
+            {isRestored ? "✅ Your subscription has been restored" : "🎉 Your 14-day free trial has started"}
           </Text>
           <Text style={[styles.body, { color: colors.muted }]}>
-            You now have unlimited solves, quizzes, and AI chat. Keep your streak alive and make every study session count.
+            {isRestored
+              ? "Great to have you back. Your unlimited access to solves, quizzes, and AI chat is fully restored."
+              : "You now have unlimited solves, quizzes, and AI chat. Keep your streak alive and make every study session count."}
           </Text>
 
           {/* Feature pills */}
@@ -196,13 +200,13 @@ export default function PremiumWelcomeScreen() {
             onPress={handleContinue}
             activeOpacity={0.85}
             style={[styles.ctaBtn, { backgroundColor: "#F59E0B" }]}
-            accessibilityLabel="Start learning"
+            accessibilityLabel={isRestored ? "Continue" : "Start learning"}
             accessibilityRole="button"
           >
-            <Text style={styles.ctaBtnText}>Start Learning 🚀</Text>
+            <Text style={styles.ctaBtnText}>{isRestored ? "Continue Learning 📚" : "Start Learning 🚀"}</Text>
           </TouchableOpacity>
           <Text style={[styles.legalNote, { color: colors.muted }]}>
-            Cancel anytime in Settings · No charge during trial
+            {isRestored ? "Manage your subscription anytime in Settings" : "Cancel anytime in Settings · No charge during trial"}
           </Text>
         </Animated.View>
       </View>

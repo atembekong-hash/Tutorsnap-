@@ -404,3 +404,9 @@
 - [x] Build post-purchase celebration screen (app/premium-welcome.tsx) with confetti + welcome message
 - [x] Wire paywall to push /premium-welcome after successful purchase
 - [x] Add quiz nudge banner above answer options in quiz.tsx
+
+## Round 43: Engagement & Viral Loop Polish
+- [x] Add ?restored=true variant to premium-welcome.tsx ("Welcome Back!" copy)
+- [x] Wire paywall restore success to /premium-welcome?restored=true
+- [x] Add streak-protection upsell banner on home screen (evening nudge for free users)
+- [x] Add "Share your result" native share sheet after quiz completion

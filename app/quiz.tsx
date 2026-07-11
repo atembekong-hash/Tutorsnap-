@@ -208,22 +208,31 @@ function ScoreSummary({
           <Text style={[styles.summaryBtnText, { color: colors.foreground }]}>Home</Text>
         </TouchableOpacity>
       </View>
-      {/* Share Results / Copy Results (web) */}
-      <TouchableOpacity
-        onPress={handleShareResults}
-        accessibilityLabel={Platform.OS === "web" ? (copied ? "Results copied to clipboard" : "Copy quiz results to clipboard") : "Share quiz results"}
-        style={[styles.shareResultsBtn, { borderColor: copied ? colors.success : colors.border }]}
-        activeOpacity={0.75}
-      >
-        <IconSymbol
-          size={16}
-          name={copied ? "checkmark.circle.fill" : "square.and.arrow.up.fill"}
-          color={copied ? colors.success : colors.primary}
-        />
-        <Text style={[styles.shareResultsBtnText, { color: copied ? colors.success : colors.primary }]}>
-          {Platform.OS === "web" ? (copied ? "Copied!" : "Copy Results") : "Share Results"}
+      {/* Share prompt card — viral loop nudge */}
+      <View style={[styles.sharePromptCard, { backgroundColor: `${colors.primary}08`, borderColor: `${colors.primary}20` }]}>
+        <Text style={[styles.sharePromptTitle, { color: colors.foreground }]}>
+          {pct >= 80 ? `🎉 Nice work! Share your ${grade}?` : `📚 Keep practicing — share your progress?`}
         </Text>
-      </TouchableOpacity>
+        <Text style={[styles.sharePromptSubtext, { color: colors.muted }]}>
+          Challenge a friend or show off your score
+        </Text>
+        {/* Share Results / Copy Results (web) */}
+        <TouchableOpacity
+          onPress={handleShareResults}
+          accessibilityLabel={Platform.OS === "web" ? (copied ? "Results copied to clipboard" : "Copy quiz results to clipboard") : "Share quiz results"}
+          style={[styles.shareResultsBtn, { borderColor: copied ? colors.success : colors.primary, backgroundColor: copied ? `${colors.success}10` : `${colors.primary}10` }]}
+          activeOpacity={0.75}
+        >
+          <IconSymbol
+            size={16}
+            name={copied ? "checkmark.circle.fill" : "square.and.arrow.up.fill"}
+            color={copied ? colors.success : colors.primary}
+          />
+          <Text style={[styles.shareResultsBtnText, { color: copied ? colors.success : colors.primary }]}>
+            {Platform.OS === "web" ? (copied ? "Copied!" : "Copy Results") : "Share Results"}
+          </Text>
+        </TouchableOpacity>
+      </View>
     </ScrollView>
   );
 }
@@ -687,4 +696,13 @@ const styles = StyleSheet.create({
     alignSelf: "center",
   },
   shareResultsBtnText: { fontSize: 15, fontWeight: "700" },
+  sharePromptCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+    gap: 8,
+    marginTop: 4,
+  },
+  sharePromptTitle: { fontSize: 15, fontWeight: "700", lineHeight: 21 },
+  sharePromptSubtext: { fontSize: 12, lineHeight: 17 },
 });

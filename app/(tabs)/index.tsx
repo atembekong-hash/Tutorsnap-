@@ -38,6 +38,7 @@ import { StreakShieldCard } from "@/components/streak-shield-card";
 import { getAlmostBadges, computeMasteryBadges, getSeenBadges, markBadgeSeen, type BadgeTier } from "@/lib/mastery-badges";
 import { BadgeUnlockModal } from "@/components/badge-unlock-modal";
 import { TodayStudyWidget } from "@/components/today-study-widget";
+import { StreakProtectionBanner } from "@/components/streak-protection-banner";
 import { getMyClassroom, getJoinedClassroom, getClassroomFeed, type ClassroomProblem } from "@/lib/classroom";
 import * as Notifications from "expo-notifications";
 import { usePremium } from "@/hooks/use-premium";
@@ -497,6 +498,18 @@ function SolveScreenContent() {
               onShieldEarned={(count) => setShieldCount(count)}
             />
           )}
+          {/* Streak-protection upsell — evening nudge for free users who haven't solved today */}
+          <StreakProtectionBanner
+            currentStreak={progress?.streak?.currentStreak ?? 0}
+            solvedToday={progress?.streak?.todaySolved ?? 0}
+            isPremium={isPremium}
+            atSolveLimit={!isPremium && !isDevMode && (usage.solves >= FREE_LIMITS.solvesPerDay)}
+            onSolveNow={() => {
+              // Focus the solve input to scroll to the top and prompt the user
+              inputRef.current?.focus();
+            }}
+          />
+
           {/* Today's Study Plan Widget */}
           <TodayStudyWidget />
 
