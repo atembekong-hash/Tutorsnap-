@@ -382,6 +382,28 @@ function SolveScreenContent() {
                   color={colors.foreground}
                 />
               </TouchableOpacity>
+              {/* Premium crown badge — gold for premium, outline for free */}
+              <TouchableOpacity
+                accessibilityLabel={isPremium ? "Premium member" : "Upgrade to Premium"}
+                onPress={() => {
+                  if (!isPremium && !isDevMode) {
+                    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    router.push("/paywall" as any);
+                  }
+                }}
+                style={[
+                  styles.iconBtn,
+                  isPremium || isDevMode
+                    ? { backgroundColor: `#F59E0B18` }
+                    : { backgroundColor: `${colors.primary}12` },
+                ]}
+                activeOpacity={0.7}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Text style={{ fontSize: 18, lineHeight: 22 }}>
+                  {isPremium || isDevMode ? "👑" : "⭐"}
+                </Text>
+              </TouchableOpacity>
               <TouchableOpacity
                 accessibilityLabel="Open settings"
                 onPress={() => router.push("/settings" as any)}

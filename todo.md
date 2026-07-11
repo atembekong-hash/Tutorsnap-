@@ -393,3 +393,8 @@
 - [x] Add SUBSCRIPTION section to settings.tsx — status display (trial days remaining / active plan / dev mode), Restore Purchases row, Manage Subscription row, View Premium Plans row
 - [x] Register /paywall route in app/_layout.tsx (modal presentation)
 - [x] Wire trial expiry check on app launch in _layout.tsx — shows paywall if trial expired and not premium
+
+## Round 41: Subscription Upsell Surface Expansion
+- [x] Add chat nudge banner above input bar in chat.tsx (messages used / remaining, amber→red, taps to paywall)
+- [x] Add premium crown badge to home screen header (gold crown taps to paywall; filled crown for premium users)
+- [x] Add paywall slide to onboarding flow as final step ("Start your 14-day free trial")

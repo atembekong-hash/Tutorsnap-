@@ -40,6 +40,7 @@ import {
 } from "@/lib/chat-sessions";
 import { usePremium } from "@/hooks/use-premium";
 import { FREE_LIMITS } from "@/lib/subscription";
+import { ChatNudgeBanner } from "@/components/chat-nudge-banner";
 
 // ─── Quick Prompts ────────────────────────────────────────────────────────────
 
@@ -653,6 +654,13 @@ function ChatScreenContent() {
             </View>
           </View>
         )}
+
+        {/* Chat nudge banner — shown after first message, hidden for premium/dev */}
+        <ChatNudgeBanner
+          messagesUsed={sessionMessageCount}
+          isPremium={isPremium}
+          isDevMode={isDevMode}
+        />
 
         {/* Input */}
         <View

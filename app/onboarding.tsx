@@ -47,6 +47,13 @@ const SLIDES = [
     title: "Pick Your Subjects",
     subtitle: "Choose the areas you study most. You can always change this later in Settings.",
   },
+  {
+    id: "trial",
+    emoji: "👑",
+    title: "Start Free — Upgrade Anytime",
+    subtitle:
+      "Enjoy 2 free solves a day. Unlock unlimited solves, quizzes, and AI chat with a 14-day free trial.",
+  },
 ];
 
 const CATEGORY_ORDER: SubjectCategory[] = ["math", "english", "science", "social"];
@@ -59,6 +66,8 @@ export default function OnboardingScreen() {
   const [selectedCategories, setSelectedCategories] = useState<Set<SubjectCategory>>(new Set());
 
   const isLastSlide = currentSlide === SLIDES.length - 1;
+  const isTrialSlide = SLIDES[currentSlide]?.id === "trial";
+  const isSubjectsSlide = SLIDES[currentSlide]?.id === "subjects";
 
   const goNext = () => {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -125,15 +134,15 @@ export default function OnboardingScreen() {
         {SLIDES.map((slide, idx) => (
           <View key={slide.id} style={[styles.slide, { width: SCREEN_WIDTH }]}>
             {/* Emoji illustration */}
-            <View style={[styles.emojiCircle, { backgroundColor: `${colors.primary}15` }]}>
+            <View style={[styles.emojiCircle, { backgroundColor: slide.id === "trial" ? "#F59E0B18" : `${colors.primary}15` }]}>
               <Text style={styles.emojiText}>{slide.emoji}</Text>
             </View>
 
             <Text style={[styles.slideTitle, { color: colors.foreground }]}>{slide.title}</Text>
             <Text style={[styles.slideSubtitle, { color: colors.muted }]}>{slide.subtitle}</Text>
 
-            {/* Subject category picker on last slide */}
-            {idx === SLIDES.length - 1 && (
+            {/* Subject category picker on subjects slide */}
+            {slide.id === "subjects" && (
               <View style={styles.categoryGrid}>
                 {CATEGORY_ORDER.map((cat) => {
                   const def = SUBJECT_CATEGORIES[cat];
@@ -173,6 +182,27 @@ export default function OnboardingScreen() {
                 })}
               </View>
             )}
+
+            {/* Trial slide feature list */}
+            {slide.id === "trial" && (
+              <View style={styles.trialFeatureList}>
+                {[
+                  { emoji: "♾️", text: "Unlimited solves, quizzes & AI chat" },
+                  { emoji: "📸", text: "Photo homework solver" },
+                  { emoji: "🧠", text: "Step-by-step explanations" },
+                  { emoji: "📈", text: "Progress tracking & streaks" },
+                  { emoji: "🎖️", text: "14-day free trial, cancel anytime" },
+                ].map((item) => (
+                  <View key={item.text} style={styles.trialFeatureRow}>
+                    <Text style={styles.trialFeatureEmoji}>{item.emoji}</Text>
+                    <Text style={[styles.trialFeatureText, { color: colors.foreground }]}>{item.text}</Text>
+                  </View>
+                ))}
+                <Text style={[styles.trialPriceNote, { color: colors.muted }]}>
+                  Then $9.99/mo or $69.99/yr · Cancel anytime
+                </Text>
+              </View>
+            )}
           </View>
         ))}
       </ScrollView>
@@ -203,7 +233,7 @@ export default function OnboardingScreen() {
         accessibilityRole="button"
       >
         <Text style={styles.ctaText}>
-          {isLastSlide ? "Get Started" : "Next"}
+          {isLastSlide ? "Start Free Trial" : "Next"}
         </Text>
       </TouchableOpacity>
 
@@ -300,5 +330,33 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: "700",
     letterSpacing: 0.3,
+  },
+  trialFeatureList: {
+    marginTop: 28,
+    gap: 12,
+    width: "100%",
+  },
+  trialFeatureRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingHorizontal: 8,
+  },
+  trialFeatureEmoji: {
+    fontSize: 20,
+    width: 28,
+    textAlign: "center",
+  },
+  trialFeatureText: {
+    fontSize: 15,
+    fontWeight: "500",
+    lineHeight: 22,
+    flex: 1,
+  },
+  trialPriceNote: {
+    fontSize: 12,
+    textAlign: "center",
+    marginTop: 16,
+    lineHeight: 18,
   },
 });
