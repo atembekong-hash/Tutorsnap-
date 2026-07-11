@@ -11,7 +11,7 @@
  *  - Teacher analytics (subject breakdown, activity)
  *  - Classroom notification preferences
  */
-import React, { useState, useCallback, useMemo, useEffect } from "react";
+import React, { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -24,6 +24,7 @@ import {
   Share,
   Platform,
   Modal,
+  Animated,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import * as Haptics from "expo-haptics";
@@ -751,10 +752,33 @@ export default function ClassroomTabScreen() {
         { key: "manage", label: "⚙️ Manage" },
       ];
 
+  // Auto-hide header on scroll
+  const CL_HEADER_H = 70;
+  const clHeaderAnim = useRef(new Animated.Value(1)).current;
+  const clLastY = useRef(0);
+  const clHeaderVisible = useRef(true);
+  const handleClScroll = useCallback((e: { nativeEvent: { contentOffset: { y: number } } }) => {
+    const y = e.nativeEvent.contentOffset.y;
+    const delta = y - clLastY.current;
+    clLastY.current = y;
+    if (delta > 6 && clHeaderVisible.current && y > CL_HEADER_H) {
+      clHeaderVisible.current = false;
+      Animated.timing(clHeaderAnim, { toValue: 0, duration: 200, useNativeDriver: true }).start();
+    } else if (delta < -6 && !clHeaderVisible.current) {
+      clHeaderVisible.current = true;
+      Animated.timing(clHeaderAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start();
+    }
+  }, [clHeaderAnim]);
+
   return (
     <ScreenContainer>
-      {/* Header */}
-      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+      {/* Absolute header overlay */}
+      <Animated.View style={[styles.header, { borderBottomColor: colors.border }, {
+        position: "absolute", top: 0, left: 0, right: 0, zIndex: 10,
+        backgroundColor: colors.background,
+        opacity: clHeaderAnim,
+        transform: [{ translateY: clHeaderAnim.interpolate({ inputRange: [0, 1], outputRange: [-CL_HEADER_H, 0] }) }],
+      }]}>
         <View style={{ flex: 1 }}>
           <Text style={[styles.title, { color: colors.foreground }]}>Classroom</Text>
           <Text style={[styles.subtitle, { color: colors.muted }]}>
@@ -777,11 +801,11 @@ export default function ClassroomTabScreen() {
             <Text style={[styles.rankingsBtnText, { color: colors.warning }]}>Rankings</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </Animated.View>
 
       {/* No classroom */}
       {!activeClassroom && !showCreate && !showJoin && (
-        <ScrollView contentContainerStyle={styles.emptyContainer}>
+        <ScrollView contentContainerStyle={[styles.emptyContainer, { paddingTop: CL_HEADER_H + 8 }]}>
           <Text style={styles.emptyIcon}>🏫</Text>
           <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No Classroom Yet</Text>
           <Text style={[styles.emptyText, { color: colors.muted }]}>
@@ -810,7 +834,7 @@ export default function ClassroomTabScreen() {
 
       {/* Create form */}
       {showCreate && (
-        <ScrollView contentContainerStyle={styles.formContainer}>
+        <ScrollView contentContainerStyle={[styles.formContainer, { paddingTop: CL_HEADER_H + 8 }]}>
           <Text style={[styles.formTitle, { color: colors.foreground }]}>Create Classroom</Text>
           <Text style={[styles.formLabel, { color: colors.muted }]}>Classroom Name</Text>
           <TextInput
@@ -845,7 +869,7 @@ export default function ClassroomTabScreen() {
 
       {/* Join form */}
       {showJoin && (
-        <ScrollView contentContainerStyle={styles.formContainer}>
+        <ScrollView contentContainerStyle={[styles.formContainer, { paddingTop: CL_HEADER_H + 8 }]}>
           <Text style={[styles.formTitle, { color: colors.foreground }]}>Join Classroom</Text>
           <Text style={[styles.formLabel, { color: colors.muted }]}>Enter Class Code</Text>
           <TextInput
@@ -883,7 +907,7 @@ export default function ClassroomTabScreen() {
       {activeClassroom && !showCreate && !showJoin && (
         <>
           {/* Tab bar */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.tabsScroll, { borderBottomColor: colors.border }]}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.tabsScroll, { borderBottomColor: colors.border, marginTop: CL_HEADER_H }]}>
             {tabs.map((tab) => (
               <TouchableOpacity
                 accessibilityLabel="Toggle active tab"

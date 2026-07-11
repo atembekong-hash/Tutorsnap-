@@ -498,6 +498,12 @@ function ChatScreenContent() {
   const recordingTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   // Pulse animation for mic button while recording
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  // Waveform bar animations (4 bars, each animate height independently)
+  const waveBar1 = useRef(new Animated.Value(0.3)).current;
+  const waveBar2 = useRef(new Animated.Value(0.6)).current;
+  const waveBar3 = useRef(new Animated.Value(0.4)).current;
+  const waveBar4 = useRef(new Animated.Value(0.7)).current;
+  const waveAnimRef = useRef<Animated.CompositeAnimation | null>(null);
   // Animated values for auto-hide header and input bar
   const headerAnim = useRef(new Animated.Value(1)).current;
   const inputBarAnim = useRef(new Animated.Value(1)).current;
@@ -965,9 +971,12 @@ function ChatScreenContent() {
       return;
     }
     if (isRecording) {
-      // Stop recording — clear pulse and timer
+      // Stop recording — clear pulse, waveform, and timer
       pulseAnim.stopAnimation();
       pulseAnim.setValue(1);
+      waveAnimRef.current?.stop();
+      waveAnimRef.current = null;
+      [waveBar1, waveBar2, waveBar3, waveBar4].forEach((b) => b.setValue(0.3));
       if (recordingTimer.current) { clearInterval(recordingTimer.current); recordingTimer.current = null; }
       setRecordingDuration(0);
       // Stop recording and transcribe
@@ -1019,11 +1028,29 @@ function ChatScreenContent() {
           Animated.timing(pulseAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
         ]);
         Animated.loop(pulse()).start();
+        // Start waveform bar animation
+        const makeBarAnim = (bar: Animated.Value, delay: number) =>
+          Animated.loop(
+            Animated.sequence([
+              Animated.delay(delay),
+              Animated.timing(bar, { toValue: 1, duration: 250, useNativeDriver: false }),
+              Animated.timing(bar, { toValue: 0.2, duration: 250, useNativeDriver: false }),
+            ])
+          );
+        waveAnimRef.current = Animated.parallel([
+          makeBarAnim(waveBar1, 0),
+          makeBarAnim(waveBar2, 80),
+          makeBarAnim(waveBar3, 160),
+          makeBarAnim(waveBar4, 40),
+        ]);
+        waveAnimRef.current.start();
+        // Auto-stop after 60 seconds
+        setTimeout(() => { if (isRecording) handleVoiceInput(); }, 60000);
       } catch (err) {
         Alert.alert("Microphone", "Could not access microphone. Please check permissions.");
       }
     }
-  }, [isRecording, audioRecorder]);
+  }, [isRecording, audioRecorder, waveBar1, waveBar2, waveBar3, waveBar4]);
 
     // ── Follow-up chips ────────────────────────────────────────────────────────
   // Show 3 contextual follow-up chips after the last AI response
@@ -1464,11 +1491,26 @@ function ChatScreenContent() {
                 >
                   {isTranscribing ? (
                     <ActivityIndicator size={14} color={colors.primary} />
+                  ) : isRecording ? (
+                    // Live waveform — 4 animated bars
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 2, height: 16 }}>
+                      {[waveBar1, waveBar2, waveBar3, waveBar4].map((bar, i) => (
+                        <Animated.View
+                          key={i}
+                          style={{
+                            width: 3,
+                            borderRadius: 2,
+                            backgroundColor: colors.error,
+                            height: bar.interpolate({ inputRange: [0, 1], outputRange: [4, 14] }),
+                          }}
+                        />
+                      ))}
+                    </View>
                   ) : (
                     <IconSymbol
                       size={15}
-                      name={isRecording ? "mic.slash.fill" : "mic.fill"}
-                      color={isRecording ? colors.error : colors.primary}
+                      name="mic.fill"
+                      color={colors.primary}
                     />
                   )}
                 </TouchableOpacity>

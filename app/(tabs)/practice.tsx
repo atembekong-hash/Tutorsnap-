@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { ErrorBoundary } from "@/components/error-boundary";
 import {
   View,
@@ -8,6 +8,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Platform,
+  Animated,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import * as Haptics from "expo-haptics";
@@ -143,16 +144,45 @@ function PracticeScreenContent() {
     });
   };
 
+  // Auto-hide header on scroll
+  const PRACTICE_HEADER_H = 72;
+  const practiceHeaderAnim = useRef(new Animated.Value(1)).current;
+  const practiceLastY = useRef(0);
+  const practiceHeaderVisible = useRef(true);
+  const handlePracticeScroll = useCallback((e: { nativeEvent: { contentOffset: { y: number } } }) => {
+    const y = e.nativeEvent.contentOffset.y;
+    const delta = y - practiceLastY.current;
+    practiceLastY.current = y;
+    if (delta > 6 && practiceHeaderVisible.current && y > PRACTICE_HEADER_H) {
+      practiceHeaderVisible.current = false;
+      Animated.timing(practiceHeaderAnim, { toValue: 0, duration: 200, useNativeDriver: true }).start();
+    } else if (delta < -6 && !practiceHeaderVisible.current) {
+      practiceHeaderVisible.current = true;
+      Animated.timing(practiceHeaderAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start();
+    }
+  }, [practiceHeaderAnim]);
+
   return (
     <ScreenContainer>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={[styles.title, { color: colors.foreground }]}>Practice</Text>
-          <Text style={[styles.subtitle, { color: colors.muted }]}>
-            Generate problems to sharpen your skills
-          </Text>
-        </View>
+      {/* Absolute header overlay */}
+      <Animated.View style={[styles.header, {
+        position: "absolute", top: 0, left: 0, right: 0, zIndex: 10,
+        backgroundColor: colors.background,
+        opacity: practiceHeaderAnim,
+        transform: [{ translateY: practiceHeaderAnim.interpolate({ inputRange: [0, 1], outputRange: [-PRACTICE_HEADER_H, 0] }) }],
+      }]}>
+        <Text style={[styles.title, { color: colors.foreground }]}>Practice</Text>
+        <Text style={[styles.subtitle, { color: colors.muted }]}>
+          Generate problems to sharpen your skills
+        </Text>
+      </Animated.View>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        onScroll={handlePracticeScroll}
+        scrollEventThrottle={16}
+        keyboardDismissMode="on-drag"
+        contentContainerStyle={{ paddingTop: PRACTICE_HEADER_H + 8, paddingBottom: 40 }}
+      >
 
         {/* Subject Selection */}
         <View style={styles.section}>

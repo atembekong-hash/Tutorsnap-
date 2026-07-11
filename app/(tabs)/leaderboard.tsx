@@ -7,7 +7,7 @@
  * Data is local (AsyncStorage) — cross-device sync would require a backend.
  */
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
+  Animated,
 } from "react-native";
 import * as Haptics from "expo-haptics";
 import { Platform } from "react-native";
@@ -127,13 +128,43 @@ export default function LeaderboardScreen() {
     setRefreshing(false);
   }, [loadBoard]);
 
-  const userEntry = board.find((e) => e.isCurrentUser);
+    const userEntry = board.find((e) => e.isCurrentUser);
+  // Auto-hide header on scroll
+  const LB_HEADER_H = 64;
+  const lbHeaderAnim = useRef(new Animated.Value(1)).current;
+  const lbLastY = useRef(0);
+  const lbHeaderVisible = useRef(true);
+  const handleLbScroll = useCallback((e: { nativeEvent: { contentOffset: { y: number } } }) => {
+    const y = e.nativeEvent.contentOffset.y;
+    const delta = y - lbLastY.current;
+    lbLastY.current = y;
+    if (delta > 6 && lbHeaderVisible.current && y > LB_HEADER_H) {
+      lbHeaderVisible.current = false;
+      Animated.timing(lbHeaderAnim, { toValue: 0, duration: 200, useNativeDriver: true }).start();
+    } else if (delta < -6 && !lbHeaderVisible.current) {
+      lbHeaderVisible.current = true;
+      Animated.timing(lbHeaderAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start();
+    }
+  }, [lbHeaderAnim]);
 
   return (
     <ScreenContainer>
+      {/* Absolute header overlay */}
+      <Animated.View style={[styles.header, {
+        position: "absolute", top: 0, left: 0, right: 0, zIndex: 10,
+        backgroundColor: colors.background,
+        opacity: lbHeaderAnim,
+        transform: [{ translateY: lbHeaderAnim.interpolate({ inputRange: [0, 1], outputRange: [-LB_HEADER_H, 0] }) }],
+      }]}>
+        <Text style={[styles.title, { color: colors.foreground }]}>Leaderboard</Text>
+        <Text style={[styles.subtitle, { color: colors.muted }]}>Week of {weekLabel}</Text>
+      </Animated.View>
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingTop: LB_HEADER_H + 8 }]}
         showsVerticalScrollIndicator={false}
+        onScroll={handleLbScroll}
+        scrollEventThrottle={16}
+        keyboardDismissMode="on-drag"
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -142,11 +173,6 @@ export default function LeaderboardScreen() {
           />
         }
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={[styles.title, { color: colors.foreground }]}>Leaderboard</Text>
-          <Text style={[styles.subtitle, { color: colors.muted }]}>Week of {weekLabel}</Text>
-        </View>
 
         {/* User's rank summary card */}
         {userEntry && (
