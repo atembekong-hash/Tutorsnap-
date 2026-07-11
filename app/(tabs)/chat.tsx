@@ -1,24 +1,20 @@
 /**
  * AI Tutor Chat Screen
  *
- * Visual improvements applied:
- *  1. iMessage-style borderless bubbles — user: solid primary fill, AI: transparent/no card
- *  2. Avatar only on the first AI bubble in a consecutive run (like WhatsApp/iMessage)
- *  3. Gradient AI avatar badge (purple→blue sparkle) instead of emoji-in-box
- *  4. Floating pill input bar with shadow, floating above the tab bar
- *  5. Centred welcome empty-state card (ChatGPT-style) with 2-col prompt grid
- *  6. Animated three-dot typing indicator instead of spinner
+ * Improvements in this version:
+ *  1. Gradient avatar in the slim header (same purple→blue badge, 28px)
+ *  2. Long-press context menu on AI bubbles: Copy text + Save to Notes
+ *  3. Subject-aware welcome card: subject-specific greeting + subject-relevant prompt chips
  *
- * All existing features preserved:
- *  - Session persistence (create / load / save)
- *  - Subject picker (bottom sheet)
- *  - Share chat (text + PDF)
- *  - Chat history navigation
- *  - Free-tier message limit + paywall modal
- *  - Seed message auto-send (from Discuss with Tutor)
- *  - Clear conversation
- *  - Offline detection
- *  - Font-size scaling
+ * All previous improvements preserved:
+ *  - Borderless iMessage-style bubbles
+ *  - Avatar only on first AI bubble in a consecutive run
+ *  - Gradient AI avatar badge (purple→blue ✦)
+ *  - Floating pill input bar with shadow
+ *  - Animated three-dot typing indicator
+ *  - Session persistence, subject picker, share chat (text + PDF)
+ *  - Chat history navigation, free-tier limit + paywall modal
+ *  - Seed message auto-send, clear conversation, offline detection
  */
 
 import React, {
@@ -26,7 +22,6 @@ import React, {
   useRef,
   useEffect,
   useCallback,
-  useReducer,
 } from "react";
 import {
   View,
@@ -44,12 +39,14 @@ import {
   Modal,
   Animated,
   Easing,
+  ActionSheetIOS,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ScreenContainer } from "@/components/screen-container";
@@ -58,7 +55,12 @@ import { useColors } from "@/hooks/use-colors";
 import { trpc } from "@/lib/trpc";
 import type { ChatMessage } from "@/shared/types";
 import { SubjectPicker } from "@/components/subject-picker";
-import { type SubjectId, getSubjectLabel } from "@/lib/subjects";
+import {
+  type SubjectId,
+  getSubjectLabel,
+  getSubjectEmoji,
+  getSubjectDef,
+} from "@/lib/subjects";
 import { useNetworkStatus } from "@/hooks/use-network-status";
 import { useFontSize } from "@/lib/font-size-provider";
 import { ErrorBoundary } from "@/components/error-boundary";
@@ -77,9 +79,25 @@ import {
 import { usePremium } from "@/hooks/use-premium";
 import { FREE_LIMITS } from "@/lib/subscription";
 
-// ─── Quick Prompts ────────────────────────────────────────────────────────────
+// ─── Saved Notes storage key ──────────────────────────────────────────────────
 
-const QUICK_PROMPTS = [
+const SAVED_NOTES_KEY = "tutor_saved_notes";
+
+async function saveNote(content: string): Promise<void> {
+  try {
+    const raw = await AsyncStorage.getItem(SAVED_NOTES_KEY);
+    const notes: Array<{ id: string; content: string; savedAt: number }> = raw
+      ? JSON.parse(raw)
+      : [];
+    notes.unshift({ id: `note-${Date.now()}`, content, savedAt: Date.now() });
+    // Keep last 200 notes
+    await AsyncStorage.setItem(SAVED_NOTES_KEY, JSON.stringify(notes.slice(0, 200)));
+  } catch { /* ignore */ }
+}
+
+// ─── Subject-specific quick prompts ──────────────────────────────────────────
+
+const GENERIC_PROMPTS = [
   { label: "Quadratic formula", text: "Explain the quadratic formula" },
   { label: "Photosynthesis", text: "What is photosynthesis?" },
   { label: "Romeo & Juliet", text: "Summarize Romeo and Juliet" },
@@ -87,6 +105,27 @@ const QUICK_PROMPTS = [
   { label: "Newton's laws", text: "Explain Newton's laws of motion" },
   { label: "Supply & demand", text: "What is supply and demand?" },
 ];
+
+const SUBJECT_PROMPTS: Partial<Record<string, Array<{ label: string; text: string }>>> = {
+  algebra:        [{ label: "Solve a quadratic", text: "Solve: 2x² + 5x - 3 = 0" }, { label: "Factor a polynomial", text: "Factor x² - 5x + 6" }, { label: "Systems of equations", text: "Solve the system: 2x + y = 7, x - y = 2" }, { label: "Inequalities", text: "Solve and graph: 3x - 4 > 8" }, { label: "Exponent rules", text: "Explain the rules of exponents with examples" }, { label: "Slope-intercept form", text: "Explain slope-intercept form y = mx + b" }],
+  calculus:       [{ label: "Differentiate f(x)", text: "Find the derivative of f(x) = x³ + 2x²" }, { label: "Integrate f(x)", text: "Evaluate ∫(3x² + 2x) dx" }, { label: "Chain rule", text: "Explain the chain rule with an example" }, { label: "Limits", text: "Find the limit as x→2 of (x²-4)/(x-2)" }, { label: "Related rates", text: "Explain related rates problems" }, { label: "Fundamental theorem", text: "Explain the fundamental theorem of calculus" }],
+  geometry:       [{ label: "Triangle area", text: "Find the area of a triangle with base 8 and height 5" }, { label: "Pythagorean theorem", text: "Explain the Pythagorean theorem with examples" }, { label: "Circle formulas", text: "What are the area and circumference formulas for a circle?" }, { label: "Similar triangles", text: "Explain similar triangles and how to use them" }, { label: "Volume formulas", text: "What are the volume formulas for common 3D shapes?" }, { label: "Proof techniques", text: "How do I write a geometric proof?" }],
+  trigonometry:   [{ label: "SOH-CAH-TOA", text: "Explain SOH-CAH-TOA with a right triangle example" }, { label: "Unit circle", text: "Explain the unit circle and key angles" }, { label: "Trig identities", text: "What are the main trigonometric identities?" }, { label: "Law of sines", text: "Explain the law of sines with an example" }, { label: "Solve sin(x)=0.5", text: "Solve: sin(x) = 0.5 for 0 ≤ x ≤ 2π" }, { label: "Graphing trig", text: "How do I graph y = 2sin(3x - π/4)?" }],
+  biology:        [{ label: "Photosynthesis", text: "Explain the process of photosynthesis step by step" }, { label: "Cell division", text: "Explain the difference between mitosis and meiosis" }, { label: "DNA & RNA", text: "How does DNA replication work?" }, { label: "Natural selection", text: "Explain Darwin's theory of natural selection" }, { label: "Ecosystems", text: "What is a food web and how does energy flow through it?" }, { label: "Cell organelles", text: "What are the main organelles in a eukaryotic cell?" }],
+  chemistry:      [{ label: "Balance equations", text: "Balance: Fe + O₂ → Fe₂O₃" }, { label: "Periodic table", text: "Explain periodic trends in the periodic table" }, { label: "Mole concept", text: "Explain the mole concept and Avogadro's number" }, { label: "Acid-base", text: "What is the difference between acids and bases?" }, { label: "Electron config", text: "Write the electron configuration for iron (Fe)" }, { label: "Stoichiometry", text: "Explain stoichiometry with a worked example" }],
+  physics:        [{ label: "Newton's laws", text: "Explain Newton's three laws of motion with examples" }, { label: "Kinematics", text: "A car accelerates from 0 to 60 m/s in 10s. Find acceleration." }, { label: "Energy & work", text: "Explain the work-energy theorem" }, { label: "Waves", text: "What is the difference between transverse and longitudinal waves?" }, { label: "Electricity", text: "Explain Ohm's law and how to use it" }, { label: "Gravity", text: "Explain gravitational potential energy" }],
+  us_history:     [{ label: "Civil War causes", text: "What were the main causes of the American Civil War?" }, { label: "Constitution", text: "Explain the system of checks and balances in the US Constitution" }, { label: "Great Depression", text: "What caused the Great Depression and how did it end?" }, { label: "Civil Rights", text: "Summarize the key events of the Civil Rights Movement" }, { label: "Revolutionary War", text: "What were the main causes of the American Revolution?" }, { label: "Cold War", text: "Explain the main events of the Cold War" }],
+  world_history:  [{ label: "World War I", text: "What caused World War I?" }, { label: "World War II", text: "What were the main causes and outcomes of World War II?" }, { label: "French Revolution", text: "Explain the causes and outcomes of the French Revolution" }, { label: "Industrial Revolution", text: "How did the Industrial Revolution change society?" }, { label: "Ancient Rome", text: "Why did the Roman Empire fall?" }, { label: "Cold War", text: "Explain the origins of the Cold War" }],
+  economics:      [{ label: "Supply & demand", text: "Explain supply and demand with a real-world example" }, { label: "GDP", text: "What is GDP and how is it calculated?" }, { label: "Inflation", text: "What causes inflation and how is it measured?" }, { label: "Market structures", text: "Compare monopoly, oligopoly, and perfect competition" }, { label: "Fiscal policy", text: "Explain fiscal policy and how governments use it" }, { label: "Opportunity cost", text: "Explain opportunity cost with an example" }],
+  english:        [{ label: "Essay structure", text: "How do I structure a 5-paragraph essay?" }, { label: "Thesis statement", text: "Help me write a strong thesis statement" }, { label: "Literary devices", text: "Explain metaphor, simile, and personification with examples" }, { label: "Grammar help", text: "When do I use a comma before 'and'?" }, { label: "Cite sources", text: "How do I cite sources in MLA format?" }, { label: "Analyze a poem", text: "How do I analyze a poem for a literature class?" }],
+  grammar:        [{ label: "Comma rules", text: "When do I use a comma before 'and'?" }, { label: "Who vs. whom", text: "When do I use 'who' vs 'whom'?" }, { label: "Active vs passive", text: "Explain active and passive voice with examples" }, { label: "Apostrophes", text: "When do I use an apostrophe?" }, { label: "Subject-verb agreement", text: "Explain subject-verb agreement rules" }, { label: "Semicolons", text: "When should I use a semicolon?" }],
+  psychology:     [{ label: "Maslow's hierarchy", text: "Explain Maslow's hierarchy of needs" }, { label: "Classical conditioning", text: "Explain Pavlov's classical conditioning" }, { label: "Cognitive biases", text: "What are the most common cognitive biases?" }, { label: "Memory types", text: "Explain the different types of memory" }, { label: "Freud's theories", text: "Summarize Freud's main theories" }, { label: "Nature vs nurture", text: "Explain the nature vs nurture debate in psychology" }],
+};
+
+function getPromptsForSubject(subject: SubjectId | null) {
+  if (!subject) return GENERIC_PROMPTS;
+  return SUBJECT_PROMPTS[subject] ?? GENERIC_PROMPTS;
+}
 
 // ─── Animated three-dot typing indicator ─────────────────────────────────────
 
@@ -175,7 +214,7 @@ function AIAvatar({ size = 30 }: { size?: number }) {
         flexShrink: 0,
       }}
     >
-      <Text style={{ fontSize: size * 0.45, lineHeight: size * 0.55 }}>✦</Text>
+      <Text style={{ fontSize: size * 0.42, lineHeight: size * 0.55 }}>✦</Text>
     </LinearGradient>
   );
 }
@@ -187,23 +226,20 @@ function MessageBubble({
   isFirstInRun,
   colors,
   fs,
+  onLongPressAI,
 }: {
   message: ChatMessage;
   isFirstInRun: boolean;
   colors: ReturnType<typeof useColors>;
   fs: (n: number) => number;
+  onLongPressAI: (content: string) => void;
 }) {
   const isUser = message.role === "user";
 
   if (isUser) {
     return (
-      <View style={[bubbleStyles.userRow]}>
-        <View
-          style={[
-            bubbleStyles.userBubble,
-            { backgroundColor: colors.primary },
-          ]}
-        >
+      <View style={bubbleStyles.userRow}>
+        <View style={[bubbleStyles.userBubble, { backgroundColor: colors.primary }]}>
           <Text
             style={[
               bubbleStyles.userText,
@@ -212,7 +248,12 @@ function MessageBubble({
           >
             {message.content}
           </Text>
-          <Text style={[bubbleStyles.timeText, { color: "rgba(255,255,255,0.55)", fontSize: fs(10) }]}>
+          <Text
+            style={[
+              bubbleStyles.timeText,
+              { color: "rgba(255,255,255,0.55)", fontSize: fs(10) },
+            ]}
+          >
             {new Date(message.timestamp).toLocaleTimeString([], {
               hour: "2-digit",
               minute: "2-digit",
@@ -223,46 +264,51 @@ function MessageBubble({
     );
   }
 
-  // AI bubble — full width, no card background, avatar only on first in run
+  // AI bubble — full width, no card, long-pressable
   return (
-    <View style={bubbleStyles.aiRow}>
-      {/* Avatar column — always reserve space so text aligns */}
-      <View style={bubbleStyles.avatarCol}>
-        {isFirstInRun ? <AIAvatar size={30} /> : null}
-      </View>
-      <View style={bubbleStyles.aiContent}>
-        <AIResponseErrorBoundary
-          fallbackText={message.content}
-          fontSize={fs(15)}
-          color={colors.foreground}
-        >
-          <AIResponseRenderer
-            markdown={message.content}
+    <TouchableOpacity
+      onLongPress={() => onLongPressAI(message.content)}
+      delayLongPress={450}
+      activeOpacity={1}
+      accessibilityLabel="Long press for options"
+    >
+      <View style={bubbleStyles.aiRow}>
+        <View style={bubbleStyles.avatarCol}>
+          {isFirstInRun ? <AIAvatar size={30} /> : null}
+        </View>
+        <View style={bubbleStyles.aiContent}>
+          <AIResponseErrorBoundary
+            fallbackText={message.content}
             fontSize={fs(15)}
             color={colors.foreground}
-            codeBackground={colors.surface}
-            flavor="github"
-            stripPreamble
-          />
-        </AIResponseErrorBoundary>
-        <Text
-          style={[
-            bubbleStyles.timeText,
-            { color: colors.muted, fontSize: fs(10), marginTop: 4 },
-          ]}
-        >
-          {new Date(message.timestamp).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
-        </Text>
+          >
+            <AIResponseRenderer
+              markdown={message.content}
+              fontSize={fs(15)}
+              color={colors.foreground}
+              codeBackground={colors.surface}
+              flavor="github"
+              stripPreamble
+            />
+          </AIResponseErrorBoundary>
+          <Text
+            style={[
+              bubbleStyles.timeText,
+              { color: colors.muted, fontSize: fs(10), marginTop: 4 },
+            ]}
+          >
+            {new Date(message.timestamp).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </Text>
+        </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
 const bubbleStyles = StyleSheet.create({
-  // User
   userRow: {
     flexDirection: "row",
     justifyContent: "flex-end",
@@ -277,7 +323,6 @@ const bubbleStyles = StyleSheet.create({
     paddingVertical: 10,
   },
   userText: { fontWeight: "400" },
-  // AI
   aiRow: {
     flexDirection: "row",
     paddingHorizontal: 12,
@@ -290,35 +335,45 @@ const bubbleStyles = StyleSheet.create({
     paddingTop: 2,
     flexShrink: 0,
   },
-  aiContent: {
-    flex: 1,
-    paddingRight: 8,
-  },
+  aiContent: { flex: 1, paddingRight: 8 },
   timeText: { textAlign: "right" },
 });
 
-// ─── Welcome empty-state card ─────────────────────────────────────────────────
+// ─── Welcome empty-state card (subject-aware) ─────────────────────────────────
 
 function WelcomeCard({
   colors,
   fs,
+  subject,
   onPrompt,
 }: {
   colors: ReturnType<typeof useColors>;
   fs: (n: number) => number;
+  subject: SubjectId | null;
   onPrompt: (text: string) => void;
 }) {
+  const prompts = getPromptsForSubject(subject);
+  const subjectDef = subject ? getSubjectDef(subject) : null;
+
+  const greeting = subjectDef
+    ? `Ready to help with ${subjectDef.label} ${subjectDef.emoji}`
+    : "TutorSnap AI";
+
+  const subtitle = subjectDef
+    ? `Ask me anything about ${subjectDef.label} — I'll explain concepts, work through problems, and guide you step by step.`
+    : "Ask me anything — Math, Science, English, History, and more. I'll explain concepts, help with homework, and guide you step by step.";
+
   return (
     <View style={welcomeStyles.container}>
       <AIAvatar size={64} />
       <Text style={[welcomeStyles.title, { color: colors.foreground, fontSize: fs(22) }]}>
-        TutorSnap AI
+        {greeting}
       </Text>
       <Text style={[welcomeStyles.subtitle, { color: colors.muted, fontSize: fs(14) }]}>
-        Ask me anything — Math, Science, English, History, and more.
+        {subtitle}
       </Text>
       <View style={welcomeStyles.grid}>
-        {QUICK_PROMPTS.map((p, i) => (
+        {prompts.map((p, i) => (
           <TouchableOpacity
             key={i}
             onPress={() => onPrompt(p.text)}
@@ -330,7 +385,10 @@ function WelcomeCard({
             activeOpacity={0.7}
           >
             <Text
-              style={[welcomeStyles.chipText, { color: colors.foreground, fontSize: fs(13) }]}
+              style={[
+                welcomeStyles.chipText,
+                { color: colors.foreground, fontSize: fs(13) },
+              ]}
               numberOfLines={1}
             >
               {p.label}
@@ -352,7 +410,7 @@ const welcomeStyles = StyleSheet.create({
     gap: 12,
   },
   title: { fontWeight: "700", textAlign: "center" },
-  subtitle: { textAlign: "center", lineHeight: 22, maxWidth: 280 },
+  subtitle: { textAlign: "center", lineHeight: 22, maxWidth: 300 },
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -375,15 +433,45 @@ const welcomeStyles = StyleSheet.create({
 // ─── Welcome message factory ──────────────────────────────────────────────────
 
 function makeWelcomeMessage(subject: SubjectId | null): ChatMessage {
-  const subjectName = subject ? getSubjectLabel(subject) : null;
+  const subjectDef = subject ? getSubjectDef(subject) : null;
   return {
     id: "welcome-" + Date.now(),
     role: "assistant",
-    content: subjectName
-      ? `I'm ready to help with ${subjectName}! Ask me anything — I'll explain concepts, help with problems, and guide you step by step. 📚`
+    content: subjectDef
+      ? `I'm ready to help with ${subjectDef.label} ${subjectDef.emoji}! Ask me anything — I'll explain concepts, work through problems, and guide you step by step. 📚`
       : "Hi! I'm TutorSnap, your personal academic tutor. Ask me anything — Math, Science, English, History, and more. I'll explain concepts, help with homework, and guide you step by step! 📚",
     timestamp: Date.now(),
   };
+}
+
+// ─── AI Bubble Context Menu (cross-platform) ──────────────────────────────────
+
+function showAIBubbleMenu(
+  content: string,
+  colors: ReturnType<typeof useColors>,
+  onCopy: () => void,
+  onSave: () => void
+) {
+  if (Platform.OS === "ios") {
+    ActionSheetIOS.showActionSheetWithOptions(
+      {
+        options: ["Cancel", "Copy text", "Save to Notes"],
+        cancelButtonIndex: 0,
+        tintColor: colors.primary,
+      },
+      (idx) => {
+        if (idx === 1) onCopy();
+        if (idx === 2) onSave();
+      }
+    );
+  } else {
+    // Android / web — use Alert with buttons
+    Alert.alert("Message options", undefined, [
+      { text: "Copy text", onPress: onCopy },
+      { text: "Save to Notes", onPress: onSave },
+      { text: "Cancel", style: "cancel" },
+    ]);
+  }
 }
 
 // ─── Chat Screen Content ──────────────────────────────────────────────────────
@@ -416,7 +504,6 @@ function ChatScreenContent() {
   const flatListRef = useRef<FlatList>(null);
   const { isOnline } = useNetworkStatus();
 
-  // Tab bar height for floating input offset
   const bottomPadding = Platform.OS === "web" ? 12 : Math.max(insets.bottom, 8);
   const TAB_BAR_HEIGHT = 60 + bottomPadding;
 
@@ -460,9 +547,7 @@ function ChatScreenContent() {
     }
 
     init();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -564,6 +649,48 @@ function ChatScreenContent() {
     [inputText, isOnline, session, messages, persistMessages, selectedSubject, chatMutation]
   );
 
+  // ── Long-press AI bubble handler ────────────────────────────────────────────
+
+  const handleLongPressAI = useCallback(
+    (content: string) => {
+      if (Platform.OS !== "web") {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
+
+      const plainText = content
+        .replace(/\$\$[\s\S]*?\$\$/g, "[equation]")
+        .replace(/\$[^$\n]+\$/g, "[math]")
+        .replace(/#{1,6}\s/g, "")
+        .replace(/\*\*|__/g, "")
+        .replace(/\*|_/g, "")
+        .replace(/`{1,3}/g, "")
+        .trim();
+
+      const doCopy = async () => {
+        try {
+          await Clipboard.setStringAsync(plainText);
+          if (Platform.OS !== "web") {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          }
+          Alert.alert("Copied", "Response copied to clipboard.");
+        } catch {
+          Alert.alert("Error", "Could not copy text.");
+        }
+      };
+
+      const doSave = async () => {
+        await saveNote(plainText);
+        if (Platform.OS !== "web") {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
+        Alert.alert("Saved", "Response saved to your Notes.");
+      };
+
+      showAIBubbleMenu(plainText, colors, doCopy, doSave);
+    },
+    [colors]
+  );
+
   // ── New Chat ────────────────────────────────────────────────────────────────
 
   const handleNewChat = useCallback(async () => {
@@ -585,9 +712,7 @@ function ChatScreenContent() {
     if (!session) return "";
     const subjectLabel = selectedSubject ? getSubjectLabel(selectedSubject) : "General";
     const dateStr = new Date(session.createdAt).toLocaleDateString(undefined, {
-      month: "long",
-      day: "numeric",
-      year: "numeric",
+      month: "long", day: "numeric", year: "numeric",
     });
     const lines: string[] = [
       `📚 TutorSnap Chat — ${session.title}`,
@@ -598,8 +723,7 @@ function ChatScreenContent() {
       if (msg.id.startsWith("welcome")) continue;
       const role = msg.role === "user" ? "You" : "TutorSnap";
       const time = new Date(msg.timestamp).toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
+        hour: "2-digit", minute: "2-digit",
       });
       const text = msg.content
         .replace(/\$\$[\s\S]*?\$\$/g, "[equation]")
@@ -624,17 +748,14 @@ function ChatScreenContent() {
     try {
       const subjectLabel = selectedSubject ? getSubjectLabel(selectedSubject) : "General";
       const dateStr = new Date(session.createdAt).toLocaleDateString(undefined, {
-        month: "long",
-        day: "numeric",
-        year: "numeric",
+        month: "long", day: "numeric", year: "numeric",
       });
       const bubbles = messages
         .filter((m) => !m.id.startsWith("welcome"))
         .map((m) => {
           const isUser = m.role === "user";
           const time = new Date(m.timestamp).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
+            hour: "2-digit", minute: "2-digit",
           });
           const text = m.content
             .replace(/\$\$[\s\S]*?\$\$/g, "[equation]")
@@ -643,33 +764,19 @@ function ChatScreenContent() {
             .replace(/\*\*|__/g, "")
             .replace(/\*|_/g, "")
             .replace(/`{1,3}/g, "")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
+            .replace(/</g, "&lt;").replace(/>/g, "&gt;")
             .trim();
           return `<div class="bubble ${isUser ? "user" : "ai"}"><div class="role">${
             isUser ? "You" : "TutorSnap AI"
-          } <span class="time">${time}</span></div><div class="text">${text.replace(
-            /\n/g,
-            "<br/>"
-          )}</div></div>`;
+          } <span class="time">${time}</span></div><div class="text">${text.replace(/\n/g, "<br/>")}</div></div>`;
         })
         .join("");
 
-      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:-apple-system,sans-serif;margin:0;padding:32px;background:#fff;color:#1a1a1a}.header{border-bottom:2px solid #7C3AED;padding-bottom:16px;margin-bottom:24px}.header h1{margin:0 0 4px;font-size:20px;color:#7C3AED}.header p{margin:0;font-size:13px;color:#666}.bubble{margin-bottom:16px;max-width:80%}.bubble.user{margin-left:auto}.role{font-size:11px;font-weight:700;color:#888;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px}.bubble.user .role{text-align:right}.time{font-weight:400;margin-left:6px}.text{background:#f5f5f5;border-radius:12px;padding:12px 16px;font-size:14px;line-height:1.6}.bubble.user .text{background:#7C3AED;color:#fff}.footer{margin-top:32px;padding-top:16px;border-top:1px solid #eee;font-size:11px;color:#aaa;text-align:center}</style></head><body><div class="header"><h1>${session.title.replace(
-        /</g,
-        "&lt;"
-      )}</h1><p>Subject: ${subjectLabel} &middot; ${dateStr} &middot; ${
-        messages.filter((m) => !m.id.startsWith("welcome")).length
-      } messages</p></div>${
-        bubbles || '<p style="color:#aaa">No messages yet.</p>'
-      }<div class="footer">Exported from TutorSnap &middot; tutorsnapai.tech</div></body></html>`;
+      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:-apple-system,sans-serif;margin:0;padding:32px;background:#fff;color:#1a1a1a}.header{border-bottom:2px solid #7C3AED;padding-bottom:16px;margin-bottom:24px}.header h1{margin:0 0 4px;font-size:20px;color:#7C3AED}.header p{margin:0;font-size:13px;color:#666}.bubble{margin-bottom:16px;max-width:80%}.bubble.user{margin-left:auto}.role{font-size:11px;font-weight:700;color:#888;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px}.bubble.user .role{text-align:right}.time{font-weight:400;margin-left:6px}.text{background:#f5f5f5;border-radius:12px;padding:12px 16px;font-size:14px;line-height:1.6}.bubble.user .text{background:#7C3AED;color:#fff}.footer{margin-top:32px;padding-top:16px;border-top:1px solid #eee;font-size:11px;color:#aaa;text-align:center}</style></head><body><div class="header"><h1>${session.title.replace(/</g, "&lt;")}</h1><p>Subject: ${subjectLabel} &middot; ${dateStr} &middot; ${messages.filter(m => !m.id.startsWith("welcome")).length} messages</p></div>${bubbles || '<p style="color:#aaa">No messages yet.</p>'}<div class="footer">Exported from TutorSnap &middot; tutorsnapai.tech</div></body></html>`;
 
       const { uri } = await Print.printToFileAsync({ html, base64: false });
       if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, {
-          mimeType: "application/pdf",
-          dialogTitle: "Save Chat PDF",
-        });
+        await Sharing.shareAsync(uri, { mimeType: "application/pdf", dialogTitle: "Save Chat PDF" });
       } else {
         Alert.alert("PDF Saved", "Your chat has been saved as a PDF.");
       }
@@ -745,9 +852,6 @@ function ChatScreenContent() {
   const messagesLeft = Math.max(0, FREE_LIMITS.chatMessagesPerSession - sessionMessageCount);
   const showWelcome = sessionLoaded && userMessageCount === 0;
 
-  // ── Render helpers ──────────────────────────────────────────────────────────
-
-  // Determine if a message is the first in a consecutive AI run
   const isFirstInRun = useCallback(
     (index: number): boolean => {
       if (messages[index].role !== "assistant") return false;
@@ -766,24 +870,19 @@ function ChatScreenContent() {
         style={{ flex: 1 }}
         keyboardVerticalOffset={TAB_BAR_HEIGHT}
       >
-        {/* ── Slim header ── */}
+        {/* ── Slim header with gradient avatar ── */}
         <View
           style={[
             chatStyles.header,
-            {
-              borderBottomColor: colors.border,
-              backgroundColor: colors.background,
-            },
+            { borderBottomColor: colors.border, backgroundColor: colors.background },
           ]}
         >
           <View style={chatStyles.headerLeft}>
-            <AIAvatar size={34} />
+            {/* Gradient avatar in header — 28px */}
+            <AIAvatar size={28} />
             <View style={{ flex: 1, minWidth: 0 }}>
               <Text
-                style={[
-                  chatStyles.headerTitle,
-                  { color: colors.foreground, fontSize: fs(16) },
-                ]}
+                style={[chatStyles.headerTitle, { color: colors.foreground, fontSize: fs(16) }]}
                 numberOfLines={1}
               >
                 {session?.title && session.title !== "New Chat"
@@ -800,10 +899,7 @@ function ChatScreenContent() {
                 <Text
                   style={[
                     chatStyles.statusText,
-                    {
-                      color: isOnline ? colors.success : colors.error,
-                      fontSize: fs(11),
-                    },
+                    { color: isOnline ? colors.success : colors.error, fontSize: fs(11) },
                   ]}
                 >
                   {isOnline ? "Online" : "Offline"}
@@ -815,7 +911,7 @@ function ChatScreenContent() {
                       style={[chatStyles.statusText, { color: colors.muted, fontSize: fs(11) }]}
                       numberOfLines={1}
                     >
-                      {getSubjectLabel(selectedSubject)}
+                      {getSubjectEmoji(selectedSubject)} {getSubjectLabel(selectedSubject)}
                     </Text>
                   </>
                 )}
@@ -852,11 +948,7 @@ function ChatScreenContent() {
             >
               <IconSymbol
                 size={19}
-                name={
-                  shareCopied
-                    ? "checkmark.circle.fill"
-                    : "square.and.arrow.up.fill"
-                }
+                name={shareCopied ? "checkmark.circle.fill" : "square.and.arrow.up.fill"}
                 color={shareCopied ? colors.success : colors.muted}
               />
             </TouchableOpacity>
@@ -881,8 +973,12 @@ function ChatScreenContent() {
             <ActivityIndicator size="large" color={colors.primary} />
           </View>
         ) : showWelcome ? (
-          // Empty state — centred welcome card
-          <WelcomeCard colors={colors} fs={fs} onPrompt={(t) => handleSend(t)} />
+          <WelcomeCard
+            colors={colors}
+            fs={fs}
+            subject={selectedSubject}
+            onPrompt={(t) => handleSend(t)}
+          />
         ) : (
           <FlatList
             ref={flatListRef}
@@ -894,12 +990,10 @@ function ChatScreenContent() {
                 isFirstInRun={isFirstInRun(index)}
                 colors={colors}
                 fs={fs}
+                onLongPressAI={handleLongPressAI}
               />
             )}
-            contentContainerStyle={{
-              paddingTop: 12,
-              paddingBottom: 16,
-            }}
+            contentContainerStyle={{ paddingTop: 12, paddingBottom: 16 }}
             showsVerticalScrollIndicator={false}
             onContentSizeChange={() =>
               flatListRef.current?.scrollToEnd({ animated: false })
@@ -910,12 +1004,7 @@ function ChatScreenContent() {
                   <View style={chatStyles.typingAvatarCol}>
                     <AIAvatar size={30} />
                   </View>
-                  <View
-                    style={[
-                      chatStyles.typingBubble,
-                      { backgroundColor: colors.surface },
-                    ]}
-                  >
+                  <View style={[chatStyles.typingBubble, { backgroundColor: colors.surface }]}>
                     <TypingDots color={colors.primary} />
                   </View>
                 </View>
@@ -939,22 +1028,15 @@ function ChatScreenContent() {
               style={[
                 chatStyles.limitStrip,
                 {
-                  backgroundColor: isAtLimit
-                    ? `${colors.error}15`
-                    : `${colors.warning}12`,
-                  borderColor: isAtLimit
-                    ? `${colors.error}35`
-                    : `${colors.warning}28`,
+                  backgroundColor: isAtLimit ? `${colors.error}15` : `${colors.warning}12`,
+                  borderColor: isAtLimit ? `${colors.error}35` : `${colors.warning}28`,
                 },
               ]}
             >
               <Text
                 style={[
                   chatStyles.limitText,
-                  {
-                    color: isAtLimit ? colors.error : colors.warning,
-                    fontSize: fs(12),
-                  },
+                  { color: isAtLimit ? colors.error : colors.warning, fontSize: fs(12) },
                 ]}
               >
                 {isAtLimit
@@ -980,7 +1062,6 @@ function ChatScreenContent() {
               },
             ]}
           >
-            {/* Subject pill button */}
             <TouchableOpacity
               onPress={() => setShowSubjectPicker(true)}
               style={[
@@ -1001,19 +1082,12 @@ function ChatScreenContent() {
               />
             </TouchableOpacity>
 
-            {/* Text input */}
             <TextInput
               style={[
                 chatStyles.input,
-                {
-                  color: colors.foreground,
-                  fontSize: fs(15),
-                  lineHeight: fs(15) * 1.45,
-                },
+                { color: colors.foreground, fontSize: fs(15), lineHeight: fs(15) * 1.45 },
               ]}
-              placeholder={
-                isAtLimit ? "Upgrade to keep chatting…" : "Ask anything…"
-              }
+              placeholder={isAtLimit ? "Upgrade to keep chatting…" : "Ask anything…"}
               placeholderTextColor={colors.muted}
               value={inputText}
               onChangeText={setInputText}
@@ -1024,16 +1098,10 @@ function ChatScreenContent() {
               editable={!isAtLimit}
             />
 
-            {/* Send button */}
             <TouchableOpacity
               accessibilityLabel="Send message"
               onPress={() => handleSend()}
-              disabled={
-                !inputText.trim() ||
-                chatMutation.isPending ||
-                !isOnline ||
-                isAtLimit
-              }
+              disabled={!inputText.trim() || chatMutation.isPending || !isOnline || isAtLimit}
               style={[
                 chatStyles.sendBtn,
                 {
@@ -1049,27 +1117,19 @@ function ChatScreenContent() {
                 size={17}
                 name={isOnline ? "paperplane.fill" : "wifi.slash"}
                 color={
-                  isOnline && !isAtLimit && inputText.trim()
-                    ? "#FFFFFF"
-                    : colors.muted
+                  isOnline && !isAtLimit && inputText.trim() ? "#FFFFFF" : colors.muted
                 }
               />
             </TouchableOpacity>
           </View>
 
-          {/* Clear link — only when there are messages */}
           {userMessageCount > 0 && (
             <TouchableOpacity
               onPress={handleClearChat}
               style={chatStyles.clearRow}
               activeOpacity={0.6}
             >
-              <Text
-                style={[
-                  chatStyles.clearText,
-                  { color: colors.muted, fontSize: fs(11) },
-                ]}
-              >
+              <Text style={[chatStyles.clearText, { color: colors.muted, fontSize: fs(11) }]}>
                 Clear conversation
               </Text>
             </TouchableOpacity>
@@ -1092,27 +1152,16 @@ function ChatScreenContent() {
             ]}
           >
             <View style={[chatStyles.sheetHandle, { backgroundColor: colors.border }]} />
-            <Text
-              style={[
-                chatStyles.sheetTitle,
-                { color: colors.foreground, fontSize: fs(16) },
-              ]}
-            >
+            <Text style={[chatStyles.sheetTitle, { color: colors.foreground, fontSize: fs(16) }]}>
               Focus Subject
             </Text>
-            <SubjectPicker
-              value={selectedSubject}
-              onChange={handleSubjectChange}
-              showAll
-            />
+            <SubjectPicker value={selectedSubject} onChange={handleSubjectChange} showAll />
             <TouchableOpacity
               style={[chatStyles.sheetCancel, { borderColor: colors.border }]}
               onPress={() => setShowSubjectPicker(false)}
               activeOpacity={0.7}
             >
-              <Text
-                style={[chatStyles.sheetCancelText, { color: colors.muted, fontSize: fs(15) }]}
-              >
+              <Text style={[chatStyles.sheetCancelText, { color: colors.muted, fontSize: fs(15) }]}>
                 Cancel
               </Text>
             </TouchableOpacity>
@@ -1135,12 +1184,7 @@ function ChatScreenContent() {
             ]}
           >
             <View style={[chatStyles.sheetHandle, { backgroundColor: colors.border }]} />
-            <Text
-              style={[
-                chatStyles.sheetTitle,
-                { color: colors.foreground, fontSize: fs(16) },
-              ]}
-            >
+            <Text style={[chatStyles.sheetTitle, { color: colors.foreground, fontSize: fs(16) }]}>
               Share Chat
             </Text>
             {Platform.OS !== "web" && (
@@ -1151,20 +1195,10 @@ function ChatScreenContent() {
               >
                 <IconSymbol size={22} name="doc.fill" color={colors.error} />
                 <View style={chatStyles.sheetOptionText}>
-                  <Text
-                    style={[
-                      chatStyles.sheetOptionTitle,
-                      { color: colors.foreground, fontSize: fs(15) },
-                    ]}
-                  >
+                  <Text style={[chatStyles.sheetOptionTitle, { color: colors.foreground, fontSize: fs(15) }]}>
                     Save as PDF
                   </Text>
-                  <Text
-                    style={[
-                      chatStyles.sheetOptionSub,
-                      { color: colors.muted, fontSize: fs(12) },
-                    ]}
-                  >
+                  <Text style={[chatStyles.sheetOptionSub, { color: colors.muted, fontSize: fs(12) }]}>
                     Export a formatted PDF of this conversation
                   </Text>
                 </View>
@@ -1175,37 +1209,19 @@ function ChatScreenContent() {
               onPress={handleShareText}
               activeOpacity={0.7}
             >
-              <IconSymbol
-                size={22}
-                name="square.and.arrow.up.fill"
-                color={colors.primary}
-              />
+              <IconSymbol size={22} name="square.and.arrow.up.fill" color={colors.primary} />
               <View style={chatStyles.sheetOptionText}>
-                <Text
-                  style={[
-                    chatStyles.sheetOptionTitle,
-                    { color: colors.foreground, fontSize: fs(15) },
-                  ]}
-                >
+                <Text style={[chatStyles.sheetOptionTitle, { color: colors.foreground, fontSize: fs(15) }]}>
                   {Platform.OS === "web" ? "Copy as Text" : "Share as Text"}
                 </Text>
-                <Text
-                  style={[
-                    chatStyles.sheetOptionSub,
-                    { color: colors.muted, fontSize: fs(12) },
-                  ]}
-                >
+                <Text style={[chatStyles.sheetOptionSub, { color: colors.muted, fontSize: fs(12) }]}>
                   {Platform.OS === "web"
                     ? "Copy conversation to clipboard"
                     : "Share via messages, email, or notes"}
                 </Text>
               </View>
               {shareCopied && (
-                <IconSymbol
-                  size={18}
-                  name="checkmark.circle.fill"
-                  color={colors.success}
-                />
+                <IconSymbol size={18} name="checkmark.circle.fill" color={colors.success} />
               )}
             </TouchableOpacity>
             <TouchableOpacity
@@ -1213,12 +1229,7 @@ function ChatScreenContent() {
               onPress={() => setShowShareMenu(false)}
               activeOpacity={0.7}
             >
-              <Text
-                style={[
-                  chatStyles.sheetCancelText,
-                  { color: colors.muted, fontSize: fs(15) },
-                ]}
-              >
+              <Text style={[chatStyles.sheetCancelText, { color: colors.muted, fontSize: fs(15) }]}>
                 Cancel
               </Text>
             </TouchableOpacity>
@@ -1231,12 +1242,7 @@ function ChatScreenContent() {
         <View style={[StyleSheet.absoluteFillObject, chatStyles.pdfOverlay]}>
           <View style={[chatStyles.pdfCard, { backgroundColor: colors.surface }]}>
             <ActivityIndicator size="large" color={colors.primary} />
-            <Text
-              style={[
-                chatStyles.pdfCardText,
-                { color: colors.foreground, fontSize: fs(15) },
-              ]}
-            >
+            <Text style={[chatStyles.pdfCardText, { color: colors.foreground, fontSize: fs(15) }]}>
               Generating PDF…
             </Text>
           </View>
@@ -1254,13 +1260,7 @@ function ChatScreenContent() {
           <View style={{ flex: 1 }}>
             <TouchableOpacity
               onPress={() => setShowPaywallModal(false)}
-              style={{
-                position: "absolute",
-                top: 16,
-                right: 20,
-                zIndex: 10,
-                padding: 8,
-              }}
+              style={{ position: "absolute", top: 16, right: 20, zIndex: 10, padding: 8 }}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
               <Text style={{ fontSize: 16, color: "#9BA1A6" }}>✕</Text>
@@ -1286,7 +1286,6 @@ export default function ChatScreen() {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const chatStyles = StyleSheet.create({
-  // Header
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -1310,11 +1309,7 @@ const chatStyles = StyleSheet.create({
   headerActions: { flexDirection: "row", alignItems: "center", gap: 2 },
   headerBtn: { padding: 8 },
   newChatBtn: { borderRadius: 10, padding: 7 },
-
-  // Messages
   loadingCenter: { flex: 1, alignItems: "center", justifyContent: "center" },
-
-  // Typing indicator
   typingRow: {
     flexDirection: "row",
     paddingHorizontal: 12,
@@ -1332,8 +1327,6 @@ const chatStyles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
   },
-
-  // Floating input bar
   floatingBarWrapper: {
     paddingHorizontal: 12,
     paddingTop: 6,
@@ -1358,7 +1351,6 @@ const chatStyles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 8,
     gap: 8,
-    // Shadow
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.12,
     shadowRadius: 8,
@@ -1389,8 +1381,6 @@ const chatStyles = StyleSheet.create({
   },
   clearRow: { alignItems: "center", paddingBottom: 2 },
   clearText: { textDecorationLine: "underline" },
-
-  // Sheets
   backdrop: { ...StyleSheet.absoluteFillObject },
   sheet: {
     position: "absolute",
@@ -1429,8 +1419,6 @@ const chatStyles = StyleSheet.create({
     borderTopWidth: 0.5,
   },
   sheetCancelText: { fontWeight: "500" },
-
-  // PDF overlay
   pdfOverlay: {
     alignItems: "center",
     justifyContent: "center",
