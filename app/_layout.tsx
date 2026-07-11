@@ -25,6 +25,7 @@ import * as Notifications from "expo-notifications";
 import { useRouter } from "expo-router";
 import { syncAllStreakNotifications } from "@/lib/streak-notifications";
 import { initRevenueCat, getSubscriptionStatus } from "@/lib/subscription";
+import { recordFirstLaunch } from "@/lib/review-prompt";
 
 // Show notifications as banners when app is in foreground
 if (Platform.OS !== "web") {
@@ -55,6 +56,8 @@ export default function RootLayout() {
 
   useEffect(() => {
     initManusRuntime();
+    // Record first launch date for App Store review prompt gating
+    recordFirstLaunch().catch(() => {});
     // Sync streak alert and weekly report notifications on every app launch
     syncAllStreakNotifications().catch(() => {});
     // Initialise RevenueCat and check trial / subscription status
@@ -302,6 +305,14 @@ export default function RootLayout() {
                 presentation: "fullScreenModal",
                 animation: "fade",
                 gestureEnabled: false,
+                headerShown: false,
+              }}
+            />
+            <Stack.Screen
+              name="refer"
+              options={{
+                presentation: "card",
+                animation: "slide_from_right",
                 headerShown: false,
               }}
             />

@@ -410,3 +410,10 @@
 - [x] Wire paywall restore success to /premium-welcome?restored=true
 - [x] Add streak-protection upsell banner on home screen (evening nudge for free users)
 - [x] Add "Share your result" native share sheet after quiz completion
+
+## Round 44: Growth & Retention Mechanics
+- [x] Build app/refer.tsx — Refer a Friend screen with unique code, share message, incentive copy
+- [x] Wire Refer a Friend row in Settings
+- [x] Register /refer route in _layout.tsx
+- [x] Add streak-protection push notification scheduled at 20:00 daily
+- [x] Add App Store review prompt after quiz ≥80% + 3+ days usage

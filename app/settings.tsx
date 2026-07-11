@@ -714,6 +714,13 @@ export default function SettingsScreen() {
           colors={colors}
           onPress={() => router.push("/paywall" as any)}
         />
+        <SettingsRow
+          icon="paperplane.fill"
+          label="Refer a Friend"
+          subtitle="Give 7 days free, get 7 days free"
+          colors={colors}
+          onPress={() => router.push("/refer" as any)}
+        />
 
         {/* About */}
         <SectionHeader title="ABOUT" colors={colors} />

@@ -23,6 +23,7 @@ import { recordQuizBonus } from "@/lib/progress";
 import { usePremium } from "@/hooks/use-premium";
 import { FREE_LIMITS } from "@/lib/subscription";
 import { QuizNudgeBanner } from "@/components/quiz-nudge-banner";
+import { maybeRequestReview } from "@/lib/review-prompt";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -385,6 +386,8 @@ export default function QuizScreen() {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       }
       setFinished(true);
+      // Trigger App Store review prompt on success (≥80%), gated by install age + rate limit
+      maybeRequestReview(pct).catch(() => {});
     } else {
       setCurrentIdx((i) => i + 1);
       setSelectedOption(null);
