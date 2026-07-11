@@ -39,13 +39,11 @@ import {
   Modal,
   Animated,
   Easing,
-  ActionSheetIOS,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
-import * as Print from "expo-print";
-import * as Sharing from "expo-sharing";
+// expo-clipboard, expo-print, expo-sharing are loaded lazily inside handlers
+// to avoid native module crashes on Android when the tab is first mounted.
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -444,34 +442,19 @@ function makeWelcomeMessage(subject: SubjectId | null): ChatMessage {
   };
 }
 
-// ─── AI Bubble Context Menu (cross-platform) ──────────────────────────────────
-
+// ─── AI Bubble Context Menu (cross-platform, no ActionSheetIOS) ──────────────
+// Uses Alert on all platforms — ActionSheetIOS is iOS-only and crashes Android.
 function showAIBubbleMenu(
-  content: string,
-  colors: ReturnType<typeof useColors>,
+  _content: string,
+  _colors: ReturnType<typeof useColors>,
   onCopy: () => void,
   onSave: () => void
 ) {
-  if (Platform.OS === "ios") {
-    ActionSheetIOS.showActionSheetWithOptions(
-      {
-        options: ["Cancel", "Copy text", "Save to Notes"],
-        cancelButtonIndex: 0,
-        tintColor: colors.primary,
-      },
-      (idx) => {
-        if (idx === 1) onCopy();
-        if (idx === 2) onSave();
-      }
-    );
-  } else {
-    // Android / web — use Alert with buttons
-    Alert.alert("Message options", undefined, [
-      { text: "Copy text", onPress: onCopy },
-      { text: "Save to Notes", onPress: onSave },
-      { text: "Cancel", style: "cancel" },
-    ]);
-  }
+  Alert.alert("Message options", undefined, [
+    { text: "Copy text", onPress: onCopy },
+    { text: "Save to Notes", onPress: onSave },
+    { text: "Cancel", style: "cancel" },
+  ]);
 }
 
 // ─── Chat Screen Content ──────────────────────────────────────────────────────
@@ -668,7 +651,15 @@ function ChatScreenContent() {
 
       const doCopy = async () => {
         try {
-          await Clipboard.setStringAsync(plainText);
+          if (Platform.OS === "web") {
+            if (typeof navigator !== "undefined" && navigator.clipboard) {
+              await navigator.clipboard.writeText(plainText);
+            }
+          } else {
+            // Lazy import — avoids top-level native module crash
+            const Clip = await import("expo-clipboard");
+            await Clip.setStringAsync(plainText);
+          }
           if (Platform.OS !== "web") {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
           }
@@ -774,6 +765,9 @@ function ChatScreenContent() {
 
       const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:-apple-system,sans-serif;margin:0;padding:32px;background:#fff;color:#1a1a1a}.header{border-bottom:2px solid #7C3AED;padding-bottom:16px;margin-bottom:24px}.header h1{margin:0 0 4px;font-size:20px;color:#7C3AED}.header p{margin:0;font-size:13px;color:#666}.bubble{margin-bottom:16px;max-width:80%}.bubble.user{margin-left:auto}.role{font-size:11px;font-weight:700;color:#888;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px}.bubble.user .role{text-align:right}.time{font-weight:400;margin-left:6px}.text{background:#f5f5f5;border-radius:12px;padding:12px 16px;font-size:14px;line-height:1.6}.bubble.user .text{background:#7C3AED;color:#fff}.footer{margin-top:32px;padding-top:16px;border-top:1px solid #eee;font-size:11px;color:#aaa;text-align:center}</style></head><body><div class="header"><h1>${session.title.replace(/</g, "&lt;")}</h1><p>Subject: ${subjectLabel} &middot; ${dateStr} &middot; ${messages.filter(m => !m.id.startsWith("welcome")).length} messages</p></div>${bubbles || '<p style="color:#aaa">No messages yet.</p>'}<div class="footer">Exported from TutorSnap &middot; tutorsnapai.tech</div></body></html>`;
 
+      // Lazy imports — avoids top-level native module crash on Android
+      const Print = await import("expo-print");
+      const Sharing = await import("expo-sharing");
       const { uri } = await Print.printToFileAsync({ html, base64: false });
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(uri, { mimeType: "application/pdf", dialogTitle: "Save Chat PDF" });
@@ -794,7 +788,9 @@ function ChatScreenContent() {
     const shareText = buildShareText();
     if (Platform.OS === "web") {
       try {
-        await Clipboard.setStringAsync(shareText);
+        if (typeof navigator !== "undefined" && navigator.clipboard) {
+          await navigator.clipboard.writeText(shareText);
+        }
         setShareCopied(true);
         setTimeout(() => setShareCopied(false), 2500);
       } catch { /* ignore */ }
