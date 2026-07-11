@@ -85,16 +85,16 @@ export const TIER_META: Record<RewardTier, {
   daysPerReferral: number; minReferrals: number; maxReferrals: number | null;
   perks: string[];
 }> = {
-  starter:   { label: "Starter",   emoji: "🌱", color: "#22C55E", daysPerReferral: 7,  minReferrals: 0,  maxReferrals: 4,    perks: ["7 days per referral", "Invite up to 10 friends"] },
-  advocate:  { label: "Advocate",  emoji: "⭐", color: "#0a7ea4", daysPerReferral: 10, minReferrals: 5,  maxReferrals: 9,    perks: ["10 days per referral", "Advocate badge", "Priority support"] },
-  champion:  { label: "Champion",  emoji: "🏆", color: "#F59E0B", daysPerReferral: 14, minReferrals: 10, maxReferrals: 24,   perks: ["14 days per referral", "Champion badge", "Early feature access"] },
-  legend:    { label: "Legend",    emoji: "👑", color: "#8B5CF6", daysPerReferral: 30, minReferrals: 25, maxReferrals: null, perks: ["30 days per referral", "Legend badge", "1 free month bonus", "VIP support"] },
+  starter:   { label: "Starter",   emoji: "🌱", color: "#22C55E", daysPerReferral: 14, minReferrals: 0,  maxReferrals: 4,    perks: ["14 days per referral", "Invite up to 100 friends"] },
+  advocate:  { label: "Advocate",  emoji: "⭐", color: "#0a7ea4", daysPerReferral: 21, minReferrals: 5,  maxReferrals: 9,    perks: ["21 days per referral", "Advocate badge", "Priority support"] },
+  champion:  { label: "Champion",  emoji: "🏆", color: "#F59E0B", daysPerReferral: 30, minReferrals: 10, maxReferrals: 24,   perks: ["30 days per referral", "Champion badge", "Early feature access"] },
+  legend:    { label: "Legend",    emoji: "👑", color: "#8B5CF6", daysPerReferral: 60, minReferrals: 25, maxReferrals: null, perks: ["60 days per referral", "Legend badge", "2 free months bonus", "VIP support"] },
 };
 
 export const MILESTONE_BONUSES: { at: number; bonus: number; label: string }[] = [
-  { at: 5,  bonus: 14, label: "5 referrals milestone" },
-  { at: 10, bonus: 30, label: "10 referrals milestone — Champion unlocked!" },
-  { at: 25, bonus: 60, label: "25 referrals milestone — Legend unlocked!" },
+  { at: 5,  bonus: 30,  label: "5 referrals milestone — 1 month bonus!" },
+  { at: 10, bonus: 60,  label: "10 referrals milestone — Champion unlocked! 2 month bonus!" },
+  { at: 25, bonus: 120, label: "25 referrals milestone — Legend unlocked! 4 month bonus!" },
 ];
 
 // ─── Code ─────────────────────────────────────────────────────────────────────
@@ -185,13 +185,13 @@ export async function recordSocialShare(): Promise<number> {
   if (now - last < 24 * 60 * 60 * 1000) return 0; // cooldown
 
   const stats = await getAffiliateStats();
-  const daysEarned = 1;
+  const daysEarned = 3;
   stats.socialShareCount += 1;
   stats.totalDaysEarned += daysEarned;
   stats.pendingDays += daysEarned;
   await saveStats(stats);
   await AsyncStorage.setItem(KEYS.lastShare, String(now));
-  await addEvent({ type: "social_share", daysEarned, label: "Shared TutorSnap on social media (+1 day)" });
+  await addEvent({ type: "social_share", daysEarned, label: "Shared TutorSnap on social media (+3 days)" });
   return daysEarned;
 }
 
@@ -201,39 +201,39 @@ export async function recordReview(): Promise<number> {
   if (done) return 0;
 
   const stats = await getAffiliateStats();
-  const daysEarned = 3;
+  const daysEarned = 7;
   stats.reviewDone = true;
   stats.totalDaysEarned += daysEarned;
   stats.pendingDays += daysEarned;
   await saveStats(stats);
   await AsyncStorage.setItem(KEYS.reviewDone, "1");
-  await addEvent({ type: "review", daysEarned, label: "Left an App Store review (+3 days)" });
+  await addEvent({ type: "review", daysEarned, label: "Left an App Store review (+7 days)" });
   return daysEarned;
 }
 
 /** Record a content creator share (up to 5 times). */
 export async function recordContentShare(): Promise<number> {
   const stats = await getAffiliateStats();
-  if (stats.contentCount >= 5) return 0;
+  if (stats.contentCount >= 10) return 0;
 
-  const daysEarned = 2;
+  const daysEarned = 5;
   stats.contentCount += 1;
   stats.totalDaysEarned += daysEarned;
   stats.pendingDays += daysEarned;
   await saveStats(stats);
-  await addEvent({ type: "content_creator", daysEarned, label: `Shared a solve screenshot #${stats.contentCount} (+2 days)` });
+  await addEvent({ type: "content_creator", daysEarned, label: `Shared a solve screenshot #${stats.contentCount} (+5 days)` });
   return daysEarned;
 }
 
 /** Record a classroom invite (teacher creates classroom via your link). */
 export async function recordClassroomInvite(): Promise<number> {
   const stats = await getAffiliateStats();
-  const daysEarned = 14;
+  const daysEarned = 30;
   stats.classroomInvites += 1;
   stats.totalDaysEarned += daysEarned;
   stats.pendingDays += daysEarned;
   await saveStats(stats);
-  await addEvent({ type: "classroom_invite", daysEarned, label: "Teacher joined via your classroom link (+14 days)" });
+  await addEvent({ type: "classroom_invite", daysEarned, label: "Teacher joined via your classroom link (+30 days)" });
   return daysEarned;
 }
 
@@ -263,6 +263,7 @@ export async function getEarningOptions(stats: AffiliateStats): Promise<EarningO
       title: "Invite a Friend",
       subtitle: "Share your code — they get 7 bonus days, you get days based on your tier",
       reward: `+${TIER_META[getTier(stats.totalReferrals)].daysPerReferral} days per referral`,
+      // Updated to revised generous tier
       available: true,
       action: "share_code",
     },
@@ -271,7 +272,7 @@ export async function getEarningOptions(stats: AffiliateStats): Promise<EarningO
       emoji: "📣",
       title: "Share on Social Media",
       subtitle: "Post about TutorSnap on any platform — Instagram, TikTok, X, WhatsApp…",
-      reward: "+1 day (once per 24 h)",
+      reward: "+3 days (once per 24 h)",
       available: shareAvailable,
       availableNote: shareAvailable ? undefined : `Available in ${hoursLeft}h`,
       action: "share_social",
@@ -281,7 +282,7 @@ export async function getEarningOptions(stats: AffiliateStats): Promise<EarningO
       emoji: "⭐",
       title: "Leave a Review",
       subtitle: "Rate TutorSnap on the App Store or Google Play",
-      reward: "+3 days (one-time)",
+      reward: "+7 days (one-time)",
       available: !stats.reviewDone,
       availableNote: stats.reviewDone ? "Already claimed ✓" : undefined,
       action: "review",
@@ -291,9 +292,9 @@ export async function getEarningOptions(stats: AffiliateStats): Promise<EarningO
       emoji: "📸",
       title: "Share a Solve Screenshot",
       subtitle: "Post a screenshot of a solved problem with #TutorSnap",
-      reward: `+2 days (${stats.contentCount}/5 claimed)`,
-      available: stats.contentCount < 5,
-      availableNote: stats.contentCount >= 5 ? "Max reached ✓" : undefined,
+      reward: `+5 days (${stats.contentCount}/10 claimed)`,
+      available: stats.contentCount < 10,
+      availableNote: stats.contentCount >= 10 ? "Max reached ✓" : undefined,
       action: "content",
     },
     {
@@ -301,7 +302,7 @@ export async function getEarningOptions(stats: AffiliateStats): Promise<EarningO
       emoji: "🏫",
       title: "Invite a Teacher",
       subtitle: "Share your classroom invite link — when a teacher creates a classroom, you earn big",
-      reward: "+14 days per teacher",
+      reward: "+30 days per teacher",
       available: true,
       action: "classroom",
     },
