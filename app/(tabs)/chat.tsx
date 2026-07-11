@@ -493,6 +493,7 @@ function ChatScreenContent() {
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [showFollowUpExpanded, setShowFollowUpExpanded] = useState(false);
   const [clearLinkVisible, setClearLinkVisible] = useState(false);
+  const [showGreetingDropdown, setShowGreetingDropdown] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const clearLinkTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const recordingTimer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -507,6 +508,7 @@ function ChatScreenContent() {
   // Animated values for auto-hide header and input bar
   const headerAnim = useRef(new Animated.Value(1)).current;
   const inputBarAnim = useRef(new Animated.Value(1)).current;
+  const inputBarBottom = useRef(new Animated.Value(0)).current;
   const headerVisible = useRef(true);
   const inputBarVisible = useRef(true);
   const lastScrollY = useRef(0);
@@ -542,19 +544,34 @@ function ChatScreenContent() {
 
   // ── Keyboard listener: keep input bar visible when keyboard is open ─────────
   useEffect(() => {
-    const showSub = Keyboard.addListener("keyboardDidShow", () => {
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const showSub = Keyboard.addListener(showEvent, (e) => {
       isKeyboardOpen.current = true;
       // Always show input bar when keyboard opens
       if (!inputBarVisible.current) {
         inputBarVisible.current = true;
         Animated.timing(inputBarAnim, { toValue: 1, duration: 180, useNativeDriver: true }).start();
       }
+      // Move input bar above keyboard
+      const kbHeight = e.endCoordinates.height;
+      Animated.timing(inputBarBottom, {
+        toValue: kbHeight - TAB_BAR_HEIGHT,
+        duration: Platform.OS === "ios" ? e.duration || 250 : 180,
+        useNativeDriver: false,
+      }).start();
     });
-    const hideSub = Keyboard.addListener("keyboardDidHide", () => {
+    const hideSub = Keyboard.addListener(hideEvent, () => {
       isKeyboardOpen.current = false;
+      // Return input bar to bottom
+      Animated.timing(inputBarBottom, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: false,
+      }).start();
     });
     return () => { showSub.remove(); hideSub.remove(); };
-  }, [inputBarAnim]);
+  }, [inputBarAnim, inputBarBottom, TAB_BAR_HEIGHT]);
 
   // ── Scroll handler: hide/show header and input bar ───────────────────────────
   const handleChatScroll = useCallback((e: { nativeEvent: { contentOffset: { y: number }; contentSize: { height: number }; layoutMeasurement: { height: number } } }) => {
@@ -1077,6 +1094,10 @@ function ChatScreenContent() {
   }, [messages, chatMutation.isPending]);
   // ── Derived ─────────────────────────────────────────────────────────────────
   const userMessageCount = messages.filter((m) => m.role === "user").length;
+  // Filter out the auto-generated welcome message from the FlatList data
+  // so ListEmptyComponent renders correctly on first open.
+  // The welcome message is still in `messages` for context but not displayed as a bubble.
+  const displayMessages = messages.filter((m) => !m.id.startsWith("welcome-"));
   const isAtLimit =
     !isPremium && !isDevMode && sessionMessageCount >= FREE_LIMITS.chatMessagesPerSession;
   const messagesLeft = Math.max(0, FREE_LIMITS.chatMessagesPerSession - sessionMessageCount);
@@ -1084,11 +1105,11 @@ function ChatScreenContent() {
 
   const isFirstInRun = useCallback(
     (index: number): boolean => {
-      if (messages[index].role !== "assistant") return false;
+      if (!displayMessages[index] || displayMessages[index].role !== "assistant") return false;
       if (index === 0) return true;
-      return messages[index - 1].role !== "assistant";
+      return displayMessages[index - 1].role !== "assistant";
     },
-    [messages]
+    [displayMessages]
   );
 
   // ── Render ──────────────────────────────────────────────────────────────────
@@ -1114,17 +1135,33 @@ function ChatScreenContent() {
           ]}
         >
           <View style={chatStyles.headerLeft}>
-            {/* Gradient avatar in header — 28px */}
-            <AIAvatar size={28} />
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <Text
-                style={[chatStyles.headerTitle, { color: colors.foreground, fontSize: fs(16) }]}
-                numberOfLines={1}
-              >
-                {session?.title && session.title !== "New Chat"
-                  ? session.title
-                  : "AI Tutor"}
-              </Text>
+            {/* Tiny 12px status dot instead of large avatar */}
+            <View
+              style={[
+                chatStyles.aiDot,
+                { backgroundColor: colors.primary },
+              ]}
+            />
+            <TouchableOpacity
+              onPress={() => setShowGreetingDropdown((v) => !v)}
+              activeOpacity={0.7}
+              style={{ flex: 1, minWidth: 0 }}
+            >
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                <Text
+                  style={[chatStyles.headerTitle, { color: colors.foreground, fontSize: fs(16) }]}
+                  numberOfLines={1}
+                >
+                  {session?.title && session.title !== "New Chat"
+                    ? session.title
+                    : "AI Tutor"}
+                </Text>
+                <IconSymbol
+                  size={12}
+                  name={showGreetingDropdown ? "chevron.up" : "chevron.down"}
+                  color={colors.muted}
+                />
+              </View>
               <View style={chatStyles.statusRow}>
                 <View
                   style={[
@@ -1152,9 +1189,8 @@ function ChatScreenContent() {
                   </>
                 )}
               </View>
-            </View>
+            </TouchableOpacity>
           </View>
-
           <View style={chatStyles.headerActions}>
             <TouchableOpacity
               onPress={() => setShowSubjectPicker(true)}
@@ -1233,6 +1269,53 @@ function ChatScreenContent() {
             </TouchableOpacity>
                     </View>
         </Animated.View>
+        {/* ── Greeting dropdown panel ── */}
+        {showGreetingDropdown && (
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={() => setShowGreetingDropdown(false)}
+            style={{
+              position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 9,
+            }}
+          >
+            <View
+              style={[
+                {
+                  position: "absolute",
+                  top: HEADER_HEIGHT,
+                  left: 12,
+                  right: 12,
+                  borderRadius: 14,
+                  padding: 16,
+                  zIndex: 20,
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.12,
+                  shadowRadius: 12,
+                  elevation: 8,
+                  backgroundColor: colors.surface,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                },
+              ]}
+            >
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <AIAvatar size={20} />
+                <Text style={{ fontWeight: "700", fontSize: fs(14), color: colors.foreground }}>
+                  AI Tutor
+                </Text>
+              </View>
+              <Text style={{ fontSize: fs(13), color: colors.muted, lineHeight: 20 }}>
+                {selectedSubject
+                  ? `Ready to help with ${getSubjectLabel(selectedSubject)} ${getSubjectEmoji(selectedSubject)}! Ask me anything — I'll explain concepts, work through problems, and guide you step by step.`
+                  : "Hi! I'm TutorSnap, your personal academic tutor. Ask me anything — Math, Science, English, History, and more. I'll explain concepts, help with homework, and guide you step by step!"}
+              </Text>
+              <Text style={{ fontSize: fs(11), color: colors.muted, marginTop: 8 }}>
+                {isOnline ? "● Online" : "○ Offline"}
+                {selectedSubject ? `  ·  ${getSubjectEmoji(selectedSubject)} ${getSubjectLabel(selectedSubject)}` : ""}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        )}
         {/* ── Message area ── */}
         {!sessionLoaded ? (
           <View style={chatStyles.loadingCenter}>
@@ -1241,7 +1324,7 @@ function ChatScreenContent() {
         ) : (
           <FlatList
             ref={flatListRef}
-            data={messages}
+            data={displayMessages}
             keyExtractor={(item) => item.id}
             renderItem={({ item, index }) => (
               <MessageBubble
@@ -1375,7 +1458,8 @@ function ChatScreenContent() {
           style={[
             chatStyles.floatingBarWrapper,
             {
-              position: "absolute", bottom: 0, left: 0, right: 0, zIndex: 10,
+              position: "absolute", left: 0, right: 0, zIndex: 10,
+              bottom: inputBarBottom,
               paddingBottom: Platform.OS === "ios" ? Math.max(insets.bottom, 8) + 4 : 8,
               backgroundColor: "transparent",
               opacity: inputBarAnim,
@@ -1866,6 +1950,12 @@ const chatStyles = StyleSheet.create({
   },
   followUpChipText: {
     fontWeight: "600",
+  },
+  aiDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 4,
   },
   scrollBtn: {
     position: "absolute",
