@@ -493,7 +493,11 @@ function ChatScreenContent() {
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [showFollowUpExpanded, setShowFollowUpExpanded] = useState(false);
   const [clearLinkVisible, setClearLinkVisible] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
   const clearLinkTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const recordingTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Pulse animation for mic button while recording
+  const pulseAnim = useRef(new Animated.Value(1)).current;
   // Animated values for auto-hide header and input bar
   const headerAnim = useRef(new Animated.Value(1)).current;
   const inputBarAnim = useRef(new Animated.Value(1)).current;
@@ -961,6 +965,11 @@ function ChatScreenContent() {
       return;
     }
     if (isRecording) {
+      // Stop recording — clear pulse and timer
+      pulseAnim.stopAnimation();
+      pulseAnim.setValue(1);
+      if (recordingTimer.current) { clearInterval(recordingTimer.current); recordingTimer.current = null; }
+      setRecordingDuration(0);
       // Stop recording and transcribe
       try {
         audioRecorder.stop();
@@ -1001,6 +1010,15 @@ function ChatScreenContent() {
         audioRecorder.record();
         setIsRecording(true);
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        // Start duration counter
+        setRecordingDuration(0);
+        recordingTimer.current = setInterval(() => setRecordingDuration((d) => d + 1), 1000);
+        // Start pulsing red ring animation
+        const pulse = () => Animated.sequence([
+          Animated.timing(pulseAnim, { toValue: 1.35, duration: 600, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+        ]);
+        Animated.loop(pulse()).start();
       } catch (err) {
         Alert.alert("Microphone", "Could not access microphone. Please check permissions.");
       }
@@ -1411,32 +1429,56 @@ function ChatScreenContent() {
               onSubmitEditing={() => handleSend()}
               editable={!isAtLimit}
             />
-            {/* Mic button — hidden when text is typed */}
+            {/* Mic button — hidden when text is typed; shows pulse ring + timer while recording */}
             {!inputText.trim() && (
-              <TouchableOpacity
-                accessibilityLabel={isRecording ? "Stop recording" : "Voice input"}
-                onPress={handleVoiceInput}
-                disabled={isTranscribing}
-                style={[
-                  chatStyles.micBtn,
-                  {
-                    backgroundColor: isRecording
-                      ? `${colors.error}20`
-                      : `${colors.primary}14`,
-                  },
-                ]}
-                activeOpacity={0.75}
-              >
-                {isTranscribing ? (
-                  <ActivityIndicator size={14} color={colors.primary} />
-                ) : (
-                  <IconSymbol
-                    size={15}
-                    name={isRecording ? "mic.slash.fill" : "mic.fill"}
-                    color={isRecording ? colors.error : colors.primary}
+              <View style={{ alignItems: "center", justifyContent: "center" }}>
+                {/* Pulsing red ring overlay — only visible while recording */}
+                {isRecording && (
+                  <Animated.View
+                    pointerEvents="none"
+                    style={{
+                      position: "absolute",
+                      width: 30,
+                      height: 30,
+                      borderRadius: 15,
+                      borderWidth: 2,
+                      borderColor: colors.error,
+                      opacity: 0.6,
+                      transform: [{ scale: pulseAnim }],
+                    }}
                   />
                 )}
-              </TouchableOpacity>
+                <TouchableOpacity
+                  accessibilityLabel={isRecording ? "Stop recording" : "Voice input"}
+                  onPress={handleVoiceInput}
+                  disabled={isTranscribing}
+                  style={[
+                    chatStyles.micBtn,
+                    {
+                      backgroundColor: isRecording
+                        ? `${colors.error}20`
+                        : `${colors.primary}14`,
+                    },
+                  ]}
+                  activeOpacity={0.75}
+                >
+                  {isTranscribing ? (
+                    <ActivityIndicator size={14} color={colors.primary} />
+                  ) : (
+                    <IconSymbol
+                      size={15}
+                      name={isRecording ? "mic.slash.fill" : "mic.fill"}
+                      color={isRecording ? colors.error : colors.primary}
+                    />
+                  )}
+                </TouchableOpacity>
+                {/* Duration timer — shown below mic button while recording */}
+                {isRecording && (
+                  <Text style={{ fontSize: 9, color: colors.error, fontWeight: "600", marginTop: 1 }}>
+                    {`${Math.floor(recordingDuration / 60)}:${String(recordingDuration % 60).padStart(2, "0")}`}
+                  </Text>
+                )}
+              </View>
             )}
             <TouchableOpacity
               accessibilityLabel="Send message"
