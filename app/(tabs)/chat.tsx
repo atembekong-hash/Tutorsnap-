@@ -509,7 +509,10 @@ function ChatScreenContent() {
   );
 
   const bottomPadding = Platform.OS === "web" ? 12 : Math.max(insets.bottom, 8);
-  const TAB_BAR_HEIGHT = 60 + bottomPadding;
+  // Tab bar is 60px tall + bottom safe area padding.
+  // keyboardVerticalOffset must equal the distance from the bottom of the
+  // KeyboardAvoidingView to the bottom of the screen (i.e. the tab bar height).
+  const TAB_BAR_HEIGHT = 56 + bottomPadding;
 
   // ── Session init ────────────────────────────────────────────────────────────
 
@@ -905,7 +908,7 @@ function ChatScreenContent() {
   return (
     <ScreenContainer edges={["top", "left", "right"]}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        behavior={Platform.OS === "ios" ? "padding" : "padding"}
         style={{ flex: 1 }}
         keyboardVerticalOffset={TAB_BAR_HEIGHT}
       >
@@ -1110,7 +1113,7 @@ function ChatScreenContent() {
         <View
           style={[
             chatStyles.floatingBarWrapper,
-            { paddingBottom: Platform.OS === "ios" ? 8 : 6 },
+            { paddingBottom: Platform.OS === "ios" ? 10 : 8 },
           ]}
         >
           {/* Limit nudge strip */}
