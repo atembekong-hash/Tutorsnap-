@@ -464,6 +464,21 @@ export default function ProgressScreen() {
           );
         })()}
 
+        {/* Global Rankings entry */}
+        <TouchableOpacity
+          accessibilityLabel="View global rankings"
+          onPress={() => router.push("/(tabs)/leaderboard" as any)}
+          style={[styles.rankingsEntry, { backgroundColor: colors.surface, borderColor: `${colors.warning}40` }]}
+          activeOpacity={0.8}
+        >
+          <Text style={{ fontSize: 22 }}>🏆</Text>
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <Text style={[styles.rankingsEntryTitle, { color: colors.foreground }]}>Global Rankings</Text>
+            <Text style={[styles.rankingsEntrySub, { color: colors.muted }]}>See where you stand this week</Text>
+          </View>
+          <IconSymbol size={16} name="chevron.right" color={colors.muted} />
+        </TouchableOpacity>
+
         {/* Empty State */}
         {streak.totalSolved === 0 && (
           <View style={styles.emptyState}>
@@ -788,5 +803,23 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "800",
     paddingRight: 12,
+  },
+  rankingsEntry: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginHorizontal: 16,
+    marginTop: 20,
+    marginBottom: 8,
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1.5,
+  },
+  rankingsEntryTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  rankingsEntrySub: {
+    fontSize: 12,
+    marginTop: 2,
   },
 });

@@ -565,6 +565,23 @@ function SolveScreenContent() {
           {/* Daily Challenge entry card */}
           <DailyChallengeCard />
 
+          {/* Global Rankings quick-access */}
+          <TouchableOpacity
+            accessibilityLabel="View global rankings"
+            onPress={() => router.push("/(tabs)/leaderboard" as any)}
+            style={[styles.rankingsCard, { backgroundColor: colors.surface, borderColor: `${colors.warning}40` }]}
+            activeOpacity={0.8}
+          >
+            <View style={styles.rankingsCardLeft}>
+              <Text style={{ fontSize: 26 }}>🏆</Text>
+              <View>
+                <Text style={[styles.rankingsCardTitle, { color: colors.foreground }]}>Global Rankings</Text>
+                <Text style={[styles.rankingsCardSub, { color: colors.muted }]}>Weekly top learners</Text>
+              </View>
+            </View>
+            <IconSymbol size={18} name="chevron.right" color={colors.muted} />
+          </TouchableOpacity>
+
           {/* Today's Study Plan Widget */}
           <TodayStudyWidget />
 
@@ -1145,4 +1162,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: 3,
   },
   notifBadgeText: { fontSize: 9, fontWeight: "700", color: "#fff" },
+  rankingsCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginHorizontal: 16,
+    marginTop: 20,
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1.5,
+  },
+  rankingsCardLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    flex: 1,
+  },
+  rankingsCardTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  rankingsCardSub: {
+    fontSize: 12,
+    marginTop: 2,
+  },
 });

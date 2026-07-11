@@ -721,6 +721,13 @@ export default function SettingsScreen() {
           colors={colors}
           onPress={() => router.push("/refer" as any)}
         />
+        <SettingsRow
+          icon="trophy.fill"
+          label="Global Rankings"
+          subtitle="See the weekly top learners"
+          colors={colors}
+          onPress={() => router.push("/(tabs)/leaderboard" as any)}
+        />
 
         {/* About */}
         <SectionHeader title="ABOUT" colors={colors} />

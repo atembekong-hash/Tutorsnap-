@@ -755,17 +755,28 @@ export default function ClassroomTabScreen() {
     <ScreenContainer>
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <View>
+        <View style={{ flex: 1 }}>
           <Text style={[styles.title, { color: colors.foreground }]}>Classroom</Text>
           <Text style={[styles.subtitle, { color: colors.muted }]}>
             {activeClassroom ? activeClassroom.name : "Share problems with your class"}
           </Text>
         </View>
-        {activeClassroom && (
-          <View style={[styles.codePill, { backgroundColor: `${colors.primary}15`, borderColor: `${colors.primary}30` }]}>
-            <Text style={[styles.codePillText, { color: colors.primary }]}>{activeClassroom.code}</Text>
-          </View>
-        )}
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          {activeClassroom && (
+            <View style={[styles.codePill, { backgroundColor: `${colors.primary}15`, borderColor: `${colors.primary}30` }]}>
+              <Text style={[styles.codePillText, { color: colors.primary }]}>{activeClassroom.code}</Text>
+            </View>
+          )}
+          <TouchableOpacity
+            accessibilityLabel="View global rankings"
+            onPress={() => router.push("/(tabs)/leaderboard" as any)}
+            style={[styles.rankingsBtn, { backgroundColor: `${colors.warning}15`, borderColor: `${colors.warning}35` }]}
+            activeOpacity={0.75}
+          >
+            <Text style={{ fontSize: 14 }}>🏆</Text>
+            <Text style={[styles.rankingsBtnText, { color: colors.warning }]}>Rankings</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* No classroom */}
@@ -1952,5 +1963,18 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginTop: 4,
     letterSpacing: 0.2,
+  },
+  rankingsBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  rankingsBtnText: {
+    fontSize: 12,
+    fontWeight: "700",
   },
 });
