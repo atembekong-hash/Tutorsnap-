@@ -22,7 +22,9 @@ import React, {
   useRef,
   useEffect,
   useCallback,
+  useMemo,
 } from "react";
+import { useFocusEffect } from "expo-router";
 import {
   View,
   Text,
@@ -81,7 +83,7 @@ import { FREE_LIMITS } from "@/lib/subscription";
 // ─── Saved Notes storage key ──────────────────────────────────────────────────
 
 const SAVED_NOTES_KEY = "tutor_saved_notes";
-
+const NOTES_LAST_SEEN_KEY = "tutor_notes_last_seen";
 async function saveNote(content: string): Promise<void> {
   try {
     const raw = await AsyncStorage.getItem(SAVED_NOTES_KEY);
@@ -481,10 +483,30 @@ function ChatScreenContent() {
   const [pdfLoading, setPdfLoading] = useState(false);
   const [showPaywallModal, setShowPaywallModal] = useState(false);
   const [sessionMessageCount, setSessionMessageCount] = useState(0);
-  const { isPremium, isDevMode, incrementUsage: incUsage } = usePremium();
-
+    const { isPremium, isDevMode, incrementUsage: incUsage } = usePremium();
   const flatListRef = useRef<FlatList>(null);
   const { isOnline } = useNetworkStatus();
+  const [unseenNotesCount, setUnseenNotesCount] = useState(0);
+  // Load unseen notes count whenever the screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      async function loadUnseen() {
+        try {
+          const [rawNotes, rawSeen] = await Promise.all([
+            AsyncStorage.getItem(SAVED_NOTES_KEY),
+            AsyncStorage.getItem(NOTES_LAST_SEEN_KEY),
+          ]);
+          const notes: Array<{ savedAt: number }> = rawNotes ? JSON.parse(rawNotes) : [];
+          const lastSeen: number = rawSeen ? JSON.parse(rawSeen) : 0;
+          const unseen = notes.filter((n) => n.savedAt > lastSeen).length;
+          if (active) setUnseenNotesCount(unseen);
+        } catch { /* ignore */ }
+      }
+      loadUnseen();
+      return () => { active = false; };
+    }, [])
+  );
 
   const bottomPadding = Platform.OS === "web" ? 12 : Math.max(insets.bottom, 8);
   const TAB_BAR_HEIGHT = 60 + bottomPadding;
@@ -839,8 +861,30 @@ function ChatScreenContent() {
     ]);
   }, [session, selectedSubject]);
 
+    // ── Follow-up chips ────────────────────────────────────────────────────────
+  // Show 3 contextual follow-up chips after the last AI response
+  const GENERIC_FOLLOWUPS = [
+    { label: "Give me an example", text: "Can you give me a concrete example of that?" },
+    { label: "Quiz me on this", text: "Quiz me on what we just covered." },
+    { label: "Explain differently", text: "Can you explain that in a different way?" },
+    { label: "Step by step", text: "Can you walk me through that step by step?" },
+    { label: "Why does this work?", text: "Why does this work? What's the underlying reason?" },
+    { label: "Common mistakes?", text: "What are the most common mistakes students make with this?" },
+  ];
+  const followUpChips = useMemo(() => {
+    if (chatMutation.isPending) return [];
+    const lastMsg = [...messages].reverse().find((m) => m.role === "assistant" && !m.id.startsWith("welcome"));
+    if (!lastMsg) return [];
+    // Rotate chips based on message count so they feel fresh each time
+    const offset = messages.length % GENERIC_FOLLOWUPS.length;
+    return [
+      GENERIC_FOLLOWUPS[offset % GENERIC_FOLLOWUPS.length],
+      GENERIC_FOLLOWUPS[(offset + 1) % GENERIC_FOLLOWUPS.length],
+      GENERIC_FOLLOWUPS[(offset + 2) % GENERIC_FOLLOWUPS.length],
+    ];
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, chatMutation.isPending]);
   // ── Derived ─────────────────────────────────────────────────────────────────
-
   const userMessageCount = messages.filter((m) => m.role === "user").length;
   const isAtLimit =
     !isPremium && !isDevMode && sessionMessageCount >= FREE_LIMITS.chatMessagesPerSession;
@@ -928,12 +972,35 @@ function ChatScreenContent() {
               />
             </TouchableOpacity>
             <TouchableOpacity
-              onPress={() => router.push("/(tabs)/notes")}
+              onPress={async () => {
+                // Mark all notes as seen
+                await AsyncStorage.setItem(NOTES_LAST_SEEN_KEY, JSON.stringify(Date.now()));
+                setUnseenNotesCount(0);
+                router.push("/(tabs)/notes");
+              }}
               accessibilityLabel="My saved notes"
               style={chatStyles.headerBtn}
               activeOpacity={0.7}
             >
-              <IconSymbol size={19} name="bookmark.fill" color={colors.muted} />
+              <View style={{ position: "relative" }}>
+                <IconSymbol
+                  size={19}
+                  name="bookmark.fill"
+                  color={unseenNotesCount > 0 ? colors.primary : colors.muted}
+                />
+                {unseenNotesCount > 0 && (
+                  <View
+                    style={[
+                      chatStyles.noteBadge,
+                      { backgroundColor: colors.error },
+                    ]}
+                  >
+                    <Text style={chatStyles.noteBadgeText}>
+                      {unseenNotesCount > 9 ? "9+" : String(unseenNotesCount)}
+                    </Text>
+                  </View>
+                )}
+              </View>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => router.push("/chat-history")}
@@ -1016,6 +1083,29 @@ function ChatScreenContent() {
           />
         )}
 
+        {/* ── Follow-up chips ── */}
+        {followUpChips.length > 0 && (
+          <View style={chatStyles.followUpRow}>
+            {followUpChips.map((chip) => (
+              <TouchableOpacity
+                key={chip.label}
+                onPress={() => handleSend(chip.text)}
+                style={[
+                  chatStyles.followUpChip,
+                  { backgroundColor: `${colors.primary}14`, borderColor: `${colors.primary}30` },
+                ]}
+                activeOpacity={0.7}
+              >
+                <Text
+                  style={[chatStyles.followUpChipText, { color: colors.primary, fontSize: fs(12) }]}
+                  numberOfLines={1}
+                >
+                  {chip.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
         {/* ── Floating input bar ── */}
         <View
           style={[
@@ -1435,4 +1525,37 @@ const chatStyles = StyleSheet.create({
     minWidth: 180,
   },
   pdfCardText: { fontWeight: "600" },
+  noteBadge: {
+    position: "absolute",
+    top: -5,
+    right: -6,
+    minWidth: 14,
+    height: 14,
+    borderRadius: 7,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 2,
+  },
+  noteBadgeText: {
+    color: "#fff",
+    fontSize: 9,
+    fontWeight: "700",
+    lineHeight: 14,
+  },
+  followUpRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingBottom: 6,
+  },
+  followUpChip: {
+    borderRadius: 20,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  followUpChipText: {
+    fontWeight: "600",
+  },
 });

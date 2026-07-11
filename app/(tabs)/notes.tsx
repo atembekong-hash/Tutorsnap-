@@ -217,6 +217,38 @@ export default function NotesScreen() {
     });
   }, []);
 
+  const [exporting, setExporting] = useState(false);
+  const handleExportPDF = useCallback(async () => {
+    if (notes.length === 0) return;
+    setExporting(true);
+    try {
+      const dateStr = new Date().toLocaleDateString(undefined, {
+        month: "long", day: "numeric", year: "numeric",
+      });
+      const noteItems = notes
+        .map((n, i) => {
+          const date = formatDate(n.savedAt);
+          const text = n.content
+            .replace(/</g, "&lt;").replace(/>/g, "&gt;")
+            .replace(/\n/g, "<br/>");
+          return `<div class="note"><div class="note-meta">#${i + 1} &middot; ${date}</div><div class="note-body">${text}</div></div>`;
+        })
+        .join("");
+      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:-apple-system,sans-serif;margin:0;padding:32px;background:#fff;color:#1a1a1a}.header{border-bottom:2px solid #7C3AED;padding-bottom:16px;margin-bottom:24px}.header h1{margin:0 0 4px;font-size:22px;color:#7C3AED}.header p{margin:0;font-size:13px;color:#666}.note{margin-bottom:20px;padding:16px;background:#f9f9f9;border-radius:10px;border-left:4px solid #7C3AED}.note-meta{font-size:11px;color:#888;margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}.note-body{font-size:14px;line-height:1.7;color:#1a1a1a}.footer{margin-top:32px;padding-top:16px;border-top:1px solid #eee;font-size:11px;color:#aaa;text-align:center}</style></head><body><div class="header"><h1>My Notes</h1><p>${notes.length} saved note${notes.length === 1 ? "" : "s"} &middot; Exported ${dateStr}</p></div>${noteItems}<div class="footer">Exported from TutorSnap &middot; tutorsnapai.tech</div></body></html>`;
+      const Print = await import("expo-print");
+      const Sharing = await import("expo-sharing");
+      const { uri } = await Print.printToFileAsync({ html, base64: false });
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, { mimeType: "application/pdf", dialogTitle: "Save Notes PDF" });
+      } else {
+        Alert.alert("PDF Saved", "Your notes have been saved as a PDF.");
+      }
+    } catch {
+      Alert.alert("Error", "Could not generate PDF. Please try again.");
+    } finally {
+      setExporting(false);
+    }
+  }, [notes]);
   const handleClearAll = useCallback(() => {
     Alert.alert(
       "Clear all notes?",
@@ -287,11 +319,22 @@ export default function NotesScreen() {
           </Text>
         </View>
         {notes.length > 0 && (
-          <TouchableOpacity onPress={handleClearAll} style={styles.clearBtn}>
-            <Text style={[styles.clearBtnText, { color: colors.error }]}>
-              Clear all
-            </Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <TouchableOpacity
+              onPress={handleExportPDF}
+              disabled={exporting}
+              style={[styles.clearBtn, { borderColor: colors.primary, borderWidth: 1, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 }]}
+            >
+              <Text style={[styles.clearBtnText, { color: colors.primary }]}>
+                {exporting ? "Exporting…" : "Export PDF"}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleClearAll} style={styles.clearBtn}>
+              <Text style={[styles.clearBtnText, { color: colors.error }]}>
+                Clear all
+              </Text>
+            </TouchableOpacity>
+          </View>
         )}
       </View>
 
