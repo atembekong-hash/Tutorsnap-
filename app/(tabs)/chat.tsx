@@ -491,6 +491,16 @@ function ChatScreenContent() {
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
+  const [showFollowUpExpanded, setShowFollowUpExpanded] = useState(false);
+  const [clearLinkVisible, setClearLinkVisible] = useState(false);
+  const clearLinkTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Animated values for auto-hide header and input bar
+  const headerAnim = useRef(new Animated.Value(1)).current;
+  const inputBarAnim = useRef(new Animated.Value(1)).current;
+  const headerVisible = useRef(true);
+  const inputBarVisible = useRef(true);
+  const lastScrollY = useRef(0);
+  const isKeyboardOpen = useRef(false);
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   // Load unseen notes count whenever the screen is focused
   useFocusEffect(
@@ -517,7 +527,75 @@ function ChatScreenContent() {
   // Tab bar is 60px tall + bottom safe area padding.
   // keyboardVerticalOffset must equal the distance from the bottom of the
   // KeyboardAvoidingView to the bottom of the screen (i.e. the tab bar height).
-  const TAB_BAR_HEIGHT = 56 + bottomPadding;
+    const TAB_BAR_HEIGHT = 56 + bottomPadding;
+  const HEADER_HEIGHT = 52; // approximate header height
+
+  // ── Keyboard listener: keep input bar visible when keyboard is open ─────────
+  useEffect(() => {
+    const showSub = Keyboard.addListener("keyboardDidShow", () => {
+      isKeyboardOpen.current = true;
+      // Always show input bar when keyboard opens
+      if (!inputBarVisible.current) {
+        inputBarVisible.current = true;
+        Animated.timing(inputBarAnim, { toValue: 1, duration: 180, useNativeDriver: true }).start();
+      }
+    });
+    const hideSub = Keyboard.addListener("keyboardDidHide", () => {
+      isKeyboardOpen.current = false;
+    });
+    return () => { showSub.remove(); hideSub.remove(); };
+  }, [inputBarAnim]);
+
+  // ── Scroll handler: hide/show header and input bar ───────────────────────────
+  const handleChatScroll = useCallback((e: { nativeEvent: { contentOffset: { y: number }; contentSize: { height: number }; layoutMeasurement: { height: number } } }) => {
+    const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+    const y = contentOffset.y;
+    const distFromBottom = contentSize.height - y - layoutMeasurement.height;
+    setShowScrollBtn(distFromBottom > 120);
+
+    const delta = y - lastScrollY.current;
+    lastScrollY.current = y;
+
+    // Only auto-hide when there are messages and scroll is meaningful
+    if (y < 20) {
+      // At top — always show header
+      if (!headerVisible.current) {
+        headerVisible.current = true;
+        Animated.timing(headerAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start();
+      }
+      return;
+    }
+
+    if (Math.abs(delta) < 4) return; // ignore tiny jitter
+
+    if (delta > 0 && headerVisible.current) {
+      // Scrolling down — hide header
+      headerVisible.current = false;
+      Animated.timing(headerAnim, { toValue: 0, duration: 200, useNativeDriver: true }).start();
+    } else if (delta < 0 && !headerVisible.current) {
+      // Scrolling up — show header
+      headerVisible.current = true;
+      Animated.timing(headerAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start();
+    }
+
+    // Auto-hide input bar when reading (scrolling up through long content) and keyboard is closed
+    if (!isKeyboardOpen.current) {
+      if (delta > 8 && inputBarVisible.current && distFromBottom > 200) {
+        inputBarVisible.current = false;
+        Animated.timing(inputBarAnim, { toValue: 0, duration: 200, useNativeDriver: true }).start();
+      } else if (delta < -8 && !inputBarVisible.current) {
+        inputBarVisible.current = true;
+        Animated.timing(inputBarAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start();
+      }
+    }
+  }, [headerAnim, inputBarAnim]);
+
+  // ── Clear link: show briefly after each message, then fade ──────────────────
+  const showClearLinkBriefly = useCallback(() => {
+    setClearLinkVisible(true);
+    if (clearLinkTimer.current) clearTimeout(clearLinkTimer.current);
+    clearLinkTimer.current = setTimeout(() => setClearLinkVisible(false), 3000);
+  }, []);
 
   // ── Session init ────────────────────────────────────────────────────────────
 
@@ -612,6 +690,12 @@ function ChatScreenContent() {
         return next;
       });
       setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+      showClearLinkBriefly();
+      // Always show input bar after AI responds
+      if (!inputBarVisible.current) {
+        inputBarVisible.current = true;
+        Animated.timing(inputBarAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start();
+      }
     },
   });
 
@@ -971,11 +1055,15 @@ function ChatScreenContent() {
         style={{ flex: 1 }}
         keyboardVerticalOffset={TAB_BAR_HEIGHT}
       >
-        {/* ── Slim header with gradient avatar ── */}
-        <View
+        {/* ── Slim header with gradient avatar (auto-hides on scroll down) ── */}
+        <Animated.View
           style={[
             chatStyles.header,
             { borderBottomColor: colors.border, backgroundColor: colors.background },
+            {
+              opacity: headerAnim,
+              transform: [{ translateY: headerAnim.interpolate({ inputRange: [0, 1], outputRange: [-HEADER_HEIGHT, 0] }) }],
+            },
           ]}
         >
           <View style={chatStyles.headerLeft}>
@@ -1096,9 +1184,8 @@ function ChatScreenContent() {
             >
               <IconSymbol size={17} name="plus" color={colors.primary} />
             </TouchableOpacity>
-          </View>
-        </View>
-
+                    </View>
+        </Animated.View>
         {/* ── Message area ── */}
         {!sessionLoaded ? (
           <View style={chatStyles.loadingCenter}>
@@ -1125,26 +1212,17 @@ function ChatScreenContent() {
                 onLongPressAI={handleLongPressAI}
               />
             )}
-            contentContainerStyle={{ paddingTop: 12, paddingBottom: 16 }}
+            contentContainerStyle={{ paddingTop: 4, paddingBottom: 8 }}
             showsVerticalScrollIndicator={false}
-            onScroll={(e) => {
-              const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
-              const distFromBottom = contentSize.height - contentOffset.y - layoutMeasurement.height;
-              setShowScrollBtn(distFromBottom > 120);
-            }}
-            scrollEventThrottle={100}
+            onScroll={handleChatScroll}
+            scrollEventThrottle={16}
             onContentSizeChange={() =>
               flatListRef.current?.scrollToEnd({ animated: false })
             }
             ListFooterComponent={
               chatMutation.isPending ? (
-                <View style={chatStyles.typingRow}>
-                  <View style={chatStyles.typingAvatarCol}>
-                    <AIAvatar size={30} />
-                  </View>
-                  <View style={[chatStyles.typingBubble, { backgroundColor: colors.surface }]}>
-                    <TypingDots color={colors.primary} />
-                  </View>
+                <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 6, gap: 6 }}>
+                  <TypingDots color={colors.muted} />
                 </View>
               ) : null
             }
@@ -1161,38 +1239,51 @@ function ChatScreenContent() {
             <IconSymbol size={18} name="chevron.down" color={colors.primary} />
           </TouchableOpacity>
         )}
-        {/* ── Follow-up chips ── */}
+        {/* ── Follow-up chips (collapsed by default, expand on tap) ── */}
         {followUpChips.length > 0 && (
-          <View style={chatStyles.followUpRow}>
-            {followUpChips.map((chip) => (
+          <View style={{ paddingHorizontal: 12, paddingBottom: 2 }}>
+            {!showFollowUpExpanded ? (
               <TouchableOpacity
-                key={chip.label}
-                onPress={() => handleSend(chip.text)}
-                style={[
-                  chatStyles.followUpChip,
-                  { backgroundColor: `${colors.primary}14`, borderColor: `${colors.primary}30` },
-                ]}
+                onPress={() => setShowFollowUpExpanded(true)}
+                style={[chatStyles.followUpChip, { alignSelf: "flex-start", backgroundColor: `${colors.primary}10`, borderColor: `${colors.primary}25` }]}
                 activeOpacity={0.7}
               >
-                <Text
-                  style={[chatStyles.followUpChipText, { color: colors.primary, fontSize: fs(12) }]}
-                  numberOfLines={1}
-                >
-                  {chip.label}
-                </Text>
+                <IconSymbol size={12} name="sparkles" color={colors.primary} />
+                <Text style={[chatStyles.followUpChipText, { color: colors.primary, fontSize: fs(11), marginLeft: 4 }]}>Suggestions</Text>
+                <IconSymbol size={11} name="chevron.right" color={colors.primary} />
               </TouchableOpacity>
-            ))}
+            ) : (
+              <View style={chatStyles.followUpRow}>
+                {followUpChips.map((chip) => (
+                  <TouchableOpacity
+                    key={chip.label}
+                    onPress={() => { handleSend(chip.text); setShowFollowUpExpanded(false); }}
+                    style={[chatStyles.followUpChip, { backgroundColor: `${colors.primary}14`, borderColor: `${colors.primary}30` }]}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[chatStyles.followUpChipText, { color: colors.primary, fontSize: fs(12) }]} numberOfLines={1}>{chip.label}</Text>
+                  </TouchableOpacity>
+                ))}
+                <TouchableOpacity onPress={() => setShowFollowUpExpanded(false)} style={{ padding: 4 }} activeOpacity={0.7}>
+                  <IconSymbol size={14} name="xmark.circle.fill" color={colors.muted} />
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         )}
-        {/* ── Floating input bar ── */}
-        <View
+        {/* ── Floating input bar (auto-hides when reading, overlays message list) ── */}
+        <Animated.View
           style={[
             chatStyles.floatingBarWrapper,
             { paddingBottom: Platform.OS === "ios" ? 10 : 8 },
+            {
+              opacity: inputBarAnim,
+              transform: [{ translateY: inputBarAnim.interpolate({ inputRange: [0, 1], outputRange: [80, 0] }) }],
+            },
           ]}
         >
-          {/* Limit nudge strip */}
-          {!isPremium && !isDevMode && sessionMessageCount > 0 && (
+          {/* Limit nudge strip — only shown when 2 or fewer messages remain, or at limit */}
+          {!isPremium && !isDevMode && (isAtLimit || messagesLeft <= 2) && (
             <TouchableOpacity
               onPress={() => setShowPaywallModal(true)}
               activeOpacity={0.8}
@@ -1319,7 +1410,7 @@ function ChatScreenContent() {
             </TouchableOpacity>
           </View>
 
-          {userMessageCount > 0 && (
+          {userMessageCount > 0 && clearLinkVisible && (
             <TouchableOpacity
               onPress={handleClearChat}
               style={chatStyles.clearRow}
@@ -1330,7 +1421,7 @@ function ChatScreenContent() {
               </Text>
             </TouchableOpacity>
           )}
-        </View>
+        </Animated.View>
       </KeyboardAvoidingView>
 
       {/* ── Subject picker sheet ── */}
