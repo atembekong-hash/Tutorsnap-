@@ -417,3 +417,11 @@
 - [x] Register /refer route in _layout.tsx
 - [x] Add streak-protection push notification scheduled at 20:00 daily
 - [x] Add App Store review prompt after quiz ≥80% + 3+ days usage
+
+## Round 45: Engagement Features
+- [x] Build lib/daily-challenge.ts — daily challenge logic with midnight reset and bonus XP
+- [x] Build app/daily-challenge.tsx — daily challenge screen with countdown timer
+- [x] Wire Daily Challenge entry point from home screen
+- [x] Build leaderboard tab screen with weekly rankings
+- [x] Add leaderboard tab to tab bar
+- [x] Add "Explain this differently" button on solve results

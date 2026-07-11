@@ -316,6 +316,14 @@ export default function RootLayout() {
                 headerShown: false,
               }}
             />
+            <Stack.Screen
+              name="daily-challenge"
+              options={{
+                presentation: "card",
+                animation: "slide_from_right",
+                headerShown: false,
+              }}
+            />
           </Stack>
           <StatusBar style="auto" />
         </QueryClientProvider>

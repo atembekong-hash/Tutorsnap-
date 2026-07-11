@@ -148,6 +148,10 @@ export default function SolutionScreen() {
   const [copiedProblemId, setCopiedProblemId] = useState<string | null>(null);
   const generateSimilarMutation = trpc.math.generateSimilar.useMutation();
   const [discussLoading, setDiscussLoading] = useState(false);
+  const [explainDiffLoading, setExplainDiffLoading] = useState(false);
+  const [altExplanation, setAltExplanation] = useState<string | null>(null);
+  const [showAltExplanation, setShowAltExplanation] = useState(false);
+  const explainDiffMutation = trpc.math.solve.useMutation();
 
   // Auto-solve state: triggered when a feed card has no cached solution
   const solveMutation = trpc.math.solve.useMutation();
@@ -890,6 +894,69 @@ export default function SolutionScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Explain this Differently */}
+        <TouchableOpacity
+          accessibilityLabel="Explain this solution differently"
+          onPress={async () => {
+            if (showAltExplanation && altExplanation) {
+              setShowAltExplanation((v) => !v);
+              return;
+            }
+            if (!solution) return;
+            if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            setExplainDiffLoading(true);
+            try {
+              const result = await explainDiffMutation.mutateAsync({
+                problem: `Re-explain the following problem using a simpler analogy or a completely different method than the standard approach. Be concise and use plain language a student would understand.\n\nProblem: ${solution.problem}\n\nOriginal answer: ${solution.answer}`,
+                subject: solution.subject as any,
+              });
+              const alt = (result as any)?.conceptExplained || (result as any)?.answer || "No alternative explanation available.";
+              setAltExplanation(alt);
+              setShowAltExplanation(true);
+              if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            } catch {
+              if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            } finally {
+              setExplainDiffLoading(false);
+            }
+          }}
+          disabled={explainDiffLoading}
+          style={[
+            styles.discussBtn,
+            { backgroundColor: `${colors.success}10`, borderColor: `${colors.success}30` },
+          ]}
+          activeOpacity={0.8}
+        >
+          {explainDiffLoading ? (
+            <ActivityIndicator size="small" color={colors.success} />
+          ) : (
+            <IconSymbol size={18} name="lightbulb.fill" color={colors.success} />
+          )}
+          <Text style={[styles.discussBtnText, { color: colors.success }]}>
+            {showAltExplanation && altExplanation ? "Hide Alternative" : "Explain Differently"}
+          </Text>
+        </TouchableOpacity>
+
+        {/* Alternative explanation card */}
+        {showAltExplanation && altExplanation && (
+          <View style={[styles.altExplanationCard, { backgroundColor: `${colors.success}08`, borderColor: `${colors.success}30` }]}>
+            <View style={styles.sectionHeader}>
+              <IconSymbol size={16} name="lightbulb.fill" color={colors.success} />
+              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Alternative Explanation</Text>
+            </View>
+            <AIResponseErrorBoundary fallbackText={altExplanation} fontSize={fs(14)} color={colors.foreground}>
+              <AIResponseRenderer
+                markdown={altExplanation}
+                fontSize={fs(14)}
+                color={colors.foreground}
+                codeBackground={colors.surface}
+                flavor="github"
+                stripPreamble={false}
+              />
+            </AIResponseErrorBoundary>
+          </View>
+        )}
+
         {/* Discuss with Tutor */}
         <TouchableOpacity
           accessibilityLabel="Discuss this solution with AI Tutor"
@@ -1167,6 +1234,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   discussBtnText: { fontSize: 15, fontWeight: "700" },
+  altExplanationCard: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+    gap: 10,
+  },
   workedExampleCard: {
     marginHorizontal: 16,
     marginBottom: 12,

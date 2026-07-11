@@ -39,6 +39,7 @@ import { getAlmostBadges, computeMasteryBadges, getSeenBadges, markBadgeSeen, ty
 import { BadgeUnlockModal } from "@/components/badge-unlock-modal";
 import { TodayStudyWidget } from "@/components/today-study-widget";
 import { StreakProtectionBanner } from "@/components/streak-protection-banner";
+import { getTodayQuestion, getDailyChallengeState } from "@/lib/daily-challenge";
 import { getMyClassroom, getJoinedClassroom, getClassroomFeed, type ClassroomProblem } from "@/lib/classroom";
 import * as Notifications from "expo-notifications";
 import { usePremium } from "@/hooks/use-premium";
@@ -95,6 +96,67 @@ const DEFAULT_EXAMPLES = [
 ];
 
 
+// ─── Daily Challenge Card ────────────────────────────────────────────────────
+function DailyChallengeCard() {
+  const colors = useColors();
+  const router = useRouter();
+  const question = getTodayQuestion();
+  const [completed, setCompleted] = React.useState(false);
+  const [correct, setCorrect] = React.useState<boolean | null>(null);
+
+  React.useEffect(() => {
+    getDailyChallengeState().then((s) => {
+      setCompleted(s.completed);
+      setCorrect(s.correct);
+    });
+  }, []);
+
+  const subjectColors: Record<string, string> = {
+    algebra: "#6366F1", geometry: "#10B981", calculus: "#F59E0B",
+    statistics: "#3B82F6", physics: "#EF4444", chemistry: "#8B5CF6",
+  };
+  const subjectColor = subjectColors[question.subject] ?? colors.primary;
+
+  return (
+    <TouchableOpacity
+      onPress={() => router.push("/daily-challenge" as any)}
+      activeOpacity={0.85}
+      style={[dcStyles.card, { backgroundColor: colors.surface, borderColor: completed ? (correct ? `${colors.success}60` : `${colors.error}40`) : `${subjectColor}40` }]}
+      accessibilityLabel="Open Daily Challenge"
+      accessibilityRole="button"
+    >
+      <View style={dcStyles.left}>
+        <Text style={dcStyles.emoji}>⚡</Text>
+        <View style={dcStyles.textBlock}>
+          <Text style={[dcStyles.title, { color: colors.foreground }]}>Daily Challenge</Text>
+          <Text style={[dcStyles.sub, { color: colors.muted }]} numberOfLines={1}>
+            {completed
+              ? correct ? "✅ Completed · +50 XP earned" : "❌ Attempted · Try again tomorrow"
+              : `${question.subjectLabel} · +${question.bonusXp} Bonus XP`}
+          </Text>
+        </View>
+      </View>
+      <View style={[dcStyles.badge, { backgroundColor: completed ? (correct ? `${colors.success}18` : `${colors.error}18`) : `${subjectColor}18` }]}>
+        <Text style={[dcStyles.badgeText, { color: completed ? (correct ? colors.success : colors.error) : subjectColor }]}>
+          {completed ? (correct ? "Done ✓" : "Done") : "Solve"}
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
+const dcStyles = StyleSheet.create({
+  card: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderRadius: 16, borderWidth: 1.5, padding: 14, gap: 12 },
+  left: { flexDirection: "row", alignItems: "center", gap: 12, flex: 1 },
+  emoji: { fontSize: 28 },
+  textBlock: { flex: 1, gap: 3 },
+  title: { fontSize: 15, fontWeight: "700" },
+  sub: { fontSize: 12 },
+  badge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
+  badgeText: { fontSize: 12, fontWeight: "700" },
+});
+
+// ─── Main Screen ──────────────────────────────────────────────────────────────
 function SolveScreenContent() {
   const colors = useColors();
   const router = useRouter();
@@ -509,6 +571,9 @@ function SolveScreenContent() {
               inputRef.current?.focus();
             }}
           />
+
+          {/* Daily Challenge entry card */}
+          <DailyChallengeCard />
 
           {/* Today's Study Plan Widget */}
           <TodayStudyWidget />
