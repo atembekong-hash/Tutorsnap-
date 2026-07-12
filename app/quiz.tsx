@@ -144,6 +144,11 @@ function ScoreSummary({
   const secs = timeTaken % 60;
   const subjectLabel = getSubjectLabel(subject);
   const { GRADE_LABELS } = require("@/lib/grade-levels") as { GRADE_LABELS: Record<string, string> };
+  const AsyncStorageLib = require("@react-native-async-storage/async-storage").default;
+  const [userName, setUserName] = React.useState<string | null>(null);
+  React.useEffect(() => {
+    AsyncStorageLib.getItem("@tutorsnap/userName").then((n: string | null) => setUserName(n || null));
+  }, []);
 
   const [copied, setCopied] = React.useState(false);
   const copiedTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -152,9 +157,12 @@ function ScoreSummary({
     H.impactLight()
     const timeStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
     const emoji = pct >= 80 ? "🎉" : pct >= 60 ? "👍" : "📚";
+    const gradeLabel = gradeLevel ? GRADE_LABELS[gradeLevel] ?? gradeLevel : null;
     const message = [
-      `${emoji} TutorSnap Quiz Results`,
-      `Subject: ${subjectLabel}`,
+      userName
+        ? `${emoji} ${userName}'s TutorSnap Quiz Results`
+        : `${emoji} TutorSnap Quiz Results`,
+      `Subject: ${subjectLabel}${gradeLabel ? ` · ${gradeLabel}` : ""}`,
       `Score: ${correct}/${total} (${pct}%) — Grade ${grade}`,
       `Time: ${timeStr}`,
       bonusAwarded ? `🔥 Streak bonus earned! ${bonusStreak}-day streak` : "",
@@ -417,6 +425,7 @@ export default function QuizScreen() {
           timeTaken: totalTime,
           completedAt: Date.now(),
           questions: questionSnapshots,
+          gradeLevel,
         });
       } catch { /* history save failure is non-critical */ }
       let bonus = { awarded: false, newStreak: 0 };

@@ -38,6 +38,7 @@ import { getSubjectEmoji } from "@/lib/subjects";
 import { getChallengeHistory, getChallengeStats, type ChallengeAttempt } from "@/lib/challenge-history";
 import { StreakShieldCard } from "@/components/streak-shield-card";
 import { StreakFreezeCard } from "@/components/streak-freeze-card";
+import { GRADE_LABELS } from "@/lib/grade-levels";
 
 
 const GOAL_OPTIONS = [1, 3, 5, 10];
@@ -380,6 +381,55 @@ export default function ProgressScreen() {
                       <View style={[styles.accuracyDot, { backgroundColor: info.color }]} />
                       <Text style={[styles.accuracyLabel, { color: colors.foreground }]} numberOfLines={1}>
                         {info.label}
+                      </Text>
+                      <Text style={[styles.accuracyQuizCount, { color: colors.muted }]}>
+                        {data.total} quiz{data.total !== 1 ? "zes" : ""}
+                      </Text>
+                    </View>
+                    <View style={styles.accuracyBarRow}>
+                      <View style={[styles.accuracyTrack, { backgroundColor: `${barColor}20` }]}>
+                        <View
+                          style={[
+                            styles.accuracyFill,
+                            { width: `${data.avg}%` as any, backgroundColor: barColor },
+                          ]}
+                        />
+                      </View>
+                      <Text style={[styles.accuracyPct, { color: barColor }]}>{data.avg}%</Text>
+                    </View>
+                    <View style={styles.accuracyMetaRow}>
+                      <Text style={[styles.accuracyMeta, { color: colors.muted }]}>Best: {data.best}%</Text>
+                    </View>
+                  </View>
+                );
+              })}
+          </View>
+        )}
+
+
+        {/* Grade-Level Breakdown Card */}
+        {quizStats && Object.keys(quizStats.byGrade).filter(k => k !== "unknown").length > 0 && (
+          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.cardTitle, { color: colors.foreground }]}>Quiz Accuracy by Grade Level</Text>
+            <Text style={[styles.cardSubtitle, { color: colors.muted }]}>
+              How you perform at each curriculum level
+            </Text>
+            {Object.entries(quizStats.byGrade)
+              .filter(([key]) => key !== "unknown")
+              .sort(([, a], [, b]) => b.avg - a.avg)
+              .map(([gradeKey, data]) => {
+                const label = GRADE_LABELS[gradeKey] ?? gradeKey;
+                const barColor =
+                  data.avg >= 90 ? colors.success :
+                  data.avg >= 70 ? colors.primary :
+                  data.avg >= 50 ? colors.warning :
+                  colors.error;
+                return (
+                  <View key={gradeKey} style={styles.accuracyRow}>
+                    <View style={styles.accuracyLabelRow}>
+                      <Text style={{ fontSize: 14 }}>📚</Text>
+                      <Text style={[styles.accuracyLabel, { color: colors.foreground }]} numberOfLines={1}>
+                        {label}
                       </Text>
                       <Text style={[styles.accuracyQuizCount, { color: colors.muted }]}>
                         {data.total} quiz{data.total !== 1 ? "zes" : ""}

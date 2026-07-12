@@ -158,6 +158,11 @@ export default function SettingsScreen() {
   const [gradeLevel, setGradeLevelState] = useState<string | null>(null);
   const [showGradePicker, setShowGradePicker] = useState(false);
 
+  // User name
+  const [userName, setUserNameState] = useState<string | null>(null);
+  const [showNameModal, setShowNameModal] = useState(false);
+  const [nameInput, setNameInput] = useState("");
+
   // Redeem referral code
   const [showRedeemModal, setShowRedeemModal] = useState(false);
   const [redeemCode, setRedeemCode] = useState("");
@@ -219,6 +224,7 @@ export default function SettingsScreen() {
     getReminderSettings().then(setReminder);
     getSubscriptionStatus().then(setSubStatus).catch(() => {});
     loadGlobalGrade().then((g: string | null) => setGradeLevelState(g));
+    AsyncStorage.getItem("@tutorsnap/userName").then((n: string | null) => setUserNameState(n || null));
     AsyncStorage.getItem("@tutorsnap/preferredCategories").then((raw) => {
       if (raw) {
         try {
@@ -653,6 +659,16 @@ export default function SettingsScreen() {
           subtitle={preferredCategoryLabels || "All subjects"}
           colors={colors}
           onPress={() => setShowSubjectPicker(true)}
+        />
+        <SettingsRow
+          icon="person.crop.circle.fill"
+          label="Your Name"
+          subtitle={userName || "Not set — tap to add your name"}
+          colors={colors}
+          onPress={() => {
+            setNameInput(userName || "");
+            setShowNameModal(true);
+          }}
         />
         <SettingsRow
           icon="graduationcap.fill"
@@ -1149,6 +1165,73 @@ export default function SettingsScreen() {
         </TouchableOpacity>
       </Modal>
 
+
+      {/* ── Name Edit Modal ─────────────────────────────────────────────────── */}
+      <Modal
+        visible={showNameModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowNameModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalSheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.foreground }]}>Your Name</Text>
+              <TouchableOpacity onPress={() => setShowNameModal(false)} accessibilityLabel="Close" accessibilityRole="button">
+                <IconSymbol size={22} name="xmark.circle.fill" color={colors.muted} />
+              </TouchableOpacity>
+            </View>
+            <Text style={[styles.modalSubtitle, { color: colors.muted }]}>
+              Used for your personalised greeting on the home screen.
+            </Text>
+            <TextInput
+              value={nameInput}
+              onChangeText={setNameInput}
+              placeholder="Enter your first name"
+              placeholderTextColor={colors.muted}
+              autoFocus
+              maxLength={30}
+              returnKeyType="done"
+              onSubmitEditing={async () => {
+                const trimmed = nameInput.trim();
+                await AsyncStorage.setItem("@tutorsnap/userName", trimmed);
+                setUserNameState(trimmed || null);
+                setShowNameModal(false);
+                H.notificationSuccess();
+              }}
+              style={[
+                styles.nameInput,
+                { color: colors.foreground, backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
+            />
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
+              <TouchableOpacity
+                onPress={() => setShowNameModal(false)}
+                style={[styles.nameModalBtn, { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 }]}
+                accessibilityLabel="Cancel"
+                accessibilityRole="button"
+              >
+                <Text style={[styles.nameModalBtnText, { color: colors.foreground }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={async () => {
+                  const trimmed = nameInput.trim();
+                  await AsyncStorage.setItem("@tutorsnap/userName", trimmed);
+                  setUserNameState(trimmed || null);
+                  setShowNameModal(false);
+                  H.notificationSuccess();
+                }}
+                style={[styles.nameModalBtn, { backgroundColor: colors.primary, flex: 1 }]}
+                accessibilityLabel="Save name"
+                accessibilityRole="button"
+              >
+                <Text style={[styles.nameModalBtnText, { color: "#fff" }]}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* ── Grade Level Picker Modal ──────────────────────────────────────── */}
       <Modal
         visible={showGradePicker}
@@ -1436,4 +1519,21 @@ const styles = StyleSheet.create({
   gradePickerRow: { flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 14, borderWidth: 1.5, gap: 12 },
   gradePickerLabel: { fontSize: 15, fontWeight: "700", marginBottom: 2 },
   gradePickerSub: { fontSize: 12 },
+  nameInput: {
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 16,
+    marginTop: 8,
+  },
+  nameModalBtn: {
+    paddingVertical: 13,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: 90,
+  },
+  nameModalBtnText: { fontSize: 15, fontWeight: "700" },
 });

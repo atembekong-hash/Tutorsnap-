@@ -676,12 +676,22 @@ export default function SolutionScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
-        {/* Subject Badge + Bookmark indicator */}
+        {/* Subject Badge + Grade Level Badge + Bookmark indicator */}
         <View style={styles.badgeRow}>
           <View style={[styles.subjectBadge, { backgroundColor: `${subjectColor}20` }]}>
             <View style={[styles.subjectDot, { backgroundColor: subjectColor }]} />
             <Text style={[styles.subjectBadgeText, { color: subjectColor }]}>{subjectLabel}</Text>
           </View>
+          {gradeLevel && (() => {
+            const { GRADE_LABELS } = require("@/lib/grade-levels") as { GRADE_LABELS: Record<string, string> };
+            const label = GRADE_LABELS[gradeLevel] ?? gradeLevel;
+            return (
+              <View style={[styles.gradeBadge, { backgroundColor: `${colors.primary}15`, borderColor: `${colors.primary}30` }]}>
+                <Text style={{ fontSize: 11 }}>📚</Text>
+                <Text style={[styles.gradeBadgeText, { color: colors.primary }]}>{label}</Text>
+              </View>
+            );
+          })()}
           {bookmarked && (
             <View style={[styles.bookmarkedBadge, { backgroundColor: `${colors.warning}20`, borderColor: `${colors.warning}40` }]}>
               <Text style={{ fontSize: 12 }}>🔖</Text>
@@ -1038,6 +1048,16 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   bookmarkedText: { fontSize: 12, fontWeight: "600" },
+  gradeBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 5,
+  },
+  gradeBadgeText: { fontSize: 12, fontWeight: "700" },
   problemCard: {
     marginHorizontal: 16,
     marginBottom: 12,

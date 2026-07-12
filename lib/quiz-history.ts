@@ -26,6 +26,8 @@ export interface QuizResult {
   completedAt: number; // timestamp
   /** Per-question detail — may be absent on older records saved before this field was added */
   questions?: QuizQuestionSnapshot[];
+  /** Grade level at the time of the quiz — may be absent on older records */
+  gradeLevel?: string | null;
 }
 
 export async function saveQuizResult(result: Omit<QuizResult, "id">): Promise<QuizResult> {
@@ -51,6 +53,7 @@ export interface QuizStats {
   bestScore: number;       // pct
   averageScore: number;    // pct
   bySubject: Record<string, { total: number; best: number; avg: number }>;
+  byGrade: Record<string, { total: number; best: number; avg: number }>;
 }
 
 export interface DifficultyUpSuggestion {
@@ -89,7 +92,7 @@ export async function getAdaptiveDifficultySuggestion(
 export async function loadQuizStats(): Promise<QuizStats> {
   const history = await loadQuizHistory();
   if (history.length === 0) {
-    return { totalQuizzes: 0, bestScore: 0, averageScore: 0, bySubject: {} };
+    return { totalQuizzes: 0, bestScore: 0, averageScore: 0, bySubject: {}, byGrade: {} };
   }
   const best = Math.max(...history.map((h) => h.pct));
   const avg = Math.round(history.reduce((s, h) => s + h.pct, 0) / history.length);
@@ -105,5 +108,18 @@ export async function loadQuizStats(): Promise<QuizStats> {
       subjHistory.reduce((s, h) => s + h.pct, 0) / subjHistory.length
     );
   }
-  return { totalQuizzes: history.length, bestScore: best, averageScore: avg, bySubject };
+  const byGrade: QuizStats["byGrade"] = {};
+  for (const h of history) {
+    const key = h.gradeLevel ?? "unknown";
+    if (!byGrade[key]) byGrade[key] = { total: 0, best: 0, avg: 0 };
+    byGrade[key].total += 1;
+    byGrade[key].best = Math.max(byGrade[key].best, h.pct);
+  }
+  for (const key of Object.keys(byGrade)) {
+    const gradeHistory = history.filter((h) => (h.gradeLevel ?? "unknown") === key);
+    byGrade[key].avg = Math.round(
+      gradeHistory.reduce((s, h) => s + h.pct, 0) / gradeHistory.length
+    );
+  }
+  return { totalQuizzes: history.length, bestScore: best, averageScore: avg, bySubject, byGrade };
 }
