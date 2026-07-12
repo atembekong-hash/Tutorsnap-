@@ -103,12 +103,6 @@ export default function TabLayout() {
           href: null,
         }}
       />
-      <Tabs.Screen
-        name="notes"
-        options={{
-          href: null,
-        }}
-      />
     </Tabs>
   );
 }

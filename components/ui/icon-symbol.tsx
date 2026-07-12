@@ -116,7 +116,6 @@ const MAPPING = {
   "globe": "language",
   "shield.lefthalf.filled": "security",
   "lock.doc.fill": "lock",
-  "lock.fill": "lock",
   "text.badge.checkmark": "fact-check",
   "waveform.badge.exclamationmark": "report-problem",
   // Solution screen

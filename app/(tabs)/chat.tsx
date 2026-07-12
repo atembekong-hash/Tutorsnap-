@@ -22,10 +22,7 @@ import React, {
   useRef,
   useEffect,
   useCallback,
-  useMemo,
 } from "react";
-import { useFocusEffect } from "expo-router";
-import { useAudioRecorder, RecordingPresets, AudioModule } from "expo-audio";
 import {
   View,
   Text,
@@ -43,9 +40,8 @@ import {
   Animated,
   Easing,
 } from "react-native";
+// expo-linear-gradient is NOT imported at top level (crashes old APKs without the native view compiled in)
 import * as Haptics from "expo-haptics";
-// expo-linear-gradient removed — uses requireNativeViewManager which needs a native rebuild.
-// Gradient avatar is implemented with pure React Native Views instead.
 // expo-clipboard, expo-print, expo-sharing are loaded lazily inside handlers
 // to avoid native module crashes on Android when the tab is first mounted.
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -84,7 +80,7 @@ import { FREE_LIMITS } from "@/lib/subscription";
 // ─── Saved Notes storage key ──────────────────────────────────────────────────
 
 const SAVED_NOTES_KEY = "tutor_saved_notes";
-const NOTES_LAST_SEEN_KEY = "tutor_notes_last_seen";
+
 async function saveNote(content: string): Promise<void> {
   try {
     const raw = await AsyncStorage.getItem(SAVED_NOTES_KEY);
@@ -199,8 +195,8 @@ const typingStyles = StyleSheet.create({
   dot: { width: 8, height: 8, borderRadius: 4 },
 });
 
-// ─── AI Avatar (pure RN, no native gradient) ─────────────────────────────────
-// Uses a solid purple circle with a ✦ symbol — no expo-linear-gradient needed.
+// ─── AI Avatar (pure RN — no expo-linear-gradient, safe on all APKs) ────────
+
 function AIAvatar({ size = 30 }: { size?: number }) {
   return (
     <View
@@ -214,7 +210,7 @@ function AIAvatar({ size = 30 }: { size?: number }) {
         flexShrink: 0,
       }}
     >
-      <Text style={{ fontSize: size * 0.42, lineHeight: size * 0.55, color: "#fff" }}>✦</Text>
+      <Text style={{ fontSize: size * 0.42, lineHeight: size * 0.55, color: "#FFFFFF" }}>✦</Text>
     </View>
   );
 }
@@ -484,145 +480,13 @@ function ChatScreenContent() {
   const [pdfLoading, setPdfLoading] = useState(false);
   const [showPaywallModal, setShowPaywallModal] = useState(false);
   const [sessionMessageCount, setSessionMessageCount] = useState(0);
-    const { isPremium, isDevMode, incrementUsage: incUsage } = usePremium();
+  const { isPremium, isDevMode, incrementUsage: incUsage } = usePremium();
+
   const flatListRef = useRef<FlatList>(null);
   const { isOnline } = useNetworkStatus();
-  const [unseenNotesCount, setUnseenNotesCount] = useState(0);
-  const [isRecording, setIsRecording] = useState(false);
-  const [isTranscribing, setIsTranscribing] = useState(false);
-  const [showScrollBtn, setShowScrollBtn] = useState(false);
-  const [showFollowUpExpanded, setShowFollowUpExpanded] = useState(false);
-  const [clearLinkVisible, setClearLinkVisible] = useState(false);
-  const [showGreetingDropdown, setShowGreetingDropdown] = useState(false);
-  const [recordingDuration, setRecordingDuration] = useState(0);
-  const clearLinkTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const recordingTimer = useRef<ReturnType<typeof setInterval> | null>(null);
-  // Pulse animation for mic button while recording
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-  // Waveform bar animations (4 bars, each animate height independently)
-  const waveBar1 = useRef(new Animated.Value(0.3)).current;
-  const waveBar2 = useRef(new Animated.Value(0.6)).current;
-  const waveBar3 = useRef(new Animated.Value(0.4)).current;
-  const waveBar4 = useRef(new Animated.Value(0.7)).current;
-  const waveAnimRef = useRef<Animated.CompositeAnimation | null>(null);
-  // Animated values for auto-hide header and input bar
-  const headerAnim = useRef(new Animated.Value(1)).current;
-  const inputBarAnim = useRef(new Animated.Value(1)).current;
-  const inputBarBottom = useRef(new Animated.Value(0)).current;
-  const headerVisible = useRef(true);
-  const inputBarVisible = useRef(true);
-  const lastScrollY = useRef(0);
-  const isKeyboardOpen = useRef(false);
-  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
-  // Load unseen notes count whenever the screen is focused
-  useFocusEffect(
-    useCallback(() => {
-      let active = true;
-      async function loadUnseen() {
-        try {
-          const [rawNotes, rawSeen] = await Promise.all([
-            AsyncStorage.getItem(SAVED_NOTES_KEY),
-            AsyncStorage.getItem(NOTES_LAST_SEEN_KEY),
-          ]);
-          const notes: Array<{ savedAt: number }> = rawNotes ? JSON.parse(rawNotes) : [];
-          const lastSeen: number = rawSeen ? JSON.parse(rawSeen) : 0;
-          const unseen = notes.filter((n) => n.savedAt > lastSeen).length;
-          if (active) setUnseenNotesCount(unseen);
-        } catch { /* ignore */ }
-      }
-      loadUnseen();
-      return () => { active = false; };
-    }, [])
-  );
 
   const bottomPadding = Platform.OS === "web" ? 12 : Math.max(insets.bottom, 8);
-  // Tab bar is 60px tall + bottom safe area padding.
-  // keyboardVerticalOffset must equal the distance from the bottom of the
-  // KeyboardAvoidingView to the bottom of the screen (i.e. the tab bar height).
-    const TAB_BAR_HEIGHT = 56 + bottomPadding;
-  const HEADER_HEIGHT = 52; // approximate header height
-
-  // ── Keyboard listener: keep input bar visible when keyboard is open ─────────
-  useEffect(() => {
-    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
-    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
-    const showSub = Keyboard.addListener(showEvent, (e) => {
-      isKeyboardOpen.current = true;
-      // Always show input bar when keyboard opens
-      if (!inputBarVisible.current) {
-        inputBarVisible.current = true;
-        Animated.timing(inputBarAnim, { toValue: 1, duration: 180, useNativeDriver: true }).start();
-      }
-      // Move input bar above keyboard
-      const kbHeight = e.endCoordinates.height;
-      Animated.timing(inputBarBottom, {
-        toValue: kbHeight - TAB_BAR_HEIGHT,
-        duration: Platform.OS === "ios" ? e.duration || 250 : 180,
-        useNativeDriver: false,
-      }).start();
-    });
-    const hideSub = Keyboard.addListener(hideEvent, () => {
-      isKeyboardOpen.current = false;
-      // Return input bar to bottom
-      Animated.timing(inputBarBottom, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: false,
-      }).start();
-    });
-    return () => { showSub.remove(); hideSub.remove(); };
-  }, [inputBarAnim, inputBarBottom, TAB_BAR_HEIGHT]);
-
-  // ── Scroll handler: hide/show header and input bar ───────────────────────────
-  const handleChatScroll = useCallback((e: { nativeEvent: { contentOffset: { y: number }; contentSize: { height: number }; layoutMeasurement: { height: number } } }) => {
-    const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
-    const y = contentOffset.y;
-    const distFromBottom = contentSize.height - y - layoutMeasurement.height;
-    setShowScrollBtn(distFromBottom > 120);
-
-    const delta = y - lastScrollY.current;
-    lastScrollY.current = y;
-
-    // Only auto-hide when there are messages and scroll is meaningful
-    if (y < 20) {
-      // At top — always show header
-      if (!headerVisible.current) {
-        headerVisible.current = true;
-        Animated.timing(headerAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start();
-      }
-      return;
-    }
-
-    if (Math.abs(delta) < 4) return; // ignore tiny jitter
-
-    if (delta > 0 && headerVisible.current) {
-      // Scrolling down — hide header
-      headerVisible.current = false;
-      Animated.timing(headerAnim, { toValue: 0, duration: 200, useNativeDriver: true }).start();
-    } else if (delta < 0 && !headerVisible.current) {
-      // Scrolling up — show header
-      headerVisible.current = true;
-      Animated.timing(headerAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start();
-    }
-
-    // Auto-hide input bar when reading (scrolling up through long content) and keyboard is closed
-    if (!isKeyboardOpen.current) {
-      if (delta > 8 && inputBarVisible.current && distFromBottom > 200) {
-        inputBarVisible.current = false;
-        Animated.timing(inputBarAnim, { toValue: 0, duration: 200, useNativeDriver: true }).start();
-      } else if (delta < -8 && !inputBarVisible.current) {
-        inputBarVisible.current = true;
-        Animated.timing(inputBarAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start();
-      }
-    }
-  }, [headerAnim, inputBarAnim]);
-
-  // ── Clear link: show briefly after each message, then fade ──────────────────
-  const showClearLinkBriefly = useCallback(() => {
-    setClearLinkVisible(true);
-    if (clearLinkTimer.current) clearTimeout(clearLinkTimer.current);
-    clearLinkTimer.current = setTimeout(() => setClearLinkVisible(false), 3000);
-  }, []);
+  const TAB_BAR_HEIGHT = 60 + bottomPadding;
 
   // ── Session init ────────────────────────────────────────────────────────────
 
@@ -702,7 +566,6 @@ function ChatScreenContent() {
 
   // ── Chat mutation ───────────────────────────────────────────────────────────
 
-  const transcribeMutation = trpc.voice.transcribe.useMutation();
   const chatMutation = trpc.academic.chat.useMutation({
     onSuccess: (data) => {
       const aiMessage: ChatMessage = {
@@ -717,12 +580,6 @@ function ChatScreenContent() {
         return next;
       });
       setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
-      showClearLinkBriefly();
-      // Always show input bar after AI responds
-      if (!inputBarVisible.current) {
-        inputBarVisible.current = true;
-        Animated.timing(inputBarAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start();
-      }
     },
   });
 
@@ -981,123 +838,9 @@ function ChatScreenContent() {
     ]);
   }, [session, selectedSubject]);
 
-  // ── Voice input ────────────────────────────────────────────────────────────
-  const handleVoiceInput = useCallback(async () => {
-    if (Platform.OS === "web") {
-      Alert.alert("Voice Input", "Voice input is not available on web.");
-      return;
-    }
-    if (isRecording) {
-      // Stop recording — clear pulse, waveform, and timer
-      pulseAnim.stopAnimation();
-      pulseAnim.setValue(1);
-      waveAnimRef.current?.stop();
-      waveAnimRef.current = null;
-      [waveBar1, waveBar2, waveBar3, waveBar4].forEach((b) => b.setValue(0.3));
-      if (recordingTimer.current) { clearInterval(recordingTimer.current); recordingTimer.current = null; }
-      setRecordingDuration(0);
-      // Stop recording and transcribe
-      try {
-        audioRecorder.stop();
-        setIsRecording(false);
-        setIsTranscribing(true);
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        // Get the recording URI
-        const uri = audioRecorder.uri;
-        if (!uri) { setIsTranscribing(false); return; }
-        // Read as base64
-        const FSModule = await import("expo-file-system/legacy");
-        const base64 = await FSModule.readAsStringAsync(uri, { encoding: FSModule.EncodingType.Base64 });
-        // Upload to server
-        const API_BASE = process.env.EXPO_PUBLIC_API_URL || "http://127.0.0.1:3000";
-        const uploadResp = await fetch(`${API_BASE}/api/voice/upload`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ base64, mimeType: "audio/m4a" }),
-        });
-        if (!uploadResp.ok) throw new Error("Upload failed");
-        const { url: audioUrl } = await uploadResp.json();
-        // Transcribe via tRPC
-        const result = await transcribeMutation.mutateAsync({ audioUrl });
-        if (result.text) {
-          setInputText((prev) => (prev ? prev + " " + result.text : result.text));
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        }
-      } catch (err) {
-        Alert.alert("Transcription failed", "Could not transcribe audio. Please try again.");
-      } finally {
-        setIsTranscribing(false);
-      }
-    } else {
-      // Start recording
-      try {
-        await AudioModule.requestRecordingPermissionsAsync();
-        await audioRecorder.prepareToRecordAsync();
-        audioRecorder.record();
-        setIsRecording(true);
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        // Start duration counter
-        setRecordingDuration(0);
-        recordingTimer.current = setInterval(() => setRecordingDuration((d) => d + 1), 1000);
-        // Start pulsing red ring animation
-        const pulse = () => Animated.sequence([
-          Animated.timing(pulseAnim, { toValue: 1.35, duration: 600, useNativeDriver: true }),
-          Animated.timing(pulseAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
-        ]);
-        Animated.loop(pulse()).start();
-        // Start waveform bar animation
-        const makeBarAnim = (bar: Animated.Value, delay: number) =>
-          Animated.loop(
-            Animated.sequence([
-              Animated.delay(delay),
-              Animated.timing(bar, { toValue: 1, duration: 250, useNativeDriver: false }),
-              Animated.timing(bar, { toValue: 0.2, duration: 250, useNativeDriver: false }),
-            ])
-          );
-        waveAnimRef.current = Animated.parallel([
-          makeBarAnim(waveBar1, 0),
-          makeBarAnim(waveBar2, 80),
-          makeBarAnim(waveBar3, 160),
-          makeBarAnim(waveBar4, 40),
-        ]);
-        waveAnimRef.current.start();
-        // Auto-stop after 60 seconds
-        setTimeout(() => { if (isRecording) handleVoiceInput(); }, 60000);
-      } catch (err) {
-        Alert.alert("Microphone", "Could not access microphone. Please check permissions.");
-      }
-    }
-  }, [isRecording, audioRecorder, waveBar1, waveBar2, waveBar3, waveBar4]);
-
-    // ── Follow-up chips ────────────────────────────────────────────────────────
-  // Show 3 contextual follow-up chips after the last AI response
-  const GENERIC_FOLLOWUPS = [
-    { label: "Give me an example", text: "Can you give me a concrete example of that?" },
-    { label: "Quiz me on this", text: "Quiz me on what we just covered." },
-    { label: "Explain differently", text: "Can you explain that in a different way?" },
-    { label: "Step by step", text: "Can you walk me through that step by step?" },
-    { label: "Why does this work?", text: "Why does this work? What's the underlying reason?" },
-    { label: "Common mistakes?", text: "What are the most common mistakes students make with this?" },
-  ];
-  const followUpChips = useMemo(() => {
-    if (chatMutation.isPending) return [];
-    const lastMsg = [...messages].reverse().find((m) => m.role === "assistant" && !m.id.startsWith("welcome"));
-    if (!lastMsg) return [];
-    // Rotate chips based on message count so they feel fresh each time
-    const offset = messages.length % GENERIC_FOLLOWUPS.length;
-    return [
-      GENERIC_FOLLOWUPS[offset % GENERIC_FOLLOWUPS.length],
-      GENERIC_FOLLOWUPS[(offset + 1) % GENERIC_FOLLOWUPS.length],
-      GENERIC_FOLLOWUPS[(offset + 2) % GENERIC_FOLLOWUPS.length],
-    ];
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [messages, chatMutation.isPending]);
   // ── Derived ─────────────────────────────────────────────────────────────────
+
   const userMessageCount = messages.filter((m) => m.role === "user").length;
-  // Filter out the auto-generated welcome message from the FlatList data
-  // so ListEmptyComponent renders correctly on first open.
-  // The welcome message is still in `messages` for context but not displayed as a bubble.
-  const displayMessages = messages.filter((m) => !m.id.startsWith("welcome-"));
   const isAtLimit =
     !isPremium && !isDevMode && sessionMessageCount >= FREE_LIMITS.chatMessagesPerSession;
   const messagesLeft = Math.max(0, FREE_LIMITS.chatMessagesPerSession - sessionMessageCount);
@@ -1105,11 +848,31 @@ function ChatScreenContent() {
 
   const isFirstInRun = useCallback(
     (index: number): boolean => {
-      if (!displayMessages[index] || displayMessages[index].role !== "assistant") return false;
+      if (messages[index].role !== "assistant") return false;
       if (index === 0) return true;
-      return displayMessages[index - 1].role !== "assistant";
+      return messages[index - 1].role !== "assistant";
     },
-    [displayMessages]
+    [messages]
+  );
+
+  // Follow-up chips — shown inline after the last AI message
+  const FOLLOW_UP_CHIPS = [
+    "Give me an example",
+    "Quiz me on this",
+    "Explain differently",
+    "Step by step",
+    "Why does this work?",
+    "Common mistakes?",
+  ];
+
+  const isLastAIMessage = useCallback(
+    (index: number): boolean => {
+      if (messages[index].role !== "assistant") return false;
+      // Must be the last message overall and not a welcome message
+      if (index !== messages.length - 1) return false;
+      return !messages[index].id.startsWith("welcome");
+    },
+    [messages]
   );
 
   // ── Render ──────────────────────────────────────────────────────────────────
@@ -1117,51 +880,27 @@ function ChatScreenContent() {
   return (
     <ScreenContainer edges={["top", "left", "right"]}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "padding"}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
         keyboardVerticalOffset={TAB_BAR_HEIGHT}
       >
-        {/* ── Slim header — absolutely positioned so it takes zero layout space ── */}
-        <Animated.View
+        {/* ── Slim header with gradient avatar ── */}
+        <View
           style={[
             chatStyles.header,
-            {
-              position: "absolute", top: 0, left: 0, right: 0, zIndex: 10,
-              borderBottomColor: colors.border,
-              backgroundColor: colors.background,
-              opacity: headerAnim,
-              transform: [{ translateY: headerAnim.interpolate({ inputRange: [0, 1], outputRange: [-HEADER_HEIGHT, 0] }) }],
-            },
+            { borderBottomColor: colors.border, backgroundColor: colors.background },
           ]}
         >
           <View style={chatStyles.headerLeft}>
-            {/* Tiny 12px status dot instead of large avatar */}
-            <View
-              style={[
-                chatStyles.aiDot,
-                { backgroundColor: colors.primary },
-              ]}
-            />
-            <TouchableOpacity
-              onPress={() => setShowGreetingDropdown((v) => !v)}
-              activeOpacity={0.7}
-              style={{ flex: 1, minWidth: 0 }}
-            >
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                <Text
-                  style={[chatStyles.headerTitle, { color: colors.foreground, fontSize: fs(16) }]}
-                  numberOfLines={1}
-                >
-                  {session?.title && session.title !== "New Chat"
-                    ? session.title
-                    : "AI Tutor"}
-                </Text>
-                <IconSymbol
-                  size={12}
-                  name={showGreetingDropdown ? "chevron.up" : "chevron.down"}
-                  color={colors.muted}
-                />
-              </View>
+            {/* Avatar in header — 28px solid purple circle */}
+            <AIAvatar size={28} />
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text
+                style={[chatStyles.headerTitle, { color: colors.foreground, fontSize: fs(16) }]}
+                numberOfLines={1}
+              >
+                AI Tutor
+              </Text>
               <View style={chatStyles.statusRow}>
                 <View
                   style={[
@@ -1189,8 +928,9 @@ function ChatScreenContent() {
                   </>
                 )}
               </View>
-            </TouchableOpacity>
+            </View>
           </View>
+
           <View style={chatStyles.headerActions}>
             <TouchableOpacity
               onPress={() => setShowSubjectPicker(true)}
@@ -1203,37 +943,6 @@ function ChatScreenContent() {
                 name="book.fill"
                 color={selectedSubject ? colors.primary : colors.muted}
               />
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={async () => {
-                // Mark all notes as seen
-                await AsyncStorage.setItem(NOTES_LAST_SEEN_KEY, JSON.stringify(Date.now()));
-                setUnseenNotesCount(0);
-                router.push("/(tabs)/notes");
-              }}
-              accessibilityLabel="My saved notes"
-              style={chatStyles.headerBtn}
-              activeOpacity={0.7}
-            >
-              <View style={{ position: "relative" }}>
-                <IconSymbol
-                  size={19}
-                  name="bookmark.fill"
-                  color={unseenNotesCount > 0 ? colors.primary : colors.muted}
-                />
-                {unseenNotesCount > 0 && (
-                  <View
-                    style={[
-                      chatStyles.noteBadge,
-                      { backgroundColor: colors.error },
-                    ]}
-                  >
-                    <Text style={chatStyles.noteBadgeText}>
-                      {unseenNotesCount > 9 ? "9+" : String(unseenNotesCount)}
-                    </Text>
-                  </View>
-                )}
-              </View>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => router.push("/chat-history")}
@@ -1267,207 +976,114 @@ function ChatScreenContent() {
             >
               <IconSymbol size={17} name="plus" color={colors.primary} />
             </TouchableOpacity>
-                    </View>
-        </Animated.View>
-        {/* ── Greeting dropdown panel ── */}
-        {showGreetingDropdown && (
-          <TouchableOpacity
-            activeOpacity={1}
-            onPress={() => setShowGreetingDropdown(false)}
-            style={{
-              position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 9,
-            }}
-          >
-            <View
-              style={[
-                {
-                  position: "absolute",
-                  top: HEADER_HEIGHT,
-                  left: 12,
-                  right: 12,
-                  borderRadius: 14,
-                  padding: 16,
-                  zIndex: 20,
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.12,
-                  shadowRadius: 12,
-                  elevation: 8,
-                  backgroundColor: colors.surface,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                },
-              ]}
-            >
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                <AIAvatar size={20} />
-                <Text style={{ fontWeight: "700", fontSize: fs(14), color: colors.foreground }}>
-                  AI Tutor
-                </Text>
-              </View>
-              <Text style={{ fontSize: fs(13), color: colors.muted, lineHeight: 20 }}>
-                {selectedSubject
-                  ? `Ready to help with ${getSubjectLabel(selectedSubject)} ${getSubjectEmoji(selectedSubject)}! Ask me anything — I'll explain concepts, work through problems, and guide you step by step.`
-                  : "Hi! I'm TutorSnap, your personal academic tutor. Ask me anything — Math, Science, English, History, and more. I'll explain concepts, help with homework, and guide you step by step!"}
-              </Text>
-              <Text style={{ fontSize: fs(11), color: colors.muted, marginTop: 8 }}>
-                {isOnline ? "● Online" : "○ Offline"}
-                {selectedSubject ? `  ·  ${getSubjectEmoji(selectedSubject)} ${getSubjectLabel(selectedSubject)}` : ""}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        )}
+          </View>
+        </View>
+
         {/* ── Message area ── */}
         {!sessionLoaded ? (
           <View style={chatStyles.loadingCenter}>
             <ActivityIndicator size="large" color={colors.primary} />
           </View>
+        ) : showWelcome ? (
+          <WelcomeCard
+            colors={colors}
+            fs={fs}
+            subject={selectedSubject}
+            onPrompt={(t) => handleSend(t)}
+          />
         ) : (
           <FlatList
             ref={flatListRef}
-            data={displayMessages}
+            data={messages}
             keyExtractor={(item) => item.id}
             renderItem={({ item, index }) => (
-              <MessageBubble
-                message={item}
-                isFirstInRun={isFirstInRun(index)}
-                colors={colors}
-                fs={fs}
-                onLongPressAI={handleLongPressAI}
-              />
-            )}
-            ListEmptyComponent={
-              showWelcome ? (
-                <WelcomeCard
+              <View>
+                <MessageBubble
+                  message={item}
+                  isFirstInRun={isFirstInRun(index)}
                   colors={colors}
                   fs={fs}
-                  subject={selectedSubject}
-                  onPrompt={(t) => handleSend(t)}
+                  onLongPressAI={handleLongPressAI}
                 />
-              ) : null
-            }
-            contentContainerStyle={{ paddingTop: HEADER_HEIGHT + 4, paddingBottom: TAB_BAR_HEIGHT + 80, flexGrow: 1 }}
+                {/* Follow-up chips — only after the last AI response */}
+                {isLastAIMessage(index) && !chatMutation.isPending && (
+                  <View style={chatStyles.followUpRow}>
+                    {FOLLOW_UP_CHIPS.map((chip) => (
+                      <TouchableOpacity
+                        key={chip}
+                        onPress={() => handleSend(chip)}
+                        style={[
+                          chatStyles.followUpChip,
+                          { backgroundColor: colors.surface, borderColor: colors.border },
+                        ]}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[chatStyles.followUpChipText, { color: colors.foreground, fontSize: fs(12) }]}>
+                          {chip}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </View>
+            )}
+            contentContainerStyle={{ paddingTop: 12, paddingBottom: 16 }}
             showsVerticalScrollIndicator={false}
-            onScroll={handleChatScroll}
-            scrollEventThrottle={16}
-            keyboardDismissMode="on-drag"
-            onTouchStart={() => {
-              // Tap anywhere on message list restores input bar if hidden
-              if (!inputBarVisible.current) {
-                inputBarVisible.current = true;
-                Animated.timing(inputBarAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start();
-              }
-            }}
             onContentSizeChange={() =>
               flatListRef.current?.scrollToEnd({ animated: false })
             }
             ListFooterComponent={
               chatMutation.isPending ? (
-                <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 6, gap: 6 }}>
-                  <TypingDots color={colors.muted} />
+                <View style={chatStyles.typingRow}>
+                  <View style={chatStyles.typingAvatarCol}>
+                    <AIAvatar size={30} />
+                  </View>
+                  <View style={[chatStyles.typingBubble, { backgroundColor: colors.surface }]}>
+                    <TypingDots color={colors.primary} />
+                  </View>
                 </View>
               ) : null
             }
           />
         )}
 
-        {/* ── Top fade gradient — content fades behind header overlay ── */}
+        {/* ── Floating input bar ── */}
         <View
-          pointerEvents="none"
-          style={{
-            position: "absolute", top: HEADER_HEIGHT, left: 0, right: 0,
-            height: 28, zIndex: 5,
-            overflow: "hidden",
-          }}
-        >
-          {[0.55, 0.35, 0.18, 0.08, 0.02].map((opacity, i) => (
-            <View
-              key={i}
-              style={{
-                flex: 1,
-                backgroundColor: colors.background,
-                opacity,
-              }}
-            />
-          ))}
-        </View>
-        {/* ── Bottom fade gradient — content fades behind input bar overlay ── */}
-        <View
-          pointerEvents="none"
-          style={{
-            position: "absolute", bottom: 0, left: 0, right: 0,
-            height: 36, zIndex: 5,
-            overflow: "hidden",
-            flexDirection: "column-reverse",
-          }}
-        >
-          {[0.55, 0.35, 0.18, 0.08, 0.02].map((opacity, i) => (
-            <View
-              key={i}
-              style={{
-                flex: 1,
-                backgroundColor: colors.background,
-                opacity,
-              }}
-            />
-          ))}
-        </View>
-        {/* ── Scroll-to-bottom button ── */}
-        {showScrollBtn && (
-          <TouchableOpacity
-            onPress={() => flatListRef.current?.scrollToEnd({ animated: true })}
-            style={[chatStyles.scrollBtn, { backgroundColor: colors.surface, borderColor: colors.border, shadowColor: "#000" }]}
-            activeOpacity={0.8}
-          >
-            <IconSymbol size={18} name="chevron.down" color={colors.primary} />
-          </TouchableOpacity>
-        )}
-        {/* ── Follow-up chips (collapsed by default, expand on tap) ── */}
-        {followUpChips.length > 0 && (
-          <View style={{ paddingHorizontal: 12, paddingBottom: 2 }}>
-            {!showFollowUpExpanded ? (
-              <TouchableOpacity
-                onPress={() => setShowFollowUpExpanded(true)}
-                style={[chatStyles.followUpChip, { alignSelf: "flex-start", backgroundColor: `${colors.primary}10`, borderColor: `${colors.primary}25` }]}
-                activeOpacity={0.7}
-              >
-                <IconSymbol size={12} name="sparkles" color={colors.primary} />
-                <Text style={[chatStyles.followUpChipText, { color: colors.primary, fontSize: fs(11), marginLeft: 4 }]}>Suggestions</Text>
-                <IconSymbol size={11} name="chevron.right" color={colors.primary} />
-              </TouchableOpacity>
-            ) : (
-              <View style={chatStyles.followUpRow}>
-                {followUpChips.map((chip) => (
-                  <TouchableOpacity
-                    key={chip.label}
-                    onPress={() => { handleSend(chip.text); setShowFollowUpExpanded(false); }}
-                    style={[chatStyles.followUpChip, { backgroundColor: `${colors.primary}14`, borderColor: `${colors.primary}30` }]}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[chatStyles.followUpChipText, { color: colors.primary, fontSize: fs(12) }]} numberOfLines={1}>{chip.label}</Text>
-                  </TouchableOpacity>
-                ))}
-                <TouchableOpacity onPress={() => setShowFollowUpExpanded(false)} style={{ padding: 4 }} activeOpacity={0.7}>
-                  <IconSymbol size={14} name="xmark.circle.fill" color={colors.muted} />
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-        )}
-        {/* ── Floating input bar — absolutely positioned overlay, takes zero layout space ── */}
-        <Animated.View
           style={[
             chatStyles.floatingBarWrapper,
-            {
-              position: "absolute", left: 0, right: 0, zIndex: 10,
-              bottom: inputBarBottom,
-              paddingBottom: Platform.OS === "ios" ? Math.max(insets.bottom, 8) + 4 : 8,
-              backgroundColor: "transparent",
-              opacity: inputBarAnim,
-              transform: [{ translateY: inputBarAnim.interpolate({ inputRange: [0, 1], outputRange: [80, 0] }) }],
-            },
+            { paddingBottom: Platform.OS === "ios" ? 8 : 6 },
           ]}
         >
-          {/* No limit strip — limit is communicated silently via lock icon on send button */}
+          {/* Limit nudge strip */}
+          {!isPremium && !isDevMode && sessionMessageCount > 0 && (
+            <TouchableOpacity
+              onPress={() => setShowPaywallModal(true)}
+              activeOpacity={0.8}
+              style={[
+                chatStyles.limitStrip,
+                {
+                  backgroundColor: isAtLimit ? `${colors.error}15` : `${colors.warning}12`,
+                  borderColor: isAtLimit ? `${colors.error}35` : `${colors.warning}28`,
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  chatStyles.limitText,
+                  { color: isAtLimit ? colors.error : colors.warning, fontSize: fs(12) },
+                ]}
+              >
+                {isAtLimit
+                  ? "Message limit reached — Upgrade for unlimited chat"
+                  : `${messagesLeft} message${messagesLeft === 1 ? "" : "s"} left · Upgrade`}
+              </Text>
+              <IconSymbol
+                size={12}
+                name="chevron.right"
+                color={isAtLimit ? colors.error : colors.warning}
+              />
+            </TouchableOpacity>
+          )}
 
           {/* Pill input card */}
           <View
@@ -1499,12 +1115,13 @@ function ChatScreenContent() {
                 color={selectedSubject ? colors.primary : colors.muted}
               />
             </TouchableOpacity>
+
             <TextInput
               style={[
                 chatStyles.input,
-                { color: colors.foreground, fontSize: fs(14), lineHeight: fs(14) * 1.4 },
+                { color: colors.foreground, fontSize: fs(15), lineHeight: fs(15) * 1.45 },
               ]}
-              placeholder="Ask anything…"
+              placeholder={isAtLimit ? "Upgrade to keep chatting…" : "Ask anything…"}
               placeholderTextColor={colors.muted}
               value={inputText}
               onChangeText={setInputText}
@@ -1514,83 +1131,16 @@ function ChatScreenContent() {
               onSubmitEditing={() => handleSend()}
               editable={!isAtLimit}
             />
-            {/* Mic button — hidden when text is typed; shows pulse ring + timer while recording */}
-            {!inputText.trim() && (
-              <View style={{ alignItems: "center", justifyContent: "center" }}>
-                {/* Pulsing red ring overlay — only visible while recording */}
-                {isRecording && (
-                  <Animated.View
-                    pointerEvents="none"
-                    style={{
-                      position: "absolute",
-                      width: 30,
-                      height: 30,
-                      borderRadius: 15,
-                      borderWidth: 2,
-                      borderColor: colors.error,
-                      opacity: 0.6,
-                      transform: [{ scale: pulseAnim }],
-                    }}
-                  />
-                )}
-                <TouchableOpacity
-                  accessibilityLabel={isRecording ? "Stop recording" : "Voice input"}
-                  onPress={handleVoiceInput}
-                  disabled={isTranscribing}
-                  style={[
-                    chatStyles.micBtn,
-                    {
-                      backgroundColor: isRecording
-                        ? `${colors.error}20`
-                        : `${colors.primary}14`,
-                    },
-                  ]}
-                  activeOpacity={0.75}
-                >
-                  {isTranscribing ? (
-                    <ActivityIndicator size={14} color={colors.primary} />
-                  ) : isRecording ? (
-                    // Live waveform — 4 animated bars
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 2, height: 16 }}>
-                      {[waveBar1, waveBar2, waveBar3, waveBar4].map((bar, i) => (
-                        <Animated.View
-                          key={i}
-                          style={{
-                            width: 3,
-                            borderRadius: 2,
-                            backgroundColor: colors.error,
-                            height: bar.interpolate({ inputRange: [0, 1], outputRange: [4, 14] }),
-                          }}
-                        />
-                      ))}
-                    </View>
-                  ) : (
-                    <IconSymbol
-                      size={15}
-                      name="mic.fill"
-                      color={colors.primary}
-                    />
-                  )}
-                </TouchableOpacity>
-                {/* Duration timer — shown below mic button while recording */}
-                {isRecording && (
-                  <Text style={{ fontSize: 9, color: colors.error, fontWeight: "600", marginTop: 1 }}>
-                    {`${Math.floor(recordingDuration / 60)}:${String(recordingDuration % 60).padStart(2, "0")}`}
-                  </Text>
-                )}
-              </View>
-            )}
+
             <TouchableOpacity
-              accessibilityLabel={isAtLimit ? "Upgrade to unlock" : "Send message"}
-              onPress={() => isAtLimit ? setShowPaywallModal(true) : handleSend()}
-              disabled={(!inputText.trim() && !isAtLimit) || chatMutation.isPending || !isOnline}
+              accessibilityLabel="Send message"
+              onPress={() => handleSend()}
+              disabled={!inputText.trim() || chatMutation.isPending || !isOnline || isAtLimit}
               style={[
                 chatStyles.sendBtn,
                 {
                   backgroundColor:
-                    isAtLimit
-                      ? `${colors.muted}22`
-                      : isOnline && inputText.trim()
+                    isOnline && !isAtLimit && inputText.trim()
                       ? colors.primary
                       : colors.border,
                 },
@@ -1599,17 +1149,15 @@ function ChatScreenContent() {
             >
               <IconSymbol
                 size={17}
-                name={isAtLimit ? "lock.fill" : isOnline ? "paperplane.fill" : "wifi.slash"}
+                name={isOnline ? "paperplane.fill" : "wifi.slash"}
                 color={
-                  isAtLimit
-                    ? colors.muted
-                    : isOnline && inputText.trim() ? "#FFFFFF" : colors.muted
+                  isOnline && !isAtLimit && inputText.trim() ? "#FFFFFF" : colors.muted
                 }
               />
             </TouchableOpacity>
           </View>
 
-          {userMessageCount > 0 && clearLinkVisible && (
+          {userMessageCount > 0 && (
             <TouchableOpacity
               onPress={handleClearChat}
               style={chatStyles.clearRow}
@@ -1620,7 +1168,7 @@ function ChatScreenContent() {
               </Text>
             </TouchableOpacity>
           )}
-        </Animated.View>
+        </View>
       </KeyboardAvoidingView>
 
       {/* ── Subject picker sheet ── */}
@@ -1831,21 +1379,21 @@ const chatStyles = StyleSheet.create({
   limitText: { fontWeight: "600", flex: 1 },
   inputCard: {
     flexDirection: "row",
-    alignItems: "center",
-    borderRadius: 20,
+    alignItems: "flex-end",
+    borderRadius: 26,
     borderWidth: 1,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    gap: 8,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.12,
     shadowRadius: 8,
     elevation: 4,
   },
   subjectPill: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
@@ -1853,14 +1401,14 @@ const chatStyles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    maxHeight: 60,
-    paddingTop: Platform.OS === "ios" ? 3 : 2,
-    paddingBottom: Platform.OS === "ios" ? 3 : 2,
+    maxHeight: 120,
+    paddingTop: Platform.OS === "ios" ? 6 : 4,
+    paddingBottom: Platform.OS === "ios" ? 6 : 4,
   },
   sendBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
@@ -1918,66 +1466,19 @@ const chatStyles = StyleSheet.create({
     minWidth: 180,
   },
   pdfCardText: { fontWeight: "600" },
-  noteBadge: {
-    position: "absolute",
-    top: -5,
-    right: -6,
-    minWidth: 14,
-    height: 14,
-    borderRadius: 7,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 2,
-  },
-  noteBadgeText: {
-    color: "#fff",
-    fontSize: 9,
-    fontWeight: "700",
-    lineHeight: 14,
-  },
   followUpRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingBottom: 6,
+    gap: 8,
+    paddingHorizontal: 50,
+    paddingTop: 6,
+    paddingBottom: 10,
   },
   followUpChip: {
-    borderRadius: 20,
+    borderRadius: 16,
     borderWidth: 1,
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
-  followUpChipText: {
-    fontWeight: "600",
-  },
-  aiDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 4,
-  },
-  scrollBtn: {
-    position: "absolute",
-    right: 16,
-    bottom: 90,
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  micBtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-  },
+  followUpChipText: { fontWeight: "500" },
 });

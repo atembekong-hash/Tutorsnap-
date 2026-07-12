@@ -11,7 +11,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Keyboard,
-  Animated,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import * as Haptics from "expo-haptics";
@@ -366,28 +365,12 @@ function SolveScreenContent() {
     cursorPosRef.current = 0;
   };
 
-    const streak = progress?.streak;
+  const streak = progress?.streak;
   const dailyGoalPct = streak
     ? getDailyGoalPercent(streak.todaySolved, streak.dailyGoal)
     : 0;
   const streakEmoji = streak ? getStreakEmoji(streak.currentStreak) : "🌱";
-  // Auto-hide header on scroll
-  const SOLVE_HEADER_HEIGHT = 96;
-  const solveHeaderAnim = useRef(new Animated.Value(1)).current;
-  const solveLastScrollY = useRef(0);
-  const solveHeaderVisible = useRef(true);
-  const handleSolveScroll = useCallback((e: { nativeEvent: { contentOffset: { y: number } } }) => {
-    const y = e.nativeEvent.contentOffset.y;
-    const delta = y - solveLastScrollY.current;
-    solveLastScrollY.current = y;
-    if (delta > 6 && solveHeaderVisible.current && y > SOLVE_HEADER_HEIGHT) {
-      solveHeaderVisible.current = false;
-      Animated.timing(solveHeaderAnim, { toValue: 0, duration: 200, useNativeDriver: true }).start();
-    } else if (delta < -6 && !solveHeaderVisible.current) {
-      solveHeaderVisible.current = true;
-      Animated.timing(solveHeaderAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start();
-    }
-  }, [solveHeaderAnim]);
+
   return (
     <ScreenContainer>
       <KeyboardAvoidingView
@@ -395,20 +378,14 @@ function SolveScreenContent() {
         style={{ flex: 1 }}
         keyboardVerticalOffset={showMathKeyboard ? 0 : undefined}
       >
-        {/* Absolute header overlay — hides on scroll, takes zero layout space */}
-        <Animated.View
-          style={[
-            styles.header,
-            {
-              position: "absolute", top: 0, left: 0, right: 0, zIndex: 10,
-              backgroundColor: colors.background,
-              opacity: solveHeaderAnim,
-              transform: [{ translateY: solveHeaderAnim.interpolate({ inputRange: [0, 1], outputRange: [-SOLVE_HEADER_HEIGHT, 0] }) }],
-            },
-          ]}
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 40 }}
         >
-          {/* Row 1: app name + action icons */}
-          <View style={styles.headerRow1}>
+          {/* Header — Row 1: app name + action icons */}
+          <View style={styles.header}>
+            <View style={styles.headerRow1}>
               <Text style={[styles.greeting, { color: colors.muted }]}>TutorSnap</Text>
               <View style={styles.headerIcons}>
                 <TouchableOpacity
@@ -470,9 +447,9 @@ function SolveScreenContent() {
                   <IconSymbol size={20} name="gear" color={colors.foreground} />
                 </TouchableOpacity>
               </View>
-          </View>
-          {/* Row 2: title left, streak badge right */}
-          <View style={styles.headerRow2}>
+            </View>
+            {/* Row 2: title left, streak badge right */}
+            <View style={styles.headerRow2}>
               <Text style={[styles.title, { color: colors.foreground }]}>
                 Solve Any <Text style={{ color: colors.primary }}>Problem</Text>
               </Text>
@@ -491,16 +468,9 @@ function SolveScreenContent() {
                   </View>
                 </TouchableOpacity>
               )}
+            </View>
           </View>
-        </Animated.View>
-        <ScrollView
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-          onScroll={handleSolveScroll}
-          scrollEventThrottle={16}
-          contentContainerStyle={{ paddingTop: SOLVE_HEADER_HEIGHT + 8, paddingBottom: 40 }}
-        >
-        {/* Daily Goal Progress */}
+          {/* Daily Goal Progress */}
           {streak && streak.dailyGoal > 0 && (
             <TouchableOpacity
               accessibilityLabel="View progress"
