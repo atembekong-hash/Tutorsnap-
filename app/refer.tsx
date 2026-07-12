@@ -258,13 +258,16 @@ export default function ReferScreen() {
   const [options, setOptions] = useState<EarningOption[]>([]);
   const [copied, setCopied] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [expiryWarning, setExpiryWarning] = useState<{ show: boolean; daysIdle: number; pendingDays: number } | null>(null);
   const [redeeming, setRedeeming] = useState(false);
 
   const showToast = (msg: string) => {
     setToast(msg);
-    setTimeout(() => setToast(null), 3000);
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setToast(null), 3000);
   };
 
   const load = useCallback(async () => {
@@ -292,7 +295,8 @@ export default function ReferScreen() {
     H.impactLight()
     await Clipboard.setStringAsync(code);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2500);
+    if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+    copiedTimerRef.current = setTimeout(() => setCopied(false), 2500);
     showToast("Invite code copied!");
   }, [code]);
 

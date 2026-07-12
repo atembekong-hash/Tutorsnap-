@@ -461,6 +461,7 @@ function SolveScreenContent() {
   const { isPremium, usage, checkLimit, incrementUsage: incUsage, isDevMode } = usePremium();
   const inputRef = useRef<TextInput>(null);
   const cursorPosRef = useRef<number>(0);
+  const shieldToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadProgress = async () => {
     const p = await getProgress();
@@ -506,7 +507,8 @@ function SolveScreenContent() {
       applyStreakShieldIfNeeded().then(({ shieldUsed }) => {
         if (shieldUsed) {
           setShieldUsedToast(true);
-          setTimeout(() => setShieldUsedToast(false), 4000);
+          if (shieldToastTimerRef.current) clearTimeout(shieldToastTimerRef.current);
+          shieldToastTimerRef.current = setTimeout(() => setShieldUsedToast(false), 4000);
         }
       });
       getShieldCount().then(setShieldCount);

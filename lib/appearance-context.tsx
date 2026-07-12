@@ -119,6 +119,8 @@ export interface PresetTheme {
   settings: Partial<AppearanceSettings>;
   /** Representative colour swatches [accent, surface, background] for light mode */
   swatches: [string, string, string];
+  /** Representative colour swatches [accent, surface, background] for dark mode */
+  swatchesDark: [string, string, string];
 }
 
 export const PRESET_THEMES: PresetTheme[] = [
@@ -128,6 +130,7 @@ export const PRESET_THEMES: PresetTheme[] = [
     description: "Distraction-free study mode with muted tones and compact layout.",
     emoji: "🎯",
     swatches: ["#475569", "#F1F5F9", "#FFFFFF"],
+    swatchesDark: ["#94A3B8", "#1E2022", "#151718"],
     settings: {
       accentColorId: "slate",
       fontFamily: "system",
@@ -148,6 +151,7 @@ export const PRESET_THEMES: PresetTheme[] = [
     description: "Bold colours, rounded fonts, and spacious layout for an energetic feel.",
     emoji: "🌈",
     swatches: ["#7C3AED", "#F5F3FF", "#FFFFFF"],
+    swatchesDark: ["#8B5CF6", "#2D1B69", "#151718"],
     settings: {
       accentColorId: "purple",
       fontFamily: "rounded",
@@ -168,6 +172,7 @@ export const PRESET_THEMES: PresetTheme[] = [
     description: "Clean lines, flat bubbles, and no visual noise.",
     emoji: "⬜",
     swatches: ["#94A3B8", "#F8FAFC", "#FFFFFF"],
+    swatchesDark: ["#64748B", "#1E2022", "#151718"],
     settings: {
       accentColorId: "slate",
       fontFamily: "system",
@@ -188,6 +193,7 @@ export const PRESET_THEMES: PresetTheme[] = [
     description: "Large text, high contrast, and bigger tap targets for easier reading.",
     emoji: "♿",
     swatches: ["#2563EB", "#EFF6FF", "#FFFFFF"],
+    swatchesDark: ["#3B82F6", "#1E3A5F", "#151718"],
     settings: {
       accentColorId: "blue",
       fontFamily: "system",
@@ -235,6 +241,8 @@ export interface AppearanceSettings {
   customPreset: Partial<AppearanceSettings> | null;
   /** User-chosen display name for the Custom preset */
   customPresetName: string;
+  /** Snapshot of settings before the last preset was applied, for undo */
+  previousSettings: Partial<AppearanceSettings> | null;
 }
 
 export const DEFAULT_APPEARANCE: AppearanceSettings = {
@@ -265,6 +273,7 @@ export const DEFAULT_APPEARANCE: AppearanceSettings = {
   activePresetId: null,
   customPreset: null,
   customPresetName: "Custom",
+  previousSettings: null,
 };
 
 // ─── Derived helpers ──────────────────────────────────────────────────────────
@@ -330,6 +339,8 @@ interface AppearanceContextValue {
   saveCustomPreset: (name?: string) => void;
   /** Rename the Custom preset without re-snapshotting settings */
   renameCustomPreset: (name: string) => void;
+  /** Undo the last preset apply, restoring the previous settings snapshot */
+  undoPreset: () => void;
   /** Convenience: scale a base font size by the current multiplier */
   fs: (base: number) => number;
   /** Resolved accent color for current color scheme */
@@ -357,6 +368,7 @@ const AppearanceContext = createContext<AppearanceContextValue>({
   resetSubjectAccents: () => {},
   saveCustomPreset: () => {},
   renameCustomPreset: () => {},
+  undoPreset: () => {},
   fs: (base) => base,
   accentColor: () => ACCENT_COLORS[0].light,
   getSubjectAccent: () => ACCENT_COLORS[0].light,
@@ -421,7 +433,9 @@ export function AppearanceProvider({ children }: { children: React.ReactNode }) 
     if (presetId === "custom") {
       setSettings((prev) => {
         if (!prev.customPreset) return prev;
-        const next = { ...prev, ...prev.customPreset, activePresetId: "custom" };
+        // Snapshot current settings for undo (strip previousSettings to avoid deep nesting)
+        const { previousSettings: _ps, ...snapshot } = prev;
+        const next = { ...prev, ...prev.customPreset, activePresetId: "custom", previousSettings: snapshot };
         AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next)).catch(() => {});
         return next;
       });
@@ -430,7 +444,17 @@ export function AppearanceProvider({ children }: { children: React.ReactNode }) 
     const preset = PRESET_THEMES.find((p) => p.id === presetId);
     if (!preset) return;
     setSettings((prev) => {
-      const next = { ...prev, ...preset.settings, activePresetId: presetId };
+      const { previousSettings: _ps, ...snapshot } = prev;
+      const next = { ...prev, ...preset.settings, activePresetId: presetId, previousSettings: snapshot };
+      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next)).catch(() => {});
+      return next;
+    });
+  }, []);
+
+  const undoPreset = useCallback(() => {
+    setSettings((prev) => {
+      if (!prev.previousSettings) return prev;
+      const next = { ...prev, ...prev.previousSettings, previousSettings: null };
       AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next)).catch(() => {});
       return next;
     });
@@ -515,6 +539,7 @@ export function AppearanceProvider({ children }: { children: React.ReactNode }) 
         resetSubjectAccents,
         saveCustomPreset,
         renameCustomPreset,
+        undoPreset,
         fs,
         accentColor,
         getSubjectAccent,

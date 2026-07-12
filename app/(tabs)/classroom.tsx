@@ -11,7 +11,7 @@
  *  - Teacher analytics (subject breakdown, activity)
  *  - Classroom notification preferences
  */
-import React, { useState, useCallback, useMemo, useEffect } from "react";
+import React, { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -126,6 +126,7 @@ export default function ClassroomTabScreen() {
   const [classroomNameInput, setClassroomNameInput] = useState("");
 
   const [copiedCode, setCopiedCode] = useState(false);
+  const copiedCodeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Homework modal state
   const [homeworkModalItem, setHomeworkModalItem] = useState<ClassroomProblem | null>(null);
@@ -313,8 +314,9 @@ export default function ClassroomTabScreen() {
   const handleCopyCode = async (code: string) => {
     await Clipboard.setStringAsync(code);
     setCopiedCode(true);
-    H.notificationSuccess()
-    setTimeout(() => setCopiedCode(false), 2000);
+    H.notificationSuccess();
+    if (copiedCodeTimerRef.current) clearTimeout(copiedCodeTimerRef.current);
+    copiedCodeTimerRef.current = setTimeout(() => setCopiedCode(false), 2000);
   };
 
   const handleShareCode = async (code: string, name: string) => {

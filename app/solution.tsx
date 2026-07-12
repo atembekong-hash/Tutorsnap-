@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { AIResponseRenderer, AIResponseErrorBoundary } from "@/components/ai-response-renderer";
 import {
   View,
@@ -103,6 +103,7 @@ function WorkedExampleCopyButton({
   fs: (n: number) => number;
 }) {
   const [copied, setCopied] = useState(false);
+  const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   return (
     <TouchableOpacity
       accessibilityLabel="Copy example problem to clipboard"
@@ -111,8 +112,9 @@ function WorkedExampleCopyButton({
         try {
           await Clipboard.setStringAsync(problem);
           setCopied(true);
-          H.notificationSuccess()
-          setTimeout(() => setCopied(false), 2000);
+          H.notificationSuccess();
+          if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+          copiedTimerRef.current = setTimeout(() => setCopied(false), 2000);
         } catch { /* ignore */ }
       }}
       style={[
@@ -140,13 +142,16 @@ export default function SolutionScreen() {
   const params = useLocalSearchParams();
   const [bookmarked, setBookmarked] = useState(false);
   const [copyFeedback, setCopyFeedback] = useState(false);
+  const copyFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [shareLoading, setShareLoading] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [copyLinkFeedback, setCopyLinkFeedback] = useState(false);
+  const copyLinkFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showSimilar, setShowSimilar] = useState(false);
   const [similarProblems, setSimilarProblems] = useState<{ id: string; problem: string; hint: string }[]>([]);
   const [expandedHint, setExpandedHint] = useState<string | null>(null);
   const [copiedProblemId, setCopiedProblemId] = useState<string | null>(null);
+  const copiedProblemIdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const generateSimilarMutation = trpc.math.generateSimilar.useMutation();
   const [discussLoading, setDiscussLoading] = useState(false);
   const [explainDiffLoading, setExplainDiffLoading] = useState(false);
@@ -389,7 +394,8 @@ export default function SolutionScreen() {
     try {
       await Clipboard.setStringAsync(link);
       setCopyLinkFeedback(true);
-      setTimeout(() => setCopyLinkFeedback(false), 2000);
+      if (copyLinkFeedbackTimerRef.current) clearTimeout(copyLinkFeedbackTimerRef.current);
+      copyLinkFeedbackTimerRef.current = setTimeout(() => setCopyLinkFeedback(false), 2000);
     } catch {
       // ignore
     }
@@ -437,7 +443,8 @@ export default function SolutionScreen() {
     try {
       await Clipboard.setStringAsync(solution!.answer);
       setCopyFeedback(true);
-      setTimeout(() => setCopyFeedback(false), 1500);
+      if (copyFeedbackTimerRef.current) clearTimeout(copyFeedbackTimerRef.current);
+      copyFeedbackTimerRef.current = setTimeout(() => setCopyFeedback(false), 1500);
     } catch (e) {
       // ignore
     }
@@ -852,8 +859,9 @@ export default function SolutionScreen() {
                         try {
                           await Clipboard.setStringAsync(p.problem);
                           setCopiedProblemId(p.id);
-                          H.notificationSuccess()
-                          setTimeout(() => setCopiedProblemId(null), 2000);
+                          H.notificationSuccess();
+                          if (copiedProblemIdTimerRef.current) clearTimeout(copiedProblemIdTimerRef.current);
+                          copiedProblemIdTimerRef.current = setTimeout(() => setCopiedProblemId(null), 2000);
                         } catch { /* ignore */ }
                       }}
                       style={[styles.similarCopyBtn, { backgroundColor: copiedProblemId === p.id ? `${colors.success}20` : `${colors.primary}12` }]}

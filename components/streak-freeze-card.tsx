@@ -6,7 +6,7 @@
  * - When activated, covers today as "solved" so the streak is preserved
  *   even if no problems are solved that day
  */
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from "react-native";
 import * as H from "@/lib/haptics";
 import { useColors } from "@/hooks/use-colors";
@@ -29,6 +29,8 @@ export function StreakFreezeCard({ currentStreak, onFreezeActivated, onFreezeEar
   const [activating, setActivating] = useState(false);
   const [justActivated, setJustActivated] = useState(false);
   const [justEarned, setJustEarned] = useState(false);
+  const justEarnedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const justActivatedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const today = new Date().toISOString().split("T")[0];
   const isActiveToday = state.activeUntil === today;
@@ -51,7 +53,8 @@ export function StreakFreezeCard({ currentStreak, onFreezeActivated, onFreezeEar
           setJustEarned(true);
           H.notificationSuccess();
           onFreezeEarned?.();
-          setTimeout(() => setJustEarned(false), 4000);
+          if (justEarnedTimerRef.current) clearTimeout(justEarnedTimerRef.current);
+          justEarnedTimerRef.current = setTimeout(() => setJustEarned(false), 4000);
         }
       });
     }
@@ -67,7 +70,8 @@ export function StreakFreezeCard({ currentStreak, onFreezeActivated, onFreezeEar
       setJustActivated(true);
       H.notificationSuccess();
       onFreezeActivated?.();
-      setTimeout(() => setJustActivated(false), 4000);
+      if (justActivatedTimerRef.current) clearTimeout(justActivatedTimerRef.current);
+      justActivatedTimerRef.current = setTimeout(() => setJustActivated(false), 4000);
     }
     setActivating(false);
   };

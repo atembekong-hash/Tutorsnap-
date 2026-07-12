@@ -632,6 +632,7 @@ function ChatScreenContent() {
   const [contextualChips, setContextualChips] = useState<string[]>([]);
 
   const flatListRef = useRef<FlatList>(null);
+  const shareCopiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { isOnline } = useNetworkStatus();
   const colorScheme = useColorScheme();
   const { getSubjectAccent } = useAppearance();
@@ -966,7 +967,8 @@ function ChatScreenContent() {
           await navigator.clipboard.writeText(shareText);
         }
         setShareCopied(true);
-        setTimeout(() => setShareCopied(false), 2500);
+        if (shareCopiedTimerRef.current) clearTimeout(shareCopiedTimerRef.current);
+        shareCopiedTimerRef.current = setTimeout(() => setShareCopied(false), 2500);
       } catch { /* ignore */ }
       return;
     }

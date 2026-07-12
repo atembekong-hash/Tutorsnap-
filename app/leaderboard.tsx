@@ -4,7 +4,7 @@
  * Shows a ranked list of the user + friends by streak.
  * Friends are added manually or via a shareable progress card.
  */
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -53,6 +53,7 @@ export default function LeaderboardScreen() {
   const [friends, setFriends] = useState<FriendEntry[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [copied, setCopied] = useState(false);
+  const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Add friend form state
   const [friendName, setFriendName] = useState("");
@@ -113,7 +114,8 @@ export default function LeaderboardScreen() {
       await Clipboard.setStringAsync(inviteCode);
       setCopied(true);
       H.notificationSuccess();
-      setTimeout(() => setCopied(false), 2000);
+      if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+      copiedTimerRef.current = setTimeout(() => setCopied(false), 2000);
     } catch { /* clipboard failure is non-critical */ }
   };
 

@@ -142,6 +142,7 @@ function ScoreSummary({
   const subjectLabel = getSubjectLabel(subject);
 
   const [copied, setCopied] = React.useState(false);
+  const copiedTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleShareResults = async () => {
     H.impactLight()
@@ -164,7 +165,8 @@ function ScoreSummary({
       try {
         await Clipboard.setStringAsync(message);
         setCopied(true);
-        setTimeout(() => setCopied(false), 2500);
+        if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+        copiedTimerRef.current = setTimeout(() => setCopied(false), 2500);
       } catch {
         // clipboard unavailable — ignore
       }

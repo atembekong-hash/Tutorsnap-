@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   View,
   Text,
@@ -251,6 +251,7 @@ export default function QuizHistoryDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [copied, setCopied] = useState(false);
+  const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!id) {
@@ -304,7 +305,8 @@ export default function QuizHistoryDetailScreen() {
       try {
         await Clipboard.setStringAsync(message);
         setCopied(true);
-        setTimeout(() => setCopied(false), 2500);
+        if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+        copiedTimerRef.current = setTimeout(() => setCopied(false), 2500);
       } catch {
         // clipboard unavailable
       }

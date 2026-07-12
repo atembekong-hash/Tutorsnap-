@@ -256,11 +256,13 @@ export default function AppearanceSettingsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const colorScheme = useColorScheme() ?? "light";
-  const { settings, updateSetting, resetSettings, applyPreset, resetSubjectAccents, saveCustomPreset, renameCustomPreset, accentColor } = useAppearance();
+  const { settings, updateSetting, resetSettings, applyPreset, undoPreset, resetSubjectAccents, saveCustomPreset, renameCustomPreset, accentColor } = useAppearance();
   const [customPresetNameInput, setCustomPresetNameInput] = React.useState(settings.customPresetName);
   const [importText, setImportText] = useState("");
   const [importError, setImportError] = useState<string | null>(null);
   const [importSuccess, setImportSuccess] = useState(false);
+  const [undoVisible, setUndoVisible] = useState(false);
+  const undoTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleReset = useCallback(() => {
     Alert.alert(
@@ -300,7 +302,18 @@ export default function AppearanceSettingsScreen() {
   const handleApplyPreset = useCallback((presetId: string) => {
     impactMedium();
     applyPreset(presetId);
+    // Show undo toast for 4 seconds
+    setUndoVisible(true);
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    undoTimerRef.current = setTimeout(() => setUndoVisible(false), 4000);
   }, [applyPreset]);
+
+  const handleUndoPreset = useCallback(() => {
+    impactMedium();
+    undoPreset();
+    setUndoVisible(false);
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+  }, [undoPreset]);
 
   const handleSaveCustomPreset = useCallback(() => {
     impactMedium();
@@ -380,6 +393,16 @@ export default function AppearanceSettingsScreen() {
         <View style={styles.backBtn} />
       </View>
 
+      {/* Undo preset toast */}
+      {undoVisible && (
+        <View style={[styles.undoToast, { backgroundColor: colors.foreground, bottom: insets.bottom + 16 }]}>
+          <Text style={[styles.undoToastText, { color: colors.background }]}>Preset applied</Text>
+          <TouchableOpacity onPress={handleUndoPreset} accessibilityLabel="Undo preset" accessibilityRole="button">
+            <Text style={[styles.undoToastBtn, { color: globalAccent }]}>Undo</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       <ScrollView
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 32 }]}
         showsVerticalScrollIndicator={false}
@@ -412,9 +435,9 @@ export default function AppearanceSettingsScreen() {
                 accessibilityLabel={`Apply ${preset.label} preset`}
                 accessibilityRole="button"
               >
-                {/* Colour swatch strip */}
+                {/* Colour swatch strip — light or dark palette based on current scheme */}
                 <View style={styles.presetSwatchRow}>
-                  {preset.swatches.map((swatch, i) => (
+                  {(colorScheme === "dark" ? preset.swatchesDark : preset.swatches).map((swatch, i) => (
                     <View
                       key={i}
                       style={[styles.presetSwatch, { backgroundColor: swatch, borderColor: `${swatch}60` }]}
@@ -931,6 +954,32 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     paddingBottom: 2,
     marginBottom: 4,
+  },
+  undoToast: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    zIndex: 100,
+    shadowColor: "#000",
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 6,
+  },
+  undoToastText: {
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  undoToastBtn: {
+    fontSize: 14,
+    fontWeight: "700",
+    marginLeft: 16,
   },
   presetSwatchRow: {
     flexDirection: "row",

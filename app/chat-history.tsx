@@ -483,6 +483,7 @@ export default function ChatHistoryScreen() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const copiedIdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Rename modal state
   const [renameTarget, setRenameTarget] = useState<ChatSessionSummary | null>(null);
@@ -604,7 +605,8 @@ export default function ChatHistoryScreen() {
       try {
         await Clipboard.setStringAsync(shareText);
         setCopiedId(session.id);
-        setTimeout(() => setCopiedId(null), 2500);
+        if (copiedIdTimerRef.current) clearTimeout(copiedIdTimerRef.current);
+        copiedIdTimerRef.current = setTimeout(() => setCopiedId(null), 2500);
       } catch { /* ignore */ }
       return;
     }

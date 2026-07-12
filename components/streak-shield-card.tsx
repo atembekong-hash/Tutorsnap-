@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from "react-native";
 import * as H from "@/lib/haptics";
 import { useColors } from "@/hooks/use-colors";
@@ -23,6 +23,7 @@ export function StreakShieldCard({ currentStreak, onShieldEarned }: Props) {
   const [shields, setShields] = useState(0);
   const [earning, setEarning] = useState(false);
   const [justEarned, setJustEarned] = useState(false);
+  const justEarnedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const load = useCallback(async () => {
     const count = await getShieldCount();
@@ -43,7 +44,8 @@ export function StreakShieldCard({ currentStreak, onShieldEarned }: Props) {
     setJustEarned(true);
     setEarning(false);
     onShieldEarned?.(newCount);
-    setTimeout(() => setJustEarned(false), 3000);
+    if (justEarnedTimerRef.current) clearTimeout(justEarnedTimerRef.current);
+    justEarnedTimerRef.current = setTimeout(() => setJustEarned(false), 3000);
   };
 
   return (
