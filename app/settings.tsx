@@ -179,6 +179,13 @@ export default function SettingsScreen() {
   const [backupReminderSettings, setBackupReminderSettings] = useState<BackupReminderSettings>(DEFAULT_BACKUP_REMINDER);
   const [showBackupTimePicker, setShowBackupTimePicker] = useState(false);
 
+  // Last export timestamp
+  const [lastExportedAt, setLastExportedAt] = useState<string | null>(null);
+
+  // Data operation log (last 3 import/export actions)
+  type DataOp = { type: "export_json" | "export_pdf" | "import_file" | "import_url"; date: string; items: number };
+  const [dataOpLog, setDataOpLog] = useState<DataOp[]>([]);
+
   // Redeem referral code
   const [showRedeemModal, setShowRedeemModal] = useState(false);
   const [redeemCode, setRedeemCode] = useState("");
@@ -270,6 +277,8 @@ export default function SettingsScreen() {
     AsyncStorage.getItem("@tutorsnap/userName").then((n: string | null) => setUserNameState(n || null));
     isBackupReminderEnabled().then(setBackupReminderEnabled);
     getBackupReminderSettings().then(setBackupReminderSettings);
+    AsyncStorage.getItem("@tutorsnap/lastExportedAt").then((v) => setLastExportedAt(v));
+    AsyncStorage.getItem("@tutorsnap/dataOpLog").then((v) => { try { if (v) setDataOpLog(JSON.parse(v)); } catch {} });
     AsyncStorage.getItem("@tutorsnap/preferredCategories").then((raw) => {
       if (raw) {
         try {
@@ -632,6 +641,15 @@ export default function SettingsScreen() {
       const fileUri = (FileSystem.cacheDirectory ?? "") + fileName;
       await FileSystem.writeAsStringAsync(fileUri, json, { encoding: FileSystem.EncodingType.UTF8 });
       const canShare = await Sharing.isAvailableAsync();
+      const now = new Date().toISOString();
+      await AsyncStorage.setItem("@tutorsnap/lastExportedAt", now);
+      setLastExportedAt(now);
+      const newJsonLog = [
+        ...(JSON.parse((await AsyncStorage.getItem("@tutorsnap/dataOpLog")) ?? "[]")).slice(-2),
+        { type: "export_json", date: now, items: Object.keys(exportObj.data).length },
+      ];
+      await AsyncStorage.setItem("@tutorsnap/dataOpLog", JSON.stringify(newJsonLog));
+      setDataOpLog(newJsonLog);
       if (canShare) {
         await Sharing.shareAsync(fileUri, {
           mimeType: "application/json",
@@ -684,6 +702,12 @@ export default function SettingsScreen() {
                 streakVal > 0 ? `• ${streakVal}-day streak` : null,
               ].filter(Boolean);
               const summary = lines.length > 0 ? `\n\n${lines.join("\n")}` : "";
+              // Log the import operation
+              const importNow = new Date().toISOString();
+              const prevLog = JSON.parse((await AsyncStorage.getItem("@tutorsnap/dataOpLog")) ?? "[]");
+              const newLog = [...prevLog.slice(-2), { type: "import_file", date: importNow, items: historyCount }];
+              await AsyncStorage.setItem("@tutorsnap/dataOpLog", JSON.stringify(newLog));
+              setDataOpLog(newLog);
               Alert.alert("Data Restored", `Your backup has been restored successfully.${summary}\n\nRestart the app to see all changes.`);
             } catch {
               Alert.alert("Restore Failed", "Could not restore data. Please try again.");
@@ -860,11 +884,32 @@ export default function SettingsScreen() {
       const canShare = await Sharing.isAvailableAsync();
       const canMail = await MailComposer.isAvailableAsync();
 
+      // Build a brief preview of report contents
+      const topSubject = Object.entries(subjectMap).sort((a, b) => b[1].solved - a[1].solved)[0];
+      const previewLines = [
+        `📝 ${totalSolvedCount} problem${totalSolvedCount !== 1 ? "s" : ""} solved`,
+        totalQuizzes > 0 ? `🎯 ${totalQuizzes} quiz${totalQuizzes !== 1 ? "zes" : ""} · avg ${avgScore}%` : null,
+        topSubject ? `🏆 Top subject: ${topSubject[0]}` : null,
+        progress?.currentStreak > 0 ? `🔥 ${progress.currentStreak}-day streak` : null,
+      ].filter(Boolean).join("  ·  ");
+      const previewMsg = previewLines ? `${previewLines}\n\nHow would you like to share your PDF report?` : "How would you like to share your PDF report?";
+
+      // Save PDF export to log
+      const pdfNow = new Date().toISOString();
+      await AsyncStorage.setItem("@tutorsnap/lastExportedAt", pdfNow);
+      setLastExportedAt(pdfNow);
+      const newPdfLog = [
+        ...(JSON.parse((await AsyncStorage.getItem("@tutorsnap/dataOpLog")) ?? "[]")).slice(-2),
+        { type: "export_pdf", date: pdfNow, items: totalSolvedCount },
+      ];
+      await AsyncStorage.setItem("@tutorsnap/dataOpLog", JSON.stringify(newPdfLog));
+      setDataOpLog(newPdfLog);
+
       if (canShare && canMail) {
         // Offer both options
         Alert.alert(
           "Export Progress Report",
-          "How would you like to share your PDF report?",
+          previewMsg,
           [
             {
               text: "Share",
@@ -1216,7 +1261,7 @@ export default function SettingsScreen() {
         <SettingsRow
           icon="square.and.arrow.up.on.square.fill"
           label="Export My Data"
-          subtitle="Download your history, progress, and settings as JSON"
+          subtitle={lastExportedAt ? `Last exported: ${(() => { const d = new Date(lastExportedAt); const diff = Math.floor((Date.now() - d.getTime()) / 86400000); return diff === 0 ? "today" : diff === 1 ? "yesterday" : `${diff} days ago`; })()}` : "Download your history, progress, and settings as JSON"}
           colors={colors}
           onPress={handleExportData}
         />
@@ -1249,6 +1294,29 @@ export default function SettingsScreen() {
           onPress={handleDeleteAccount}
           danger
         />
+
+        {/* Data Operation Log */}
+        {dataOpLog.length > 0 && (
+          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, marginTop: 12 }]}>
+            <Text style={[styles.cardTitle, { color: colors.foreground }]}>Recent Data Activity</Text>
+            {dataOpLog.slice().reverse().map((op, i) => {
+              const opLabel = op.type === "export_json" ? "Exported JSON" : op.type === "export_pdf" ? "Exported PDF" : op.type === "import_file" ? "Imported from file" : "Imported from URL";
+              const opIcon = op.type.startsWith("export") ? "↑" : "↓";
+              const d = new Date(op.date);
+              const diff = Math.floor((Date.now() - d.getTime()) / 86400000);
+              const dateStr = diff === 0 ? "Today" : diff === 1 ? "Yesterday" : `${diff} days ago`;
+              return (
+                <View key={i} style={[styles.dataOpRow, i < dataOpLog.length - 1 && { borderBottomWidth: 0.5, borderBottomColor: colors.border }]}>
+                  <Text style={[styles.dataOpIcon, { color: op.type.startsWith("export") ? colors.primary : colors.success }]}>{opIcon}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.dataOpLabel, { color: colors.foreground }]}>{opLabel}</Text>
+                    <Text style={[styles.dataOpMeta, { color: colors.muted }]}>{dateStr} · {op.items} item{op.items !== 1 ? "s" : ""}</Text>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        )}
 
         {/* Subscription */}
         <SectionHeader title="SUBSCRIPTION" colors={colors} />
@@ -2195,4 +2263,10 @@ const styles = StyleSheet.create({
     minWidth: 90,
   },
   nameModalBtnText: { fontSize: 15, fontWeight: "700" },
+  card: { borderRadius: 14, borderWidth: 0.5, padding: 14, marginHorizontal: 16 },
+  cardTitle: { fontSize: 13, fontWeight: "700", letterSpacing: 0.5, textTransform: "uppercase", marginBottom: 10 },
+  dataOpRow: { flexDirection: "row", alignItems: "center", paddingVertical: 8, gap: 10 },
+  dataOpIcon: { fontSize: 18, fontWeight: "700", width: 22, textAlign: "center" },
+  dataOpLabel: { fontSize: 14, fontWeight: "600" },
+  dataOpMeta: { fontSize: 12, marginTop: 1 },
 });
