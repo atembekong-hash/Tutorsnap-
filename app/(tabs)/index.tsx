@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Modal } from "react-native";
 import {
   View,
@@ -36,7 +36,10 @@ import { StudyTipCard } from "@/components/study-tip-card";
 import { AffiliateEarningsWidget } from "@/components/affiliate-earnings-widget";
 import { AlmostThereBanner } from "@/components/almost-there-banner";
 import { StreakShieldCard } from "@/components/streak-shield-card";
-import { getAlmostBadges, computeMasteryBadges, getSeenBadges, markBadgeSeen, type BadgeTier } from "@/lib/mastery-badges";
+import { getAlmostBadges, computeMasteryBadges, getSeenBadges, markBadgeSeen, type BadgeTier, BADGE_COLORS, BADGE_EMOJI } from "@/lib/mastery-badges";
+import { getAffiliateStats } from "@/lib/affiliate";
+import { loadStudySlots, formatTime, type StudySlot } from "@/lib/study-planner";
+import { getShieldCount as _getShieldCount, earnShield } from "@/lib/progress";
 import { BadgeUnlockModal } from "@/components/badge-unlock-modal";
 import { TodayStudyWidget } from "@/components/today-study-widget";
 import { StreakProtectionBanner } from "@/components/streak-protection-banner";
@@ -96,6 +99,252 @@ const DEFAULT_EXAMPLES = [
   "Balance: Fe + O₂ → Fe₂O₃",
 ];
 
+
+// ─── Today Row ───────────────────────────────────────────────────────────────
+interface TodayRowProps {
+  progress: import("@/lib/progress").ProgressData | null;
+  weeklyData: import("@/lib/weekly-goals").WeeklyData | null;
+  almostBadge: { subject: string; subjectLabel: string; remaining: number; nextTier: "bronze" | "silver" | "gold" } | null;
+  bannerDismissed: boolean;
+  isPremium: boolean;
+  isDevMode: boolean;
+  isOnline: boolean;
+  selectedSubject: import("@/lib/subjects").SubjectId | null;
+  usage: { solves: number };
+  onShieldEarned: (count: number) => void;
+  onSolveNow: () => void;
+  onDismissBadge: () => void;
+  onGoSolveBadge: () => void;
+  onWeeklyGoalChanged: () => void;
+}
+
+function TodayRow({
+  progress, weeklyData, almostBadge, bannerDismissed,
+  isPremium, isDevMode, isOnline, selectedSubject, usage,
+  onShieldEarned, onSolveNow, onDismissBadge, onGoSolveBadge, onWeeklyGoalChanged,
+}: TodayRowProps) {
+  const colors = useColors();
+  const router = useRouter();
+  const streak = progress?.streak?.currentStreak ?? 0;
+  const todaySolved = progress?.streak?.todaySolved ?? 0;
+  const [shields, setShields] = React.useState(0);
+  const [canEarn, setCanEarn] = React.useState(false);
+  const [todaySlots, setTodaySlots] = React.useState<StudySlot[]>([]);
+  const [affiliatePending, setAffiliatePending] = React.useState(0);
+  const [challengeCompleted, setChallengeCompleted] = React.useState(false);
+  const [challengeCorrect, setChallengeCorrect] = React.useState<boolean | null>(null);
+  const [isEvening, setIsEvening] = React.useState(false);
+
+  React.useEffect(() => {
+    _getShieldCount().then((c) => {
+      setShields(c);
+      setCanEarn(streak > 0 && streak % 7 === 0 && c < 3);
+    });
+    loadStudySlots().then((all) => {
+      const todayWeekday = new Date().getDay() as StudySlot["weekday"];
+      setTodaySlots(all.filter((s) => s.weekday === todayWeekday).sort((a, b) => a.hour * 60 + a.minute - (b.hour * 60 + b.minute)));
+    });
+    getAffiliateStats().then((s) => setAffiliatePending(s?.pendingDays ?? 0)).catch(() => {});
+    getDailyChallengeState().then((s) => { setChallengeCompleted(s.completed); setChallengeCorrect(s.correct); });
+    const h = new Date().getHours();
+    setIsEvening(h >= 18 && h < 24);
+  }, [streak]);
+
+  const cards: React.ReactNode[] = [];
+
+  // 1. Streak card (always show when streak > 0)
+  if (streak > 0) {
+    const streakEmoji = getStreakEmoji(streak);
+    const shieldLabel = shields === 0 ? "No shields" : `${shields}/3 shields`;
+    cards.push(
+      <TouchableOpacity
+        key="streak"
+        onPress={() => router.push("/progress" as any)}
+        activeOpacity={0.82}
+        style={[trStyles.card, { backgroundColor: colors.surface, borderColor: `${colors.primary}35` }]}
+        accessibilityLabel={`Streak: ${streak} days`}
+      >
+        <Text style={trStyles.cardEmoji}>{streakEmoji}</Text>
+        <Text style={[trStyles.cardTitle, { color: colors.foreground }]}>{streak} day{streak !== 1 ? "s" : ""}</Text>
+        <Text style={[trStyles.cardSub, { color: colors.muted }]}>{shieldLabel}</Text>
+        {canEarn && (
+          <TouchableOpacity
+            onPress={async () => {
+              const n = await earnShield();
+              setShields(n);
+              setCanEarn(false);
+              onShieldEarned(n);
+            }}
+            style={[trStyles.cardBadge, { backgroundColor: `${colors.primary}20` }]}
+          >
+            <Text style={[trStyles.cardBadgeText, { color: colors.primary }]}>Claim 🛡️</Text>
+          </TouchableOpacity>
+        )}
+      </TouchableOpacity>
+    );
+  }
+
+  // 2. Daily Challenge card
+  const q = getTodayQuestion();
+  const subjectColors: Record<string, string> = { algebra: "#6366F1", geometry: "#10B981", calculus: "#F59E0B", statistics: "#3B82F6", physics: "#EF4444", chemistry: "#8B5CF6" };
+  const qColor = subjectColors[q.subject] ?? colors.primary;
+  cards.push(
+    <TouchableOpacity
+      key="challenge"
+      onPress={() => router.push("/daily-challenge" as any)}
+      activeOpacity={0.82}
+      style={[trStyles.card, { backgroundColor: colors.surface, borderColor: challengeCompleted ? (challengeCorrect ? `${colors.success}50` : `${colors.error}35`) : `${qColor}35` }]}
+      accessibilityLabel="Open Daily Challenge"
+    >
+      <Text style={trStyles.cardEmoji}>⚡</Text>
+      <Text style={[trStyles.cardTitle, { color: colors.foreground }]}>Daily Challenge</Text>
+      <Text style={[trStyles.cardSub, { color: colors.muted }]}>
+        {challengeCompleted ? (challengeCorrect ? "✅ Done" : "❌ Attempted") : `+${q.bonusXp} XP`}
+      </Text>
+    </TouchableOpacity>
+  );
+
+  // 3. Global Rankings
+  cards.push(
+    <TouchableOpacity
+      key="rankings"
+      onPress={() => router.push("/(tabs)/leaderboard" as any)}
+      activeOpacity={0.82}
+      style={[trStyles.card, { backgroundColor: colors.surface, borderColor: `${colors.warning}35` }]}
+      accessibilityLabel="View global rankings"
+    >
+      <Text style={trStyles.cardEmoji}>🏆</Text>
+      <Text style={[trStyles.cardTitle, { color: colors.foreground }]}>Rankings</Text>
+      <Text style={[trStyles.cardSub, { color: colors.muted }]}>Weekly top</Text>
+    </TouchableOpacity>
+  );
+
+  // 4. Study Plan (only if sessions today)
+  if (todaySlots.length > 0) {
+    const next = todaySlots.find((s) => {
+      const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
+      return s.hour * 60 + s.minute >= nowMin;
+    }) ?? todaySlots[0];
+    cards.push(
+      <TouchableOpacity
+        key="study"
+        onPress={() => router.push("/study-planner" as any)}
+        activeOpacity={0.82}
+        style={[trStyles.card, { backgroundColor: colors.surface, borderColor: `${colors.primary}35` }]}
+        accessibilityLabel="Open study planner"
+      >
+        <Text style={trStyles.cardEmoji}>📅</Text>
+        <Text style={[trStyles.cardTitle, { color: colors.foreground }]}>Study Plan</Text>
+        <Text style={[trStyles.cardSub, { color: colors.muted }]}>{todaySlots.length} session{todaySlots.length !== 1 ? "s" : ""} · {formatTime(next.hour, next.minute)}</Text>
+      </TouchableOpacity>
+    );
+  }
+
+  // 5. Weekly Goals (only if data available)
+  if (weeklyData) {
+    cards.push(
+      <TouchableOpacity
+        key="goals"
+        onPress={() => router.push("/progress" as any)}
+        activeOpacity={0.82}
+        style={[trStyles.card, { backgroundColor: colors.surface, borderColor: `${colors.success}35` }]}
+        accessibilityLabel="View weekly goals"
+      >
+        <Text style={trStyles.cardEmoji}>🎯</Text>
+        <Text style={[trStyles.cardTitle, { color: colors.foreground }]}>Weekly Goal</Text>
+        <Text style={[trStyles.cardSub, { color: colors.muted }]}>{weeklyData.goalPct}% · {weeklyData.quizzesThisWeek}/{weeklyData.weeklyGoal} quizzes</Text>
+        <View style={[trStyles.progressBar, { backgroundColor: colors.border }]}>
+          <View style={[trStyles.progressFill, { width: `${weeklyData.goalPct}%` as any, backgroundColor: colors.success }]} />
+        </View>
+      </TouchableOpacity>
+    );
+  }
+
+  // 6. Almost-There Badge (only if applicable and not dismissed)
+  if (almostBadge && !bannerDismissed) {
+    const tierColor = BADGE_COLORS[almostBadge.nextTier];
+    const tierEmoji = BADGE_EMOJI[almostBadge.nextTier];
+    cards.push(
+      <TouchableOpacity
+        key="badge"
+        onPress={onGoSolveBadge}
+        activeOpacity={0.82}
+        style={[trStyles.card, { backgroundColor: colors.surface, borderColor: `${tierColor}50` }]}
+        accessibilityLabel={`Almost ${almostBadge.nextTier} badge in ${almostBadge.subjectLabel}`}
+      >
+        <Text style={trStyles.cardEmoji}>{tierEmoji}</Text>
+        <Text style={[trStyles.cardTitle, { color: colors.foreground }]}>{almostBadge.subjectLabel}</Text>
+        <Text style={[trStyles.cardSub, { color: colors.muted }]}>{almostBadge.remaining} more for {almostBadge.nextTier}</Text>
+      </TouchableOpacity>
+    );
+  }
+
+  // 7. Evening streak protection (only if applicable)
+  if (!isPremium && isEvening && streak > 0 && todaySolved === 0) {
+    cards.push(
+      <TouchableOpacity
+        key="streakprotect"
+        onPress={() => !isPremium && usage.solves >= FREE_LIMITS.solvesPerDay ? router.push("/paywall" as any) : onSolveNow()}
+        activeOpacity={0.82}
+        style={[trStyles.card, { backgroundColor: colors.surface, borderColor: `${colors.warning}50` }]}
+        accessibilityLabel="Protect your streak"
+      >
+        <Text style={trStyles.cardEmoji}>⚠️</Text>
+        <Text style={[trStyles.cardTitle, { color: colors.warning }]}>Streak at risk!</Text>
+        <Text style={[trStyles.cardSub, { color: colors.muted }]}>Solve now to keep it</Text>
+      </TouchableOpacity>
+    );
+  }
+
+  // 8. Affiliate earnings (only if pending days > 0)
+  if (affiliatePending > 0) {
+    cards.push(
+      <TouchableOpacity
+        key="affiliate"
+        onPress={() => router.push("/refer" as any)}
+        activeOpacity={0.82}
+        style={[trStyles.card, { backgroundColor: colors.surface, borderColor: `${colors.success}35` }]}
+        accessibilityLabel="View affiliate earnings"
+      >
+        <Text style={trStyles.cardEmoji}>💰</Text>
+        <Text style={[trStyles.cardTitle, { color: colors.foreground }]}>Earnings</Text>
+        <Text style={[trStyles.cardSub, { color: colors.muted }]}>{affiliatePending} days pending</Text>
+      </TouchableOpacity>
+    );
+  }
+
+  if (cards.length === 0) return null;
+
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={trStyles.row}
+      style={trStyles.container}
+    >
+      {cards}
+    </ScrollView>
+  );
+}
+
+const trStyles = StyleSheet.create({
+  container: { marginTop: 16 },
+  row: { paddingHorizontal: 16, gap: 10, paddingBottom: 4 },
+  card: {
+    width: 130,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    padding: 14,
+    gap: 4,
+  },
+  cardEmoji: { fontSize: 24 },
+  cardTitle: { fontSize: 13, fontWeight: "700", marginTop: 4 },
+  cardSub: { fontSize: 11, lineHeight: 15 },
+  cardBadge: { marginTop: 6, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 4, alignSelf: "flex-start" },
+  cardBadgeText: { fontSize: 11, fontWeight: "700" },
+  progressBar: { height: 4, borderRadius: 2, marginTop: 6, overflow: "hidden" },
+  progressFill: { height: 4, borderRadius: 2 },
+});
 
 // ─── Daily Challenge Card ────────────────────────────────────────────────────
 function DailyChallengeCard() {
@@ -536,80 +785,32 @@ function SolveScreenContent() {
             </TouchableOpacity>
           )}
 
-          {/* Streak Shield Card — show when streak > 0 */}
-          {progress?.streak && progress.streak.currentStreak > 0 && (
-            <StreakShieldCard
-              currentStreak={progress.streak.currentStreak}
-              onShieldEarned={(count) => setShieldCount(count)}
-            />
-          )}
-          {/* Streak-protection upsell — evening nudge for free users who haven't solved today */}
-          <StreakProtectionBanner
-            currentStreak={progress?.streak?.currentStreak ?? 0}
-            solvedToday={progress?.streak?.todaySolved ?? 0}
+          {/* ── Today Row: horizontally-scrollable widget strip ── */}
+          <TodayRow
+            progress={progress}
+            weeklyData={weeklyData}
+            almostBadge={almostBadge}
+            bannerDismissed={bannerDismissed}
             isPremium={isPremium}
-            atSolveLimit={!isPremium && !isDevMode && (usage.solves >= FREE_LIMITS.solvesPerDay)}
-            onSolveNow={() => {
-              // Focus the solve input to scroll to the top and prompt the user
-              inputRef.current?.focus();
+            isDevMode={isDevMode}
+            isOnline={isOnline}
+            selectedSubject={selectedSubject}
+            usage={usage}
+            onShieldEarned={(count) => setShieldCount(count)}
+            onSolveNow={() => inputRef.current?.focus()}
+            onDismissBadge={() => setBannerDismissed(true)}
+            onGoSolveBadge={() => {
+              const subjectId = almostBadge?.subject as SubjectId;
+              if (subjectId) handleSubjectChange(subjectId);
+              setBannerDismissed(true);
             }}
+            onWeeklyGoalChanged={() => loadWeeklyData()}
           />
 
-          {/* Daily Challenge entry card */}
-          <DailyChallengeCard />
-
-          {/* Global Rankings quick-access */}
-          <TouchableOpacity
-            accessibilityLabel="View global rankings"
-            onPress={() => router.push("/(tabs)/leaderboard" as any)}
-            style={[styles.rankingsCard, { backgroundColor: colors.surface, borderColor: `${colors.warning}40` }]}
-            activeOpacity={0.8}
-          >
-            <View style={styles.rankingsCardLeft}>
-              <Text style={{ fontSize: 26 }}>🏆</Text>
-              <View>
-                <Text style={[styles.rankingsCardTitle, { color: colors.foreground }]}>Global Rankings</Text>
-                <Text style={[styles.rankingsCardSub, { color: colors.muted }]}>Weekly top learners</Text>
-              </View>
-            </View>
-            <IconSymbol size={18} name="chevron.right" color={colors.muted} />
-          </TouchableOpacity>
-
-          {/* Today's Study Plan Widget */}
-          <TodayStudyWidget />
-
-          {/* Weekly Goals Card */}
-          {weeklyData && (
-            <WeeklyGoalsCard
-              data={weeklyData}
-              onGoalChanged={() => loadWeeklyData()}
-            />
-          )}
-
-          {/* Almost-There Badge Nudge */}
-          {almostBadge && !bannerDismissed && (
-            <AlmostThereBanner
-              subject={almostBadge.subject}
-              subjectLabel={almostBadge.subjectLabel}
-              remaining={almostBadge.remaining}
-              nextTier={almostBadge.nextTier}
-              onDismiss={() => setBannerDismissed(true)}
-              onGoSolve={() => {
-                // Switch to the almost-badge subject so user can start solving
-                const subjectId = almostBadge.subject as SubjectId;
-                handleSubjectChange(subjectId);
-                setBannerDismissed(true);
-              }}
-            />
-          )}
-
-          {/* Study Tip of the Day */}
+          {/* Study Tip of the Day — keep as full-width card below the row */}
           {isOnline && selectedSubject && (
             <StudyTipCard subject={selectedSubject} />
           )}
-
-            {/* Affiliate earnings widget — only shows when pending days > 0 */}
-            <AffiliateEarningsWidget />
 
           {/* Subject Picker */}
           <View style={styles.subjectRow}>
