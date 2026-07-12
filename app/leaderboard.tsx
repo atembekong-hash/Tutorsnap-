@@ -113,7 +113,7 @@ export default function LeaderboardScreen() {
     try {
       await Clipboard.setStringAsync(inviteCode);
       setCopied(true);
-      H.notificationSuccess();
+      H.impactLight();
       if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
       copiedTimerRef.current = setTimeout(() => setCopied(false), 2000);
     } catch { /* clipboard failure is non-critical */ }

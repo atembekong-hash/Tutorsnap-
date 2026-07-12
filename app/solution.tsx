@@ -113,7 +113,7 @@ function WorkedExampleCopyButton({
         try {
           await Clipboard.setStringAsync(problem);
           setCopied(true);
-          H.notificationSuccess();
+          H.impactLight();
           if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
           copiedTimerRef.current = setTimeout(() => setCopied(false), 2000);
         } catch { /* ignore */ }
@@ -395,7 +395,7 @@ export default function SolutionScreen() {
 
   const handleCopyLink = async () => {
     setShowShareMenu(false);
-    H.notificationSuccess()
+    H.impactLight()
     const encoded = encodeURIComponent(solution!.problem);
     const link = `https://${APP_URL.replace("https://", "")}/solve?q=${encoded}&subject=${solution!.subject}`;
     try {
@@ -446,7 +446,7 @@ export default function SolutionScreen() {
   const handleShare = () => setShowShareMenu(true);
 
   const handleCopyAnswer = async () => {
-    H.notificationSuccess();
+    H.impactLight();
     try {
       await Clipboard.setStringAsync(solution!.answer);
       setCopyFeedback(true);
@@ -867,7 +867,7 @@ export default function SolutionScreen() {
                         try {
                           await Clipboard.setStringAsync(p.problem);
                           setCopiedProblemId(p.id);
-                          H.notificationSuccess();
+                          H.impactLight();
                           if (copiedProblemIdTimerRef.current) clearTimeout(copiedProblemIdTimerRef.current);
                           copiedProblemIdTimerRef.current = setTimeout(() => setCopiedProblemId(null), 2000);
                         } catch { /* ignore */ }

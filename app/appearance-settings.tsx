@@ -54,6 +54,8 @@ import { impactLight as triggerHaptic, impactMedium } from "@/lib/haptics";
 import * as Clipboard from "expo-clipboard";
 import * as Sharing from "expo-sharing";
 import * as FileSystem from "expo-file-system/legacy";
+import { encodeAppearanceForLink } from "@/lib/appearance-deep-link";
+import * as Linking from "expo-linking";
 
 // ─── Section header ───────────────────────────────────────────────────────────
 function SectionHeader({ title }: { title: string }) {
@@ -325,6 +327,27 @@ export default function AppearanceSettingsScreen() {
     setCustomPresetNameInput(name);
     renameCustomPreset(name);
   }, [renameCustomPreset]);
+
+  const handleSharePresetLink = useCallback(async () => {
+    impactMedium();
+    try {
+      const encoded = await encodeAppearanceForLink();
+      // Build a universal link that opens the app and applies the preset
+      // Falls back to the app scheme when universal links are not configured
+      const appUrl = Linking.createURL("appearance", { queryParams: { appearance: encoded } });
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        // On native: use the system share sheet
+        await Sharing.shareAsync(appUrl, { dialogTitle: "Share Appearance Preset" });
+      } else {
+        // On web: copy to clipboard
+        await Clipboard.setStringAsync(appUrl);
+        Alert.alert("Link Copied!", "Paste this link on another device to apply your appearance preset.");
+      }
+    } catch {
+      Alert.alert("Share failed", "Could not generate the share link.");
+    }
+  }, []);
 
   const handleExportSettings = useCallback(async () => {
     impactMedium();
@@ -828,6 +851,21 @@ export default function AppearanceSettingsScreen() {
         {/* ── 9. Export / Import ────────────────────────────────────────── */}
         <SectionHeader title="BACKUP & RESTORE" />
         <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Row>
+            <View style={styles.rowTextBlock}>
+              <Text style={[styles.rowLabel, { color: colors.foreground }]}>Share Preset Link</Text>
+              <Text style={[styles.rowSub, { color: colors.muted }]}>Tap-to-apply link for classmates</Text>
+            </View>
+            <TouchableOpacity
+              onPress={handleSharePresetLink}
+              style={[styles.exportBtn, { backgroundColor: `${globalAccent}18`, borderColor: `${globalAccent}40` }]}
+              activeOpacity={0.8}
+              accessibilityLabel="Share appearance preset as a deep link"
+              accessibilityRole="button"
+            >
+              <Text style={[styles.exportBtnText, { color: globalAccent }]}>Share</Text>
+            </TouchableOpacity>
+          </Row>
           <Row>
             <View style={styles.rowTextBlock}>
               <Text style={[styles.rowLabel, { color: colors.foreground }]}>Export Settings</Text>

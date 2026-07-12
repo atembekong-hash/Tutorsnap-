@@ -14,7 +14,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useColors } from "@/hooks/use-colors";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { SUBJECT_CATEGORIES, type SubjectCategory } from "@/lib/subjects";
-
+import { GRADE_OPTIONS, saveGlobalGrade } from "@/lib/grade-levels";
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 export const ONBOARDING_DONE_KEY = "@tutorsnap/onboardingDone";
@@ -48,6 +48,12 @@ const SLIDES = [
     subtitle: "Choose the areas you study most. You can always change this later in Settings.",
   },
   {
+    id: "grade",
+    emoji: "🎯",
+    title: "What's Your Level?",
+    subtitle: "We'll tailor explanations and questions to your grade. Change it anytime in Settings.",
+  },
+  {
     id: "trial",
     emoji: "👑",
     title: "Start Free — Upgrade Anytime",
@@ -64,6 +70,7 @@ export default function OnboardingScreen() {
   const scrollRef = useRef<ScrollView>(null);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [selectedCategories, setSelectedCategories] = useState<Set<SubjectCategory>>(new Set());
+  const [selectedGrade, setSelectedGrade] = useState<string | null>(null);
 
   const isLastSlide = currentSlide === SLIDES.length - 1;
   const isTrialSlide = SLIDES[currentSlide]?.id === "trial";
@@ -92,6 +99,7 @@ export default function OnboardingScreen() {
         JSON.stringify(Array.from(selectedCategories))
       );
     }
+    if (selectedGrade) await saveGlobalGrade(selectedGrade);
     // Replace to home first, then push paywall so dismissing paywall lands on home
     router.replace("/(tabs)" as any);
     // Small delay so the tab navigator is mounted before pushing the modal
@@ -109,6 +117,7 @@ export default function OnboardingScreen() {
         JSON.stringify(Array.from(selectedCategories))
       );
     }
+    if (selectedGrade) await saveGlobalGrade(selectedGrade);
     router.replace("/(tabs)");
   };
 
@@ -201,6 +210,46 @@ export default function OnboardingScreen() {
                   );
                 })}
               </View>
+            )}
+
+            {/* Grade level picker on grade slide */}
+            {slide.id === "grade" && (
+              <ScrollView
+                style={{ width: "100%", marginTop: 20 }}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ gap: 8, paddingBottom: 8 }}
+              >
+                {GRADE_OPTIONS.map((opt) => {
+                  const isActive = selectedGrade === opt.id;
+                  return (
+                    <TouchableOpacity
+                      key={opt.id}
+                      onPress={() => { H.impactLight(); setSelectedGrade(opt.id); }}
+                      activeOpacity={0.8}
+                      accessibilityLabel={opt.label}
+                      accessibilityRole="radio"
+                      accessibilityState={{ checked: isActive }}
+                      style={[
+                        styles.gradeCard,
+                        {
+                          backgroundColor: isActive ? `${colors.primary}15` : colors.surface,
+                          borderColor: isActive ? colors.primary : colors.border,
+                        },
+                      ]}
+                    >
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.gradeCardLabel, { color: isActive ? colors.primary : colors.foreground }]}>{opt.label}</Text>
+                        <Text style={[styles.gradeCardSub, { color: colors.muted }]}>{opt.sub}</Text>
+                      </View>
+                      {isActive && (
+                        <View style={[styles.gradeCheck, { backgroundColor: colors.primary }]}>
+                          <Text style={styles.gradeCheckText}>✓</Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
             )}
 
             {/* Trial slide feature list */}
@@ -328,6 +377,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   checkText: { color: "#fff", fontSize: 12, fontWeight: "800" },
+  gradeCard: { flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 14, borderWidth: 1.5, gap: 12 },
+  gradeCardLabel: { fontSize: 15, fontWeight: "700", marginBottom: 2 },
+  gradeCardSub: { fontSize: 12 },
+  gradeCheck: { width: 22, height: 22, borderRadius: 11, alignItems: "center", justifyContent: "center" },
+  gradeCheckText: { color: "#fff", fontSize: 12, fontWeight: "800" },
   dotsRow: {
     flexDirection: "row",
     justifyContent: "center",

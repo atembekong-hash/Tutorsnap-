@@ -314,7 +314,7 @@ export default function ClassroomTabScreen() {
   const handleCopyCode = async (code: string) => {
     await Clipboard.setStringAsync(code);
     setCopiedCode(true);
-    H.notificationSuccess();
+    H.impactLight();
     if (copiedCodeTimerRef.current) clearTimeout(copiedCodeTimerRef.current);
     copiedCodeTimerRef.current = setTimeout(() => setCopiedCode(false), 2000);
   };

@@ -50,6 +50,7 @@ import { usePremium } from "@/hooks/use-premium";
 import { FREE_LIMITS } from "@/lib/subscription";
 import { UpsellNudgeBanner } from "@/components/upsell-nudge-banner";
 import { useAppearance, type WidgetId } from "@/lib/appearance-context";
+import { loadGlobalGrade, GRADE_LABELS } from "@/lib/grade-levels";
 
 function getAppearanceSubjectKey(subjectId: string): string {
   const def = getSubjectDef(subjectId);
@@ -462,6 +463,7 @@ function SolveScreenContent() {
   const inputRef = useRef<TextInput>(null);
   const cursorPosRef = useRef<number>(0);
   const shieldToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [homeGradeLevel, setHomeGradeLevel] = useState<string | null>(null);
 
   const loadProgress = async () => {
     const p = await getProgress();
@@ -512,6 +514,7 @@ function SolveScreenContent() {
         }
       });
       getShieldCount().then(setShieldCount);
+      loadGlobalGrade().then((g: string | null) => setHomeGradeLevel(g));
       loadProgress();
       loadWeeklyData();
       loadDueSoonHomework();
@@ -714,11 +717,24 @@ function SolveScreenContent() {
                 </TouchableOpacity>
               </View>
             </View>
-            {/* Row 2: title left, streak badge right */}
+            {/* Row 2: title left, grade badge + streak badge right */}
             <View style={styles.headerRow2}>
               <Text style={[styles.title, { color: colors.foreground }]}>
                 Solve Any <Text style={{ color: colors.primary }}>Problem</Text>
               </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              {homeGradeLevel && (
+                <TouchableOpacity
+                  accessibilityLabel={`Grade level: ${GRADE_LABELS[homeGradeLevel]}. Tap to change in Settings`}
+                  accessibilityRole="button"
+                  onPress={() => router.push("/settings" as any)}
+                  style={[styles.gradeBadge, { backgroundColor: `${colors.primary}12`, borderColor: `${colors.primary}30` }]}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Text style={[styles.gradeBadgeText, { color: colors.primary }]}>{GRADE_LABELS[homeGradeLevel]}</Text>
+                </TouchableOpacity>
+              )}
               {streak && streak.currentStreak > 0 && (
                 <TouchableOpacity
                   accessibilityLabel="View progress"
@@ -734,6 +750,7 @@ function SolveScreenContent() {
                   </View>
                 </TouchableOpacity>
               )}
+              </View>
             </View>
           </View>
           {/* Daily Goal Progress */}
@@ -1199,6 +1216,8 @@ const styles = StyleSheet.create({
   streakEmoji: { fontSize: 17 },
   streakNumber: { fontSize: 17, fontWeight: "800", lineHeight: 20 },
   streakLabel: { fontSize: 9, fontWeight: "600", letterSpacing: 0.3 },
+  gradeBadge: { flexDirection: "row", alignItems: "center", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, borderWidth: 1, marginTop: 4 },
+  gradeBadgeText: { fontSize: 11, fontWeight: "700", letterSpacing: 0.2 },
   goalBar: {
     marginHorizontal: 16,
     marginTop: 20,

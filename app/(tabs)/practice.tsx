@@ -28,11 +28,44 @@ import { GRADE_OPTIONS, GRADE_LABELS, loadGlobalGrade, saveGlobalGrade } from "@
 
 const QUIZ_COUNTS = [3, 5, 10];
 
-const DIFFICULTIES: { id: Difficulty; label: string; color: string; desc: string }[] = [
-  { id: "easy", label: "Easy", color: "#10B981", desc: "Basic concepts" },
-  { id: "medium", label: "Medium", color: "#F59E0B", desc: "Intermediate" },
-  { id: "hard", label: "Hard", color: "#EF4444", desc: "Advanced" },
-];
+function getDifficulties(gradeLevel: string | null): { id: Difficulty; label: string; color: string; desc: string }[] {
+  if (!gradeLevel) return [
+    { id: "easy", label: "Easy", color: "#10B981", desc: "Basic concepts" },
+    { id: "medium", label: "Medium", color: "#F59E0B", desc: "Intermediate" },
+    { id: "hard", label: "Hard", color: "#EF4444", desc: "Advanced" },
+  ];
+  const g = gradeLevel;
+  const isElem = ["grade1","grade2","grade3","grade4","grade5"].includes(g);
+  const isMiddle = ["grade6","grade7","grade8"].includes(g);
+  const isHigh = ["grade9","grade10","grade11","grade12"].includes(g);
+  const isUni = g === "university";
+  const gradeLabel = g.startsWith("grade") ? `Grade ${g.replace("grade","")}` : "University";
+  if (isElem) return [
+    { id: "easy",   label: "Intro",     color: "#10B981", desc: `${gradeLabel} starter` },
+    { id: "medium", label: "Standard",  color: "#F59E0B", desc: `${gradeLabel} core` },
+    { id: "hard",   label: "Challenge", color: "#EF4444", desc: `${gradeLabel} stretch` },
+  ];
+  if (isMiddle) return [
+    { id: "easy",   label: "Foundation", color: "#10B981", desc: `${gradeLabel} basics` },
+    { id: "medium", label: "On-Level",   color: "#F59E0B", desc: `${gradeLabel} standard` },
+    { id: "hard",   label: "Advanced",  color: "#EF4444", desc: `${gradeLabel} enrichment` },
+  ];
+  if (isHigh) return [
+    { id: "easy",   label: "Foundational", color: "#10B981", desc: `${gradeLabel} review` },
+    { id: "medium", label: "Standard",     color: "#F59E0B", desc: `${gradeLabel} curriculum` },
+    { id: "hard",   label: "Exam-Ready",   color: "#EF4444", desc: `${gradeLabel} exam prep` },
+  ];
+  if (isUni) return [
+    { id: "easy",   label: "Introductory", color: "#10B981", desc: "100-level concepts" },
+    { id: "medium", label: "Intermediate", color: "#F59E0B", desc: "200-300 level" },
+    { id: "hard",   label: "Advanced",     color: "#EF4444", desc: "400+ / graduate" },
+  ];
+  return [
+    { id: "easy",   label: "Easy",   color: "#10B981", desc: "Basic concepts" },
+    { id: "medium", label: "Medium", color: "#F59E0B", desc: "Intermediate" },
+    { id: "hard",   label: "Hard",   color: "#EF4444", desc: "Advanced" },
+  ];
+}
 
 function PracticeScreenContent() {
   const colors = useColors();
@@ -183,7 +216,7 @@ function PracticeScreenContent() {
         <View style={styles.section}>
           <Text style={[styles.sectionLabel, { color: colors.muted }]}>DIFFICULTY</Text>
           <View style={styles.difficultyRow}>
-            {DIFFICULTIES.map((diff) => {
+            {getDifficulties(gradeLevel).map((diff) => {
               const isSelected = selectedDifficulty === diff.id;
               return (
                 <TouchableOpacity
@@ -373,8 +406,8 @@ function PracticeScreenContent() {
           <View style={styles.questionSection}>
             <View style={[styles.questionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <View style={styles.questionHeader}>
-                <View style={[styles.difficultyBadge, { backgroundColor: `${DIFFICULTIES.find(d => d.id === currentQuestion.difficulty)?.color}20` }]}>
-                  <Text style={[styles.difficultyBadgeText, { color: DIFFICULTIES.find(d => d.id === currentQuestion.difficulty)?.color }]}>
+                <View style={[styles.difficultyBadge, { backgroundColor: `${getDifficulties(gradeLevel).find((d) => d.id === currentQuestion.difficulty)?.color}20` }]}>
+                  <Text style={[styles.difficultyBadgeText, { color: getDifficulties(gradeLevel).find((d) => d.id === currentQuestion.difficulty)?.color }]}>
                     {currentQuestion.difficulty.toUpperCase()}
                   </Text>
                 </View>

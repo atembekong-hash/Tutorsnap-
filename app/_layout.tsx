@@ -21,7 +21,8 @@ import { OfflineBanner } from "@/components/offline-banner";
 import { UpdatePromptModal } from "@/components/update-prompt-modal";
 import { useUpdateCheck } from "@/lib/use-update-check";
 import { FontSizeProvider } from "@/lib/font-size-provider";
-import { AppearanceProvider } from "@/lib/appearance-context";
+import { AppearanceProvider, type AppearanceSettings } from "@/lib/appearance-context";
+import { applyImportedAppearance } from "@/lib/appearance-deep-link";
 import * as Notifications from "expo-notifications";
 import { useRouter } from "expo-router";
 import * as Linking from "expo-linking";
@@ -88,6 +89,15 @@ export default function RootLayout() {
       if (!url) return;
       try {
         const parsed = Linking.parse(url);
+        // Handle appearance preset deep links: ?appearance=<base64>
+        const appearanceParam = parsed.queryParams?.appearance as string | undefined;
+        if (appearanceParam) {
+          try {
+            await applyImportedAppearance(appearanceParam);
+            Alert.alert("Appearance Applied", "A shared appearance preset has been applied. Open Appearance Settings to review.", [{ text: "OK" }]);
+          } catch { /* invalid payload — ignore */ }
+          return;
+        }
         const ref = (parsed.queryParams?.ref ?? parsed.queryParams?.code) as string | undefined;
         if (!ref) return;
         // Don't apply your own code
