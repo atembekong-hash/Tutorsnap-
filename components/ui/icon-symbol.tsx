@@ -131,6 +131,8 @@ const MAPPING = {
   "paintbrush.fill": "brush",
   "slider.horizontal.3": "tune",
   "arrow.up.arrow.down": "swap-vert",
+  // Grade level
+  "graduationcap.fill": "school",
 } as unknown as IconMapping;
 
 export function IconSymbol({
