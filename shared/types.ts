@@ -78,6 +78,7 @@ export type HistoryItem = {
   tips?: string[];
   imageUri?: string;
   solvedAt: number;
+  gradeLevel?: string;
 };
 
 export type PracticeQuestion = {

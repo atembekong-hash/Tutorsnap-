@@ -91,6 +91,7 @@ function ScanScreenContent() {
         tips: data.tips,
         imageUri: selectedImage || undefined,
         solvedAt: Date.now(),
+        gradeLevel: gradeLevel ?? undefined,
       };
       try {
         const existing = await AsyncStorage.getItem("math_history");

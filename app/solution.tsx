@@ -27,7 +27,7 @@ import { trpc } from "@/lib/trpc";
 import { getMyClassroom, getJoinedClassroom, shareToClassroom } from "@/lib/classroom";
 import { createSession, renameSession } from "@/lib/chat-sessions";
 import { APP_URL, APP_NAME, buildSolveUrl } from "@/constants/app";
-import { loadGlobalGrade } from "@/lib/grade-levels";
+import { loadGlobalGrade, GRADE_LABELS } from "@/lib/grade-levels";
 
 function StepCard({ step, colors, fs }: { step: SolutionStep; colors: any; fs: (n: number) => number }) {
   const [expanded, setExpanded] = useState(true);
@@ -682,16 +682,12 @@ export default function SolutionScreen() {
             <View style={[styles.subjectDot, { backgroundColor: subjectColor }]} />
             <Text style={[styles.subjectBadgeText, { color: subjectColor }]}>{subjectLabel}</Text>
           </View>
-          {gradeLevel && (() => {
-            const { GRADE_LABELS } = require("@/lib/grade-levels") as { GRADE_LABELS: Record<string, string> };
-            const label = GRADE_LABELS[gradeLevel] ?? gradeLevel;
-            return (
-              <View style={[styles.gradeBadge, { backgroundColor: `${colors.primary}15`, borderColor: `${colors.primary}30` }]}>
-                <Text style={{ fontSize: 11 }}>📚</Text>
-                <Text style={[styles.gradeBadgeText, { color: colors.primary }]}>{label}</Text>
-              </View>
-            );
-          })()}
+          {gradeLevel && (
+            <View style={[styles.gradeBadge, { backgroundColor: `${colors.primary}15`, borderColor: `${colors.primary}30` }]}>
+              <Text style={{ fontSize: 11 }}>📚</Text>
+              <Text style={[styles.gradeBadgeText, { color: colors.primary }]}>{GRADE_LABELS[gradeLevel] ?? gradeLevel}</Text>
+            </View>
+          )}
           {bookmarked && (
             <View style={[styles.bookmarkedBadge, { backgroundColor: `${colors.warning}20`, borderColor: `${colors.warning}40` }]}>
               <Text style={{ fontSize: 12 }}>🔖</Text>

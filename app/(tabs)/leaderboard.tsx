@@ -17,13 +17,11 @@ import {
   RefreshControl,
 } from "react-native";
 import * as H from "@/lib/haptics";
-import { Platform } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
-import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { getProgress } from "@/lib/progress";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { loadGlobalGrade, GRADE_LABELS, GRADE_OPTIONS } from "@/lib/grade-levels";
+import { loadGlobalGrade, GRADE_OPTIONS } from "@/lib/grade-levels";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface LeaderboardEntry {
@@ -33,6 +31,7 @@ interface LeaderboardEntry {
   solvedThisWeek: number;
   streak: number;
   isCurrentUser: boolean;
+  gradeLevel?: string;
 }
 
 // ─── Simulated peer data ──────────────────────────────────────────────────────
@@ -69,15 +68,26 @@ function getISOWeek(): number {
   return 1 + Math.round(((d.getTime() - week1.getTime()) / 86400000 - 3 + ((week1.getDay() + 6) % 7)) / 7);
 }
 
-function generateBoard(userSolved: number, userStreak: number, userName: string): LeaderboardEntry[] {
+// Grade tier multipliers — higher grades show slightly higher peer activity
+const GRADE_MULTIPLIERS: Record<string, number> = {
+  "grade-6": 0.7, "grade-7": 0.8, "grade-8": 0.9,
+  "grade-9": 1.0, "grade-10": 1.1, "grade-11": 1.2, "grade-12": 1.3,
+  "college-intro": 1.4, "college-advanced": 1.5, "professional": 1.6,
+};
+function generateBoard(userSolved: number, userStreak: number, userName: string, gradeLevel?: string | null): LeaderboardEntry[] {
   // Seed peers relative to user's count so the board feels competitive
   const base = Math.max(userSolved, 3);
+  const multiplier = gradeLevel ? (GRADE_MULTIPLIERS[gradeLevel] ?? 1.0) : 1.0;
+  const week = getISOWeek();
   const peers: LeaderboardEntry[] = PEER_NAMES.map((p, i) => {
     // Spread peers above and below the user
-    const week = getISOWeek();
     const offset = (i % 2 === 0 ? 1 : -1) * Math.floor(seededRandom(week * 100 + i) * (base * 0.6 + 1));
-    const solved = Math.max(1, base + offset + Math.floor(i * 0.7));
+    const solved = Math.max(1, Math.round((base + offset + Math.floor(i * 0.7)) * multiplier));
     const streak = Math.max(0, Math.floor(seededRandom(week * 200 + i) * 14));
+    // Assign a grade near the user's grade for realism
+    const gradeOptions = GRADE_OPTIONS.map(o => o.id);
+    const gradeIdx = gradeLevel ? gradeOptions.indexOf(gradeLevel) : 4;
+    const peerGradeIdx = Math.max(0, Math.min(gradeOptions.length - 1, gradeIdx + Math.floor(seededRandom(week * 300 + i) * 3) - 1));
     return {
       rank: 0,
       name: p.name,
@@ -85,9 +95,9 @@ function generateBoard(userSolved: number, userStreak: number, userName: string)
       solvedThisWeek: solved,
       streak,
       isCurrentUser: false,
+      gradeLevel: gradeOptions[peerGradeIdx],
     };
   });
-
   const userEntry: LeaderboardEntry = {
     rank: 0,
     name: userName,
@@ -95,8 +105,8 @@ function generateBoard(userSolved: number, userStreak: number, userName: string)
     solvedThisWeek: userSolved,
     streak: userStreak,
     isCurrentUser: true,
+    gradeLevel: gradeLevel ?? undefined,
   };
-
   const all = [...peers, userEntry].sort((a, b) => b.solvedThisWeek - a.solvedThisWeek);
   return all.map((e, i) => ({ ...e, rank: i + 1 }));
 }
@@ -134,11 +144,11 @@ export default function LeaderboardScreen() {
     const fmt = (d: Date) => d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
     setWeekLabel(`${fmt(startOfWeek)} – ${fmt(endOfWeek)}`);
 
-    setBoard(generateBoard(userSolved, userStreak, userName));
-    loadGlobalGrade().then((g: string | null) => {
-      setGlobalGrade(g);
-      if (g) setFilterGrade(g);
-    });
+    const grade = await loadGlobalGrade();
+    setGlobalGrade(grade);
+    if (grade) setFilterGrade(grade);
+    setBoard(generateBoard(userSolved, userStreak, userName, grade));
+    // grade already loaded above
   }, []);
 
   useEffect(() => {
@@ -153,6 +163,10 @@ export default function LeaderboardScreen() {
   }, [loadBoard]);
 
   const userEntry = board.find((e) => e.isCurrentUser);
+  // Filter board by grade — always include the current user so they can see their rank
+  const filteredBoard = filterGrade === "all"
+    ? board
+    : board.filter((e) => e.isCurrentUser || e.gradeLevel === filterGrade).map((e, i) => ({ ...e, rank: i + 1 }));
 
   return (
     <ScreenContainer>
@@ -220,7 +234,7 @@ export default function LeaderboardScreen() {
 
         {/* Top 3 podium */}
         <View style={styles.podium}>
-          {board.slice(0, 3).map((entry) => (
+          {filteredBoard.slice(0, 3).map((entry) => (
             <View
               key={entry.name}
               style={[
@@ -240,7 +254,7 @@ export default function LeaderboardScreen() {
 
         {/* Full list */}
         <View style={[styles.listCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          {board.map((entry, idx) => (
+          {filteredBoard.map((entry, idx) => (
             <View key={entry.name}>
               {idx > 0 && <View style={[styles.divider, { backgroundColor: colors.border }]} />}
               <View

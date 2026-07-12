@@ -19,6 +19,7 @@ import { useColors } from "@/hooks/use-colors";
 import { getBookmarks, removeBookmark } from "@/lib/bookmarks";
 import type { HistoryItem } from "@/shared/types";
 import { getSubjectColor, getSubjectLabel, getSubjectEmoji, ALL_SUBJECTS } from "@/lib/subjects";
+import { GRADE_LABELS } from "@/lib/grade-levels";
 
 // Sort options
 type SortKey = "newest" | "oldest" | "subject" | "steps";
@@ -170,9 +171,17 @@ export default function BookmarksScreen() {
         <View style={[styles.bookmarkAccent, { backgroundColor: subjectColor }]} />
         <View style={styles.cardContent}>
           <View style={styles.cardTop}>
-            <View style={[styles.subjectBadge, { backgroundColor: `${subjectColor}20` }]}>
-              <Text style={styles.subjectEmoji}>{subjectEmoji}</Text>
-              <Text style={[styles.subjectBadgeText, { color: subjectColor }]}>{subjectLabel}</Text>
+            <View style={styles.badgeRow}>
+              <View style={[styles.subjectBadge, { backgroundColor: `${subjectColor}20` }]}>
+                <Text style={styles.subjectEmoji}>{subjectEmoji}</Text>
+                <Text style={[styles.subjectBadgeText, { color: subjectColor }]}>{subjectLabel}</Text>
+              </View>
+              {item.gradeLevel && (
+                <View style={[styles.gradeBadge, { backgroundColor: `${colors.primary}12`, borderColor: `${colors.primary}25` }]}>
+                  <Text style={{ fontSize: 10 }}>📚</Text>
+                  <Text style={[styles.gradeBadgeText, { color: colors.primary }]}>{GRADE_LABELS[item.gradeLevel] ?? item.gradeLevel}</Text>
+                </View>
+              )}
             </View>
             <View style={styles.cardTopRight}>
               {date ? <Text style={[styles.dateText, { color: colors.muted }]}>{date}</Text> : null}
@@ -596,4 +605,15 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     letterSpacing: 0.2,
   },
+  badgeRow: { flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" },
+  gradeBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  gradeBadgeText: { fontSize: 11, fontWeight: "700", letterSpacing: 0.3 },
 });
