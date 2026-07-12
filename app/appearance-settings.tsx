@@ -121,9 +121,24 @@ function LivePreviewPanel() {
   const mathAccent = getSubjectAccent("Mathematics", colorScheme);
   const physicsAccent = getSubjectAccent("Physics", colorScheme);
 
+  // Resolve the active preset display name
+  const activePresetLabel = (() => {
+    if (!settings.activePresetId) return null;
+    if (settings.activePresetId === "custom") return "Custom";
+    const found = PRESET_THEMES.find((p) => p.id === settings.activePresetId);
+    return found ? found.label : null;
+  })();
+
   return (
     <View style={[styles.previewPanel, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-      <Text style={[styles.previewTitle, { color: colors.muted }]}>LIVE PREVIEW</Text>
+      <View style={styles.previewTitleRow}>
+        <Text style={[styles.previewTitle, { color: colors.muted }]}>LIVE PREVIEW</Text>
+        {activePresetLabel && (
+          <View style={[styles.previewPresetBadge, { backgroundColor: `${accent}18`, borderColor: `${accent}40` }]}>
+            <Text style={[styles.previewPresetBadgeText, { color: accent }]}>{activePresetLabel} mode</Text>
+          </View>
+        )}
+      </View>
 
       {/* Chat bubble preview */}
       <View style={styles.previewChatRow}>
@@ -237,7 +252,7 @@ export default function AppearanceSettingsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const colorScheme = useColorScheme() ?? "light";
-  const { settings, updateSetting, resetSettings, applyPreset, resetSubjectAccents, accentColor } = useAppearance();
+  const { settings, updateSetting, resetSettings, applyPreset, resetSubjectAccents, saveCustomPreset, accentColor } = useAppearance();
 
   const handleReset = useCallback(() => {
     Alert.alert(
@@ -278,6 +293,11 @@ export default function AppearanceSettingsScreen() {
     impactMedium();
     applyPreset(presetId);
   }, [applyPreset]);
+
+  const handleSaveCustomPreset = useCallback(() => {
+    impactMedium();
+    saveCustomPreset();
+  }, [saveCustomPreset]);
 
   const setSubjectAccent = useCallback((subject: string, colorId: string) => {
     triggerHaptic();
@@ -345,6 +365,46 @@ export default function AppearanceSettingsScreen() {
               </TouchableOpacity>
             );
           })}
+
+          {/* Custom preset card */}
+          {(() => {
+            const isCustomActive = settings.activePresetId === "custom";
+            const hasCustom = settings.customPreset != null;
+            return (
+              <View style={[styles.presetCard, { backgroundColor: isCustomActive ? `${globalAccent}18` : colors.surface, borderColor: isCustomActive ? globalAccent : colors.border, borderStyle: hasCustom ? "solid" : "dashed" }]}>
+                <Text style={styles.presetEmoji}>✏️</Text>
+                <Text style={[styles.presetLabel, { color: isCustomActive ? globalAccent : colors.foreground }]}>Custom</Text>
+                <Text style={[styles.presetDesc, { color: colors.muted }]} numberOfLines={2}>
+                  {hasCustom ? "Your saved look." : "Save your current settings here."}
+                </Text>
+                <View style={styles.customPresetBtns}>
+                  {hasCustom && (
+                    <TouchableOpacity
+                      onPress={() => handleApplyPreset("custom")}
+                      style={[styles.customPresetApplyBtn, { backgroundColor: globalAccent }]}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.customPresetApplyBtnText}>Apply</Text>
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity
+                    onPress={handleSaveCustomPreset}
+                    style={[styles.customPresetSaveBtn, { borderColor: globalAccent }]}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[styles.customPresetSaveBtnText, { color: globalAccent }]}>
+                      {hasCustom ? "Update" : "Save"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+                {isCustomActive && (
+                  <View style={[styles.presetActiveBadge, { backgroundColor: globalAccent }]}>
+                    <Text style={styles.presetActiveBadgeText}>Active</Text>
+                  </View>
+                )}
+              </View>
+            );
+          })()}
         </ScrollView>
 
         {/* ── 2. Typography ─────────────────────────────────────────────── */}
@@ -694,6 +754,49 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "600",
   },
+  customPresetBtns: {
+    flexDirection: "row",
+    gap: 6,
+    marginTop: 8,
+  },
+  customPresetApplyBtn: {
+    flex: 1,
+    borderRadius: 8,
+    paddingVertical: 6,
+    alignItems: "center",
+  },
+  customPresetApplyBtnText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  customPresetSaveBtn: {
+    flex: 1,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    paddingVertical: 6,
+    alignItems: "center",
+  },
+  customPresetSaveBtnText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  previewTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  previewPresetBadge: {
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  previewPresetBadgeText: {
+    fontSize: 11,
+    fontWeight: "600",
+  },
   card: {
     borderRadius: 16,
     borderWidth: 1,
@@ -787,10 +890,9 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   previewTitle: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: "700",
     letterSpacing: 0.8,
-    marginBottom: 4,
   },
   previewChatRow: {
     flexDirection: "row",

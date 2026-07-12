@@ -225,6 +225,8 @@ export interface AppearanceSettings {
   largeTapTargets: boolean;
   /** ID of the last applied preset, or null if no preset is active */
   activePresetId: string | null;
+  /** User-saved custom preset snapshot, or null if never saved */
+  customPreset: Partial<AppearanceSettings> | null;
 }
 
 export const DEFAULT_APPEARANCE: AppearanceSettings = {
@@ -253,6 +255,7 @@ export const DEFAULT_APPEARANCE: AppearanceSettings = {
   highContrast: false,
   largeTapTargets: false,
   activePresetId: null,
+  customPreset: null,
 };
 
 // ─── Derived helpers ──────────────────────────────────────────────────────────
@@ -314,6 +317,8 @@ interface AppearanceContextValue {
   applyPreset: (presetId: string) => void;
   /** Reset only per-subject accent colour overrides to their defaults */
   resetSubjectAccents: () => void;
+  /** Save current settings as the Custom preset */
+  saveCustomPreset: () => void;
   /** Convenience: scale a base font size by the current multiplier */
   fs: (base: number) => number;
   /** Resolved accent color for current color scheme */
@@ -339,6 +344,7 @@ const AppearanceContext = createContext<AppearanceContextValue>({
   resetSettings: () => {},
   applyPreset: () => {},
   resetSubjectAccents: () => {},
+  saveCustomPreset: () => {},
   fs: (base) => base,
   accentColor: () => ACCENT_COLORS[0].light,
   getSubjectAccent: () => ACCENT_COLORS[0].light,
@@ -389,6 +395,15 @@ export function AppearanceProvider({ children }: { children: React.ReactNode }) 
   }, []);
 
   const applyPreset = useCallback((presetId: string) => {
+    if (presetId === "custom") {
+      setSettings((prev) => {
+        if (!prev.customPreset) return prev;
+        const next = { ...prev, ...prev.customPreset, activePresetId: "custom" };
+        AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next)).catch(() => {});
+        return next;
+      });
+      return;
+    }
     const preset = PRESET_THEMES.find((p) => p.id === presetId);
     if (!preset) return;
     setSettings((prev) => {
@@ -401,6 +416,16 @@ export function AppearanceProvider({ children }: { children: React.ReactNode }) 
   const resetSubjectAccents = useCallback(() => {
     setSettings((prev) => {
       const next = { ...prev, subjectAccentColors: { ...DEFAULT_SUBJECT_ACCENT_COLORS }, activePresetId: null };
+      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next)).catch(() => {});
+      return next;
+    });
+  }, []);
+
+  const saveCustomPreset = useCallback(() => {
+    setSettings((prev) => {
+      // Snapshot everything except customPreset itself and activePresetId
+      const { customPreset: _cp, activePresetId: _ap, ...snapshot } = prev;
+      const next = { ...prev, customPreset: snapshot, activePresetId: "custom" };
       AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next)).catch(() => {});
       return next;
     });
@@ -452,6 +477,7 @@ export function AppearanceProvider({ children }: { children: React.ReactNode }) 
         resetSettings,
         applyPreset,
         resetSubjectAccents,
+        saveCustomPreset,
         fs,
         accentColor,
         getSubjectAccent,

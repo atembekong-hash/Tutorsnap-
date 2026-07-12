@@ -13,8 +13,26 @@ import { useFocusEffect } from "@react-navigation/native";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useAppearance } from "@/lib/appearance-context";
 import { loadQuizHistory, type QuizResult } from "@/lib/quiz-history";
-import { getSubjectLabel } from "@/lib/subjects";
+import { getSubjectDef, getSubjectLabel } from "@/lib/subjects";
+
+function getAppearanceSubjectKey(subjectId: string): string {
+  const def = getSubjectDef(subjectId);
+  switch (def.label) {
+    case "Physics":
+    case "Chemistry":
+    case "Biology":
+    case "Statistics":
+    case "Economics":
+    case "Geometry":
+    case "Computer Science":
+      return def.label;
+    default:
+      return def.category === "math" ? "Mathematics" : def.label;
+  }
+}
 
 function gradeLabel(pct: number): { letter: string; color: string } {
   if (pct >= 90) return { letter: "A", color: "#22C55E" };
@@ -44,10 +62,12 @@ function formatDuration(seconds: number): string {
 function QuizResultCard({
   item,
   colors,
+  subjectAccent,
   onPress,
 }: {
   item: QuizResult;
   colors: ReturnType<typeof useColors>;
+  subjectAccent: string;
   onPress: () => void;
 }) {
   const grade = gradeLabel(item.pct);
@@ -80,15 +100,15 @@ function QuizResultCard({
           </Text>
         </View>
         <View style={styles.statItem}>
-          <IconSymbol size={14} name="chart.bar.fill" color={colors.primary} />
+          <IconSymbol size={14} name="chart.bar.fill" color={subjectAccent} />
           <Text style={[styles.statText, { color: colors.foreground }]}>{item.pct}%</Text>
         </View>
         <View style={styles.statItem}>
           <IconSymbol size={14} name="clock.fill" color={colors.muted} />
           <Text style={[styles.statText, { color: colors.muted }]}>{formatDuration(item.timeTaken)}</Text>
         </View>
-        <View style={[styles.diffBadge, { backgroundColor: `${colors.primary}15` }]}>
-          <Text style={[styles.diffText, { color: colors.primary }]}>{item.difficulty}</Text>
+        <View style={[styles.diffBadge, { backgroundColor: `${subjectAccent}15` }]}>
+          <Text style={[styles.diffText, { color: subjectAccent }]}>{item.difficulty}</Text>
         </View>
       </View>
       {/* Score bar */}
@@ -111,6 +131,8 @@ function QuizResultCard({
 
 export default function QuizHistoryScreen() {
   const colors = useColors();
+  const colorScheme = useColorScheme();
+  const { getSubjectAccent } = useAppearance();
   const router = useRouter();
   const [history, setHistory] = useState<QuizResult[]>([]);
   const [loading, setLoading] = useState(true);
@@ -269,6 +291,7 @@ export default function QuizHistoryScreen() {
               {subjects.map((subj) => {
                 const count = history.filter((h) => h.subject === subj).length;
                 const isActive = activeSubject === subj;
+                const chipAccent = getSubjectAccent(getAppearanceSubjectKey(subj), colorScheme);
                 return (
                   <TouchableOpacity
                     key={subj}
@@ -276,8 +299,8 @@ export default function QuizHistoryScreen() {
                     style={[
                       styles.filterChip,
                       {
-                        backgroundColor: isActive ? colors.primary : colors.surface,
-                        borderColor: isActive ? colors.primary : colors.border,
+                        backgroundColor: isActive ? chipAccent : colors.surface,
+                        borderColor: isActive ? chipAccent : colors.border,
                       },
                     ]}
                     activeOpacity={0.75}
@@ -298,14 +321,14 @@ export default function QuizHistoryScreen() {
                         {
                           backgroundColor: isActive
                             ? "rgba(255,255,255,0.25)"
-                            : `${colors.primary}20`,
+                            : `${chipAccent}20`,
                         },
                       ]}
                     >
                       <Text
                         style={[
                           styles.filterChipCountText,
-                          { color: isActive ? "#fff" : colors.primary },
+                          { color: isActive ? "#fff" : chipAccent },
                         ]}
                       >
                         {count}
@@ -341,6 +364,7 @@ export default function QuizHistoryScreen() {
                 <QuizResultCard
                   item={item}
                   colors={colors}
+                  subjectAccent={getSubjectAccent(getAppearanceSubjectKey(item.subject), colorScheme)}
                   onPress={() =>
                     router.push({
                       pathname: "/quiz-history-detail",
