@@ -34,6 +34,8 @@ import { SUBJECT_CATEGORIES, type SubjectCategory } from "@/lib/subjects";
 import { useFontSize, FONT_SIZE_SCALES, SCALE_LABELS, type FontSizeScale } from "@/lib/font-size-provider";
 import { SUPPORT_EMAIL, PRIVACY_URL, TERMS_URL } from "@/constants/app";
 import { GRADE_OPTIONS, GRADE_LABELS, loadGlobalGrade, saveGlobalGrade } from "@/lib/grade-levels";
+import * as FileSystem from "expo-file-system/legacy";
+import * as Sharing from "expo-sharing";
 import {
   getSubscriptionStatus,
   restorePurchases,
@@ -478,6 +480,115 @@ export default function SettingsScreen() {
     }
   };
 
+  // ── Delete Account ─────────────────────────────────────────────────────────
+  const handleDeleteAccount = () => {
+    H.impactLight();
+    Alert.alert(
+      "Delete Account",
+      "This will permanently delete all your data — history, progress, bookmarks, flashcards, chat sessions, and settings. This cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete Everything",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              // Remove every known key
+              const keysToDelete = [
+                "math_progress", "streak_shield", "streak_freeze_v2",
+                "math_history", "math_bookmarks",
+                "tutorsnap_quiz_history", "tutorsnap_weekly_quiz_goal",
+                "challenge_history_v1",
+                "@tutorsnap/seenBadges", "tutorsnap_crash_log",
+                "@tutorsnap/chatSessions/index", "@tutorsnap/chatSessions/pins",
+                "@tutorsnap/chatHistory", "@tutorsnap/chatSessionsMigrated",
+                "@tutorsnap/notificationPrefs",
+                "@tutorsnap/reminderEnabled", "@tutorsnap/reminderHour",
+                "@tutorsnap/reminderMinute", "@tutorsnap/reminderNotifId",
+                "@tutorsnap/streakAlertNotifId", "@tutorsnap/weeklyReportNotifId",
+                "@tutorsnap/plannerNotifIds", "@tutorsnap/hw_notif_ids",
+                "@tutorsnap/studyPlanner", "@tutorsnap/dailyChallengeState",
+                "@tutorsnap/classroom", "@tutorsnap/classroom_feed",
+                "@tutorsnap/classroom_leaderboard", "@tutorsnap/classroom_notif_prefs",
+                "@tutorsnap/joined_classroom", "@tutorsnap/problem_comments",
+                "@tutorsnap/affiliateLastActivity", "@tutorsnap/leaderboard_friends",
+                "@tutorsnap/my_invite_code", "@referral_applied",
+                "@tutorsnap/appearanceSettings", "@tutorsnap/preferredCategories",
+                "chat_grade_level", "global_grade_level",
+                "@tutorsnap/consent", "@tutorsnap/onboardingDone",
+                "@tutorsnap/userName",
+                "@tutorsnap/firstLaunchDate", "@tutorsnap/lastReviewPromptDate",
+                "@tutorsnap/lastUpdateCheckDismissed", "@tutorsnap/trialStartedAt",
+                "@tutorsnap/colorScheme",
+              ];
+              await AsyncStorage.multiRemove(keysToDelete);
+              // Also remove all dynamic keys
+              const allKeys = await AsyncStorage.getAllKeys();
+              const dynamicKeys = allKeys.filter((k) =>
+                k.startsWith("math_progress_quiz_bonus_") ||
+                k.startsWith("@tutorsnap/chatSessions/") ||
+                k.startsWith("@tutorsnap/usage/")
+              );
+              if (dynamicKeys.length > 0) await AsyncStorage.multiRemove(dynamicKeys);
+              H.notificationSuccess();
+              // Navigate to onboarding
+              router.replace("/onboarding" as any);
+            } catch {
+              Alert.alert("Error", "Could not delete account data. Please try again.");
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // ── Export My Data ───────────────────────────────────────────────────────────
+  const handleExportData = async () => {
+    H.impactLight();
+    try {
+      // Gather all known keys
+      const allKeys = await AsyncStorage.getAllKeys();
+      const tutorKeys = allKeys.filter((k) =>
+        k.startsWith("@tutorsnap/") ||
+        k.startsWith("math_") ||
+        k.startsWith("tutorsnap_") ||
+        k.startsWith("challenge_") ||
+        k.startsWith("streak_") ||
+        k.startsWith("global_grade") ||
+        k.startsWith("chat_grade")
+      );
+      const pairs = await AsyncStorage.multiGet(tutorKeys);
+      const exportObj: Record<string, any> = {
+        exportedAt: new Date().toISOString(),
+        appVersion: Constants.expoConfig?.version ?? "1.1.0",
+        data: {} as Record<string, any>,
+      };
+      for (const [key, value] of pairs) {
+        try {
+          exportObj.data[key] = value ? JSON.parse(value) : null;
+        } catch {
+          exportObj.data[key] = value;
+        }
+      }
+      const json = JSON.stringify(exportObj, null, 2);
+      const fileName = `tutorsnap-export-${new Date().toISOString().slice(0, 10)}.json`;
+      const fileUri = (FileSystem.cacheDirectory ?? "") + fileName;
+      await FileSystem.writeAsStringAsync(fileUri, json, { encoding: FileSystem.EncodingType.UTF8 });
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(fileUri, {
+          mimeType: "application/json",
+          dialogTitle: "Export TutorSnap Data",
+          UTI: "public.json",
+        });
+      } else {
+        Alert.alert("Exported", `Data saved to:\n${fileUri}`);
+      }
+    } catch (e: any) {
+      Alert.alert("Export Failed", "Could not export your data. Please try again.");
+    }
+  };
+
   const handleManageSubscription = async () => {
     H.impactLight();
     try {
@@ -749,6 +860,21 @@ export default function SettingsScreen() {
           subtitle="Delete streak, stats, badges, and history"
           colors={colors}
           onPress={handleResetProgress}
+          danger
+        />
+        <SettingsRow
+          icon="square.and.arrow.up.on.square.fill"
+          label="Export My Data"
+          subtitle="Download your history, progress, and settings as JSON"
+          colors={colors}
+          onPress={handleExportData}
+        />
+        <SettingsRow
+          icon="person.crop.circle.badge.minus"
+          label="Delete Account"
+          subtitle="Permanently erase all data and return to onboarding"
+          colors={colors}
+          onPress={handleDeleteAccount}
           danger
         />
 

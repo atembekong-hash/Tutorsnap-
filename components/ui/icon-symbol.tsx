@@ -100,6 +100,9 @@ const MAPPING = {
   "sparkles": "auto-awesome",
   "star.bubble.fill": "rate-review",
   "square.and.arrow.up.fill": "ios-share",
+  "square.and.arrow.up.on.square.fill": "upload-file",
+  "person.crop.circle.badge.minus": "person-remove",
+  "person.crop.circle.fill": "account-circle",
   // Code
   "chevron.left.forwardslash.chevron.right": "code",
   // New settings pages
