@@ -143,9 +143,40 @@ export function formatReminderTime(hour: number, minute: number): string {
 
 const BACKUP_REMINDER_ID_KEY = "@tutorsnap/backupReminderNotifId";
 const BACKUP_REMINDER_ENABLED_KEY = "@tutorsnap/backupReminderEnabled";
+const BACKUP_REMINDER_DAY_KEY = "@tutorsnap/backupReminderDay";
+const BACKUP_REMINDER_HOUR_KEY = "@tutorsnap/backupReminderHour";
+const BACKUP_REMINDER_MINUTE_KEY = "@tutorsnap/backupReminderMinute";
 
-/** Schedule a monthly backup reminder on the 1st of each month at 10:00 AM */
-export async function scheduleMonthlyBackupReminder(): Promise<boolean> {
+export interface BackupReminderSettings {
+  day: number;   // 1–28
+  hour: number;  // 0–23
+  minute: number; // 0 or 30
+}
+
+export const DEFAULT_BACKUP_REMINDER: BackupReminderSettings = { day: 1, hour: 10, minute: 0 };
+
+/** Load persisted backup reminder settings */
+export async function getBackupReminderSettings(): Promise<BackupReminderSettings> {
+  try {
+    const [day, hour, minute] = await Promise.all([
+      AsyncStorage.getItem(BACKUP_REMINDER_DAY_KEY),
+      AsyncStorage.getItem(BACKUP_REMINDER_HOUR_KEY),
+      AsyncStorage.getItem(BACKUP_REMINDER_MINUTE_KEY),
+    ]);
+    return {
+      day: day !== null ? parseInt(day, 10) : DEFAULT_BACKUP_REMINDER.day,
+      hour: hour !== null ? parseInt(hour, 10) : DEFAULT_BACKUP_REMINDER.hour,
+      minute: minute !== null ? parseInt(minute, 10) : DEFAULT_BACKUP_REMINDER.minute,
+    };
+  } catch {
+    return DEFAULT_BACKUP_REMINDER;
+  }
+}
+
+/** Schedule a monthly backup reminder with custom day/time */
+export async function scheduleMonthlyBackupReminder(
+  settings: BackupReminderSettings = DEFAULT_BACKUP_REMINDER
+): Promise<boolean> {
   if (Platform.OS === "web") return false;
   const granted = await requestNotificationPermission();
   if (!granted) return false;
@@ -169,14 +200,17 @@ export async function scheduleMonthlyBackupReminder(): Promise<boolean> {
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
-        day: 1,
-        hour: 10,
-        minute: 0,
+        day: settings.day,
+        hour: settings.hour,
+        minute: settings.minute,
         repeats: true,
       },
     });
     await AsyncStorage.setItem(BACKUP_REMINDER_ID_KEY, id);
     await AsyncStorage.setItem(BACKUP_REMINDER_ENABLED_KEY, "true");
+    await AsyncStorage.setItem(BACKUP_REMINDER_DAY_KEY, String(settings.day));
+    await AsyncStorage.setItem(BACKUP_REMINDER_HOUR_KEY, String(settings.hour));
+    await AsyncStorage.setItem(BACKUP_REMINDER_MINUTE_KEY, String(settings.minute));
     return true;
   } catch {
     return false;

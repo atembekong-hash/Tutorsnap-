@@ -32,6 +32,9 @@ import {
   scheduleMonthlyBackupReminder,
   cancelMonthlyBackupReminder,
   isBackupReminderEnabled,
+  getBackupReminderSettings,
+  DEFAULT_BACKUP_REMINDER,
+  type BackupReminderSettings,
 } from "@/lib/notifications";
 import { SUBJECT_CATEGORIES, type SubjectCategory } from "@/lib/subjects";
 import { useFontSize, FONT_SIZE_SCALES, SCALE_LABELS, type FontSizeScale } from "@/lib/font-size-provider";
@@ -173,6 +176,8 @@ export default function SettingsScreen() {
 
   // Monthly backup reminder
   const [backupReminderEnabled, setBackupReminderEnabled] = useState(false);
+  const [backupReminderSettings, setBackupReminderSettings] = useState<BackupReminderSettings>(DEFAULT_BACKUP_REMINDER);
+  const [showBackupTimePicker, setShowBackupTimePicker] = useState(false);
 
   // Redeem referral code
   const [showRedeemModal, setShowRedeemModal] = useState(false);
@@ -181,7 +186,7 @@ export default function SettingsScreen() {
 
   const handleToggleBackupReminder = async (value: boolean) => {
     if (value) {
-      const ok = await scheduleMonthlyBackupReminder();
+      const ok = await scheduleMonthlyBackupReminder(backupReminderSettings);
       if (ok) {
         setBackupReminderEnabled(true);
       } else {
@@ -195,6 +200,14 @@ export default function SettingsScreen() {
     } else {
       await cancelMonthlyBackupReminder();
       setBackupReminderEnabled(false);
+    }
+  };
+
+  const handleSaveBackupTime = async (newSettings: BackupReminderSettings) => {
+    setBackupReminderSettings(newSettings);
+    setShowBackupTimePicker(false);
+    if (backupReminderEnabled) {
+      await scheduleMonthlyBackupReminder(newSettings);
     }
   };
 
@@ -256,6 +269,7 @@ export default function SettingsScreen() {
     loadGlobalGrade().then((g: string | null) => setGradeLevelState(g));
     AsyncStorage.getItem("@tutorsnap/userName").then((n: string | null) => setUserNameState(n || null));
     isBackupReminderEnabled().then(setBackupReminderEnabled);
+    getBackupReminderSettings().then(setBackupReminderSettings);
     AsyncStorage.getItem("@tutorsnap/preferredCategories").then((raw) => {
       if (raw) {
         try {
@@ -633,6 +647,80 @@ export default function SettingsScreen() {
   };
 
   // ── Import My Data ───────────────────────────────────────────────────────────
+  const [showImportUrlModal, setShowImportUrlModal] = useState(false);
+  const [importUrlInput, setImportUrlInput] = useState("");
+  const [importUrlLoading, setImportUrlLoading] = useState(false);
+
+  /** Shared restore logic used by both file and URL import */
+  const restoreFromParsed = async (parsed: any) => {
+    if (!parsed?.data || typeof parsed.data !== "object") {
+      Alert.alert("Invalid File", "The file does not contain a valid TutorSnap data export.");
+      return;
+    }
+    Alert.alert(
+      "Restore Data?",
+      `This will overwrite your current data with the backup from ${parsed.exportedAt ? new Date(parsed.exportedAt).toLocaleDateString() : "unknown date"}. Continue?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Restore",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const pairs: [string, string][] = Object.entries(parsed.data)
+                .filter(([, v]) => v !== null && v !== undefined)
+                .map(([k, v]) => [k, typeof v === "string" ? v : JSON.stringify(v)]);
+              await AsyncStorage.multiSet(pairs);
+              H.notificationSuccess();
+              const d = parsed.data as Record<string, any>;
+              const historyCount = (() => { try { const h = typeof d["math_history"] === "string" ? JSON.parse(d["math_history"]) : d["math_history"]; return Array.isArray(h) ? h.length : 0; } catch { return 0; } })();
+              const bookmarkCount = (() => { try { const b = typeof d["math_bookmarks"] === "string" ? JSON.parse(d["math_bookmarks"]) : d["math_bookmarks"]; return Array.isArray(b) ? b.length : 0; } catch { return 0; } })();
+              const quizCount = (() => { try { const q = typeof d["tutorsnap_quiz_history"] === "string" ? JSON.parse(d["tutorsnap_quiz_history"]) : d["tutorsnap_quiz_history"]; return Array.isArray(q) ? q.length : 0; } catch { return 0; } })();
+              const streakVal = (() => { try { const p = typeof d["math_progress"] === "string" ? JSON.parse(d["math_progress"]) : d["math_progress"]; return p?.currentStreak ?? 0; } catch { return 0; } })();
+              const lines = [
+                historyCount > 0 ? `• ${historyCount} solved problem${historyCount !== 1 ? "s" : ""}` : null,
+                bookmarkCount > 0 ? `• ${bookmarkCount} bookmark${bookmarkCount !== 1 ? "s" : ""}` : null,
+                quizCount > 0 ? `• ${quizCount} quiz result${quizCount !== 1 ? "s" : ""}` : null,
+                streakVal > 0 ? `• ${streakVal}-day streak` : null,
+              ].filter(Boolean);
+              const summary = lines.length > 0 ? `\n\n${lines.join("\n")}` : "";
+              Alert.alert("Data Restored", `Your backup has been restored successfully.${summary}\n\nRestart the app to see all changes.`);
+            } catch {
+              Alert.alert("Restore Failed", "Could not restore data. Please try again.");
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleImportFromUrl = async () => {
+    const url = importUrlInput.trim();
+    if (!url.startsWith("http")) {
+      Alert.alert("Invalid URL", "Please enter a valid https:// URL pointing to your TutorSnap backup JSON.");
+      return;
+    }
+    setImportUrlLoading(true);
+    try {
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const text = await resp.text();
+      let parsed: any;
+      try { parsed = JSON.parse(text); } catch {
+        Alert.alert("Invalid File", "The URL did not return a valid JSON file.");
+        setImportUrlLoading(false);
+        return;
+      }
+      setShowImportUrlModal(false);
+      setImportUrlInput("");
+      await restoreFromParsed(parsed);
+    } catch (e: any) {
+      Alert.alert("Download Failed", e?.message ?? "Could not download the backup file. Check the URL and try again.");
+    } finally {
+      setImportUrlLoading(false);
+    }
+  };
+
   const handleImportData = async () => {
     H.impactLight();
     try {
@@ -654,46 +742,7 @@ export default function SettingsScreen() {
         Alert.alert("Invalid File", "The selected file is not a valid TutorSnap export.");
         return;
       }
-      if (!parsed?.data || typeof parsed.data !== "object") {
-        Alert.alert("Invalid File", "The file does not contain a valid TutorSnap data export.");
-        return;
-      }
-      Alert.alert(
-        "Restore Data?",
-        `This will overwrite your current data with the backup from ${parsed.exportedAt ? new Date(parsed.exportedAt).toLocaleDateString() : "unknown date"}. Continue?`,
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Restore",
-            style: "destructive",
-            onPress: async () => {
-              try {
-                const pairs: [string, string][] = Object.entries(parsed.data)
-                  .filter(([, v]) => v !== null && v !== undefined)
-                  .map(([k, v]) => [k, typeof v === "string" ? v : JSON.stringify(v)]);
-                await AsyncStorage.multiSet(pairs);
-                H.notificationSuccess();
-                // Build a human-readable summary
-                const d = parsed.data as Record<string, any>;
-                const historyCount = (() => { try { const h = typeof d["math_history"] === "string" ? JSON.parse(d["math_history"]) : d["math_history"]; return Array.isArray(h) ? h.length : 0; } catch { return 0; } })();
-                const bookmarkCount = (() => { try { const b = typeof d["math_bookmarks"] === "string" ? JSON.parse(d["math_bookmarks"]) : d["math_bookmarks"]; return Array.isArray(b) ? b.length : 0; } catch { return 0; } })();
-                const quizCount = (() => { try { const q = typeof d["tutorsnap_quiz_history"] === "string" ? JSON.parse(d["tutorsnap_quiz_history"]) : d["tutorsnap_quiz_history"]; return Array.isArray(q) ? q.length : 0; } catch { return 0; } })();
-                const streakVal = (() => { try { const p = typeof d["math_progress"] === "string" ? JSON.parse(d["math_progress"]) : d["math_progress"]; return p?.currentStreak ?? 0; } catch { return 0; } })();
-                const lines = [
-                  historyCount > 0 ? `• ${historyCount} solved problem${historyCount !== 1 ? "s" : ""}` : null,
-                  bookmarkCount > 0 ? `• ${bookmarkCount} bookmark${bookmarkCount !== 1 ? "s" : ""}` : null,
-                  quizCount > 0 ? `• ${quizCount} quiz result${quizCount !== 1 ? "s" : ""}` : null,
-                  streakVal > 0 ? `• ${streakVal}-day streak` : null,
-                ].filter(Boolean);
-                const summary = lines.length > 0 ? `\n\n${lines.join("\n")}` : "";
-                Alert.alert("Data Restored", `Your backup has been restored successfully.${summary}\n\nRestart the app to see all changes.`);
-              } catch {
-                Alert.alert("Restore Failed", "Could not restore data. Please try again.");
-              }
-            },
-          },
-        ]
-      );
+      await restoreFromParsed(parsed);
     } catch {
       Alert.alert("Import Failed", "Could not open the file. Please try again.");
     }
@@ -809,8 +858,37 @@ export default function SettingsScreen() {
       const destUri = (FileSystem.cacheDirectory ?? "") + pdfName;
       await FileSystem.moveAsync({ from: uri, to: destUri });
       const canShare = await Sharing.isAvailableAsync();
-      if (canShare) {
+      const canMail = await MailComposer.isAvailableAsync();
+
+      if (canShare && canMail) {
+        // Offer both options
+        Alert.alert(
+          "Export Progress Report",
+          "How would you like to share your PDF report?",
+          [
+            {
+              text: "Share",
+              onPress: () => Sharing.shareAsync(destUri, { mimeType: "application/pdf", UTI: "com.adobe.pdf", dialogTitle: "Export Progress Report" }),
+            },
+            {
+              text: "Email",
+              onPress: () => MailComposer.composeAsync({
+                subject: `${userName ? `${userName}'s ` : ""}TutorSnap Progress Report`,
+                body: "Hi,\n\nPlease find my TutorSnap progress report attached.\n\nSent from TutorSnap",
+                attachments: [destUri],
+              }),
+            },
+            { text: "Cancel", style: "cancel" },
+          ]
+        );
+      } else if (canShare) {
         await Sharing.shareAsync(destUri, { mimeType: "application/pdf", UTI: "com.adobe.pdf", dialogTitle: "Export Progress Report" });
+      } else if (canMail) {
+        await MailComposer.composeAsync({
+          subject: `${userName ? `${userName}'s ` : ""}TutorSnap Progress Report`,
+          body: "Hi,\n\nPlease find my TutorSnap progress report attached.\n\nSent from TutorSnap",
+          attachments: [destUri],
+        });
       } else {
         Alert.alert("PDF Saved", `Report saved to:\n${destUri}`);
       }
@@ -1024,6 +1102,25 @@ export default function SettingsScreen() {
             />
           </View>
         </View>
+        {backupReminderEnabled && Platform.OS !== "web" && (
+          <TouchableOpacity
+            accessibilityLabel="Edit backup reminder schedule"
+            onPress={() => setShowBackupTimePicker(true)}
+            activeOpacity={0.7}
+            style={[styles.row, { backgroundColor: colors.surface, borderColor: colors.border, marginTop: 2 }]}
+          >
+            <View style={[styles.rowIcon, { backgroundColor: `${colors.primary}15` }]}>
+              <IconSymbol size={18} name="clock.fill" color={colors.primary} />
+            </View>
+            <View style={styles.rowContent}>
+              <Text style={[styles.rowLabel, { color: colors.foreground }]}>Backup Reminder Schedule</Text>
+              <Text style={[styles.rowSubtitle, { color: colors.muted }]}>
+                {`Day ${backupReminderSettings.day} of each month · ${formatReminderTime(backupReminderSettings.hour, backupReminderSettings.minute)}`}
+              </Text>
+            </View>
+            <IconSymbol size={16} name="chevron.right" color={colors.muted} />
+          </TouchableOpacity>
+        )}
 
         {/* Progress & Data */}
         <SectionHeader title="PROGRESS & DATA" colors={colors} />
@@ -1129,6 +1226,13 @@ export default function SettingsScreen() {
           subtitle="Restore a previous TutorSnap JSON backup"
           colors={colors}
           onPress={handleImportData}
+        />
+        <SettingsRow
+          icon="link"
+          label="Import from URL"
+          subtitle="Restore a backup from a cloud share link"
+          colors={colors}
+          onPress={() => { H.impactLight(); setShowImportUrlModal(true); }}
         />
         <SettingsRow
           icon="doc.text.fill"
@@ -1735,6 +1839,123 @@ export default function SettingsScreen() {
                 );
               })}
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Import from URL Modal ────────────────────────────────────────────────── */}
+      <Modal
+        visible={showImportUrlModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowImportUrlModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalSheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.foreground }]}>Import from URL</Text>
+              <TouchableOpacity onPress={() => setShowImportUrlModal(false)} accessibilityLabel="Close" accessibilityRole="button">
+                <IconSymbol size={22} name="xmark.circle.fill" color={colors.muted} />
+              </TouchableOpacity>
+            </View>
+            <Text style={[styles.modalSubtitle, { color: colors.muted }]}>
+              Paste a direct link to your TutorSnap backup JSON file (e.g. from iCloud Drive, Google Drive, or Dropbox).
+            </Text>
+            <TextInput
+              style={[styles.nameInput, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.surface, marginBottom: 16 }]}
+              value={importUrlInput}
+              onChangeText={setImportUrlInput}
+              placeholder="https://..."
+              placeholderTextColor={colors.muted}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="url"
+              returnKeyType="done"
+              onSubmitEditing={handleImportFromUrl}
+              editable={!importUrlLoading}
+            />
+            <TouchableOpacity
+              onPress={handleImportFromUrl}
+              style={[styles.nameModalBtn, { backgroundColor: importUrlLoading ? colors.border : colors.primary }]}
+              disabled={importUrlLoading}
+              accessibilityLabel="Download and restore backup"
+              accessibilityRole="button"
+            >
+              <Text style={[styles.nameModalBtnText, { color: importUrlLoading ? colors.muted : colors.background }]}>
+                {importUrlLoading ? "Downloading…" : "Download & Restore"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ── Backup Reminder Schedule Picker Modal ─────────────────────────── */}
+      <Modal
+        visible={showBackupTimePicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowBackupTimePicker(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalSheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.foreground }]}>Backup Reminder Schedule</Text>
+              <TouchableOpacity onPress={() => setShowBackupTimePicker(false)} accessibilityLabel="Close" accessibilityRole="button">
+                <IconSymbol size={22} name="xmark.circle.fill" color={colors.muted} />
+              </TouchableOpacity>
+            </View>
+            <Text style={[styles.modalSubtitle, { color: colors.muted }]}>Choose which day of the month and time to receive your backup reminder.</Text>
+
+            {/* Day picker */}
+            <Text style={[styles.rowLabel, { color: colors.foreground, marginBottom: 6 }]}>Day of Month</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }} contentContainerStyle={{ gap: 8 }}>
+              {[1, 5, 10, 15, 20, 25, 28].map((d) => (
+                <TouchableOpacity
+                  key={d}
+                  onPress={() => setBackupReminderSettings((s) => ({ ...s, day: d }))}
+                  style={[{
+                    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
+                    backgroundColor: backupReminderSettings.day === d ? colors.primary : colors.surface,
+                    borderWidth: 1, borderColor: backupReminderSettings.day === d ? colors.primary : colors.border,
+                  }]}
+                  accessibilityLabel={`Day ${d}`}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: backupReminderSettings.day === d }}
+                >
+                  <Text style={{ color: backupReminderSettings.day === d ? colors.background : colors.foreground, fontWeight: "600" }}>{d}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            {/* Hour picker */}
+            <Text style={[styles.rowLabel, { color: colors.foreground, marginBottom: 6 }]}>Time</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }} contentContainerStyle={{ gap: 8 }}>
+              {[7, 8, 9, 10, 11, 12, 13, 14, 17, 18, 20, 21].map((h) => (
+                <TouchableOpacity
+                  key={h}
+                  onPress={() => setBackupReminderSettings((s) => ({ ...s, hour: h, minute: 0 }))}
+                  style={[{
+                    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
+                    backgroundColor: backupReminderSettings.hour === h ? colors.primary : colors.surface,
+                    borderWidth: 1, borderColor: backupReminderSettings.hour === h ? colors.primary : colors.border,
+                  }]}
+                  accessibilityLabel={formatReminderTime(h, 0)}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: backupReminderSettings.hour === h }}
+                >
+                  <Text style={{ color: backupReminderSettings.hour === h ? colors.background : colors.foreground, fontWeight: "600" }}>{formatReminderTime(h, 0)}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            <TouchableOpacity
+              onPress={() => handleSaveBackupTime(backupReminderSettings)}
+              style={[styles.nameModalBtn, { backgroundColor: colors.primary }]}
+              accessibilityLabel="Save backup schedule"
+              accessibilityRole="button"
+            >
+              <Text style={[styles.nameModalBtnText, { color: colors.background }]}>Save Schedule</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
