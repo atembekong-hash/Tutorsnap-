@@ -19,6 +19,7 @@ export interface ChatSession {
   id: string;
   title: string;           // Auto-generated from first user message, editable
   subject: string | null;  // Subject focus (SubjectId or null)
+  gradeLevel: string | null; // Student's grade/level for AI response adaptation
   messages: ChatMessage[];
   createdAt: number;
   updatedAt: number;
@@ -136,6 +137,7 @@ export async function createSession(subject: string | null = null): Promise<Chat
     id,
     title: "New Chat",
     subject,
+    gradeLevel: null,
     messages: [],
     createdAt: now,
     updatedAt: now,
@@ -280,6 +282,7 @@ export async function migrateOldChatHistory(): Promise<void> {
           id: generateSessionId(),
           title: generateSessionTitle(firstUser.content),
           subject: null,
+          gradeLevel: null,
           messages,
           createdAt: messages[0]?.timestamp ?? Date.now(),
           updatedAt: messages[messages.length - 1]?.timestamp ?? Date.now(),

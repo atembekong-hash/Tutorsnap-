@@ -234,16 +234,45 @@ function MessageBubble({
   const isUser = message.role === "user";
 
   if (isUser) {
+    // Parse optional leading quote block: lines starting with "> "
+    const lines = message.content.split("\n");
+    const quoteLines: string[] = [];
+    const bodyLines: string[] = [];
+    let inQuote = true;
+    for (const line of lines) {
+      if (inQuote && line.startsWith("> ")) {
+        quoteLines.push(line.slice(2));
+      } else {
+        inQuote = false;
+        bodyLines.push(line);
+      }
+    }
+    const quoteText = quoteLines.join("\n").trim();
+    const bodyText = bodyLines.join("\n").trim();
+
     return (
       <View style={bubbleStyles.userRow}>
         <View style={[bubbleStyles.userBubble, { backgroundColor: colors.primary }]}>
+          {quoteText.length > 0 && (
+            <View style={[
+              bubbleStyles.quoteBlock,
+              { backgroundColor: "rgba(255,255,255,0.15)", borderLeftColor: "rgba(255,255,255,0.6)" },
+            ]}>
+              <Text
+                style={[bubbleStyles.quoteText, { color: "rgba(255,255,255,0.85)", fontSize: fs(12) }]}
+                numberOfLines={3}
+              >
+                {quoteText}
+              </Text>
+            </View>
+          )}
           <Text
             style={[
               bubbleStyles.userText,
               { color: "#FFFFFF", fontSize: fs(15), lineHeight: fs(15) * 1.5 },
             ]}
           >
-            {message.content}
+            {bodyText || message.content}
           </Text>
           <Text
             style={[
@@ -334,6 +363,17 @@ const bubbleStyles = StyleSheet.create({
   },
   aiContent: { flex: 1, paddingRight: 8 },
   timeText: { textAlign: "right" },
+  quoteBlock: {
+    borderLeftWidth: 3,
+    borderRadius: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginBottom: 6,
+  },
+  quoteText: {
+    fontStyle: "italic",
+    lineHeight: 17,
+  },
 });
 
 // ─── Welcome empty-state card (subject-aware) ─────────────────────────────────
@@ -456,6 +496,60 @@ function showAIBubbleMenu(
   ]);
 }
 
+// ─── Animated follow-up chip with staggered fade-in ─────────────────────────
+
+function AnimatedChip({
+  chip,
+  index,
+  onPress,
+  colors,
+  fs,
+}: {
+  chip: string;
+  index: number;
+  onPress: (chip: string) => void;
+  colors: ReturnType<typeof useColors>;
+  fs: (n: number) => number;
+}) {
+  const opacity = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(8)).current;
+
+  useEffect(() => {
+    const delay = index * 80; // 80ms stagger between chips
+    Animated.parallel([
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 220,
+        delay,
+        useNativeDriver: true,
+      }),
+      Animated.timing(translateY, {
+        toValue: 0,
+        duration: 220,
+        delay,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [chip]); // re-animate when chips change
+
+  return (
+    <Animated.View style={{ opacity, transform: [{ translateY }] }}>
+      <TouchableOpacity
+        onPress={() => onPress(chip)}
+        style={[
+          chatStyles.followUpChip,
+          { backgroundColor: colors.surface, borderColor: colors.border },
+        ]}
+        activeOpacity={0.7}
+      >
+        <Text style={[chatStyles.followUpChipText, { color: colors.foreground, fontSize: fs(12) }]}>
+          {chip}
+        </Text>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+}
+
 // ─── Grade level constants ───────────────────────────────────────────────────
 
 const GRADE_LABELS: Record<string, string> = {
@@ -517,14 +611,6 @@ function ChatScreenContent() {
   const bottomPadding = Platform.OS === "web" ? 12 : Math.max(insets.bottom, 8);
   const TAB_BAR_HEIGHT = 60 + bottomPadding;
 
-  // ── Load saved grade level ──────────────────────────────────────────────────
-
-  useEffect(() => {
-    AsyncStorage.getItem("chat_grade_level").then((v) => {
-      if (v) setGradeLevel(v);
-    });
-  }, []);
-
   // ── Session init ────────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -553,6 +639,13 @@ function ChatScreenContent() {
                 : [makeWelcomeMessage(existing.subject as SubjectId | null)]
             );
             setSelectedSubject((existing.subject as SubjectId | null) ?? null);
+            // Load per-session grade level, fall back to global preference
+            if (existing.gradeLevel) {
+              setGradeLevel(existing.gradeLevel);
+            } else {
+              const globalGrade = await AsyncStorage.getItem("chat_grade_level");
+              if (globalGrade) setGradeLevel(globalGrade);
+            }
           } else {
             const newSession = await createSession(null);
             const welcome = makeWelcomeMessage(null);
@@ -1116,20 +1209,15 @@ function ChatScreenContent() {
                     {suggestFollowUpsMutation.isPending ? (
                       <ActivityIndicator size="small" color={colors.muted} style={{ marginLeft: 8 }} />
                     ) : (
-                      displayChips.map((chip: string) => (
-                        <TouchableOpacity
+                      displayChips.map((chip: string, i: number) => (
+                        <AnimatedChip
                           key={chip}
-                          onPress={() => handleSend(chip)}
-                          style={[
-                            chatStyles.followUpChip,
-                            { backgroundColor: colors.surface, borderColor: colors.border },
-                          ]}
-                          activeOpacity={0.7}
-                        >
-                          <Text style={[chatStyles.followUpChipText, { color: colors.foreground, fontSize: fs(12) }]}>
-                            {chip}
-                          </Text>
-                        </TouchableOpacity>
+                          chip={chip}
+                          index={i}
+                          onPress={handleSend}
+                          colors={colors}
+                          fs={fs}
+                        />
                       ))
                     )}
                   </View>
@@ -1371,8 +1459,15 @@ function ChatScreenContent() {
                     onPress={() => {
                       const next = isActive ? null : opt.id;
                       setGradeLevel(next);
+                      // Persist globally as default for new sessions
                       if (next) AsyncStorage.setItem("chat_grade_level", next);
                       else AsyncStorage.removeItem("chat_grade_level");
+                      // Persist per-session so this chat remembers its level
+                      if (session) {
+                        const updated = { ...session, gradeLevel: next };
+                        setSession(updated);
+                        saveSession(updated);
+                      }
                       if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                       setShowGradePicker(false);
                     }}
