@@ -2,9 +2,12 @@
  * AppearanceContext — Global App Personalisation Settings
  *
  * Covers: font family, font size, line spacing, bold labels, widget size,
- * widget visibility, widget order, accent color, chat bubble style,
- * message density, solution step style, reduce motion, high contrast,
- * large tap targets.
+ * widget visibility, widget order, accent color, per-subject accent colors,
+ * chat bubble style, message density, solution step style, reduce motion,
+ * high contrast, large tap targets.
+ *
+ * Also provides 4 named preset themes (Focus, Vibrant, Minimal, Accessible)
+ * that can be applied with a single tap.
  *
  * All settings persist to AsyncStorage and are applied app-wide.
  */
@@ -76,6 +79,127 @@ export const ACCENT_COLORS: AccentColor[] = [
   { id: "slate",   label: "Slate",   light: "#475569", dark: "#94A3B8" },
 ];
 
+// ─── Per-subject accent colours ───────────────────────────────────────────────
+
+/** Canonical subject names used as keys in subjectAccentColors */
+export const SUBJECT_NAMES = [
+  "Mathematics",
+  "Physics",
+  "Chemistry",
+  "Biology",
+  "Statistics",
+  "Computer Science",
+  "Economics",
+  "Geometry",
+] as const;
+
+export type SubjectName = (typeof SUBJECT_NAMES)[number];
+
+/** Default per-subject accent color IDs (empty = fall back to global accentColorId) */
+export const DEFAULT_SUBJECT_ACCENT_COLORS: Record<SubjectName, string> = {
+  Mathematics: "indigo",
+  Physics: "blue",
+  Chemistry: "teal",
+  Biology: "green",
+  Statistics: "amber",
+  "Computer Science": "purple",
+  Economics: "rose",
+  Geometry: "slate",
+};
+
+// ─── Preset themes ────────────────────────────────────────────────────────────
+
+export interface PresetTheme {
+  id: string;
+  label: string;
+  description: string;
+  /** Emoji icon shown on the preset card */
+  emoji: string;
+  /** Partial AppearanceSettings that will be merged when applied */
+  settings: Partial<AppearanceSettings>;
+}
+
+export const PRESET_THEMES: PresetTheme[] = [
+  {
+    id: "focus",
+    label: "Focus",
+    description: "Distraction-free study mode with muted tones and compact layout.",
+    emoji: "🎯",
+    settings: {
+      accentColorId: "slate",
+      fontFamily: "system",
+      fontSize: "medium",
+      lineSpacing: "compact",
+      messageDensity: "compact",
+      chatBubbleStyle: "flat",
+      stepStyle: "list",
+      boldLabels: false,
+      reduceMotion: true,
+      highContrast: false,
+      largeTapTargets: false,
+    },
+  },
+  {
+    id: "vibrant",
+    label: "Vibrant",
+    description: "Bold colours, rounded fonts, and spacious layout for an energetic feel.",
+    emoji: "🌈",
+    settings: {
+      accentColorId: "purple",
+      fontFamily: "rounded",
+      fontSize: "large",
+      lineSpacing: "relaxed",
+      messageDensity: "spacious",
+      chatBubbleStyle: "rounded",
+      stepStyle: "cards",
+      boldLabels: true,
+      reduceMotion: false,
+      highContrast: false,
+      largeTapTargets: false,
+    },
+  },
+  {
+    id: "minimal",
+    label: "Minimal",
+    description: "Clean lines, flat bubbles, and no visual noise.",
+    emoji: "⬜",
+    settings: {
+      accentColorId: "slate",
+      fontFamily: "system",
+      fontSize: "medium",
+      lineSpacing: "normal",
+      messageDensity: "comfortable",
+      chatBubbleStyle: "minimal",
+      stepStyle: "minimal",
+      boldLabels: false,
+      reduceMotion: true,
+      highContrast: false,
+      largeTapTargets: false,
+    },
+  },
+  {
+    id: "accessible",
+    label: "Accessible",
+    description: "Large text, high contrast, and bigger tap targets for easier reading.",
+    emoji: "♿",
+    settings: {
+      accentColorId: "blue",
+      fontFamily: "system",
+      fontSize: "xlarge",
+      lineSpacing: "relaxed",
+      messageDensity: "spacious",
+      chatBubbleStyle: "rounded",
+      stepStyle: "cards",
+      boldLabels: true,
+      reduceMotion: true,
+      highContrast: true,
+      largeTapTargets: true,
+    },
+  },
+];
+
+// ─── AppearanceSettings interface ─────────────────────────────────────────────
+
 export interface AppearanceSettings {
   // Typography
   fontFamily: FontFamily;
@@ -88,6 +212,8 @@ export interface AppearanceSettings {
   widgetOrder: WidgetId[];
   // Accent
   accentColorId: string;
+  /** Per-subject accent color overrides. Keys are SubjectName; empty string = use global. */
+  subjectAccentColors: Record<string, string>;
   // Chat
   chatBubbleStyle: ChatBubbleStyle;
   messageDensity: MessageDensity;
@@ -117,6 +243,7 @@ export const DEFAULT_APPEARANCE: AppearanceSettings = {
   },
   widgetOrder: [...DEFAULT_WIDGET_ORDER],
   accentColorId: "indigo",
+  subjectAccentColors: { ...DEFAULT_SUBJECT_ACCENT_COLORS },
   chatBubbleStyle: "rounded",
   messageDensity: "comfortable",
   stepStyle: "cards",
@@ -180,10 +307,17 @@ interface AppearanceContextValue {
   settings: AppearanceSettings;
   updateSetting: <K extends keyof AppearanceSettings>(key: K, value: AppearanceSettings[K]) => void;
   resetSettings: () => void;
+  /** Apply a named preset theme (merges preset settings into current settings) */
+  applyPreset: (presetId: string) => void;
   /** Convenience: scale a base font size by the current multiplier */
   fs: (base: number) => number;
   /** Resolved accent color for current color scheme */
   accentColor: (scheme: "light" | "dark") => string;
+  /**
+   * Resolved accent color for a specific subject.
+   * Falls back to the global accent color if no per-subject override is set.
+   */
+  getSubjectAccent: (subject: string, scheme: "light" | "dark") => string;
   /** Resolved font family string (or undefined for system default) */
   fontFamilyValue: string | undefined;
   /** Widget card width in pixels */
@@ -198,8 +332,10 @@ const AppearanceContext = createContext<AppearanceContextValue>({
   settings: DEFAULT_APPEARANCE,
   updateSetting: () => {},
   resetSettings: () => {},
+  applyPreset: () => {},
   fs: (base) => base,
   accentColor: () => ACCENT_COLORS[0].light,
+  getSubjectAccent: () => ACCENT_COLORS[0].light,
   fontFamilyValue: undefined,
   widgetWidth: 130,
   isWidgetVisible: () => true,
@@ -222,6 +358,7 @@ export function AppearanceProvider({ children }: { children: React.ReactNode }) 
             ...saved,
             widgetVisibility: { ...DEFAULT_APPEARANCE.widgetVisibility, ...(saved.widgetVisibility ?? {}) },
             widgetOrder: saved.widgetOrder ?? DEFAULT_APPEARANCE.widgetOrder,
+            subjectAccentColors: { ...DEFAULT_SUBJECT_ACCENT_COLORS, ...(saved.subjectAccentColors ?? {}) },
           }));
         } catch { /* ignore malformed */ }
       }
@@ -245,6 +382,16 @@ export function AppearanceProvider({ children }: { children: React.ReactNode }) 
     AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_APPEARANCE)).catch(() => {});
   }, []);
 
+  const applyPreset = useCallback((presetId: string) => {
+    const preset = PRESET_THEMES.find((p) => p.id === presetId);
+    if (!preset) return;
+    setSettings((prev) => {
+      const next = { ...prev, ...preset.settings };
+      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next)).catch(() => {});
+      return next;
+    });
+  }, []);
+
   const fs = useCallback(
     (base: number) => Math.round(base * FONT_SIZE_MULTIPLIERS[settings.fontSize]),
     [settings.fontSize],
@@ -256,6 +403,16 @@ export function AppearanceProvider({ children }: { children: React.ReactNode }) 
       return found ? found[scheme] : ACCENT_COLORS[0][scheme];
     },
     [settings.accentColorId],
+  );
+
+  const getSubjectAccent = useCallback(
+    (subject: string, scheme: "light" | "dark") => {
+      const overrideId = settings.subjectAccentColors[subject];
+      const colorId = overrideId || settings.accentColorId;
+      const found = ACCENT_COLORS.find((c) => c.id === colorId);
+      return found ? found[scheme] : ACCENT_COLORS[0][scheme];
+    },
+    [settings.subjectAccentColors, settings.accentColorId],
   );
 
   const fontFamilyValue = FONT_FAMILY_VALUES[settings.fontFamily];
@@ -279,8 +436,10 @@ export function AppearanceProvider({ children }: { children: React.ReactNode }) 
         settings,
         updateSetting,
         resetSettings,
+        applyPreset,
         fs,
         accentColor,
+        getSubjectAccent,
         fontFamilyValue,
         widgetWidth,
         isWidgetVisible,

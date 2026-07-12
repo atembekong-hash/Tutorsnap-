@@ -80,6 +80,24 @@ import { usePremium } from "@/hooks/use-premium";
 import { FREE_LIMITS } from "@/lib/subscription";
 import { APP_URL, APP_NAME } from "@/constants/app";
 import { useAppearance } from "@/lib/appearance-context";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+
+function getAppearanceSubjectKey(subjectId: string | null): string {
+  if (!subjectId) return "Mathematics";
+  const def = getSubjectDef(subjectId);
+  switch (def.label) {
+    case "Physics":
+    case "Chemistry":
+    case "Biology":
+    case "Statistics":
+    case "Economics":
+    case "Geometry":
+    case "Computer Science":
+      return def.label;
+    default:
+      return def.category === "math" ? "Mathematics" : def.label;
+  }
+}
 
 // ─── Saved Notes storage key ──────────────────────────────────────────────────
 
@@ -615,6 +633,11 @@ function ChatScreenContent() {
 
   const flatListRef = useRef<FlatList>(null);
   const { isOnline } = useNetworkStatus();
+  const colorScheme = useColorScheme();
+  const { getSubjectAccent } = useAppearance();
+  const subjectAccent = selectedSubject
+    ? getSubjectAccent(getAppearanceSubjectKey(selectedSubject), colorScheme)
+    : colors.primary;
 
   const bottomPadding = Platform.OS === "web" ? 12 : Math.max(insets.bottom, 8);
   const TAB_BAR_HEIGHT = 60 + bottomPadding;
@@ -1106,7 +1129,7 @@ function ChatScreenContent() {
               <IconSymbol
                 size={19}
                 name="book.fill"
-                color={selectedSubject ? colors.primary : colors.muted}
+                color={selectedSubject ? subjectAccent : colors.muted}
               />
             </TouchableOpacity>
             <TouchableOpacity
@@ -1320,9 +1343,9 @@ function ChatScreenContent() {
                 chatStyles.subjectPill,
                 {
                   backgroundColor: selectedSubject
-                    ? `${colors.primary}18`
+                    ? `${subjectAccent}18`
                     : colors.background,
-                  borderColor: selectedSubject ? colors.primary : colors.border,
+                  borderColor: selectedSubject ? subjectAccent : colors.border,
                 },
               ]}
               activeOpacity={0.7}
@@ -1330,7 +1353,7 @@ function ChatScreenContent() {
               <IconSymbol
                 size={15}
                 name="book.fill"
-                color={selectedSubject ? colors.primary : colors.muted}
+                color={selectedSubject ? subjectAccent : colors.muted}
               />
             </TouchableOpacity>
 

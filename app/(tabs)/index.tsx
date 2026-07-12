@@ -51,6 +51,23 @@ import { FREE_LIMITS } from "@/lib/subscription";
 import { UpsellNudgeBanner } from "@/components/upsell-nudge-banner";
 import { useAppearance, type WidgetId } from "@/lib/appearance-context";
 
+function getAppearanceSubjectKey(subjectId: string): string {
+  const def = getSubjectDef(subjectId);
+
+  switch (def.label) {
+    case "Physics":
+    case "Chemistry":
+    case "Biology":
+    case "Statistics":
+    case "Economics":
+    case "Geometry":
+    case "Computer Science":
+      return def.label;
+    default:
+      return def.category === "math" ? "Mathematics" : def.label;
+  }
+}
+
 // Subject examples per category — shown dynamically based on selected subject
 const SUBJECT_EXAMPLES: Record<string, string[]> = {
   // Math
@@ -126,7 +143,8 @@ function TodayRow({
 }: TodayRowProps) {
   const colors = useColors();
   const router = useRouter();
-  const { widgetWidth, visibleWidgetOrder, isWidgetVisible } = useAppearance();
+  const { widgetWidth, visibleWidgetOrder, isWidgetVisible, getSubjectAccent } = useAppearance();
+  const { colorScheme } = useThemeContext();
   const streak = progress?.streak?.currentStreak ?? 0;
   const todaySolved = progress?.streak?.todaySolved ?? 0;
   const [shields, setShields] = React.useState(0);
@@ -191,8 +209,7 @@ function TodayRow({
 
   // 2. Daily Challenge card
   const q = getTodayQuestion();
-  const subjectColors: Record<string, string> = { algebra: "#6366F1", geometry: "#10B981", calculus: "#F59E0B", statistics: "#3B82F6", physics: "#EF4444", chemistry: "#8B5CF6" };
-  const qColor = subjectColors[q.subject] ?? colors.primary;
+  const qColor = getSubjectAccent(getAppearanceSubjectKey(q.subject), colorScheme);
   if (isWidgetVisible("challenge")) cards.push(
     <TouchableOpacity
       key="challenge"
@@ -355,6 +372,8 @@ const trStyles = StyleSheet.create({
 function DailyChallengeCard() {
   const colors = useColors();
   const router = useRouter();
+  const { colorScheme } = useThemeContext();
+  const { getSubjectAccent } = useAppearance();
   const question = getTodayQuestion();
   const [completed, setCompleted] = React.useState(false);
   const [correct, setCorrect] = React.useState<boolean | null>(null);
@@ -366,11 +385,10 @@ function DailyChallengeCard() {
     });
   }, []);
 
-  const subjectColors: Record<string, string> = {
-    algebra: "#6366F1", geometry: "#10B981", calculus: "#F59E0B",
-    statistics: "#3B82F6", physics: "#EF4444", chemistry: "#8B5CF6",
-  };
-  const subjectColor = subjectColors[question.subject] ?? colors.primary;
+  const subjectColor = getSubjectAccent(
+    getAppearanceSubjectKey(question.subject),
+    colorScheme,
+  );
 
   return (
     <TouchableOpacity

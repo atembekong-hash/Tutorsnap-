@@ -1,14 +1,17 @@
 /**
  * Appearance & Personalisation Settings Screen
  *
- * Sections:
- * 1. Typography — font family, font size, line spacing, bold labels
- * 2. Accent Color — 8 preset swatches
- * 3. Widgets — size, individual visibility toggles, drag-to-reorder
- * 4. Chat — bubble style, message density
- * 5. Solution — step display style
- * 6. Accessibility — reduce motion, high contrast, large tap targets
- * 7. Reset to defaults
+ * Sections (top to bottom):
+ * 0. Live Preview Panel — real-time preview of current settings
+ * 1. Presets — 4 named preset themes (Focus, Vibrant, Minimal, Accessible)
+ * 2. Typography — font family, font size, line spacing, bold labels
+ * 3. Accent Color — 8 global preset swatches
+ * 4. Per-Subject Colours — per-subject accent color overrides
+ * 5. Widgets — size, individual visibility toggles, drag-to-reorder
+ * 6. Chat — bubble style, message density
+ * 7. Solution — step display style
+ * 8. Accessibility — reduce motion, high contrast, large tap targets
+ * 9. Reset to defaults
  */
 
 import React, { useCallback } from "react";
@@ -21,6 +24,7 @@ import {
   StyleSheet,
   Alert,
   Platform,
+  useColorScheme,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -32,6 +36,10 @@ import {
   WIDGET_LABELS,
   WIDGET_EMOJIS,
   DEFAULT_WIDGET_ORDER,
+  PRESET_THEMES,
+  SUBJECT_NAMES,
+  BUBBLE_BORDER_RADIUS,
+  MESSAGE_DENSITY_PADDING,
   type FontFamily,
   type FontSizeScale,
   type LineSpacing,
@@ -84,9 +92,9 @@ function SegmentedControl<T extends string>({
             onPress={() => { triggerHaptic(); onChange(opt); }}
             style={[
               styles.segmentBtn,
-              active && { backgroundColor: colors.primary },
               i === 0 && styles.segmentFirst,
               i === options.length - 1 && styles.segmentLast,
+              active && { backgroundColor: colors.primary },
             ]}
             activeOpacity={0.8}
           >
@@ -100,12 +108,136 @@ function SegmentedControl<T extends string>({
   );
 }
 
+// ─── Live Preview Panel ───────────────────────────────────────────────────────
+function LivePreviewPanel() {
+  const colors = useColors();
+  const colorScheme = useColorScheme() ?? "light";
+  const { settings, accentColor, getSubjectAccent } = useAppearance();
+
+  const accent = accentColor(colorScheme);
+  const bubbleRadius = BUBBLE_BORDER_RADIUS[settings.chatBubbleStyle];
+  const bubblePadding = MESSAGE_DENSITY_PADDING[settings.messageDensity];
+  const fontSizeScale = { small: 0.88, medium: 1.0, large: 1.14, xlarge: 1.28 }[settings.fontSize];
+  const mathAccent = getSubjectAccent("Mathematics", colorScheme);
+  const physicsAccent = getSubjectAccent("Physics", colorScheme);
+
+  return (
+    <View style={[styles.previewPanel, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+      <Text style={[styles.previewTitle, { color: colors.muted }]}>LIVE PREVIEW</Text>
+
+      {/* Chat bubble preview */}
+      <View style={styles.previewChatRow}>
+        {/* AI bubble */}
+        <View style={[
+          styles.previewBubble,
+          styles.previewBubbleAI,
+          {
+            backgroundColor: colors.background,
+            borderColor: colors.border,
+            borderRadius: bubbleRadius,
+            paddingVertical: bubblePadding * 0.7,
+            paddingHorizontal: bubblePadding,
+          },
+        ]}>
+          <Text style={[
+            styles.previewBubbleText,
+            {
+              color: colors.foreground,
+              fontSize: Math.round(13 * fontSizeScale),
+              fontWeight: settings.boldLabels ? "700" : "400",
+              lineHeight: Math.round(13 * fontSizeScale * (settings.lineSpacing === "compact" ? 1.2 : settings.lineSpacing === "relaxed" ? 1.7 : 1.45)),
+              fontFamily: settings.fontFamily === "serif" ? "Georgia" : settings.fontFamily === "mono" ? (Platform.OS === "ios" ? "Courier New" : "monospace") : undefined,
+            },
+          ]}>
+            x² + 5x + 6 = 0
+          </Text>
+          <Text style={[
+            styles.previewBubbleSubtext,
+            {
+              color: colors.muted,
+              fontSize: Math.round(11 * fontSizeScale),
+              lineHeight: Math.round(11 * fontSizeScale * 1.4),
+            },
+          ]}>
+            Factor: (x+2)(x+3) = 0
+          </Text>
+        </View>
+
+        {/* User bubble */}
+        <View style={[
+          styles.previewBubble,
+          styles.previewBubbleUser,
+          {
+            backgroundColor: accent,
+            borderRadius: bubbleRadius,
+            paddingVertical: bubblePadding * 0.7,
+            paddingHorizontal: bubblePadding,
+          },
+        ]}>
+          <Text style={[
+            styles.previewBubbleText,
+            {
+              color: "#FFFFFF",
+              fontSize: Math.round(13 * fontSizeScale),
+              fontWeight: settings.boldLabels ? "700" : "400",
+            },
+          ]}>
+            Solve this
+          </Text>
+        </View>
+      </View>
+
+      {/* Subject accent pills */}
+      <View style={styles.previewSubjectRow}>
+        <View style={[styles.previewSubjectPill, { backgroundColor: `${mathAccent}20`, borderColor: `${mathAccent}50` }]}>
+          <Text style={[styles.previewSubjectText, { color: mathAccent }]}>Maths</Text>
+        </View>
+        <View style={[styles.previewSubjectPill, { backgroundColor: `${physicsAccent}20`, borderColor: `${physicsAccent}50` }]}>
+          <Text style={[styles.previewSubjectText, { color: physicsAccent }]}>Physics</Text>
+        </View>
+        <View style={[styles.previewSubjectPill, { backgroundColor: `${accent}20`, borderColor: `${accent}50` }]}>
+          <Text style={[styles.previewSubjectText, { color: accent }]}>Global</Text>
+        </View>
+      </View>
+
+      {/* Widget preview */}
+      <View style={[
+        styles.previewWidget,
+        {
+          backgroundColor: colors.background,
+          borderColor: colors.border,
+          borderLeftColor: accent,
+        },
+      ]}>
+        <Text style={[styles.previewWidgetEmoji]}>🔥</Text>
+        <View style={styles.previewWidgetText}>
+          <Text style={[
+            styles.previewWidgetLabel,
+            {
+              color: colors.foreground,
+              fontWeight: settings.boldLabels ? "700" : "600",
+              fontSize: Math.round(12 * fontSizeScale),
+            },
+          ]}>
+            7-day streak
+          </Text>
+          <Text style={[styles.previewWidgetSub, { color: colors.muted, fontSize: Math.round(10 * fontSizeScale) }]}>
+            Keep it up!
+          </Text>
+        </View>
+        <View style={[styles.previewWidgetDot, { backgroundColor: accent }]} />
+      </View>
+    </View>
+  );
+}
+
 // ─── Main screen ─────────────────────────────────────────────────────────────
 export default function AppearanceSettingsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { settings, updateSetting, resetSettings } = useAppearance();
+  const colorScheme = useColorScheme() ?? "light";
+  const { settings, updateSetting, resetSettings, applyPreset, accentColor } = useAppearance();
 
   const handleReset = useCallback(() => {
     Alert.alert(
@@ -142,6 +274,21 @@ export default function AppearanceSettingsScreen() {
     updateSetting("widgetOrder", order);
   }, [settings.widgetOrder, updateSetting]);
 
+  const handleApplyPreset = useCallback((presetId: string) => {
+    impactMedium();
+    applyPreset(presetId);
+  }, [applyPreset]);
+
+  const setSubjectAccent = useCallback((subject: string, colorId: string) => {
+    triggerHaptic();
+    updateSetting("subjectAccentColors", {
+      ...settings.subjectAccentColors,
+      [subject]: colorId,
+    });
+  }, [settings.subjectAccentColors, updateSetting]);
+
+  const globalAccent = accentColor(colorScheme);
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
@@ -157,7 +304,52 @@ export default function AppearanceSettingsScreen() {
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 32 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── 1. Typography ─────────────────────────────────────────────── */}
+        {/* ── 0. Live Preview Panel ─────────────────────────────────────── */}
+        <LivePreviewPanel />
+
+        {/* ── 1. Preset Themes ──────────────────────────────────────────── */}
+        <SectionHeader title="QUICK PRESETS" />
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.presetsRow}
+        >
+          {PRESET_THEMES.map((preset) => {
+            // A preset is "active" if all its settings match the current settings
+            const isActive = Object.entries(preset.settings).every(
+              ([k, v]) => (settings as unknown as Record<string, unknown>)[k] === v,
+            );
+            return (
+              <TouchableOpacity
+                key={preset.id}
+                onPress={() => handleApplyPreset(preset.id)}
+                style={[
+                  styles.presetCard,
+                  {
+                    backgroundColor: isActive ? `${globalAccent}18` : colors.surface,
+                    borderColor: isActive ? globalAccent : colors.border,
+                  },
+                ]}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.presetEmoji}>{preset.emoji}</Text>
+                <Text style={[styles.presetLabel, { color: isActive ? globalAccent : colors.foreground }]}>
+                  {preset.label}
+                </Text>
+                <Text style={[styles.presetDesc, { color: colors.muted }]} numberOfLines={2}>
+                  {preset.description}
+                </Text>
+                {isActive && (
+                  <View style={[styles.presetActiveBadge, { backgroundColor: globalAccent }]}>
+                    <Text style={styles.presetActiveBadgeText}>Active</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        {/* ── 2. Typography ─────────────────────────────────────────────── */}
         <SectionHeader title="TYPOGRAPHY" />
         <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
 
@@ -228,7 +420,7 @@ export default function AppearanceSettingsScreen() {
           </Row>
         </View>
 
-        {/* ── 2. Accent Color ───────────────────────────────────────────── */}
+        {/* ── 3. Accent Color ───────────────────────────────────────────── */}
         <SectionHeader title="ACCENT COLOR" />
         <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Row last>
@@ -259,7 +451,50 @@ export default function AppearanceSettingsScreen() {
           </Row>
         </View>
 
-        {/* ── 3. Widgets ────────────────────────────────────────────────── */}
+        {/* ── 4. Per-Subject Colours ────────────────────────────────────── */}
+        <SectionHeader title="PER-SUBJECT COLOURS" />
+        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Row>
+            <Text style={[styles.rowSub, { color: colors.muted, flex: 1, lineHeight: 18 }]}>
+              Override the accent colour for each subject. Tap a colour to apply it.
+            </Text>
+          </Row>
+          {SUBJECT_NAMES.map((subject, idx) => {
+            const currentId = settings.subjectAccentColors[subject] ?? settings.accentColorId;
+            return (
+              <Row key={subject} last={idx === SUBJECT_NAMES.length - 1}>
+                <Text style={[styles.rowLabel, { color: colors.foreground, minWidth: 130 }]} numberOfLines={1}>
+                  {subject}
+                </Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.subjectSwatchRow}
+                >
+                  {ACCENT_COLORS.map((ac) => {
+                    const active = currentId === ac.id;
+                    return (
+                      <TouchableOpacity
+                        key={ac.id}
+                        onPress={() => setSubjectAccent(subject, ac.id)}
+                        style={[
+                          styles.subjectSwatch,
+                          { backgroundColor: ac.light },
+                          active && styles.subjectSwatchActive,
+                        ]}
+                        activeOpacity={0.8}
+                      >
+                        {active && <Text style={styles.subjectSwatchCheck}>✓</Text>}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              </Row>
+            );
+          })}
+        </View>
+
+        {/* ── 5. Widgets ────────────────────────────────────────────────── */}
         <SectionHeader title="TODAY WIDGETS" />
         <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
 
@@ -313,7 +548,7 @@ export default function AppearanceSettingsScreen() {
           ))}
         </View>
 
-        {/* ── 4. Chat ───────────────────────────────────────────────────── */}
+        {/* ── 6. Chat ───────────────────────────────────────────────────── */}
         <SectionHeader title="AI TUTOR CHAT" />
         <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
 
@@ -344,7 +579,7 @@ export default function AppearanceSettingsScreen() {
           </Row>
         </View>
 
-        {/* ── 5. Solution ───────────────────────────────────────────────── */}
+        {/* ── 7. Solution ───────────────────────────────────────────────── */}
         <SectionHeader title="SOLUTION DISPLAY" />
         <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Row>
@@ -360,7 +595,7 @@ export default function AppearanceSettingsScreen() {
           </Row>
         </View>
 
-        {/* ── 6. Accessibility ──────────────────────────────────────────── */}
+        {/* ── 8. Accessibility ──────────────────────────────────────────── */}
         <SectionHeader title="ACCESSIBILITY" />
         <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Row>
@@ -401,7 +636,7 @@ export default function AppearanceSettingsScreen() {
           </Row>
         </View>
 
-        {/* ── 7. Reset ──────────────────────────────────────────────────── */}
+        {/* ── 9. Reset ──────────────────────────────────────────────────── */}
         <TouchableOpacity
           onPress={handleReset}
           style={[styles.resetBtn, { borderColor: colors.error }]}
@@ -428,7 +663,7 @@ const styles = StyleSheet.create({
   backBtn: { width: 60 },
   backText: { fontSize: 17, fontWeight: "500" },
   headerTitle: { fontSize: 17, fontWeight: "700" },
-  scroll: { paddingHorizontal: 16, paddingTop: 20 },
+  scroll: { paddingHorizontal: 16, paddingTop: 16 },
   sectionHeader: {
     fontSize: 11,
     fontWeight: "700",
@@ -520,4 +755,122 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   resetText: { fontSize: 15, fontWeight: "700" },
+
+  // ── Live Preview Panel ──────────────────────────────────────────────────────
+  previewPanel: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+    marginTop: 8,
+    gap: 12,
+  },
+  previewTitle: {
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 0.8,
+    marginBottom: 4,
+  },
+  previewChatRow: {
+    flexDirection: "row",
+    gap: 8,
+    alignItems: "flex-end",
+  },
+  previewBubble: {
+    maxWidth: "55%",
+    gap: 2,
+  },
+  previewBubbleAI: {
+    borderWidth: 1,
+    flex: 1,
+  },
+  previewBubbleUser: {
+    alignSelf: "flex-end",
+  },
+  previewBubbleText: {
+    fontSize: 13,
+  },
+  previewBubbleSubtext: {
+    fontSize: 11,
+  },
+  previewSubjectRow: {
+    flexDirection: "row",
+    gap: 8,
+    flexWrap: "wrap",
+  },
+  previewSubjectPill: {
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  previewSubjectText: {
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  previewWidget: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderLeftWidth: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 10,
+  },
+  previewWidgetEmoji: { fontSize: 20 },
+  previewWidgetText: { flex: 1 },
+  previewWidgetLabel: { fontSize: 12, fontWeight: "600" },
+  previewWidgetSub: { fontSize: 10, marginTop: 2 },
+  previewWidgetDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+
+  // ── Preset cards ────────────────────────────────────────────────────────────
+  presetsRow: {
+    gap: 12,
+    paddingVertical: 4,
+    paddingHorizontal: 2,
+  },
+  presetCard: {
+    width: 148,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    padding: 14,
+    gap: 4,
+  },
+  presetEmoji: { fontSize: 24, marginBottom: 2 },
+  presetLabel: { fontSize: 15, fontWeight: "700" },
+  presetDesc: { fontSize: 11, lineHeight: 15 },
+  presetActiveBadge: {
+    marginTop: 6,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    alignSelf: "flex-start",
+  },
+  presetActiveBadgeText: { color: "#FFFFFF", fontSize: 10, fontWeight: "700" },
+
+  // ── Per-subject colour swatches ─────────────────────────────────────────────
+  subjectSwatchRow: {
+    flexDirection: "row",
+    gap: 8,
+    paddingVertical: 2,
+  },
+  subjectSwatch: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  subjectSwatchActive: {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  subjectSwatchCheck: { color: "#FFFFFF", fontSize: 12, fontWeight: "700" },
 });
