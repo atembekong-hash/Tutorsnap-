@@ -31,6 +31,7 @@ export interface ChatSessionSummary {
   id: string;
   title: string;
   subject: string | null;
+  gradeLevel: string | null; // Grade/level for this session
   createdAt: number;
   updatedAt: number;
   messageCount: number;
@@ -230,6 +231,7 @@ export async function listSessionSummaries(): Promise<ChatSessionSummary[]> {
         id: s.id,
         title: s.title,
         subject: s.subject,
+        gradeLevel: s.gradeLevel ?? null,
         createdAt: s.createdAt,
         updatedAt: s.updatedAt,
         messageCount: s.messageCount,

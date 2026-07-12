@@ -124,6 +124,13 @@ function SessionCard({
                   </Text>
                 </View>
               )}
+              {session.gradeLevel && (
+                <View style={[styles.subjectBadge, { backgroundColor: `${colors.success}15`, marginLeft: 4 }]}>
+                  <Text style={[styles.subjectBadgeText, { color: colors.success, fontSize: fs(11) }]}>
+                    {session.gradeLevel}
+                  </Text>
+                </View>
+              )}
               <Text style={[styles.cardTime, { color: colors.muted, fontSize: fs(12) }]}>
                 {formatRelativeTime(session.updatedAt)}
               </Text>

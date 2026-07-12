@@ -111,6 +111,7 @@ const MAPPING = {
   "doc.plaintext.fill": "article",
   "person.3.fill": "groups",
   "person.badge.minus.fill": "person-remove",
+  "person.badge.plus": "person-add",
   "checkmark.shield.fill": "verified-user",
   "scale.3d": "balance",
   "globe": "language",

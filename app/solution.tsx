@@ -568,7 +568,7 @@ export default function SolutionScreen() {
             <TouchableOpacity
               accessibilityLabel="Share"
               onPress={handleShareToClassroom}
-              style={styles.shareMenuItem}
+              style={[styles.shareMenuItem, { borderBottomWidth: 0.5, borderBottomColor: colors.border }]}
               activeOpacity={0.7}
             >
               <View style={[styles.shareMenuIcon, { backgroundColor: `${colors.primary}20` }]}>
@@ -577,6 +577,50 @@ export default function SolutionScreen() {
               <View style={styles.shareMenuInfo}>
                 <Text style={[styles.shareMenuLabel, { color: colors.foreground }]}>Share to Classroom</Text>
                 <Text style={[styles.shareMenuDesc, { color: colors.muted }]}>Add to your class problem feed</Text>
+              </View>
+              <IconSymbol size={16} name="chevron.right" color={colors.muted} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              accessibilityLabel={bookmarked ? "Remove bookmark" : "Bookmark this solution"}
+              onPress={async () => { setShowShareMenu(false); await handleBookmark(); }}
+              style={[styles.shareMenuItem, { borderBottomWidth: 0.5, borderBottomColor: colors.border }]}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.shareMenuIcon, { backgroundColor: `${colors.warning}15` }]}>
+                <IconSymbol size={18} name={bookmarked ? "bookmark.fill" : "bookmark"} color={colors.warning} />
+              </View>
+              <View style={styles.shareMenuInfo}>
+                <Text style={[styles.shareMenuLabel, { color: colors.foreground }]}>{bookmarked ? "Remove Bookmark" : "Bookmark"}</Text>
+                <Text style={[styles.shareMenuDesc, { color: colors.muted }]}>{bookmarked ? "Remove from your saved solutions" : "Save to your bookmarks"}</Text>
+              </View>
+              <IconSymbol size={16} name="chevron.right" color={colors.muted} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              accessibilityLabel="Share this result with your invite code"
+              onPress={async () => {
+                setShowShareMenu(false);
+                H.impactLight();
+                const { getOrCreateReferralCode } = await import("@/lib/affiliate");
+                const code = await getOrCreateReferralCode();
+                const msg = `TutorSnap just solved this for me in seconds 🤯\n\n"${solution?.problem ?? "a tough problem"}"\n\nTry it free with my code: ${code}\nhttps://${APP_URL.replace("https://", "")}`;
+                try {
+                  if (Platform.OS !== "web") {
+                    await Share.share({ message: msg });
+                  } else {
+                    await Clipboard.setStringAsync(msg);
+                    Alert.alert("Copied!", "Message copied to clipboard.");
+                  }
+                } catch { /* user cancelled */ }
+              }}
+              style={styles.shareMenuItem}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.shareMenuIcon, { backgroundColor: `${colors.success}15` }]}>
+                <IconSymbol size={18} name="person.badge.plus" color={colors.success} />
+              </View>
+              <View style={styles.shareMenuInfo}>
+                <Text style={[styles.shareMenuLabel, { color: colors.foreground }]}>Invite a Friend</Text>
+                <Text style={[styles.shareMenuDesc, { color: colors.muted }]}>Share your result + referral code</Text>
               </View>
               <IconSymbol size={16} name="chevron.right" color={colors.muted} />
             </TouchableOpacity>
@@ -845,52 +889,6 @@ export default function SolutionScreen() {
           )}
         </View>
 
-        {/* Action Buttons */}
-        <View style={styles.actionRow}>
-          <TouchableOpacity
-            onPress={handleBookmark}
-            style={[
-              styles.actionBtn,
-              {
-                backgroundColor: bookmarked ? `${colors.warning}20` : colors.surface,
-                borderColor: bookmarked ? colors.warning : colors.border,
-                flex: 1,
-              },
-            ]}
-            activeOpacity={0.8}
-          >
-            <IconSymbol size={18} name={bookmarked ? "bookmark.fill" : "bookmark"} color={bookmarked ? colors.warning : colors.muted} />
-            <Text style={[styles.actionBtnText, { color: bookmarked ? colors.warning : colors.muted }]}>
-              {bookmarked ? "Bookmarked" : "Bookmark"}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            accessibilityLabel="Share"
-            onPress={handleShare}
-            disabled={shareLoading}
-            style={[styles.actionBtn, { backgroundColor: colors.surface, borderColor: colors.border, flex: 1 }]}
-            activeOpacity={0.8}
-          >
-            {shareLoading ? (
-              <ActivityIndicator size="small" color={colors.primary} />
-            ) : (
-              <IconSymbol size={18} name="square.and.arrow.up" color={colors.primary} />
-            )}
-            <Text style={[styles.actionBtnText, { color: colors.primary }]}>Share PDF</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            accessibilityLabel="Go to practice"
-            onPress={() => router.push("/(tabs)/practice" as any)}
-            style={[styles.actionBtn, { backgroundColor: colors.primary, borderColor: colors.primary, flex: 2 }]}
-            activeOpacity={0.85}
-          >
-            <IconSymbol size={18} name="pencil.and.list.clipboard" color="#FFFFFF" />
-            <Text style={[styles.actionBtnText, { color: "#FFFFFF" }]}>Practice Similar</Text>
-          </TouchableOpacity>
-        </View>
-
         {/* Explain this Differently */}
         <TouchableOpacity
           accessibilityLabel="Explain this solution differently"
@@ -975,31 +973,7 @@ export default function SolutionScreen() {
           </Text>
         </TouchableOpacity>
 
-        {/* Share result + invite */}
-        <TouchableOpacity
-          accessibilityLabel="Share this result with your invite code"
-          onPress={async () => {
-            H.impactLight()
-            const { getOrCreateReferralCode } = await import("@/lib/affiliate");
-            const code = await getOrCreateReferralCode();
-            const msg = `TutorSnap just solved this for me in seconds 🤯\n\n“${solution?.problem ?? "a tough problem"}”\n\nTry it free with my code: ${code}\nhttps://${APP_URL.replace("https://", "")}`;
-            try {
-              if (Platform.OS !== "web") {
-                await Share.share({ message: msg });
-              } else {
-                await Clipboard.setStringAsync(msg);
-                Alert.alert("Copied!", "Message copied to clipboard.");
-              }
-            } catch { /* user cancelled */ }
-          }}
-          style={[styles.inviteShareBtn, { backgroundColor: `${colors.warning}0E`, borderColor: `${colors.warning}30` }]}
-          activeOpacity={0.8}
-        >
-          <IconSymbol size={16} name="square.and.arrow.up" color={colors.warning} />
-          <Text style={[styles.inviteShareBtnText, { color: colors.warning }]}>
-            Share this result + invite a friend
-          </Text>
-        </TouchableOpacity>
+
       </ScrollView>
     </ScreenContainer>
   );
