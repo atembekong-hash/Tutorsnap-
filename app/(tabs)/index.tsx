@@ -130,6 +130,7 @@ interface TodayRowProps {
   isOnline: boolean;
   selectedSubject: import("@/lib/subjects").SubjectId | null;
   usage: { solves: number };
+  gradeLevel: string | null;
   onShieldEarned: (count: number) => void;
   onSolveNow: () => void;
   onDismissBadge: () => void;
@@ -139,7 +140,7 @@ interface TodayRowProps {
 
 function TodayRow({
   progress, weeklyData, almostBadge, bannerDismissed,
-  isPremium, isDevMode, isOnline, selectedSubject, usage,
+  isPremium, isDevMode, isOnline, selectedSubject, usage, gradeLevel,
   onShieldEarned, onSolveNow, onDismissBadge, onGoSolveBadge, onWeeklyGoalChanged,
 }: TodayRowProps) {
   const colors = useColors();
@@ -209,7 +210,7 @@ function TodayRow({
   }
 
   // 2. Daily Challenge card
-  const q = getTodayQuestion();
+  const q = getTodayQuestion(gradeLevel);
   const qColor = getSubjectAccent(getAppearanceSubjectKey(q.subject), colorScheme);
   if (isWidgetVisible("challenge")) cards.push(
     <TouchableOpacity
@@ -370,12 +371,12 @@ const trStyles = StyleSheet.create({
 });
 
 // ─── Daily Challenge Card ────────────────────────────────────────────────────
-function DailyChallengeCard() {
+function DailyChallengeCard({ gradeLevel }: { gradeLevel?: string | null }) {
   const colors = useColors();
   const router = useRouter();
   const { colorScheme } = useThemeContext();
   const { getSubjectAccent } = useAppearance();
-  const question = getTodayQuestion();
+  const question = getTodayQuestion(gradeLevel);
   const [completed, setCompleted] = React.useState(false);
   const [correct, setCorrect] = React.useState<boolean | null>(null);
 
@@ -838,6 +839,7 @@ function SolveScreenContent() {
             isOnline={isOnline}
             selectedSubject={selectedSubject}
             usage={usage}
+            gradeLevel={homeGradeLevel}
             onShieldEarned={(count) => setShieldCount(count)}
             onSolveNow={() => inputRef.current?.focus()}
             onDismissBadge={() => setBannerDismissed(true)}

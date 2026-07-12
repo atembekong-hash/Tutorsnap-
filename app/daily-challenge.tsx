@@ -30,6 +30,7 @@ import {
   type DailyChallengeState,
 } from "@/lib/daily-challenge";
 import { recordSolve } from "@/lib/progress";
+import { loadGlobalGrade } from "@/lib/grade-levels";
 
 type OptionKey = "A" | "B" | "C" | "D";
 
@@ -45,12 +46,18 @@ function formatCountdown(ms: number): string {
 export default function DailyChallengeScreen() {
   const colors = useColors();
   const router = useRouter();
-  const question = getTodayQuestion();
+  const [gradeLevel, setGradeLevel] = useState<string | null>(null);
+  const question = getTodayQuestion(gradeLevel);
 
   const [state, setState] = useState<DailyChallengeState | null>(null);
   const [selectedOption, setSelectedOption] = useState<OptionKey | null>(null);
   const [revealed, setRevealed] = useState(false);
   const [countdown, setCountdown] = useState(msUntilMidnight());
+
+  // Load grade level
+  useEffect(() => {
+    loadGlobalGrade().then(setGradeLevel);
+  }, []);
 
   // Load persisted state
   useEffect(() => {

@@ -2,6 +2,7 @@ import React, { useState, useRef } from "react";
 import {
   View,
   Text,
+  TextInput,
   TouchableOpacity,
   StyleSheet,
   Dimensions,
@@ -18,8 +19,15 @@ import { GRADE_OPTIONS, saveGlobalGrade } from "@/lib/grade-levels";
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 export const ONBOARDING_DONE_KEY = "@tutorsnap/onboardingDone";
+export const USER_NAME_KEY = "@tutorsnap/userName";
 
 const SLIDES = [
+  {
+    id: "name",
+    emoji: "👋",
+    title: "What's your name?",
+    subtitle: "We’ll use it to personalise your experience.",
+  },
   {
     id: "welcome",
     emoji: "🎓",
@@ -71,6 +79,7 @@ export default function OnboardingScreen() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [selectedCategories, setSelectedCategories] = useState<Set<SubjectCategory>>(new Set());
   const [selectedGrade, setSelectedGrade] = useState<string | null>(null);
+  const [userName, setUserName] = useState("");
 
   const isLastSlide = currentSlide === SLIDES.length - 1;
   const isTrialSlide = SLIDES[currentSlide]?.id === "trial";
@@ -100,6 +109,7 @@ export default function OnboardingScreen() {
       );
     }
     if (selectedGrade) await saveGlobalGrade(selectedGrade);
+    if (userName.trim()) await AsyncStorage.setItem(USER_NAME_KEY, userName.trim());
     // Replace to home first, then push paywall so dismissing paywall lands on home
     router.replace("/(tabs)" as any);
     // Small delay so the tab navigator is mounted before pushing the modal
@@ -118,6 +128,7 @@ export default function OnboardingScreen() {
       );
     }
     if (selectedGrade) await saveGlobalGrade(selectedGrade);
+    if (userName.trim()) await AsyncStorage.setItem(USER_NAME_KEY, userName.trim());
     router.replace("/(tabs)");
   };
 
@@ -169,6 +180,26 @@ export default function OnboardingScreen() {
 
             <Text style={[styles.slideTitle, { color: colors.foreground }]}>{slide.title}</Text>
             <Text style={[styles.slideSubtitle, { color: colors.muted }]}>{slide.subtitle}</Text>
+
+            {/* Name input on name slide */}
+            {slide.id === "name" && (
+              <View style={{ width: "100%", marginTop: 32 }}>
+                <TextInput
+                  value={userName}
+                  onChangeText={setUserName}
+                  placeholder="Your first name"
+                  placeholderTextColor={colors.muted}
+                  returnKeyType="done"
+                  maxLength={40}
+                  autoFocus
+                  accessibilityLabel="Enter your first name"
+                  style={[styles.nameInput, { color: colors.foreground, backgroundColor: colors.surface, borderColor: userName.trim() ? colors.primary : colors.border }]}
+                />
+                {userName.trim().length > 0 && (
+                  <Text style={[styles.nameHint, { color: colors.muted }]}>Hi, {userName.trim()}! 👋</Text>
+                )}
+              </View>
+            )}
 
             {/* Subject category picker on subjects slide */}
             {slide.id === "subjects" && (
@@ -432,5 +463,20 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 16,
     lineHeight: 18,
+  },
+  nameInput: {
+    fontSize: 18,
+    fontWeight: "600",
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    borderRadius: 16,
+    borderWidth: 2,
+    textAlign: "center",
+  },
+  nameHint: {
+    fontSize: 15,
+    textAlign: "center",
+    marginTop: 14,
+    fontWeight: "500",
   },
 });
