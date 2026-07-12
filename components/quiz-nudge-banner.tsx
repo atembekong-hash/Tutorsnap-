@@ -20,7 +20,7 @@ import {
   StyleSheet,
   Platform,
 } from "react-native";
-import * as Haptics from "expo-haptics";
+import * as H from "@/lib/haptics";
 import { useRouter } from "expo-router";
 import { useColors } from "@/hooks/use-colors";
 import { FREE_LIMITS } from "@/lib/subscription";
@@ -64,12 +64,12 @@ export function QuizNudgeBanner({ questionsAnswered, isPremium, isDevMode }: Qui
     : `${questionsAnswered} of ${limit} used today · Upgrade for unlimited`;
 
   const handlePress = () => {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    H.impactLight()
     router.push("/paywall" as any);
   };
 
   const handleDismiss = () => {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    H.impactLight()
     setDismissed(true);
   };
 

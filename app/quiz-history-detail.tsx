@@ -10,7 +10,7 @@ import {
   Platform,
 } from "react-native";
 import * as Clipboard from "expo-clipboard";
-import * as Haptics from "expo-haptics";
+import * as H from "@/lib/haptics";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -212,7 +212,7 @@ function QuestionCard({
       <TouchableOpacity
         onPress={() => {
           setExpanded((v) => !v);
-          if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          H.impactLight()
         }}
         style={[styles.explanationToggle, { borderTopColor: colors.border }]}
         activeOpacity={0.7}
@@ -272,7 +272,7 @@ export default function QuizHistoryDetailScreen() {
 
   const handleShare = async () => {
     if (!quiz) return;
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    H.impactLight()
     const subjectLabel = getSubjectLabel(quiz.subject);
     const grade = gradeLabel(quiz.pct);
     const correctCount = quiz.score;

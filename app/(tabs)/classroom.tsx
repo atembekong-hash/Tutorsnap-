@@ -26,7 +26,7 @@ import {
   Modal,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
-import * as Haptics from "expo-haptics";
+import * as H from "@/lib/haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
@@ -63,6 +63,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ProblemCommentSheet } from "@/components/problem-comment-sheet";
 import { getCommentCount } from "@/lib/problem-comments";
 import { toggleBookmark, isBookmarked } from "@/lib/bookmarks";
+import { APP_URL, APP_NAME } from "@/constants/app";
 
 const HW_DONE_KEY = "@tutorsnap/hw_done";
 
@@ -228,7 +229,7 @@ export default function ClassroomTabScreen() {
   const handleCreateClassroom = async () => {
     if (!classroomName.trim()) return;
     setCreating(true);
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    H.impactMedium()
     const info = await createClassroom(classroomName);
     setMyClassroom(info);
     setShowCreate(false);
@@ -255,7 +256,7 @@ export default function ClassroomTabScreen() {
     await saveClassroomDisplayName(name);
     setDisplayName(name);
     setJoining(true);
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    H.impactMedium()
     // Use the classroom name the student entered (or a sensible fallback)
     const classroomLabel = classroomNameInput.trim() || `Class ${pendingJoinCode}`;
     const info = await joinClassroom(pendingJoinCode, classroomLabel);
@@ -312,14 +313,14 @@ export default function ClassroomTabScreen() {
   const handleCopyCode = async (code: string) => {
     await Clipboard.setStringAsync(code);
     setCopiedCode(true);
-    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    H.notificationSuccess()
     setTimeout(() => setCopiedCode(false), 2000);
   };
 
   const handleShareCode = async (code: string, name: string) => {
     try {
       await Share.share({
-        message: `Join my TutorSnap classroom "${name}"!\n\nUse code: ${code}\n\nDownload TutorSnap at tutorsnapai.tech`,
+        message: `Join my TutorSnap classroom "${name}"!\n\nUse code: ${code}\n\nDownload TutorSnap at ${APP_URL.replace("https://", "")}`,
         title: "Join my TutorSnap Classroom",
       });
     } catch { /* ignore */ }
@@ -373,7 +374,7 @@ export default function ClassroomTabScreen() {
     const title = homeworkTitle || homeworkModalItem.problem.slice(0, 60);
     scheduleHomeworkReminders(homeworkModalItem.id, title, selectedDueDate).catch(() => {/* ignore */});
     setHomeworkModalItem(null);
-    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    H.notificationSuccess()
   };
 
   const handleUnassignHomework = async (item: ClassroomProblem) => {
@@ -392,7 +393,7 @@ export default function ClassroomTabScreen() {
     const updated = { ...notifPrefs, [key]: !notifPrefs[key] };
     setNotifPrefs(updated);
     await saveClassroomNotifPrefs(updated);
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    H.impactLight()
   };
 
   const handleResetLeaderboard = () => {
@@ -408,7 +409,7 @@ export default function ClassroomTabScreen() {
           onPress: async () => {
             await resetLeaderboard(activeClassroom.code);
             setLeaderboard([]);
-            if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            H.notificationSuccess()
             Alert.alert("Leaderboard Reset", "All scores have been cleared.");
           },
         },
@@ -427,7 +428,7 @@ export default function ClassroomTabScreen() {
     await saveClassroomDisplayName(name);
     setDisplayName(name);
     setShowEditNameModal(false);
-    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    H.notificationSuccess()
   };
 
   // Unique subjects in the feed for the filter chip bar
@@ -476,7 +477,7 @@ export default function ClassroomTabScreen() {
 
   // Mark a homework item as done (local toggle)
   const handleMarkHomeworkDone = (id: string) => {
-    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    H.notificationSuccess()
     setCompletedHomework((prev) => {
       const next = new Set(prev);
       if (next.has(id)) {
@@ -498,7 +499,7 @@ export default function ClassroomTabScreen() {
 
   // Bookmark toggle for feed cards
   const handleBookmarkToggle = useCallback(async (item: ClassroomProblem) => {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    H.impactLight()
     const historyItem = {
       id: `classroom-${item.id}`,
       problem: item.problem,
@@ -514,13 +515,7 @@ export default function ClassroomTabScreen() {
       else next.delete(item.id);
       return next;
     });
-    if (Platform.OS !== "web") {
-      Haptics.notificationAsync(
-        nowBookmarked
-          ? Haptics.NotificationFeedbackType.Success
-          : Haptics.NotificationFeedbackType.Warning
-      );
-    }
+    if (nowBookmarked) H.notificationSuccess(); else H.notificationWarning();
   }, []);
 
   // Analytics: compute subject breakdown from feed
@@ -1390,7 +1385,7 @@ export default function ClassroomTabScreen() {
                 onPress={() => {
                   setFeedSort(opt.key);
                   setShowSortMenu(false);
-                  if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  H.impactLight()
                 }}
                 activeOpacity={0.75}
               >

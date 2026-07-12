@@ -11,12 +11,13 @@ import {
   KeyboardAvoidingView,
 } from "react-native";
 import { useRouter } from "expo-router";
-import * as Haptics from "expo-haptics";
+import * as H from "@/lib/haptics";
 import * as Linking from "expo-linking";
 import Constants from "expo-constants";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
+import { SchemeColors } from "@/constants/theme";
 
 const BUG_CATEGORIES = [
   { id: "crash", label: "App Crash", emoji: "💥" },
@@ -33,7 +34,7 @@ const SEVERITY_OPTIONS = [
   { id: "low", label: "Minor", desc: "Cosmetic issue, doesn't affect use", color: "#22C55E" },
   { id: "medium", label: "Moderate", desc: "Annoying but I can work around it", color: "#F59E0B" },
   { id: "high", label: "Severe", desc: "Core feature is broken", color: "#EF4444" },
-  { id: "critical", label: "Critical", desc: "App crashes or data is lost", color: "#7C3AED" },
+  { id: "critical", label: "Critical", desc: "App crashes or data is lost", color: SchemeColors.light.secondary },
 ];
 
 export default function ReportBugScreen() {
@@ -54,7 +55,7 @@ export default function ReportBugScreen() {
       Alert.alert("More Detail Needed", "Please describe the bug in at least 15 characters.");
       return;
     }
-    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    H.notificationSuccess()
 
     const catLabel = BUG_CATEGORIES.find(c => c.id === category)?.label ?? category;
     const sevLabel = SEVERITY_OPTIONS.find(s => s.id === severity)?.label ?? severity;
@@ -130,7 +131,7 @@ export default function ReportBugScreen() {
                 accessibilityLabel="Toggle category"
                 key={cat.id}
                 onPress={() => {
-                  if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  H.impactLight()
                   setCategory(cat.id);
                 }}
                 activeOpacity={0.7}
@@ -157,7 +158,7 @@ export default function ReportBugScreen() {
               accessibilityLabel="Toggle severity"
               key={opt.id}
               onPress={() => {
-                if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                H.impactLight()
                 setSeverity(opt.id);
               }}
               activeOpacity={0.7}

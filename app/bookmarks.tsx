@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import Swipeable from "react-native-gesture-handler/Swipeable";
-import * as Haptics from "expo-haptics";
+import * as H from "@/lib/haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
@@ -96,9 +96,7 @@ export default function BookmarksScreen() {
         text: "Remove",
         style: "destructive",
         onPress: async () => {
-          if (Platform.OS !== "web") {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-          }
+          H.impactMedium();
           try {
             await removeBookmark(id);
             await loadBookmarks();
@@ -127,12 +125,12 @@ export default function BookmarksScreen() {
   };
 
   const handleSubjectFilter = (subject: string) => {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    H.impactLight()
     setActiveSubject(subject);
   };
 
   const handleSortSelect = (key: SortKey) => {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    H.impactLight()
     setSortKey(key);
     setShowSortMenu(false);
   };

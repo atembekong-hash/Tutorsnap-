@@ -18,11 +18,11 @@ import {
   Platform,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import * as Haptics from "expo-haptics";
+import * as H from "@/lib/haptics";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/use-colors";
 
-const { width: W, height: H } = Dimensions.get("window");
+const { width: W, height: SCREEN_H } = Dimensions.get("window");
 
 // ─── Confetti particle ────────────────────────────────────────────────────────
 
@@ -45,7 +45,7 @@ function ConfettiParticle({ index }: { index: number }) {
   useEffect(() => {
     Animated.parallel([
       Animated.timing(y, {
-        toValue: H + 20,
+        toValue: SCREEN_H + 20,
         duration,
         delay,
         useNativeDriver: true,
@@ -104,9 +104,7 @@ export default function PremiumWelcomeScreen() {
   const btnOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    if (Platform.OS !== "web") {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    }
+    H.notificationSuccess();
 
     Animated.sequence([
       // Crown bounces in
@@ -141,7 +139,7 @@ export default function PremiumWelcomeScreen() {
   }, []);
 
   const handleContinue = () => {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    H.impactMedium()
     router.back();
   };
 

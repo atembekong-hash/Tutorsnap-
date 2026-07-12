@@ -7,7 +7,7 @@ import {
   StyleSheet,
   Platform,
 } from "react-native";
-import * as Haptics from "expo-haptics";
+import * as H from "@/lib/haptics";
 import { useColors } from "@/hooks/use-colors";
 
 type KeyboardTab = "basic" | "algebra" | "calculus" | "greek";
@@ -137,16 +137,12 @@ export function MathKeyboard({ onInsert, onBackspace, onClear }: MathKeyboardPro
   const [activeTab, setActiveTab] = useState<KeyboardTab>("basic");
 
   const handleKey = (symbol: string) => {
-    if (Platform.OS !== "web") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
+    H.impactLight();
     onInsert(symbol);
   };
 
   const handleBackspace = () => {
-    if (Platform.OS !== "web") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
+    H.impactLight();
     onBackspace();
   };
 

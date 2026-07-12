@@ -13,7 +13,7 @@ import {
   Keyboard,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
-import * as Haptics from "expo-haptics";
+import * as H from "@/lib/haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { MathKeyboard } from "@/components/math-keyboard";
@@ -258,9 +258,7 @@ function SolveScreenContent() {
 
   const solveMutation = trpc.academic.solve.useMutation({
     onSuccess: async (data) => {
-      if (Platform.OS !== "web") {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      }
+      H.notificationSuccess();
       const historyItem: HistoryItem = {
         id: `history-${Date.now()}`,
         problem: data.problem || problem,
@@ -316,9 +314,7 @@ function SolveScreenContent() {
       });
     },
     onError: () => {
-      if (Platform.OS !== "web") {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      }
+      H.notificationError();
     },
   });
 
@@ -331,9 +327,7 @@ function SolveScreenContent() {
     }
     Keyboard.dismiss();
     setShowMathKeyboard(false);
-    if (Platform.OS !== "web") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
+    H.impactMedium();
     await incUsage("solves");
     const fullProblem = problem.trim();
     solveMutation.mutate({ problem: fullProblem, subject: selectedSubject ?? "other" });
@@ -402,9 +396,7 @@ function SolveScreenContent() {
                   onPress={() => {
                     const next = colorScheme === "dark" ? "light" : "dark";
                     setColorScheme(next);
-                    if (Platform.OS !== "web") {
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    }
+                    H.impactLight();
                   }}
                   style={styles.iconBtn}
                   activeOpacity={0.7}
@@ -420,7 +412,7 @@ function SolveScreenContent() {
                   accessibilityLabel={isPremium ? "Premium member" : "Upgrade to Premium"}
                   onPress={() => {
                     if (!isPremium && !isDevMode) {
-                      if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      H.impactLight()
                       router.push("/paywall" as any);
                     }
                   }}
@@ -671,7 +663,7 @@ function SolveScreenContent() {
                     <TouchableOpacity
                       accessibilityLabel="Toggle show cheat sheet"
                       onPress={() => {
-                        if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        H.impactLight()
                         setShowCheatSheet(true);
                       }}
                       style={[styles.keyboardToggleBtn, { backgroundColor: "transparent", borderColor: colors.border }]}
@@ -685,9 +677,7 @@ function SolveScreenContent() {
                       onPress={() => {
                         Keyboard.dismiss();
                         setShowMathKeyboard((v) => !v);
-                        if (Platform.OS !== "web") {
-                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        }
+                        H.impactLight();
                       }}
                       style={[
                         styles.keyboardToggleBtn,

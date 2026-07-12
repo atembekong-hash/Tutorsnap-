@@ -15,7 +15,7 @@ import {
   KeyboardAvoidingView,
 } from "react-native";
 import * as Clipboard from "expo-clipboard";
-import * as Haptics from "expo-haptics";
+import * as H from "@/lib/haptics";
 import { useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -519,7 +519,7 @@ export default function ChatHistoryScreen() {
   });
 
   const handleEditTags = (session: ChatSessionSummary) => {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    H.impactLight()
     setTagTarget(session);
   };
 
@@ -529,11 +529,11 @@ export default function ChatHistoryScreen() {
       prev.map((s) => (s.id === sessionId ? { ...s, tags } : s))
     );
     setTagTarget(null);
-    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    H.notificationSuccess()
   };
 
   const handleResume = (sessionId: string) => {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    H.impactLight()
     router.push({ pathname: "/(tabs)/chat", params: { sessionId } });
   };
 
@@ -556,7 +556,7 @@ export default function ChatHistoryScreen() {
   };
 
   const handleShare = async (session: ChatSessionSummary) => {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    H.impactLight()
 
     const full = await loadSession(session.id);
     if (!full) return;
@@ -608,7 +608,7 @@ export default function ChatHistoryScreen() {
   };
 
   const handleRename = (session: ChatSessionSummary) => {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    H.impactLight()
     setRenameTarget(session);
   };
 
@@ -619,11 +619,11 @@ export default function ChatHistoryScreen() {
       prev.map((s) => (s.id === renameTarget.id ? { ...s, title: newTitle } : s))
     );
     setRenameTarget(null);
-    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    H.notificationSuccess()
   };
 
   const handleTogglePin = async (session: ChatSessionSummary) => {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    H.impactMedium()
     const result = await togglePin(session.id);
     if (result === null) {
       Alert.alert(
@@ -656,7 +656,7 @@ export default function ChatHistoryScreen() {
   };
 
   const handleNewChat = () => {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    H.impactLight()
     router.push({ pathname: "/(tabs)/chat", params: { newSession: "1" } });
   };
 

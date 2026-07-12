@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from "react-native";
-import * as Haptics from "expo-haptics";
+import * as H from "@/lib/haptics";
 import { useColors } from "@/hooks/use-colors";
 import { getShieldCount, earnShield } from "@/lib/progress";
 
@@ -37,9 +37,7 @@ export function StreakShieldCard({ currentStreak, onShieldEarned }: Props) {
   const handleEarn = async () => {
     if (!canEarn || earning) return;
     setEarning(true);
-    if (Platform.OS !== "web") {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    }
+    H.notificationSuccess();
     const newCount = await earnShield();
     setShields(newCount);
     setJustEarned(true);

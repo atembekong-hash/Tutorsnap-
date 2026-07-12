@@ -15,7 +15,7 @@ import {
 import { useRef } from "react";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import Constants from "expo-constants";
-import * as Haptics from "expo-haptics";
+import * as H from "@/lib/haptics";
 import * as Linking from "expo-linking";
 import * as StoreReview from "expo-store-review";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -32,6 +32,7 @@ import {
 } from "@/lib/notifications";
 import { SUBJECT_CATEGORIES, type SubjectCategory } from "@/lib/subjects";
 import { useFontSize, FONT_SIZE_SCALES, SCALE_LABELS, type FontSizeScale } from "@/lib/font-size-provider";
+import { SUPPORT_EMAIL, PRIVACY_URL, TERMS_URL } from "@/constants/app";
 import {
   getSubscriptionStatus,
   restorePurchases,
@@ -223,12 +224,12 @@ export default function SettingsScreen() {
   }, []);
 
   const handleToggleTheme = () => {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    H.impactMedium()
     setColorScheme(isDark ? "light" : "dark");
   };
 
   const handleSetGoal = async (goal: number) => {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    H.impactLight()
     setDailyGoalState(goal);
     try {
       await setDailyGoal(goal);
@@ -236,7 +237,7 @@ export default function SettingsScreen() {
   };
 
   const handleToggleReminder = async (value: boolean) => {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    H.impactMedium()
     if (value) {
       setPickerHour(reminder.hour);
       setPickerMinute(reminder.minute);
@@ -254,7 +255,7 @@ export default function SettingsScreen() {
   };
 
   const handleSaveTime = async () => {
-    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    H.notificationSuccess()
     setShowTimePicker(false);
     setReminderSaving(true);
     try {
@@ -274,7 +275,7 @@ export default function SettingsScreen() {
   };
 
   const handleToggleCategory = async (cat: SubjectCategory) => {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    H.impactLight()
     const next = new Set(preferredCategories);
     if (next.has(cat)) {
       if (next.size <= 1) return; // must keep at least one
@@ -300,7 +301,7 @@ export default function SettingsScreen() {
           onPress: async () => {
             try {
               await AsyncStorage.removeItem("math_history");
-              if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              H.notificationSuccess()
             } catch {
               Alert.alert("Error", "Could not clear history. Please try again.");
             }
@@ -359,7 +360,7 @@ export default function SettingsScreen() {
                 k.startsWith("@tutorsnap/chatSessions/")
               );
               if (dynamicKeys.length > 0) await AsyncStorage.multiRemove(dynamicKeys);
-              if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              H.notificationSuccess()
               // Refresh stats
               setStreak(0);
               setTodaySolved(0);
@@ -376,7 +377,7 @@ export default function SettingsScreen() {
   };
 
   const handleShareProgress = async () => {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    H.impactLight()
     const message = `📚 TutorSnap Progress\n🔥 ${streak}-day streak\n✅ ${totalSolved} problems solved\n🎯 Daily goal: ${dailyGoal} problems\n\nDownload TutorSnap to ace your studies!`;
     try {
       if (Platform.OS === "web") {
@@ -392,7 +393,7 @@ export default function SettingsScreen() {
   };
 
   const handleRateApp = async () => {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    H.impactLight()
     try {
       if (Platform.OS !== "web") {
         const isAvailable = await StoreReview.isAvailableAsync();
@@ -410,12 +411,12 @@ export default function SettingsScreen() {
   };
 
   const handleRestorePurchases = async () => {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    H.impactLight()
     setRestoringPurchases(true);
     try {
       const restored = await restorePurchases();
       if (restored) {
-        if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        H.notificationSuccess()
         Alert.alert("Purchases Restored", "Your premium subscription has been restored.");
         const updated = await getSubscriptionStatus();
         setSubStatus(updated);
@@ -430,25 +431,25 @@ export default function SettingsScreen() {
   };
 
   const handleManageSubscription = async () => {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    H.impactLight()
     await openManageSubscriptions();
   };
 
   const handlePrivacyPolicy = () => {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    Linking.openURL("https://tutorsnapai.tech/privacy").catch(() => {});
+    H.impactLight()
+    Linking.openURL(PRIVACY_URL).catch(() => {});
   };
 
   const handleContactSupport = () => {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    H.impactLight()
     const subject = encodeURIComponent("TutorSnap Support Request");
     const body = encodeURIComponent(`Hi TutorSnap team,\n\nApp version: ${Constants.expoConfig?.version ?? "1.1.0"}\nPlatform: ${Platform.OS}\n\nIssue / Question:\n`);
-    Linking.openURL(`mailto:support@tutorsnapai.tech?subject=${subject}&body=${body}`).catch(() => {});
+    Linking.openURL(`mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`).catch(() => {});
   };
 
   const handleTerms = () => {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    Linking.openURL("https://tutorsnapai.tech/terms").catch(() => {});
+    H.impactLight()
+    Linking.openURL(TERMS_URL).catch(() => {});
   };
 
   const preferredCategoryLabels = Array.from(preferredCategories)
@@ -505,7 +506,7 @@ export default function SettingsScreen() {
                 accessibilityLabel="Toggle font scale"
                 key={s}
                 onPress={() => {
-                  if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  H.impactLight()
                   setFontScale(s);
                 }}
                 style={[
@@ -930,7 +931,7 @@ export default function SettingsScreen() {
                   accessibilityLabel="Toggle picker hour"
                   key={h}
                   onPress={() => {
-                    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    H.impactLight()
                     setPickerHour(h);
                   }}
                   style={[styles.pickerChip, { backgroundColor: pickerHour === h ? colors.primary : colors.surface, borderColor: pickerHour === h ? colors.primary : colors.border }]}
@@ -948,7 +949,7 @@ export default function SettingsScreen() {
                   accessibilityLabel="Toggle picker minute"
                   key={m}
                   onPress={() => {
-                    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    H.impactLight()
                     setPickerMinute(m);
                   }}
                   style={[styles.pickerChip, { backgroundColor: pickerMinute === m ? colors.primary : colors.surface, borderColor: pickerMinute === m ? colors.primary : colors.border }]}

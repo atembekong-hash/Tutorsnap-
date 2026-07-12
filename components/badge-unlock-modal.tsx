@@ -23,7 +23,7 @@ import Animated, {
   Easing,
   runOnJS,
 } from "react-native-reanimated";
-import * as Haptics from "expo-haptics";
+import * as H from "@/lib/haptics";
 import { useColors } from "@/hooks/use-colors";
 import { BADGE_COLORS, BADGE_EMOJI, type BadgeTier } from "@/lib/mastery-badges";
 
@@ -80,9 +80,7 @@ export function BadgeUnlockModal({ visible, tier, subjectLabel, onClose }: Badge
   const badgeScale = useSharedValue(0);
 
   const triggerHaptic = () => {
-    if (Platform.OS !== "web") {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    }
+    H.notificationSuccess();
   };
 
   useEffect(() => {

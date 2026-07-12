@@ -20,7 +20,7 @@ import {
 import { useRouter } from "expo-router";
 import * as Sharing from "expo-sharing";
 import * as Clipboard from "expo-clipboard";
-import * as Haptics from "expo-haptics";
+import * as H from "@/lib/haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
@@ -90,9 +90,7 @@ export default function LeaderboardScreen() {
   const myRank = ranked.find((r) => r.isMe)?.rank ?? 1;
 
   const handleShare = async () => {
-    if (Platform.OS !== "web") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
+    H.impactLight();
     const text = buildShareText(myName, myStreak, myTotal, inviteCode);
     if (await Sharing.isAvailableAsync()) {
       // Write to a temp file so we can share as text
@@ -114,9 +112,7 @@ export default function LeaderboardScreen() {
     try {
       await Clipboard.setStringAsync(inviteCode);
       setCopied(true);
-      if (Platform.OS !== "web") {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      }
+      H.notificationSuccess();
       setTimeout(() => setCopied(false), 2000);
     } catch { /* clipboard failure is non-critical */ }
   };

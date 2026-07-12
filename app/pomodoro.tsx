@@ -14,7 +14,7 @@ import {
   Alert,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import * as Haptics from "expo-haptics";
+import * as H from "@/lib/haptics";
 import { useKeepAwake } from "expo-keep-awake";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -60,9 +60,7 @@ export default function PomodoroScreen() {
 
   const handlePhaseComplete = useCallback(() => {
     clearTimer();
-    if (Platform.OS !== "web") {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    }
+    H.notificationSuccess();
     if (phase === "focus") {
       const newCount = sessionsCompleted + 1;
       setSessionsCompleted(newCount);
@@ -90,9 +88,7 @@ export default function PomodoroScreen() {
   }, [running, handlePhaseComplete, clearTimer]);
 
   const handleStartPause = () => {
-    if (Platform.OS !== "web") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
+    H.impactMedium();
     setRunning((v) => !v);
   };
 

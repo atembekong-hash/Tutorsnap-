@@ -11,7 +11,7 @@ import {
   Platform,
   ActivityIndicator,
 } from "react-native";
-import * as Haptics from "expo-haptics";
+import * as H from "@/lib/haptics";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { useVoiceRecorder } from "@/hooks/use-voice-recorder";
@@ -57,9 +57,7 @@ export function VoiceButton({ onTranscript, size = 44 }: VoiceButtonProps) {
   }, [status, reset]);
 
   const handlePress = async () => {
-    if (Platform.OS !== "web") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
+    H.impactMedium();
     if (isRecording) {
       await stopRecording();
     } else {

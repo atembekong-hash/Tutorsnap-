@@ -5,6 +5,7 @@ import { View, Platform, StyleSheet } from "react-native";
 import { HapticTab } from "@/components/haptic-tab";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
+import { SchemeColors } from "@/constants/theme";
 
 function ScanTabIcon({ color, focused }: { color: string; focused: boolean }) {
   const colors = useColors();
@@ -118,7 +119,7 @@ const styles = StyleSheet.create({
     elevation: 8,
     ...Platform.select({
       native: {
-        shadowColor: "#4F46E5",
+        shadowColor: SchemeColors.light.primary,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,

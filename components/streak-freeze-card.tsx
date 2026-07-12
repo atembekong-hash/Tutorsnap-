@@ -8,7 +8,7 @@
  */
 import React, { useEffect, useState, useCallback } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from "react-native";
-import * as Haptics from "expo-haptics";
+import * as H from "@/lib/haptics";
 import { useColors } from "@/hooks/use-colors";
 import {
   getStreakFreezeState,
@@ -49,9 +49,7 @@ export function StreakFreezeCard({ currentStreak, onFreezeActivated, onFreezeEar
         if (earned) {
           setState((prev) => ({ ...prev, available: newAvailable }));
           setJustEarned(true);
-          if (Platform.OS !== "web") {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          }
+          H.notificationSuccess();
           onFreezeEarned?.();
           setTimeout(() => setJustEarned(false), 4000);
         }
@@ -62,16 +60,12 @@ export function StreakFreezeCard({ currentStreak, onFreezeActivated, onFreezeEar
   const handleActivate = async () => {
     if (activating || state.available <= 0 || isActiveToday) return;
     setActivating(true);
-    if (Platform.OS !== "web") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
+    H.impactMedium();
     const { activated } = await activateStreakFreeze();
     if (activated) {
       setState((prev) => ({ ...prev, available: 0, activeUntil: today }));
       setJustActivated(true);
-      if (Platform.OS !== "web") {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      }
+      H.notificationSuccess();
       onFreezeActivated?.();
       setTimeout(() => setJustActivated(false), 4000);
     }

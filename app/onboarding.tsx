@@ -9,7 +9,7 @@ import {
   Platform,
 } from "react-native";
 import { useRouter } from "expo-router";
-import * as Haptics from "expo-haptics";
+import * as H from "@/lib/haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useColors } from "@/hooks/use-colors";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -70,7 +70,7 @@ export default function OnboardingScreen() {
   const isSubjectsSlide = SLIDES[currentSlide]?.id === "subjects";
 
   const goNext = () => {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    H.impactLight()
     if (isLastSlide) {
       // On the trial slide, push to paywall first so users can start their trial
       // finishOnboarding is called after the paywall is dismissed (or skipped)
@@ -84,7 +84,7 @@ export default function OnboardingScreen() {
 
   const finishOnboardingAndShowPaywall = async () => {
     // Mark onboarding done first so back-navigation lands on the home tab
-    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    H.notificationSuccess()
     await AsyncStorage.setItem(ONBOARDING_DONE_KEY, "true");
     if (selectedCategories.size > 0) {
       await AsyncStorage.setItem(
@@ -101,7 +101,7 @@ export default function OnboardingScreen() {
   };
 
   const finishOnboarding = async () => {
-    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    H.notificationSuccess()
     await AsyncStorage.setItem(ONBOARDING_DONE_KEY, "true");
     if (selectedCategories.size > 0) {
       await AsyncStorage.setItem(
@@ -113,7 +113,7 @@ export default function OnboardingScreen() {
   };
 
   const toggleCategory = (cat: SubjectCategory) => {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    H.impactLight()
     setSelectedCategories((prev) => {
       const next = new Set(prev);
       if (next.has(cat)) next.delete(cat);

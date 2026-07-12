@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import * as Haptics from "expo-haptics";
+import * as H from "@/lib/haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
@@ -126,7 +126,7 @@ function ScoreSummary({
   const [copied, setCopied] = React.useState(false);
 
   const handleShareResults = async () => {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    H.impactLight()
     const timeStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
     const emoji = pct >= 80 ? "🎉" : pct >= 60 ? "👍" : "📚";
     const message = [
@@ -300,7 +300,7 @@ export default function QuizScreen() {
           clearInterval(timerRef.current!);
           // Auto-advance on timeout
           setRevealed(true);
-          if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+          H.notificationWarning()
           return 0;
         }
         return t - 1;
@@ -318,7 +318,7 @@ export default function QuizScreen() {
   const handleSelectOption = (key: OptionKey) => {
     if (revealed) return;
     setSelectedOption(key);
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    H.impactLight()
   };
 
   const handleConfirm = () => {
@@ -330,8 +330,8 @@ export default function QuizScreen() {
     setAnswers(newAnswers);
     const correct = selectedOption === questions[currentIdx]?.correctAnswer;
     if (Platform.OS !== "web") {
-      if (correct) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      else Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      if (correct) H.notificationSuccess();
+      else H.notificationError();
     }
   };
 
@@ -383,7 +383,7 @@ export default function QuizScreen() {
       setBonusAwarded(bonus.awarded);
       setBonusStreak(bonus.newStreak);
       if (bonus.awarded && Platform.OS !== "web") {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        H.notificationSuccess();
       }
       setFinished(true);
       // Trigger App Store review prompt on success (≥80%), gated by install age + rate limit

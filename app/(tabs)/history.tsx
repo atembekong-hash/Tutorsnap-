@@ -11,7 +11,7 @@ import {
   TextInput,
 } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
-import * as Haptics from "expo-haptics";
+import * as H from "@/lib/haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
@@ -56,9 +56,7 @@ function HistoryScreenContent() {
   };
 
   const handleQuickBookmark = async (item: HistoryItem) => {
-    if (Platform.OS !== "web") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
+    H.impactLight();
     await toggleBookmark(item);
     const bm = await getBookmarks();
     setBookmarkedIds(new Set(bm.map((b) => b.problem)));
@@ -77,9 +75,7 @@ function HistoryScreenContent() {
         text: "Delete",
         style: "destructive",
         onPress: async () => {
-          if (Platform.OS !== "web") {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-          }
+          H.impactMedium();
           const updated = history.filter((item) => item.id !== id);
           setHistory(updated);
           await AsyncStorage.setItem("math_history", JSON.stringify(updated));

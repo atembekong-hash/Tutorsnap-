@@ -41,7 +41,7 @@ import {
   Easing,
 } from "react-native";
 // expo-linear-gradient is NOT imported at top level (crashes old APKs without the native view compiled in)
-import * as Haptics from "expo-haptics";
+import * as H from "@/lib/haptics";
 // expo-clipboard, expo-print, expo-sharing are loaded lazily inside handlers
 // to avoid native module crashes on Android when the tab is first mounted.
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -50,6 +50,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
+import { SchemeColors } from "@/constants/theme";
 import { trpc } from "@/lib/trpc";
 import type { ChatMessage } from "@/shared/types";
 import { SubjectPicker } from "@/components/subject-picker";
@@ -77,6 +78,7 @@ import {
 } from "@/lib/chat-sessions";
 import { usePremium } from "@/hooks/use-premium";
 import { FREE_LIMITS } from "@/lib/subscription";
+import { APP_URL, APP_NAME } from "@/constants/app";
 
 // ─── Saved Notes storage key ──────────────────────────────────────────────────
 
@@ -205,13 +207,13 @@ function AIAvatar({ size = 30 }: { size?: number }) {
         width: size,
         height: size,
         borderRadius: size / 2,
-        backgroundColor: "#7C3AED",
+        backgroundColor: SchemeColors.light.secondary,
         alignItems: "center",
         justifyContent: "center",
         flexShrink: 0,
       }}
     >
-      <Text style={{ fontSize: size * 0.42, lineHeight: size * 0.55, color: "#FFFFFF" }}>✦</Text>
+      <Text style={{ fontSize: size * 0.42, lineHeight: size * 0.55, color: SchemeColors.light.background }}>✦</Text>
     </View>
   );
 }
@@ -269,7 +271,7 @@ function MessageBubble({
           <Text
             style={[
               bubbleStyles.userText,
-              { color: "#FFFFFF", fontSize: fs(15), lineHeight: fs(15) * 1.5 },
+              { color: SchemeColors.light.background, fontSize: fs(15), lineHeight: fs(15) * 1.5 },
             ]}
           >
             {bodyText || message.content}
@@ -749,9 +751,7 @@ function ChatScreenContent() {
       }
 
       Keyboard.dismiss();
-      if (Platform.OS !== "web") {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      }
+      H.impactLight();
 
       setReplyTo(null);
       setContextualChips([]);
@@ -787,9 +787,7 @@ function ChatScreenContent() {
 
   const handleLongPressAI = useCallback(
     (content: string) => {
-      if (Platform.OS !== "web") {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      }
+      H.impactMedium();
 
       const plainText = content
         .replace(/\$\$[\s\S]*?\$\$/g, "[equation]")
@@ -811,9 +809,7 @@ function ChatScreenContent() {
             const Clip = await import("expo-clipboard");
             await Clip.setStringAsync(plainText);
           }
-          if (Platform.OS !== "web") {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          }
+          H.notificationSuccess();
           Alert.alert("Copied", "Response copied to clipboard.");
         } catch {
           Alert.alert("Error", "Could not copy text.");
@@ -822,9 +818,7 @@ function ChatScreenContent() {
 
       const doSave = async () => {
         await saveNote(plainText);
-        if (Platform.OS !== "web") {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        }
+        H.notificationSuccess();
         Alert.alert("Saved", "Response saved to your Notes.");
       };
 
@@ -836,7 +830,7 @@ function ChatScreenContent() {
   // ── New Chat ────────────────────────────────────────────────────────────────
 
   const handleNewChat = useCallback(async () => {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    H.impactMedium()
     const newSession = await createSession(null);
     const welcome = makeWelcomeMessage(null);
     const withWelcome: ChatSession = { ...newSession, messages: [welcome] };
@@ -877,7 +871,7 @@ function ChatScreenContent() {
         .trim();
       lines.push(`[${time}] ${role}: ${text}`);
     }
-    lines.push("", "Shared from TutorSnap · tutorsnapai.tech");
+    lines.push("", `Shared from ${APP_NAME} · ${APP_URL.replace("https://", "")}`);
     return lines.join("\n");
   }, [session, messages, selectedSubject]);
 
@@ -914,7 +908,7 @@ function ChatScreenContent() {
         })
         .join("");
 
-      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:-apple-system,sans-serif;margin:0;padding:32px;background:#fff;color:#1a1a1a}.header{border-bottom:2px solid #7C3AED;padding-bottom:16px;margin-bottom:24px}.header h1{margin:0 0 4px;font-size:20px;color:#7C3AED}.header p{margin:0;font-size:13px;color:#666}.bubble{margin-bottom:16px;max-width:80%}.bubble.user{margin-left:auto}.role{font-size:11px;font-weight:700;color:#888;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px}.bubble.user .role{text-align:right}.time{font-weight:400;margin-left:6px}.text{background:#f5f5f5;border-radius:12px;padding:12px 16px;font-size:14px;line-height:1.6}.bubble.user .text{background:#7C3AED;color:#fff}.footer{margin-top:32px;padding-top:16px;border-top:1px solid #eee;font-size:11px;color:#aaa;text-align:center}</style></head><body><div class="header"><h1>${session.title.replace(/</g, "&lt;")}</h1><p>Subject: ${subjectLabel} &middot; ${dateStr} &middot; ${messages.filter(m => !m.id.startsWith("welcome")).length} messages</p></div>${bubbles || '<p style="color:#aaa">No messages yet.</p>'}<div class="footer">Exported from TutorSnap &middot; tutorsnapai.tech</div></body></html>`;
+      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:-apple-system,sans-serif;margin:0;padding:32px;background:#fff;color:#1a1a1a}.header{border-bottom:2px solid #7C3AED;padding-bottom:16px;margin-bottom:24px}.header h1{margin:0 0 4px;font-size:20px;color:#7C3AED}.header p{margin:0;font-size:13px;color:#666}.bubble{margin-bottom:16px;max-width:80%}.bubble.user{margin-left:auto}.role{font-size:11px;font-weight:700;color:#888;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px}.bubble.user .role{text-align:right}.time{font-weight:400;margin-left:6px}.text{background:#f5f5f5;border-radius:12px;padding:12px 16px;font-size:14px;line-height:1.6}.bubble.user .text{background:#7C3AED;color:#fff}.footer{margin-top:32px;padding-top:16px;border-top:1px solid #eee;font-size:11px;color:#aaa;text-align:center}</style></head><body><div class="header"><h1>${session.title.replace(/</g, "&lt;")}</h1><p>Subject: ${subjectLabel} &middot; ${dateStr} &middot; ${messages.filter(m => !m.id.startsWith("welcome")).length} messages</p></div>${bubbles || '<p style="color:#aaa">No messages yet.</p>'}<div class="footer">Exported from TutorSnap &middot; ${APP_URL.replace("https://", "")}</div></body></html>`;
 
       // Lazy imports — avoids top-level native module crash on Android
       const Print = await import("expo-print");
@@ -1183,7 +1177,7 @@ function ChatScreenContent() {
                         .trim()
                         .slice(0, 120);
                       setReplyTo(plainText);
-                      if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      H.impactLight()
                     }}
                   >
                     <MessageBubble
@@ -1468,7 +1462,7 @@ function ChatScreenContent() {
                         setSession(updated);
                         saveSession(updated);
                       }
-                      if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      H.impactLight()
                       setShowGradePicker(false);
                     }}
                   >

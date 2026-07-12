@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
-import * as Haptics from "expo-haptics";
+import * as H from "@/lib/haptics";
 import * as FileSystem from "expo-file-system/legacy";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -72,9 +72,7 @@ function ScanScreenContent() {
 
   const solveMutation = trpc.academic.solveFromImage.useMutation({
     onSuccess: async (data) => {
-      if (Platform.OS !== "web") {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      }
+      H.notificationSuccess();
       const historyItem: HistoryItem = {
         id: `history-${Date.now()}`,
         problem: data.problem,
@@ -91,14 +89,12 @@ function ScanScreenContent() {
         const history: HistoryItem[] = existing ? JSON.parse(existing) : [];
         history.unshift(historyItem);
         await AsyncStorage.setItem("math_history", JSON.stringify(history.slice(0, 100)));
-      } catch (_) {}
+      } catch (_) { /* AsyncStorage write failed — non-critical */ }
       setIsProcessing(false);
       router.push({ pathname: "/solution", params: { data: JSON.stringify(data) } });
     },
     onError: () => {
-      if (Platform.OS !== "web") {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      }
+      H.notificationError();
       setIsProcessing(false);
     },
   });
@@ -107,9 +103,7 @@ function ScanScreenContent() {
   const takePicture = async () => {
     if (!cameraRef.current) return;
     try {
-      if (Platform.OS !== "web") {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      }
+      H.impactMedium();
       const photo = await cameraRef.current.takePictureAsync({
         quality: 0.85,
         base64: false,
@@ -150,9 +144,7 @@ function ScanScreenContent() {
   const handleSolve = async () => {
     if (!selectedImage) return;
     setIsProcessing(true);
-    if (Platform.OS !== "web") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
+    H.impactMedium();
     try {
       let base64: string;
       if (Platform.OS === "web") {

@@ -23,7 +23,7 @@ import {
   Pressable,
   Platform,
 } from "react-native";
-import * as Haptics from "expo-haptics";
+import * as H from "@/lib/haptics";
 import { useColors } from "@/hooks/use-colors";
 import {
   ALL_SUBJECTS,
@@ -64,7 +64,7 @@ export function SubjectPicker({
 
   const handleSelect = useCallback(
     (id: SubjectId | null) => {
-      if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      H.impactLight()
       onChange(id);
       setOpen(false);
     },
@@ -84,7 +84,7 @@ export function SubjectPicker({
           { borderColor: buttonColor, backgroundColor: buttonColor + "18" },
         ]}
         onPress={() => {
-          if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          H.impactLight()
           setOpen(true);
         }}
         activeOpacity={0.75}

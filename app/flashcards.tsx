@@ -12,10 +12,11 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
-import * as Haptics from "expo-haptics";
+import * as H from "@/lib/haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
+import { SchemeColors } from "@/constants/theme";
 import { getBookmarks } from "@/lib/bookmarks";
 import type { HistoryItem } from "@/shared/types";
 import { getSubjectDef, getSubjectLabel } from "@/lib/subjects";
@@ -52,7 +53,7 @@ function FlipCard({
   });
 
   const handleFlip = () => {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    H.impactLight()
     const toValue = flipped ? 0 : 180;
     Animated.spring(flipAnim, {
       toValue,
@@ -145,7 +146,7 @@ function buildDeckHtml(bookmarks: HistoryItem[]): string {
       const subjectDef = getSubjectDef(item.subject as any);
       const subjectLabel = getSubjectLabel(item.subject);
       const emoji = subjectDef?.emoji ?? "📚";
-      const color = subjectDef?.color ?? "#4F46E5";
+      const color = subjectDef?.color ?? SchemeColors.light.primary;
 
       const stepsHtml =
         item.steps && item.steps.length > 0
@@ -363,13 +364,13 @@ export default function FlashcardsScreen() {
   );
 
   const handleKnow = () => {
-    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    H.notificationSuccess()
     setKnownCount((c) => c + 1);
     advance();
   };
 
   const handleReview = () => {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    H.impactMedium()
     setReviewCount((c) => c + 1);
     advance();
   };
@@ -395,7 +396,7 @@ export default function FlashcardsScreen() {
   const handleSharePdf = async () => {
     setShareMenuVisible(false);
     if (bookmarks.length === 0) return;
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    H.impactLight()
 
     if (Platform.OS === "web") {
       // Web: open print dialog directly
@@ -432,7 +433,7 @@ export default function FlashcardsScreen() {
   const handleShareText = async () => {
     setShareMenuVisible(false);
     if (bookmarks.length === 0) return;
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    H.impactLight()
 
     const lines: string[] = [
       "TutorSnap Flashcard Deck",
@@ -508,7 +509,7 @@ export default function FlashcardsScreen() {
           accessibilityLabel="Export deck"
           onPress={() => {
             if (bookmarks.length === 0) return;
-            if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            H.impactLight()
             setShareMenuVisible(true);
           }}
           style={[styles.shareBtn, { backgroundColor: `${colors.primary}15` }]}
@@ -615,7 +616,7 @@ export default function FlashcardsScreen() {
           <TouchableOpacity
             accessibilityLabel="Export deck as PDF"
             onPress={() => {
-              if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              H.impactLight()
               setShareMenuVisible(true);
             }}
             style={[styles.printBtn, { borderColor: colors.border }]}

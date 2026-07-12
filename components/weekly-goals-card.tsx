@@ -8,7 +8,7 @@ import {
   Platform,
 } from "react-native";
 import Svg, { Circle } from "react-native-svg";
-import * as Haptics from "expo-haptics";
+import * as H from "@/lib/haptics";
 import { useColors } from "@/hooks/use-colors";
 import type { WeeklyData } from "@/lib/weekly-goals";
 import { setWeeklyQuizGoal } from "@/lib/weekly-goals";
@@ -168,7 +168,7 @@ export function WeeklyGoalsCard({
   const [pickerVisible, setPickerVisible] = useState(false);
 
   const handleSelectGoal = async (n: number) => {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    H.impactLight()
     await setWeeklyQuizGoal(n);
     onGoalChanged(n);
     setPickerVisible(false);

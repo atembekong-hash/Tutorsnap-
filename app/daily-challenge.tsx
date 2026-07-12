@@ -17,7 +17,7 @@ import {
   ScrollView,
   Platform,
 } from "react-native";
-import * as Haptics from "expo-haptics";
+import * as H from "@/lib/haptics";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -73,7 +73,7 @@ export default function DailyChallengeScreen() {
 
   const handleSelect = useCallback(async (option: OptionKey) => {
     if (revealed || !state) return;
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    H.impactLight()
 
     const isCorrect = option === question.correctAnswer;
     setSelectedOption(option);
@@ -81,9 +81,9 @@ export default function DailyChallengeScreen() {
 
     if (Platform.OS !== "web") {
       if (isCorrect) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        H.notificationSuccess();
       } else {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        H.notificationError();
       }
     }
 

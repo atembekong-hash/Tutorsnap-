@@ -21,7 +21,7 @@ import {
   Platform,
   Animated,
 } from "react-native";
-import * as Haptics from "expo-haptics";
+import * as H from "@/lib/haptics";
 import { useRouter } from "expo-router";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
@@ -66,12 +66,12 @@ export function UpsellNudgeBanner({ solvesUsed, isPremium, isDevMode }: UpsellNu
     : `${solvesUsed} of ${FREE_LIMITS.solvesPerDay} used · Upgrade for unlimited`;
 
   const handlePress = () => {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    H.impactLight()
     router.push("/paywall" as any);
   };
 
   const handleDismiss = () => {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    H.impactLight()
     setDismissed(true);
   };
 

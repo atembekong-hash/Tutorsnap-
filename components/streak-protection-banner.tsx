@@ -21,7 +21,7 @@ import {
   Platform,
   Animated,
 } from "react-native";
-import * as Haptics from "expo-haptics";
+import * as H from "@/lib/haptics";
 import { useRouter } from "expo-router";
 import { useColors } from "@/hooks/use-colors";
 
@@ -83,7 +83,7 @@ export function StreakProtectionBanner({
   if (!shouldShow) return null;
 
   const handlePress = () => {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    H.impactMedium()
     if (atSolveLimit) {
       router.push("/paywall" as any);
     } else {
@@ -92,7 +92,7 @@ export function StreakProtectionBanner({
   };
 
   const handleDismiss = () => {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    H.impactLight()
     setDismissed(true);
   };
 

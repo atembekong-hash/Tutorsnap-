@@ -10,7 +10,7 @@ import {
   BackHandler,
 } from "react-native";
 import * as Linking from "expo-linking";
-import * as Haptics from "expo-haptics";
+import * as H from "@/lib/haptics";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import type { UpdateInfo } from "@/lib/use-update-check";
@@ -28,7 +28,7 @@ export function UpdatePromptModal({ visible, updateInfo, forceUpdate, onDismiss 
   if (!updateInfo) return null;
 
   const handleUpdate = () => {
-    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    H.notificationSuccess()
     const url =
       Platform.OS === "ios"
         ? updateInfo.iosStoreUrl
@@ -38,7 +38,7 @@ export function UpdatePromptModal({ visible, updateInfo, forceUpdate, onDismiss 
 
   const handleDismiss = () => {
     if (forceUpdate) return; // Cannot dismiss a forced update
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    H.impactLight()
     onDismiss();
   };
 

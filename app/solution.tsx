@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import * as Haptics from "expo-haptics";
+import * as H from "@/lib/haptics";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { ScreenContainer } from "@/components/screen-container";
@@ -26,6 +26,7 @@ import { useFontSize } from "@/lib/font-size-provider";
 import { trpc } from "@/lib/trpc";
 import { getMyClassroom, getJoinedClassroom, shareToClassroom } from "@/lib/classroom";
 import { createSession, renameSession } from "@/lib/chat-sessions";
+import { APP_URL, APP_NAME, buildSolveUrl } from "@/constants/app";
 
 function StepCard({ step, colors, fs }: { step: SolutionStep; colors: any; fs: (n: number) => number }) {
   const [expanded, setExpanded] = useState(true);
@@ -110,7 +111,7 @@ function WorkedExampleCopyButton({
         try {
           await Clipboard.setStringAsync(problem);
           setCopied(true);
-          if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          H.notificationSuccess()
           setTimeout(() => setCopied(false), 2000);
         } catch { /* ignore */ }
       }}
@@ -335,7 +336,7 @@ export default function SolutionScreen() {
     }
     setShareLoading(true);
     try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      H.impactLight();
       const html = buildShareHtml();
       const { uri } = await Print.printToFileAsync({ html });
       await Sharing.shareAsync(uri, {
@@ -352,14 +353,14 @@ export default function SolutionScreen() {
 
   const handleShareText = async () => {
     setShowShareMenu(false);
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    H.impactLight()
     const stepsText = (solution!.steps || [])
       .map((s) => `Step ${s.stepNumber}: ${s.title}\n${s.expression ? `  ${s.expression}\n` : ""}  ${s.explanation}`)
       .join("\n\n");
     const tipsText = (solution!.tips || []).length > 0
       ? `\n\n💡 Tips:\n${solution!.tips!.map((t) => `• ${t}`).join("\n")}`
       : "";
-    const message = `📚 ${getSubjectLabel(solution!.subject)} — TutorSnap\n\n❓ ${solution!.problem}\n\n✅ Answer: ${solution!.answer}\n\n${stepsText}${tipsText}\n\nSolved with TutorSnap · tutorsnapai.tech`;
+    const message = `📚 ${getSubjectLabel(solution!.subject)} — TutorSnap\n\n❓ ${solution!.problem}\n\n✅ Answer: ${solution!.answer}\n\n${stepsText}${tipsText}\n\nSolved with TutorSnap · ${APP_URL.replace("https://", "")}`;
     if (Platform.OS === "web") {
       // Share.share is a no-op on web — use clipboard instead
       try {
@@ -382,9 +383,9 @@ export default function SolutionScreen() {
 
   const handleCopyLink = async () => {
     setShowShareMenu(false);
-    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    H.notificationSuccess()
     const encoded = encodeURIComponent(solution!.problem);
-    const link = `https://tutorsnapai.tech/solve?q=${encoded}&subject=${solution!.subject}`;
+    const link = `https://${APP_URL.replace("https://", "")}/solve?q=${encoded}&subject=${solution!.subject}`;
     try {
       await Clipboard.setStringAsync(link);
       setCopyLinkFeedback(true);
@@ -396,7 +397,7 @@ export default function SolutionScreen() {
 
   const handlePracticeFromMenu = () => {
     setShowShareMenu(false);
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    H.impactMedium()
     router.push({ pathname: "/(tabs)/practice", params: { subject: solution!.subject } } as any);
   };
 
@@ -414,7 +415,7 @@ export default function SolutionScreen() {
         );
         return;
       }
-      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      H.notificationSuccess()
       await shareToClassroom(classroom.code, {
         problem: solution!.problem,
         answer: solution!.answer,
@@ -432,9 +433,7 @@ export default function SolutionScreen() {
   const handleShare = () => setShowShareMenu(true);
 
   const handleCopyAnswer = async () => {
-    if (Platform.OS !== "web") {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    }
+    H.notificationSuccess();
     try {
       await Clipboard.setStringAsync(solution!.answer);
       setCopyFeedback(true);
@@ -446,7 +445,7 @@ export default function SolutionScreen() {
 
   const handleDiscussWithTutor = async () => {
     if (!solution) return;
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    H.impactLight()
     setDiscussLoading(true);
     try {
       // Build a pre-seeded context message that gives the AI the full solution context
@@ -469,9 +468,7 @@ export default function SolutionScreen() {
   };
 
   const handleBookmark = async () => {
-    if (Platform.OS !== "web") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
+    H.impactMedium();
     try {
       const historyItem: HistoryItem = {
         id: `bm-${Date.now()}`,
@@ -486,7 +483,7 @@ export default function SolutionScreen() {
       const added = await toggleBookmark(historyItem);
       setBookmarked(added);
       if (added && Platform.OS !== "web") {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        H.notificationSuccess();
       }
     } catch {
       Alert.alert("Error", "Could not save bookmark. Please try again.");
@@ -549,7 +546,7 @@ export default function SolutionScreen() {
               </View>
               <View style={styles.shareMenuInfo}>
                 <Text style={[styles.shareMenuLabel, { color: colors.foreground }]}>Copy Link</Text>
-                <Text style={[styles.shareMenuDesc, { color: colors.muted }]}>Copy tutorsnapai.tech solve link to clipboard</Text>
+                <Text style={[styles.shareMenuDesc, { color: colors.muted }]}>Copy ${APP_URL.replace("https://", "")} solve link to clipboard</Text>
               </View>
               <IconSymbol size={16} name={copyLinkFeedback ? "checkmark.circle.fill" : "chevron.right"} color={copyLinkFeedback ? colors.success : colors.muted} />
             </TouchableOpacity>
@@ -762,7 +759,7 @@ export default function SolutionScreen() {
             onPress={async () => {
               if (showSimilar) { setShowSimilar(false); return; }
               if (similarProblems.length > 0) { setShowSimilar(true); return; }
-              if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              H.impactLight()
               try {
                 const result = await generateSimilarMutation.mutateAsync({
                   problem: solution!.problem,
@@ -772,7 +769,7 @@ export default function SolutionScreen() {
                 });
                 setSimilarProblems(result.problems ?? []);
                 setShowSimilar(true);
-                if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                H.notificationSuccess()
               } catch { /* ignore */ }
             }}
             style={styles.similarHeader}
@@ -811,7 +808,7 @@ export default function SolutionScreen() {
                         try {
                           await Clipboard.setStringAsync(p.problem);
                           setCopiedProblemId(p.id);
-                          if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                          H.notificationSuccess()
                           setTimeout(() => setCopiedProblemId(null), 2000);
                         } catch { /* ignore */ }
                       }}
@@ -903,7 +900,7 @@ export default function SolutionScreen() {
               return;
             }
             if (!solution) return;
-            if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            H.impactLight()
             setExplainDiffLoading(true);
             try {
               const result = await explainDiffMutation.mutateAsync({
@@ -913,9 +910,9 @@ export default function SolutionScreen() {
               const alt = (result as any)?.conceptExplained || (result as any)?.answer || "No alternative explanation available.";
               setAltExplanation(alt);
               setShowAltExplanation(true);
-              if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              H.notificationSuccess()
             } catch {
-              if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+              H.notificationError()
             } finally {
               setExplainDiffLoading(false);
             }
@@ -982,10 +979,10 @@ export default function SolutionScreen() {
         <TouchableOpacity
           accessibilityLabel="Share this result with your invite code"
           onPress={async () => {
-            if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            H.impactLight()
             const { getOrCreateReferralCode } = await import("@/lib/affiliate");
             const code = await getOrCreateReferralCode();
-            const msg = `TutorSnap just solved this for me in seconds 🤯\n\n“${solution?.problem ?? "a tough problem"}”\n\nTry it free with my code: ${code}\nhttps://tutorsnapai.tech`;
+            const msg = `TutorSnap just solved this for me in seconds 🤯\n\n“${solution?.problem ?? "a tough problem"}”\n\nTry it free with my code: ${code}\nhttps://${APP_URL.replace("https://", "")}`;
             try {
               if (Platform.OS !== "web") {
                 await Share.share({ message: msg });

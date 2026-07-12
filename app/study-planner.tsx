@@ -15,7 +15,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "expo-router";
-import * as Haptics from "expo-haptics";
+import * as H from "@/lib/haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
@@ -80,7 +80,7 @@ export default function StudyPlannerScreen() {
     setFormLabel("");
     setFormNotify(true);
     setShowModal(true);
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    H.impactLight()
   };
 
   const openEditModal = (slot: StudySlot) => {
@@ -92,7 +92,7 @@ export default function StudyPlannerScreen() {
     setFormLabel(slot.label);
     setFormNotify(slot.notifyEnabled);
     setShowModal(true);
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    H.impactLight()
   };
 
   const handleSave = async () => {
@@ -121,7 +121,7 @@ export default function StudyPlannerScreen() {
       setSlots(updated);
       await syncPlannerNotifications(updated).catch(() => {});
       setShowModal(false);
-      if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      H.notificationSuccess()
     } catch {
       Alert.alert("Error", "Could not save study session. Please try again.");
     }
@@ -141,7 +141,7 @@ export default function StudyPlannerScreen() {
               const updated = await deleteStudySlot(slot.id);
               setSlots(updated);
               await syncPlannerNotifications(updated).catch(() => {});
-              if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+              H.notificationWarning()
             } catch {
               Alert.alert("Error", "Could not delete session. Please try again.");
             }
@@ -209,7 +209,7 @@ export default function StudyPlannerScreen() {
                 key={day}
                 onPress={() => {
                   setSelectedDay(day);
-                  if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  H.impactLight()
                 }}
                 style={[
                   styles.dayChip,

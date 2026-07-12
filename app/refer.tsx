@@ -26,12 +26,13 @@ import {
   Modal,
 } from "react-native";
 import * as Clipboard from "expo-clipboard";
-import * as Haptics from "expo-haptics";
+import * as H from "@/lib/haptics";
 import * as StoreReview from "expo-store-review";
 import { useRouter, useFocusEffect } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
+import { APP_URL, APP_NAME } from "@/constants/app";
 import {
   getOrCreateReferralCode,
   getAffiliateStats,
@@ -52,7 +53,7 @@ import {
   recordAffiliateActivity,
 } from "@/lib/affiliate";
 
-const APP_URL = "https://tutorsnapai.tech";
+
 
 // ─── Tier Progress Bar ────────────────────────────────────────────────────────
 function TierProgressBar({ stats, colors }: { stats: AffiliateStats; colors: any }) {
@@ -288,7 +289,7 @@ export default function ReferScreen() {
   const classroomMessage = `Hi! I'm using TutorSnap to manage my classroom 🏫\n\nJoin with my teacher link and we both get 14 bonus days:\n${APP_URL}/classroom?ref=${code}`;
 
   const handleCopyCode = useCallback(async () => {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    H.impactLight()
     await Clipboard.setStringAsync(code);
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
@@ -296,7 +297,7 @@ export default function ReferScreen() {
   }, [code]);
 
   const handleOptionPress = useCallback(async (opt: EarningOption) => {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    H.impactMedium()
 
     switch (opt.action) {
       case "share_code": {
@@ -369,7 +370,7 @@ export default function ReferScreen() {
   const handleRedeem = useCallback(async () => {
     if (!stats || stats.pendingDays <= 0) return;
     setRedeeming(true);
-    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    H.notificationSuccess()
     const redeemed = await redeemPendingDays();
     await recordAffiliateActivity();
     await load();

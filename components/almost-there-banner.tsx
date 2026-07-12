@@ -14,7 +14,7 @@ import Animated, {
   withSpring,
   runOnJS,
 } from "react-native-reanimated";
-import * as Haptics from "expo-haptics";
+import * as H from "@/lib/haptics";
 import { useColors } from "@/hooks/use-colors";
 import { BADGE_COLORS, BADGE_EMOJI, type BadgeTier } from "@/lib/mastery-badges";
 
@@ -56,9 +56,7 @@ export function AlmostThereBanner({
   };
 
   const handleGoSolve = () => {
-    if (Platform.OS !== "web") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
+    H.impactMedium();
     onGoSolve();
   };
 

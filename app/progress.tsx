@@ -8,7 +8,7 @@ import {
   Platform,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
-import * as Haptics from "expo-haptics";
+import * as H from "@/lib/haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
@@ -92,9 +92,7 @@ export default function ProgressScreen() {
   );
 
   const handleSetGoal = async (goal: number) => {
-    if (Platform.OS !== "web") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
+    H.impactLight();
     try {
       await setDailyGoal(goal);
       await loadProgress();

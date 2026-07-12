@@ -18,7 +18,7 @@ import {
   Platform,
   ActivityIndicator,
 } from "react-native";
-import * as Haptics from "expo-haptics";
+import * as H from "@/lib/haptics";
 import { useColors } from "@/hooks/use-colors";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import {
@@ -71,7 +71,7 @@ export function ProblemCommentSheet({
     const trimmed = inputText.trim();
     if (!trimmed || submitting) return;
     setSubmitting(true);
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    H.impactLight()
     const updated = await addComment(
       problemId,
       displayName || "Student",
@@ -90,7 +90,7 @@ export function ProblemCommentSheet({
 
   const handleReply = (comment: ProblemComment) => {
     setReplyingTo(comment);
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    H.impactLight()
     inputRef.current?.focus();
   };
 
@@ -99,7 +99,7 @@ export function ProblemCommentSheet({
   };
 
   const handleDelete = async (commentId: string) => {
-    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    H.notificationWarning()
     const updated = await deleteComment(problemId, commentId);
     setComments(updated);
     if (replyingTo?.id === commentId) setReplyingTo(null);

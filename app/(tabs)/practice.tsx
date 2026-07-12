@@ -10,7 +10,7 @@ import {
   Platform,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import * as Haptics from "expo-haptics";
+import * as H from "@/lib/haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
@@ -99,33 +99,25 @@ function PracticeScreenContent() {
       setCurrentQuestion(data as PracticeQuestion);
       setShowAnswer(false);
       setHintsShown(0);
-      if (Platform.OS !== "web") {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      }
+      H.notificationSuccess();
     },
   });
 
   const handleGenerate = () => {
-    if (Platform.OS !== "web") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
+    H.impactMedium();
     generateMutation.mutate({ subject: selectedSubject, difficulty: selectedDifficulty });
   };
 
   const handleShowHint = () => {
     if (currentQuestion && hintsShown < currentQuestion.hints.length) {
       setHintsShown(hintsShown + 1);
-      if (Platform.OS !== "web") {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      }
+      H.impactLight();
     }
   };
 
   const handleShowAnswer = () => {
     setShowAnswer(true);
-    if (Platform.OS !== "web") {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    }
+    H.notificationSuccess();
   };
 
   const handleViewSolution = () => {
@@ -178,9 +170,7 @@ function PracticeScreenContent() {
                   key={diff.id}
                   onPress={() => {
                     handleDifficultyChange(diff.id);
-                    if (Platform.OS !== "web") {
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    }
+                    H.impactLight();
                   }}
                   style={[
                     styles.difficultyCard,
@@ -334,7 +324,7 @@ function PracticeScreenContent() {
                       handleDifficultyChange(diffSuggestion.suggestedDifficulty);
                       setSuggestionDismissed(true);
                       if (Platform.OS !== "web")
-                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                        H.notificationSuccess();
                     }}
                     style={[styles.suggestionAccept, { backgroundColor: colors.success }]}
                     activeOpacity={0.85}

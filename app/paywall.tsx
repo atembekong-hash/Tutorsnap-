@@ -28,7 +28,7 @@ import {
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import * as Haptics from "expo-haptics";
+import * as H from "@/lib/haptics";
 
 import { useColors } from "@/hooks/use-colors";
 import {
@@ -96,23 +96,17 @@ export default function PaywallScreen() {
   }, []);
 
   const handleSelectPlan = useCallback((productId: string) => {
-    if (Platform.OS !== "web") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
+    H.impactLight();
     setSelectedPlan(productId);
   }, []);
 
   const handleStartTrial = useCallback(async () => {
-    if (Platform.OS !== "web") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
+    H.impactMedium();
     setLoading(true);
     try {
       const result = await purchaseProduct(selectedPlan);
       if (result.success) {
-        if (Platform.OS !== "web") {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        }
+        H.notificationSuccess();
         // Navigate to the celebration screen instead of a plain Alert
         router.replace("/premium-welcome" as any);
       } else if (!result.cancelled) {
@@ -128,16 +122,12 @@ export default function PaywallScreen() {
   }, [selectedPlan]);
 
   const handleRestore = useCallback(async () => {
-    if (Platform.OS !== "web") {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
+    H.impactLight();
     setRestoring(true);
     try {
       const restored = await restorePurchases();
       if (restored) {
-        if (Platform.OS !== "web") {
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        }
+        H.notificationSuccess();
         // Navigate to the celebration screen with restored variant
         router.replace(("/premium-welcome?restored=true") as any);
       } else {

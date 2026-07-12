@@ -12,7 +12,7 @@ import {
   UIManager,
 } from "react-native";
 import { useRouter } from "expo-router";
-import * as Haptics from "expo-haptics";
+import * as H from "@/lib/haptics";
 import * as Linking from "expo-linking";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -242,13 +242,13 @@ export default function FAQScreen() {
   }, [search, activeCategory]);
 
   const handleToggle = (id: string) => {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    H.impactLight()
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setExpandedId(expandedId === id ? null : id);
   };
 
   const handleCategoryPress = (id: string) => {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    H.impactLight()
     setActiveCategory(id);
     setExpandedId(null);
   };

@@ -8,7 +8,7 @@ import {
   Platform,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as Haptics from "expo-haptics";
+import * as H from "@/lib/haptics";
 import { trpc } from "@/lib/trpc";
 import { useColors } from "@/hooks/use-colors";
 
@@ -77,7 +77,7 @@ export function StudyTipCard({ subject }: StudyTipCardProps) {
   }, [subject]);
 
   const handleRefresh = () => {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    H.impactLight()
     fetchTip(true);
   };
 

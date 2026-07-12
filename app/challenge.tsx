@@ -19,7 +19,7 @@ import {
   Animated,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import * as Haptics from "expo-haptics";
+import * as H from "@/lib/haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
@@ -91,7 +91,7 @@ export default function ChallengeScreen() {
     setTimeTaken(elapsed);
     setIsCorrect(false);
     setPhase("result");
-    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    H.notificationError()
   }, [stopTimer]);
 
   useEffect(() => {
@@ -116,7 +116,7 @@ export default function ChallengeScreen() {
     setIsCorrect(null);
     setTimeTaken(0);
     setPhase("active");
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    H.impactMedium()
   };
 
   const handleSubmit = () => {
@@ -153,9 +153,9 @@ export default function ChallengeScreen() {
 
     if (Platform.OS !== "web") {
       if (correct) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        H.notificationSuccess();
       } else {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        H.notificationError();
       }
     }
   };

@@ -14,7 +14,7 @@ import {
   Platform,
   Modal,
 } from "react-native";
-import * as Haptics from "expo-haptics";
+import * as H from "@/lib/haptics";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { getCheatSheet } from "@/lib/cheat-sheets";
@@ -76,7 +76,7 @@ export function CheatSheetBottomSheet({
   }, [visible, translateY, backdropOpacity]);
 
   const handleClose = () => {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    H.impactLight()
     onClose();
   };
 

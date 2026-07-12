@@ -10,7 +10,7 @@ import {
   Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
-import * as Haptics from "expo-haptics";
+import * as H from "@/lib/haptics";
 import * as Linking from "expo-linking";
 import Constants from "expo-constants";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -131,13 +131,13 @@ export default function LegalScreen() {
   };
 
   const handleOpenConsent = () => {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    H.impactLight()
     loadConsent();
     setShowConsent(true);
   };
 
   const handleDataDeletionRequest = async () => {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    H.impactLight()
     const version = Constants.expoConfig?.version ?? "1.1.0";
     const subject = encodeURIComponent("Data Deletion Request — TutorSnap");
     const body = encodeURIComponent(
@@ -155,7 +155,7 @@ export default function LegalScreen() {
       label: "Privacy Policy",
       subtitle: "How we collect, use, and protect your data",
       onPress: () => {
-        if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        H.impactLight()
         Linking.openURL("https://tutorsnapai.tech/privacy");
       },
     },
@@ -164,7 +164,7 @@ export default function LegalScreen() {
       label: "Terms of Service",
       subtitle: "Rules and conditions for using TutorSnap",
       onPress: () => {
-        if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        H.impactLight()
         Linking.openURL("https://tutorsnapai.tech/terms");
       },
     },
@@ -173,7 +173,7 @@ export default function LegalScreen() {
       label: "Cookie Policy",
       subtitle: "What data is stored locally on your device",
       onPress: () => {
-        if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        H.impactLight()
         setShowCookies(true);
       },
     },
@@ -182,7 +182,7 @@ export default function LegalScreen() {
       label: "Open Source Licenses",
       subtitle: "Third-party libraries powering TutorSnap",
       onPress: () => {
-        if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        H.impactLight()
         setShowLicenses(true);
       },
     },
@@ -191,7 +191,7 @@ export default function LegalScreen() {
       label: "Community Guidelines",
       subtitle: "How to use TutorSnap responsibly",
       onPress: () => {
-        if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        H.impactLight()
         setShowCommunity(true);
       },
     },
@@ -206,7 +206,7 @@ export default function LegalScreen() {
       label: "Data Deletion Request",
       subtitle: "Request deletion of your personal data",
       onPress: () => {
-        if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        H.impactLight()
         setShowDataDeletion(true);
       },
       danger: true,
@@ -392,7 +392,7 @@ export default function LegalScreen() {
               <TouchableOpacity
                 accessibilityLabel="Toggle analytics consent"
                 onPress={async () => {
-                  if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  H.impactMedium()
                   const next = !analyticsConsent;
                   setAnalyticsConsent(next);
                   await saveConsent(next, marketingConsent);
@@ -421,7 +421,7 @@ export default function LegalScreen() {
               <TouchableOpacity
                 accessibilityLabel="Toggle marketing consent"
                 onPress={async () => {
-                  if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  H.impactMedium()
                   const next = !marketingConsent;
                   setMarketingConsent(next);
                   await saveConsent(analyticsConsent, next);

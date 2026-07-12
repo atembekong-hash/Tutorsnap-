@@ -10,7 +10,7 @@ import {
   Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
-import * as Haptics from "expo-haptics";
+import * as H from "@/lib/haptics";
 import * as Notifications from "expo-notifications";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ScreenContainer } from "@/components/screen-container";
@@ -137,7 +137,7 @@ export default function NotificationCenterScreen() {
   };
 
   const handleToggle = async (key: keyof NotificationPrefs, value: boolean) => {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    H.impactMedium()
 
     // If enabling any notification and permission not granted, request it
     if (value && permissionStatus !== "granted" && Platform.OS !== "web") {
@@ -150,7 +150,7 @@ export default function NotificationCenterScreen() {
   };
 
   const handleEnableAll = async () => {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    H.impactMedium()
     if (permissionStatus !== "granted" && Platform.OS !== "web") {
       await requestPermission();
     }
@@ -168,7 +168,7 @@ export default function NotificationCenterScreen() {
   };
 
   const handleDisableAll = async () => {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    H.impactMedium()
     const none: NotificationPrefs = {
       dailyReminder: false,
       streakAlerts: false,

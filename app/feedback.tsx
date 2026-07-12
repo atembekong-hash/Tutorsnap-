@@ -11,7 +11,7 @@ import {
   KeyboardAvoidingView,
 } from "react-native";
 import { useRouter } from "expo-router";
-import * as Haptics from "expo-haptics";
+import * as H from "@/lib/haptics";
 import * as Linking from "expo-linking";
 import Constants from "expo-constants";
 import { ScreenContainer } from "@/components/screen-container";
@@ -44,7 +44,7 @@ export default function FeedbackScreen() {
       Alert.alert("More Detail Needed", "Please write at least 10 characters of feedback.");
       return;
     }
-    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    H.notificationSuccess()
 
     const version = Constants.expoConfig?.version ?? "1.1.0";
     const subject = encodeURIComponent(`TutorSnap Feedback — ${rating}★ — ${CATEGORIES.find(c => c.id === category)?.label}`);
@@ -122,7 +122,7 @@ export default function FeedbackScreen() {
                   accessibilityLabel="Toggle rating"
                   key={star}
                   onPress={() => {
-                    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    H.impactLight()
                     setRating(star);
                   }}
                   activeOpacity={0.7}
@@ -145,7 +145,7 @@ export default function FeedbackScreen() {
                 accessibilityLabel="Toggle category"
                 key={cat.id}
                 onPress={() => {
-                  if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  H.impactLight()
                   setCategory(cat.id);
                 }}
                 activeOpacity={0.7}

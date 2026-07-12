@@ -16,7 +16,7 @@ import {
   TouchableOpacity,
   RefreshControl,
 } from "react-native";
-import * as Haptics from "expo-haptics";
+import * as H from "@/lib/haptics";
 import { Platform } from "react-native";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -52,14 +52,31 @@ const PEER_NAMES = [
 const USER_NAME_KEY = "@tutorsnap/leaderboardName";
 const DEFAULT_USER_NAME = "You";
 
+
+// Deterministic pseudo-random: stable within a week, changes each week.
+// Uses a simple LCG seeded by (weekNumber * 1000 + index).
+function seededRandom(seed: number): number {
+  const x = Math.sin(seed + 1) * 10000;
+  return x - Math.floor(x);
+}
+
+function getISOWeek(): number {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7));
+  const week1 = new Date(d.getFullYear(), 0, 4);
+  return 1 + Math.round(((d.getTime() - week1.getTime()) / 86400000 - 3 + ((week1.getDay() + 6) % 7)) / 7);
+}
+
 function generateBoard(userSolved: number, userStreak: number, userName: string): LeaderboardEntry[] {
   // Seed peers relative to user's count so the board feels competitive
   const base = Math.max(userSolved, 3);
   const peers: LeaderboardEntry[] = PEER_NAMES.map((p, i) => {
     // Spread peers above and below the user
-    const offset = (i % 2 === 0 ? 1 : -1) * Math.floor(Math.random() * (base * 0.6 + 1));
+    const week = getISOWeek();
+    const offset = (i % 2 === 0 ? 1 : -1) * Math.floor(seededRandom(week * 100 + i) * (base * 0.6 + 1));
     const solved = Math.max(1, base + offset + Math.floor(i * 0.7));
-    const streak = Math.max(0, Math.floor(Math.random() * 14));
+    const streak = Math.max(0, Math.floor(seededRandom(week * 200 + i) * 14));
     return {
       rank: 0,
       name: p.name,
@@ -101,7 +118,8 @@ export default function LeaderboardScreen() {
   const loadBoard = useCallback(async () => {
     const progress = await getProgress();
     const userName = (await AsyncStorage.getItem(USER_NAME_KEY)) ?? DEFAULT_USER_NAME;
-    const userSolved = progress.streak.todaySolved + Math.floor(Math.random() * 5); // approximate weekly
+    const weekNum = getISOWeek();
+    const userSolved = progress.streak.todaySolved + Math.floor(seededRandom(weekNum * 7) * 5); // stable weekly approximation
     const userStreak = progress.streak.currentStreak;
 
     // Week label
@@ -121,7 +139,7 @@ export default function LeaderboardScreen() {
   }, [loadBoard]);
 
   const handleRefresh = useCallback(async () => {
-    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    H.impactLight()
     setRefreshing(true);
     await loadBoard();
     setRefreshing(false);
