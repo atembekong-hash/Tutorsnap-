@@ -390,7 +390,8 @@ export default function SettingsScreen() {
 
   const handleShareProgress = async () => {
     H.impactLight()
-    const message = `📚 TutorSnap Progress\n🔥 ${streak}-day streak\n✅ ${totalSolved} problems solved\n🎯 Daily goal: ${dailyGoal} problems\n\nDownload TutorSnap to ace your studies!`;
+    const header = userName ? `📚 ${userName}'s TutorSnap Progress` : "📚 TutorSnap Progress";
+    const message = `${header}\n🔥 ${streak}-day streak\n✅ ${totalSolved} problems solved\n🎯 Daily goal: ${dailyGoal} problems\n\nDownload TutorSnap to ace your studies!`;
     try {
       if (Platform.OS === "web") {
         await Linking.openURL(`mailto:?subject=My TutorSnap Progress&body=${encodeURIComponent(message)}`);

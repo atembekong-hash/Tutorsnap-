@@ -19,6 +19,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { toggleBookmark, getBookmarks } from "@/lib/bookmarks";
 import type { HistoryItem, MathSubject } from "@/shared/types";
 import { getSubjectColor, getSubjectLabel } from "@/lib/subjects";
+import { GRADE_LABELS } from "@/lib/grade-levels";
 
 function formatTime(timestamp: number): string {
   const now = Date.now();
@@ -41,6 +42,7 @@ function HistoryScreenContent() {
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState("");
   const [filterSubject, setFilterSubject] = useState<MathSubject | "all">("all");
+  const [filterGrade, setFilterGrade] = useState<string | "all">("all");
 
   const loadHistory = async () => {
     try {
@@ -120,10 +122,18 @@ function HistoryScreenContent() {
       item.problem.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.answer.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesSubject = filterSubject === "all" || item.subject === filterSubject;
-    return matchesSearch && matchesSubject;
+    const matchesGrade = filterGrade === "all" || (item as any).gradeLevel === filterGrade;
+    return matchesSearch && matchesSubject && matchesGrade;
   });
 
   const uniqueSubjects = Array.from(new Set(history.map((h) => h.subject)));
+  const uniqueGrades = Array.from(
+    new Set(
+      history
+        .map((h) => (h as any).gradeLevel as string | null | undefined)
+        .filter((g): g is string => !!g)
+    )
+  );
 
   const renderItem = ({ item }: { item: HistoryItem }) => {
     const subjectColor = getSubjectColor(item.subject);
@@ -213,6 +223,49 @@ function HistoryScreenContent() {
               </TouchableOpacity>
             )}
           </View>
+
+          {/* Grade Level Filter */}
+          {uniqueGrades.length > 0 && (
+            <View style={styles.filterRow}>
+              <TouchableOpacity
+                accessibilityLabel="Show all grade levels"
+                onPress={() => setFilterGrade("all")}
+                style={[
+                  styles.filterChip,
+                  {
+                    backgroundColor: filterGrade === "all" ? colors.primary : colors.surface,
+                    borderColor: filterGrade === "all" ? colors.primary : colors.border,
+                  },
+                ]}
+              >
+                <Text style={[styles.filterChipText, { color: filterGrade === "all" ? "#FFFFFF" : colors.foreground }]}>
+                  All Levels
+                </Text>
+              </TouchableOpacity>
+              {uniqueGrades.map((grade) => {
+                const isSelected = filterGrade === grade;
+                const label = GRADE_LABELS[grade] ?? grade;
+                return (
+                  <TouchableOpacity
+                    key={grade}
+                    accessibilityLabel={`Filter by ${label}`}
+                    onPress={() => setFilterGrade(isSelected ? "all" : grade)}
+                    style={[
+                      styles.filterChip,
+                      {
+                        backgroundColor: isSelected ? `${colors.primary}20` : colors.surface,
+                        borderColor: isSelected ? colors.primary : colors.border,
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.filterChipText, { color: isSelected ? colors.primary : colors.foreground }]}>
+                      📚 {label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
 
           {/* Subject Filter */}
           {uniqueSubjects.length > 1 && (

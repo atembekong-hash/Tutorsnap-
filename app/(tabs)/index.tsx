@@ -50,7 +50,7 @@ import { usePremium } from "@/hooks/use-premium";
 import { FREE_LIMITS } from "@/lib/subscription";
 import { UpsellNudgeBanner } from "@/components/upsell-nudge-banner";
 import { useAppearance, type WidgetId } from "@/lib/appearance-context";
-import { loadGlobalGrade, GRADE_LABELS } from "@/lib/grade-levels";
+import { loadGlobalGrade, GRADE_LABELS, GRADE_OPTIONS } from "@/lib/grade-levels";
 
 function getAppearanceSubjectKey(subjectId: string): string {
   const def = getSubjectDef(subjectId);
@@ -465,6 +465,7 @@ function SolveScreenContent() {
   const cursorPosRef = useRef<number>(0);
   const shieldToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [homeGradeLevel, setHomeGradeLevel] = useState<string | null>(null);
+  const [showSolveGradePicker, setShowSolveGradePicker] = useState(false);
   const [userName, setUserName] = useState<string | null>(null);
 
   const loadProgress = async () => {
@@ -539,7 +540,7 @@ function SolveScreenContent() {
   const solveMutation = trpc.academic.solve.useMutation({
     onSuccess: async (data) => {
       H.notificationSuccess();
-      const historyItem: HistoryItem = {
+      const historyItem = {
         id: `history-${Date.now()}`,
         problem: data.problem || problem,
         answer: data.answer,
@@ -548,7 +549,8 @@ function SolveScreenContent() {
         conceptExplained: data.conceptExplained,
         tips: data.tips,
         solvedAt: Date.now(),
-      };
+        gradeLevel: homeGradeLevel ?? null,
+      } as HistoryItem & { gradeLevel: string | null };
       try {
         const existing = await AsyncStorage.getItem("math_history");
         const history: HistoryItem[] = existing ? JSON.parse(existing) : [];
@@ -610,7 +612,7 @@ function SolveScreenContent() {
     H.impactMedium();
     await incUsage("solves");
     const fullProblem = problem.trim();
-    solveMutation.mutate({ problem: fullProblem, subject: selectedSubject ?? "other" });
+    solveMutation.mutate({ problem: fullProblem, subject: selectedSubject ?? "other", gradeLevel: homeGradeLevel ?? undefined });
   };
 
   const handleExample = (example: string) => {
@@ -974,6 +976,29 @@ function SolveScreenContent() {
             </View>
           </View>
 
+          {/* Grade Level Selector Pill */}
+          <View style={styles.gradeSelectorRow}>
+            <TouchableOpacity
+              onPress={() => { H.impactLight(); setShowSolveGradePicker(true); }}
+              style={[
+                styles.gradeSelectorPill,
+                {
+                  backgroundColor: homeGradeLevel ? `${colors.primary}15` : colors.surface,
+                  borderColor: homeGradeLevel ? colors.primary : colors.border,
+                },
+              ]}
+              accessibilityLabel={homeGradeLevel ? `Grade level: ${GRADE_LABELS[homeGradeLevel]}. Tap to change.` : "Set grade level"}
+              accessibilityRole="button"
+              activeOpacity={0.75}
+            >
+              <IconSymbol size={13} name="graduationcap.fill" color={homeGradeLevel ? colors.primary : colors.muted} />
+              <Text style={[styles.gradeSelectorText, { color: homeGradeLevel ? colors.primary : colors.muted }]}>
+                {homeGradeLevel ? GRADE_LABELS[homeGradeLevel] : "Any level"}
+              </Text>
+              <IconSymbol size={11} name="chevron.right" color={homeGradeLevel ? colors.primary : colors.muted} />
+            </TouchableOpacity>
+          </View>
+
           {/* Offline warning above solve button */}
           {!isOnline && (
             <View
@@ -1169,6 +1194,64 @@ function SolveScreenContent() {
           </TouchableOpacity>
           {/* Lazy-import the paywall screen to avoid circular deps */}
           {React.createElement(require("../paywall").default)}
+        </View>
+      </Modal>
+
+      {/* ── Solve-Tab Grade Level Picker ─────────────────────────────────────── */}
+      <Modal
+        visible={showSolveGradePicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowSolveGradePicker(false)}
+      >
+        <View style={styles.gradePickerOverlay}>
+          <View style={[styles.gradePickerSheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
+            <View style={styles.gradePickerHeader}>
+              <Text style={[styles.gradePickerTitle, { color: colors.foreground }]}>Grade Level</Text>
+              <TouchableOpacity onPress={() => setShowSolveGradePicker(false)} accessibilityLabel="Close" accessibilityRole="button">
+                <IconSymbol size={22} name="xmark.circle.fill" color={colors.muted} />
+              </TouchableOpacity>
+            </View>
+            <Text style={[styles.gradePickerSub, { color: colors.muted }]}>
+              AI will tailor explanations to this level for this session.
+            </Text>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 8 }}>
+              <TouchableOpacity
+                onPress={() => { H.impactLight(); setHomeGradeLevel(null); setShowSolveGradePicker(false); }}
+                style={[styles.gradePickerRow, { backgroundColor: !homeGradeLevel ? `${colors.primary}15` : colors.surface, borderColor: !homeGradeLevel ? colors.primary : colors.border }]}
+                activeOpacity={0.75}
+                accessibilityLabel="Any level"
+                accessibilityRole="radio"
+                accessibilityState={{ checked: !homeGradeLevel }}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.gradePickerOptLabel, { color: !homeGradeLevel ? colors.primary : colors.foreground }]}>Any level</Text>
+                  <Text style={[styles.gradePickerOptSub, { color: colors.muted }]}>Let AI decide the depth</Text>
+                </View>
+                {!homeGradeLevel && <IconSymbol size={18} name="checkmark.circle.fill" color={colors.primary} />}
+              </TouchableOpacity>
+              {GRADE_OPTIONS.map((opt) => {
+                const isActive = homeGradeLevel === opt.id;
+                return (
+                  <TouchableOpacity
+                    key={opt.id}
+                    onPress={() => { H.impactLight(); setHomeGradeLevel(opt.id); setShowSolveGradePicker(false); }}
+                    style={[styles.gradePickerRow, { backgroundColor: isActive ? `${colors.primary}15` : colors.surface, borderColor: isActive ? colors.primary : colors.border }]}
+                    activeOpacity={0.75}
+                    accessibilityLabel={opt.label}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: isActive }}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.gradePickerOptLabel, { color: isActive ? colors.primary : colors.foreground }]}>{opt.label}</Text>
+                      <Text style={[styles.gradePickerOptSub, { color: colors.muted }]}>{opt.sub}</Text>
+                    </View>
+                    {isActive && <IconSymbol size={18} name="checkmark.circle.fill" color={colors.primary} />}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
         </View>
       </Modal>
     </ScreenContainer>
@@ -1450,4 +1533,55 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 2,
   },
+  gradeSelectorRow: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 4,
+    flexDirection: "row",
+  },
+  gradeSelectorPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  gradeSelectorText: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  gradePickerOverlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.45)",
+  },
+  gradePickerSheet: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    padding: 20,
+    maxHeight: "80%",
+  },
+  gradePickerHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 6,
+  },
+  gradePickerTitle: { fontSize: 20, fontWeight: "800" },
+  gradePickerSub: { fontSize: 13, marginBottom: 14 },
+  gradePickerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    gap: 12,
+  },
+  gradePickerOptLabel: { fontSize: 15, fontWeight: "700", marginBottom: 2 },
+  gradePickerOptSub: { fontSize: 12 },
 });
