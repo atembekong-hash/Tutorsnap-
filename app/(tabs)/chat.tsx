@@ -79,6 +79,7 @@ import {
 import { usePremium } from "@/hooks/use-premium";
 import { FREE_LIMITS } from "@/lib/subscription";
 import { APP_URL, APP_NAME } from "@/constants/app";
+import { useAppearance } from "@/lib/appearance-context";
 
 // ─── Saved Notes storage key ──────────────────────────────────────────────────
 
@@ -234,6 +235,11 @@ function MessageBubble({
   onLongPressAI: (content: string) => void;
 }) {
   const isUser = message.role === "user";
+  const { settings } = useAppearance();
+  const bubbleRadius = settings.chatBubbleStyle === "rounded" ? 20 : settings.chatBubbleStyle === "flat" ? 8 : 4;
+  const bubblePadH = settings.messageDensity === "compact" ? 10 : settings.messageDensity === "comfortable" ? 16 : 22;
+  const bubblePadV = settings.messageDensity === "compact" ? 6 : settings.messageDensity === "comfortable" ? 10 : 16;
+  const rowMarginB = settings.messageDensity === "compact" ? 2 : settings.messageDensity === "comfortable" ? 4 : 10;
 
   if (isUser) {
     // Parse optional leading quote block: lines starting with "> "
@@ -253,8 +259,8 @@ function MessageBubble({
     const bodyText = bodyLines.join("\n").trim();
 
     return (
-      <View style={bubbleStyles.userRow}>
-        <View style={[bubbleStyles.userBubble, { backgroundColor: colors.primary }]}>
+      <View style={[bubbleStyles.userRow, { marginBottom: rowMarginB }]}>
+        <View style={[bubbleStyles.userBubble, { backgroundColor: colors.primary, borderRadius: bubbleRadius, borderBottomRightRadius: settings.chatBubbleStyle === "minimal" ? bubbleRadius : 6, paddingHorizontal: bubblePadH, paddingVertical: bubblePadV }]}>
           {quoteText.length > 0 && (
             <View style={[
               bubbleStyles.quoteBlock,
@@ -300,7 +306,7 @@ function MessageBubble({
       activeOpacity={1}
       accessibilityLabel="Long press for options"
     >
-      <View style={bubbleStyles.aiRow}>
+      <View style={[bubbleStyles.aiRow, { marginBottom: rowMarginB }]}>
         <View style={bubbleStyles.avatarCol}>
           {isFirstInRun ? <AIAvatar size={30} /> : null}
         </View>

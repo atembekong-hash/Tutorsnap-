@@ -489,43 +489,13 @@ export default function SettingsScreen() {
 
         {/* Appearance */}
         <SectionHeader title="APPEARANCE" colors={colors} />
-        {/* Font Size */}
-        <View style={[styles.goalCard, { backgroundColor: colors.surface, borderColor: colors.border, marginBottom: 2 }]}>
-          <View style={styles.goalHeader}>
-            <View style={[styles.rowIcon, { backgroundColor: `${colors.primary}15` }]}>
-              <IconSymbol size={18} name="textformat.size" color={colors.primary} />
-            </View>
-            <View style={styles.rowContent}>
-              <Text style={[styles.rowLabel, { color: colors.foreground }]}>Text Size</Text>
-              <Text style={[styles.rowSubtitle, { color: colors.muted }]}>{SCALE_LABELS[fontScale]}</Text>
-            </View>
-          </View>
-          <View style={styles.goalOptions}>
-            {FONT_SIZE_SCALES.map((s) => (
-              <TouchableOpacity
-                accessibilityLabel="Toggle font scale"
-                key={s}
-                onPress={() => {
-                  H.impactLight()
-                  setFontScale(s);
-                }}
-                style={[
-                  styles.goalOption,
-                  { flex: 1, width: undefined,
-                    backgroundColor: fontScale === s ? colors.primary : colors.background,
-                    borderColor: fontScale === s ? colors.primary : colors.border,
-                  },
-                ]}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.goalOptionText, { color: fontScale === s ? "#FFFFFF" : colors.foreground, fontSize: s === "small" ? 11 : s === "medium" ? 13 : s === "large" ? 15 : 17 }]}>
-                  {s === "small" ? "A" : s === "medium" ? "A" : s === "large" ? "A" : "A"}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
+        <SettingsRow
+          icon="paintbrush.fill"
+          label="Appearance & Personalisation"
+          subtitle="Fonts, colors, widgets, chat style, accessibility"
+          colors={colors}
+          onPress={() => router.push("/appearance-settings" as any)}
+        />
         <SettingsRow
           icon="gear"
           label="Dark Mode"

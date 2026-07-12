@@ -1,23 +1,14 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+/**
+ * FontSizeProvider — thin bridge to AppearanceContext.
+ *
+ * All font-size state now lives in AppearanceContext (lib/appearance-context.tsx).
+ * This provider is kept for backward compatibility so existing `useFontSize()` calls
+ * continue to work without changes.
+ */
+import React, { createContext, useContext } from "react";
+import { useAppearance, FONT_SIZE_MULTIPLIERS, FONT_SIZE_LABELS, type FontSizeScale } from "@/lib/appearance-context";
 
-export type FontSizeScale = "small" | "medium" | "large" | "xlarge";
-
-const FONT_SIZE_KEY = "@tutorsnap/fontSizeScale";
-
-const SCALE_MULTIPLIERS: Record<FontSizeScale, number> = {
-  small: 0.88,
-  medium: 1.0,
-  large: 1.14,
-  xlarge: 1.28,
-};
-
-const SCALE_LABELS: Record<FontSizeScale, string> = {
-  small: "Small",
-  medium: "Medium",
-  large: "Large",
-  xlarge: "Extra Large",
-};
+export type { FontSizeScale };
 
 interface FontSizeContextValue {
   scale: FontSizeScale;
@@ -35,26 +26,21 @@ const FontSizeContext = createContext<FontSizeContextValue>({
 });
 
 export function FontSizeProvider({ children }: { children: React.ReactNode }) {
-  const [scale, setScaleState] = useState<FontSizeScale>("medium");
+  const { settings, updateSetting, fs } = useAppearance();
 
-  useEffect(() => {
-    AsyncStorage.getItem(FONT_SIZE_KEY).then((saved) => {
-      if (saved && saved in SCALE_MULTIPLIERS) {
-        setScaleState(saved as FontSizeScale);
-      }
-    });
-  }, []);
-
-  const setScale = async (newScale: FontSizeScale) => {
-    setScaleState(newScale);
-    await AsyncStorage.setItem(FONT_SIZE_KEY, newScale);
+  const setScale = (newScale: FontSizeScale) => {
+    updateSetting("fontSize", newScale);
   };
 
-  const multiplier = SCALE_MULTIPLIERS[scale];
-  const fs = (base: number) => Math.round(base * multiplier);
-
   return (
-    <FontSizeContext.Provider value={{ scale, multiplier, setScale, fs }}>
+    <FontSizeContext.Provider
+      value={{
+        scale: settings.fontSize,
+        multiplier: FONT_SIZE_MULTIPLIERS[settings.fontSize],
+        setScale,
+        fs,
+      }}
+    >
       {children}
     </FontSizeContext.Provider>
   );
@@ -64,5 +50,5 @@ export function useFontSize() {
   return useContext(FontSizeContext);
 }
 
-export { SCALE_LABELS, SCALE_MULTIPLIERS };
+export { FONT_SIZE_LABELS as SCALE_LABELS, FONT_SIZE_MULTIPLIERS as SCALE_MULTIPLIERS };
 export const FONT_SIZE_SCALES: FontSizeScale[] = ["small", "medium", "large", "xlarge"];

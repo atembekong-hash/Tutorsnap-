@@ -49,6 +49,7 @@ import * as Notifications from "expo-notifications";
 import { usePremium } from "@/hooks/use-premium";
 import { FREE_LIMITS } from "@/lib/subscription";
 import { UpsellNudgeBanner } from "@/components/upsell-nudge-banner";
+import { useAppearance, type WidgetId } from "@/lib/appearance-context";
 
 // Subject examples per category — shown dynamically based on selected subject
 const SUBJECT_EXAMPLES: Record<string, string[]> = {
@@ -125,6 +126,7 @@ function TodayRow({
 }: TodayRowProps) {
   const colors = useColors();
   const router = useRouter();
+  const { widgetWidth, visibleWidgetOrder, isWidgetVisible } = useAppearance();
   const streak = progress?.streak?.currentStreak ?? 0;
   const todaySolved = progress?.streak?.todaySolved ?? 0;
   const [shields, setShields] = React.useState(0);
@@ -152,8 +154,11 @@ function TodayRow({
 
   const cards: React.ReactNode[] = [];
 
+  // Build cards in the order specified by visibleWidgetOrder (from AppearanceContext)
+  // Each card is only added if its widget is visible in settings
+
   // 1. Streak card (always show when streak > 0)
-  if (streak > 0) {
+  if (streak > 0 && isWidgetVisible("streak")) {
     const streakEmoji = getStreakEmoji(streak);
     const shieldLabel = shields === 0 ? "No shields" : `${shields}/3 shields`;
     cards.push(
@@ -161,7 +166,7 @@ function TodayRow({
         key="streak"
         onPress={() => router.push("/progress" as any)}
         activeOpacity={0.82}
-        style={[trStyles.card, { backgroundColor: colors.surface, borderColor: `${colors.primary}35` }]}
+        style={[trStyles.card, { width: widgetWidth, backgroundColor: colors.surface, borderColor: `${colors.primary}35` }]}
         accessibilityLabel={`Streak: ${streak} days`}
       >
         <Text style={trStyles.cardEmoji}>{streakEmoji}</Text>
@@ -188,12 +193,12 @@ function TodayRow({
   const q = getTodayQuestion();
   const subjectColors: Record<string, string> = { algebra: "#6366F1", geometry: "#10B981", calculus: "#F59E0B", statistics: "#3B82F6", physics: "#EF4444", chemistry: "#8B5CF6" };
   const qColor = subjectColors[q.subject] ?? colors.primary;
-  cards.push(
+  if (isWidgetVisible("challenge")) cards.push(
     <TouchableOpacity
       key="challenge"
       onPress={() => router.push("/daily-challenge" as any)}
       activeOpacity={0.82}
-      style={[trStyles.card, { backgroundColor: colors.surface, borderColor: challengeCompleted ? (challengeCorrect ? `${colors.success}50` : `${colors.error}35`) : `${qColor}35` }]}
+      style={[trStyles.card, { width: widgetWidth, backgroundColor: colors.surface, borderColor: challengeCompleted ? (challengeCorrect ? `${colors.success}50` : `${colors.error}35`) : `${qColor}35` }]}
       accessibilityLabel="Open Daily Challenge"
     >
       <Text style={trStyles.cardEmoji}>⚡</Text>
@@ -205,12 +210,12 @@ function TodayRow({
   );
 
   // 3. Global Rankings
-  cards.push(
+  if (isWidgetVisible("rankings")) cards.push(
     <TouchableOpacity
       key="rankings"
       onPress={() => router.push("/(tabs)/leaderboard" as any)}
       activeOpacity={0.82}
-      style={[trStyles.card, { backgroundColor: colors.surface, borderColor: `${colors.warning}35` }]}
+      style={[trStyles.card, { width: widgetWidth, backgroundColor: colors.surface, borderColor: `${colors.warning}35` }]}
       accessibilityLabel="View global rankings"
     >
       <Text style={trStyles.cardEmoji}>🏆</Text>
@@ -220,7 +225,7 @@ function TodayRow({
   );
 
   // 4. Study Plan (only if sessions today)
-  if (todaySlots.length > 0) {
+  if (todaySlots.length > 0 && isWidgetVisible("study")) {
     const next = todaySlots.find((s) => {
       const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
       return s.hour * 60 + s.minute >= nowMin;
@@ -230,7 +235,7 @@ function TodayRow({
         key="study"
         onPress={() => router.push("/study-planner" as any)}
         activeOpacity={0.82}
-        style={[trStyles.card, { backgroundColor: colors.surface, borderColor: `${colors.primary}35` }]}
+        style={[trStyles.card, { width: widgetWidth, backgroundColor: colors.surface, borderColor: `${colors.primary}35` }]}
         accessibilityLabel="Open study planner"
       >
         <Text style={trStyles.cardEmoji}>📅</Text>
@@ -241,13 +246,13 @@ function TodayRow({
   }
 
   // 5. Weekly Goals (only if data available)
-  if (weeklyData) {
+  if (weeklyData && isWidgetVisible("goals")) {
     cards.push(
       <TouchableOpacity
         key="goals"
         onPress={() => router.push("/progress" as any)}
         activeOpacity={0.82}
-        style={[trStyles.card, { backgroundColor: colors.surface, borderColor: `${colors.success}35` }]}
+        style={[trStyles.card, { width: widgetWidth, backgroundColor: colors.surface, borderColor: `${colors.success}35` }]}
         accessibilityLabel="View weekly goals"
       >
         <Text style={trStyles.cardEmoji}>🎯</Text>
@@ -261,7 +266,7 @@ function TodayRow({
   }
 
   // 6. Almost-There Badge (only if applicable and not dismissed)
-  if (almostBadge && !bannerDismissed) {
+  if (almostBadge && !bannerDismissed && isWidgetVisible("badge")) {
     const tierColor = BADGE_COLORS[almostBadge.nextTier];
     const tierEmoji = BADGE_EMOJI[almostBadge.nextTier];
     cards.push(
@@ -269,7 +274,7 @@ function TodayRow({
         key="badge"
         onPress={onGoSolveBadge}
         activeOpacity={0.82}
-        style={[trStyles.card, { backgroundColor: colors.surface, borderColor: `${tierColor}50` }]}
+        style={[trStyles.card, { width: widgetWidth, backgroundColor: colors.surface, borderColor: `${tierColor}50` }]}
         accessibilityLabel={`Almost ${almostBadge.nextTier} badge in ${almostBadge.subjectLabel}`}
       >
         <Text style={trStyles.cardEmoji}>{tierEmoji}</Text>
@@ -280,13 +285,13 @@ function TodayRow({
   }
 
   // 7. Evening streak protection (only if applicable)
-  if (!isPremium && isEvening && streak > 0 && todaySolved === 0) {
+  if (!isPremium && isEvening && streak > 0 && todaySolved === 0 && isWidgetVisible("streakprotect")) {
     cards.push(
       <TouchableOpacity
         key="streakprotect"
         onPress={() => !isPremium && usage.solves >= FREE_LIMITS.solvesPerDay ? router.push("/paywall" as any) : onSolveNow()}
         activeOpacity={0.82}
-        style={[trStyles.card, { backgroundColor: colors.surface, borderColor: `${colors.warning}50` }]}
+        style={[trStyles.card, { width: widgetWidth, backgroundColor: colors.surface, borderColor: `${colors.warning}50` }]}
         accessibilityLabel="Protect your streak"
       >
         <Text style={trStyles.cardEmoji}>⚠️</Text>
@@ -297,13 +302,13 @@ function TodayRow({
   }
 
   // 8. Affiliate earnings (only if pending days > 0)
-  if (affiliatePending > 0) {
+  if (affiliatePending > 0 && isWidgetVisible("affiliate")) {
     cards.push(
       <TouchableOpacity
         key="affiliate"
         onPress={() => router.push("/refer" as any)}
         activeOpacity={0.82}
-        style={[trStyles.card, { backgroundColor: colors.surface, borderColor: `${colors.success}35` }]}
+        style={[trStyles.card, { width: widgetWidth, backgroundColor: colors.surface, borderColor: `${colors.success}35` }]}
         accessibilityLabel="View affiliate earnings"
       >
         <Text style={trStyles.cardEmoji}>💰</Text>
@@ -331,7 +336,7 @@ const trStyles = StyleSheet.create({
   container: { marginTop: 16 },
   row: { paddingHorizontal: 16, gap: 10, paddingBottom: 4 },
   card: {
-    width: 130,
+    width: 130, // overridden at runtime via widgetWidth from AppearanceContext
     borderRadius: 16,
     borderWidth: 1.5,
     padding: 14,

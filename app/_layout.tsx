@@ -21,6 +21,7 @@ import { OfflineBanner } from "@/components/offline-banner";
 import { UpdatePromptModal } from "@/components/update-prompt-modal";
 import { useUpdateCheck } from "@/lib/use-update-check";
 import { FontSizeProvider } from "@/lib/font-size-provider";
+import { AppearanceProvider } from "@/lib/appearance-context";
 import * as Notifications from "expo-notifications";
 import { useRouter } from "expo-router";
 import * as Linking from "expo-linking";
@@ -363,6 +364,14 @@ export default function RootLayout() {
                 headerShown: false,
               }}
             />
+            <Stack.Screen
+              name="appearance-settings"
+              options={{
+                presentation: "card",
+                animation: "slide_from_right",
+                headerShown: false,
+              }}
+            />
           </Stack>
           <StatusBar style="auto" />
         </QueryClientProvider>
@@ -373,6 +382,7 @@ export default function RootLayout() {
   const shouldOverrideSafeArea = Platform.OS === "web";
   if (shouldOverrideSafeArea) {
     return (
+      <AppearanceProvider>
       <FontSizeProvider>
       <ThemeProvider>
         <SafeAreaProvider initialMetrics={providerInitialMetrics}>
@@ -384,13 +394,16 @@ export default function RootLayout() {
         </SafeAreaProvider>
       </ThemeProvider>
       </FontSizeProvider>
+      </AppearanceProvider>
     );
   }
   return (
+    <AppearanceProvider>
     <FontSizeProvider>
     <ThemeProvider>
       <SafeAreaProvider initialMetrics={providerInitialMetrics}>{content}</SafeAreaProvider>
     </ThemeProvider>
     </FontSizeProvider>
+    </AppearanceProvider>
   );
 }

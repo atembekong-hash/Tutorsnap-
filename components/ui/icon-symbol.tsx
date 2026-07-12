@@ -124,6 +124,9 @@ const MAPPING = {
   "doc.fill": "insert-drive-file",
   // Homework completion
   "circle": "radio-button-unchecked",
+  "paintbrush.fill": "brush",
+  "slider.horizontal.3": "tune",
+  "arrow.up.arrow.down": "swap-vert",
 } as unknown as IconMapping;
 
 export function IconSymbol({
