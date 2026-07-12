@@ -50,7 +50,7 @@ import { usePremium } from "@/hooks/use-premium";
 import { FREE_LIMITS } from "@/lib/subscription";
 import { UpsellNudgeBanner } from "@/components/upsell-nudge-banner";
 import { useAppearance, type WidgetId } from "@/lib/appearance-context";
-import { loadGlobalGrade, GRADE_LABELS, GRADE_OPTIONS } from "@/lib/grade-levels";
+import { loadGlobalGrade, saveGlobalGrade, GRADE_LABELS, GRADE_OPTIONS } from "@/lib/grade-levels";
 
 function getAppearanceSubjectKey(subjectId: string): string {
   const def = getSubjectDef(subjectId);
@@ -466,6 +466,7 @@ function SolveScreenContent() {
   const shieldToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [homeGradeLevel, setHomeGradeLevel] = useState<string | null>(null);
   const [showSolveGradePicker, setShowSolveGradePicker] = useState(false);
+  const [rememberGrade, setRememberGrade] = useState(false);
   const [userName, setUserName] = useState<string | null>(null);
 
   const loadProgress = async () => {
@@ -1213,11 +1214,28 @@ function SolveScreenContent() {
               </TouchableOpacity>
             </View>
             <Text style={[styles.gradePickerSub, { color: colors.muted }]}>
-              AI will tailor explanations to this level for this session.
+              AI will tailor explanations to this level.
             </Text>
+            {/* Remember this toggle */}
+            <TouchableOpacity
+              onPress={() => { H.impactLight(); setRememberGrade((v) => !v); }}
+              style={[styles.rememberRow, { backgroundColor: rememberGrade ? `${colors.primary}10` : colors.surface, borderColor: rememberGrade ? colors.primary : colors.border }]}
+              activeOpacity={0.75}
+              accessibilityLabel="Remember this grade level as default"
+              accessibilityRole="switch"
+              accessibilityState={{ checked: rememberGrade }}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.rememberLabel, { color: rememberGrade ? colors.primary : colors.foreground }]}>Remember this</Text>
+                <Text style={[styles.rememberSub, { color: colors.muted }]}>Save as your default grade level</Text>
+              </View>
+              <View style={[styles.rememberToggle, { backgroundColor: rememberGrade ? colors.primary : colors.border }]}>
+                <View style={[styles.rememberThumb, { transform: [{ translateX: rememberGrade ? 18 : 2 }] }]} />
+              </View>
+            </TouchableOpacity>
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 8 }}>
               <TouchableOpacity
-                onPress={() => { H.impactLight(); setHomeGradeLevel(null); setShowSolveGradePicker(false); }}
+                onPress={() => { H.impactLight(); setHomeGradeLevel(null); if (rememberGrade) saveGlobalGrade(null); setShowSolveGradePicker(false); }}
                 style={[styles.gradePickerRow, { backgroundColor: !homeGradeLevel ? `${colors.primary}15` : colors.surface, borderColor: !homeGradeLevel ? colors.primary : colors.border }]}
                 activeOpacity={0.75}
                 accessibilityLabel="Any level"
@@ -1235,7 +1253,7 @@ function SolveScreenContent() {
                 return (
                   <TouchableOpacity
                     key={opt.id}
-                    onPress={() => { H.impactLight(); setHomeGradeLevel(opt.id); setShowSolveGradePicker(false); }}
+                    onPress={() => { H.impactLight(); setHomeGradeLevel(opt.id); if (rememberGrade) saveGlobalGrade(opt.id); setShowSolveGradePicker(false); }}
                     style={[styles.gradePickerRow, { backgroundColor: isActive ? `${colors.primary}15` : colors.surface, borderColor: isActive ? colors.primary : colors.border }]}
                     activeOpacity={0.75}
                     accessibilityLabel={opt.label}
@@ -1584,4 +1602,27 @@ const styles = StyleSheet.create({
   },
   gradePickerOptLabel: { fontSize: 15, fontWeight: "700", marginBottom: 2 },
   gradePickerOptSub: { fontSize: 12 },
+  rememberRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    marginBottom: 12,
+    gap: 12,
+  },
+  rememberLabel: { fontSize: 14, fontWeight: "700", marginBottom: 2 },
+  rememberSub: { fontSize: 12 },
+  rememberToggle: {
+    width: 42,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: "center",
+  },
+  rememberThumb: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "#FFFFFF",
+  },
 });

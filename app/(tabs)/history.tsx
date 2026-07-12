@@ -147,8 +147,19 @@ function HistoryScreenContent() {
         activeOpacity={0.75}
       >
         <View style={styles.cardLeft}>
-          <View style={[styles.subjectBadge, { backgroundColor: `${subjectColor}20` }]}>
-            <Text style={[styles.subjectBadgeText, { color: subjectColor }]}>{subjectLabel}</Text>
+          <View style={styles.cardBadgeRow}>
+            <View style={[styles.subjectBadge, { backgroundColor: `${subjectColor}20` }]}>
+              <Text style={[styles.subjectBadgeText, { color: subjectColor }]}>{subjectLabel}</Text>
+            </View>
+            {(item as any).gradeLevel && (() => {
+              const label = GRADE_LABELS[(item as any).gradeLevel] ?? (item as any).gradeLevel;
+              return (
+                <View style={[styles.gradeBadge, { backgroundColor: `${colors.primary}12`, borderColor: `${colors.primary}25` }]}>
+                  <Text style={{ fontSize: 10 }}>📚</Text>
+                  <Text style={[styles.gradeBadgeText, { color: colors.primary }]}>{label}</Text>
+                </View>
+              );
+            })()}
           </View>
           <Text style={[styles.problemText, { color: colors.foreground }]} numberOfLines={2}>
             {item.problem}
@@ -441,4 +452,15 @@ const styles = StyleSheet.create({
   },
   emptyTitle: { fontSize: 20, fontWeight: "700", marginBottom: 8 },
   emptySubtitle: { fontSize: 15, textAlign: "center", lineHeight: 22 },
+  cardBadgeRow: { flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 4 },
+  gradeBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  gradeBadgeText: { fontSize: 11, fontWeight: "700", letterSpacing: 0.3 },
 });

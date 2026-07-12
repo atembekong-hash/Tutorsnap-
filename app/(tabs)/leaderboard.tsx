@@ -23,6 +23,7 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { getProgress } from "@/lib/progress";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { loadGlobalGrade, GRADE_LABELS, GRADE_OPTIONS } from "@/lib/grade-levels";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface LeaderboardEntry {
@@ -114,6 +115,8 @@ export default function LeaderboardScreen() {
   const [board, setBoard] = useState<LeaderboardEntry[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [weekLabel, setWeekLabel] = useState("");
+  const [filterGrade, setFilterGrade] = useState<string | "all">("all");
+  const [globalGrade, setGlobalGrade] = useState<string | null>(null);
 
   const loadBoard = useCallback(async () => {
     const progress = await getProgress();
@@ -132,6 +135,10 @@ export default function LeaderboardScreen() {
     setWeekLabel(`${fmt(startOfWeek)} – ${fmt(endOfWeek)}`);
 
     setBoard(generateBoard(userSolved, userStreak, userName));
+    loadGlobalGrade().then((g: string | null) => {
+      setGlobalGrade(g);
+      if (g) setFilterGrade(g);
+    });
   }, []);
 
   useEffect(() => {
@@ -165,6 +172,36 @@ export default function LeaderboardScreen() {
           <Text style={[styles.title, { color: colors.foreground }]}>Leaderboard</Text>
           <Text style={[styles.subtitle, { color: colors.muted }]}>Week of {weekLabel}</Text>
         </View>
+
+        {/* Grade Level Filter */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.gradeFilterRow}
+        >
+          <TouchableOpacity
+            onPress={() => { H.impactLight(); setFilterGrade("all"); }}
+            style={[styles.gradeChip, { backgroundColor: filterGrade === "all" ? colors.primary : colors.surface, borderColor: filterGrade === "all" ? colors.primary : colors.border }]}
+            accessibilityLabel="Show all grade levels"
+          >
+            <Text style={[styles.gradeChipText, { color: filterGrade === "all" ? "#FFFFFF" : colors.foreground }]}>All Levels</Text>
+          </TouchableOpacity>
+          {GRADE_OPTIONS.map((opt) => {
+            const isActive = filterGrade === opt.id;
+            return (
+              <TouchableOpacity
+                key={opt.id}
+                onPress={() => { H.impactLight(); setFilterGrade(isActive ? "all" : opt.id); }}
+                style={[styles.gradeChip, { backgroundColor: isActive ? `${colors.primary}20` : colors.surface, borderColor: isActive ? colors.primary : colors.border }]}
+                accessibilityLabel={`Filter by ${opt.label}`}
+              >
+                <Text style={[styles.gradeChipText, { color: isActive ? colors.primary : colors.foreground }]}>
+                  {opt.id === globalGrade ? `${opt.label} ★` : opt.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
 
         {/* User's rank summary card */}
         {userEntry && (
@@ -271,4 +308,17 @@ const styles = StyleSheet.create({
   rowCount: { fontSize: 16, fontWeight: "800" },
   rowCountLabel: { fontSize: 10 },
   footnote: { fontSize: 11, textAlign: "center", lineHeight: 17 },
+  gradeFilterRow: {
+    flexDirection: "row",
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingBottom: 4,
+  },
+  gradeChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  gradeChipText: { fontSize: 13, fontWeight: "600" },
 });
