@@ -1,7 +1,7 @@
-# MathGenius AI - Design Document
+# TutorSnap - Design Document
 
 ## Brand Identity
-- **App Name:** MathGenius AI
+- **App Name:** TutorSnap
 - **Tagline:** Solve Any Math Problem Instantly
 - **Color Palette:**
   - Primary: Deep Purple `#6C3CE1` (trust, intelligence)
