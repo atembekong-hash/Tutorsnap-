@@ -26,6 +26,7 @@ import { usePremium } from "@/hooks/use-premium";
 import { FREE_LIMITS } from "@/lib/subscription";
 import { QuizNudgeBanner } from "@/components/quiz-nudge-banner";
 import { maybeRequestReview } from "@/lib/review-prompt";
+import { loadGlobalGrade } from "@/lib/grade-levels";
 
 function getAppearanceSubjectKey(subjectId: string): string {
   const def = getSubjectDef(subjectId);
@@ -262,11 +263,20 @@ function ScoreSummary({
 export default function QuizScreen() {
   const colors = useColors();
   const router = useRouter();
-  const params = useLocalSearchParams<{ subject: string; difficulty: string; count: string }>();
+  const params = useLocalSearchParams<{ subject: string; difficulty: string; count: string; gradeLevel?: string }>();
 
   const subject = params.subject ?? "algebra";
   const difficulty = (params.difficulty ?? "medium") as "easy" | "medium" | "hard";
   const count = parseInt(params.count ?? "5", 10);
+  const [gradeLevel, setGradeLevel] = useState<string | null>(params.gradeLevel || null);
+
+  // Fall back to global grade if not passed via route
+  useEffect(() => {
+    if (!params.gradeLevel) {
+      loadGlobalGrade().then((g: string | null) => { if (g) setGradeLevel(g); });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const colorScheme = useColorScheme();
   const { getSubjectAccent } = useAppearance();
@@ -332,7 +342,7 @@ export default function QuizScreen() {
   }, [progressAnim]);
 
   useEffect(() => {
-    generateMutation.mutate({ subject, difficulty, count });
+    generateMutation.mutate({ subject, difficulty, count, gradeLevel: gradeLevel ?? undefined });
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

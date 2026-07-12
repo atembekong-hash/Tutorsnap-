@@ -33,6 +33,7 @@ import {
 import { SUBJECT_CATEGORIES, type SubjectCategory } from "@/lib/subjects";
 import { useFontSize, FONT_SIZE_SCALES, SCALE_LABELS, type FontSizeScale } from "@/lib/font-size-provider";
 import { SUPPORT_EMAIL, PRIVACY_URL, TERMS_URL } from "@/constants/app";
+import { GRADE_OPTIONS, GRADE_LABELS, loadGlobalGrade, saveGlobalGrade } from "@/lib/grade-levels";
 import {
   getSubscriptionStatus,
   restorePurchases,
@@ -153,6 +154,10 @@ export default function SettingsScreen() {
   const [subStatus, setSubStatus] = useState<SubscriptionStatus | null>(null);
   const [restoringPurchases, setRestoringPurchases] = useState(false);
 
+  // Global grade level
+  const [gradeLevel, setGradeLevelState] = useState<string | null>(null);
+  const [showGradePicker, setShowGradePicker] = useState(false);
+
   // Redeem referral code
   const [showRedeemModal, setShowRedeemModal] = useState(false);
   const [redeemCode, setRedeemCode] = useState("");
@@ -213,6 +218,7 @@ export default function SettingsScreen() {
     });
     getReminderSettings().then(setReminder);
     getSubscriptionStatus().then(setSubStatus).catch(() => {});
+    loadGlobalGrade().then((g: string | null) => setGradeLevelState(g));
     AsyncStorage.getItem("@tutorsnap/preferredCategories").then((raw) => {
       if (raw) {
         try {
@@ -647,6 +653,13 @@ export default function SettingsScreen() {
           subtitle={preferredCategoryLabels || "All subjects"}
           colors={colors}
           onPress={() => setShowSubjectPicker(true)}
+        />
+        <SettingsRow
+          icon="graduationcap.fill"
+          label="Default Grade Level"
+          subtitle={gradeLevel ? GRADE_LABELS[gradeLevel] : "Not set — all screens will ask per session"}
+          colors={colors}
+          onPress={() => setShowGradePicker(true)}
         />
         <SettingsRow
           icon="person.2.fill"
@@ -1136,6 +1149,75 @@ export default function SettingsScreen() {
         </TouchableOpacity>
       </Modal>
 
+      {/* ── Grade Level Picker Modal ──────────────────────────────────────── */}
+      <Modal
+        visible={showGradePicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowGradePicker(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalSheet, { backgroundColor: colors.background, borderColor: colors.border, maxHeight: "85%" }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.foreground }]}>Default Grade Level</Text>
+              <TouchableOpacity onPress={() => setShowGradePicker(false)} accessibilityLabel="Close grade picker" accessibilityRole="button">
+                <IconSymbol size={22} name="xmark.circle.fill" color={colors.muted} />
+              </TouchableOpacity>
+            </View>
+            <Text style={[styles.modalSubtitle, { color: colors.muted }]}>
+              This level will be pre-selected on every screen. You can still change it per session.
+            </Text>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingBottom: 8 }}>
+              {/* "Any level" clear option */}
+              <TouchableOpacity
+                onPress={() => {
+                  H.impactLight();
+                  setGradeLevelState(null);
+                  saveGlobalGrade(null);
+                  setShowGradePicker(false);
+                }}
+                style={[styles.gradePickerRow, { backgroundColor: !gradeLevel ? `${colors.primary}15` : colors.surface, borderColor: !gradeLevel ? colors.primary : colors.border }]}
+                activeOpacity={0.7}
+                accessibilityLabel="Any level"
+                accessibilityRole="radio"
+                accessibilityState={{ checked: !gradeLevel }}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.gradePickerLabel, { color: !gradeLevel ? colors.primary : colors.foreground }]}>Any level</Text>
+                  <Text style={[styles.gradePickerSub, { color: colors.muted }]}>Ask me each time</Text>
+                </View>
+                {!gradeLevel && <IconSymbol size={18} name="checkmark.circle.fill" color={colors.primary} />}
+              </TouchableOpacity>
+              {GRADE_OPTIONS.map((opt) => {
+                const isActive = gradeLevel === opt.id;
+                return (
+                  <TouchableOpacity
+                    key={opt.id}
+                    onPress={() => {
+                      H.impactLight();
+                      setGradeLevelState(opt.id);
+                      saveGlobalGrade(opt.id);
+                      setShowGradePicker(false);
+                    }}
+                    style={[styles.gradePickerRow, { backgroundColor: isActive ? `${colors.primary}15` : colors.surface, borderColor: isActive ? colors.primary : colors.border }]}
+                    activeOpacity={0.7}
+                    accessibilityLabel={opt.label}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: isActive }}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.gradePickerLabel, { color: isActive ? colors.primary : colors.foreground }]}>{opt.label}</Text>
+                      <Text style={[styles.gradePickerSub, { color: colors.muted }]}>{opt.sub}</Text>
+                    </View>
+                    {isActive && <IconSymbol size={18} name="checkmark.circle.fill" color={colors.primary} />}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
     </ScreenContainer>
   );
 }
@@ -1351,4 +1433,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   redeemBtnText: { fontSize: 15, fontWeight: "700" },
+  gradePickerRow: { flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 14, borderWidth: 1.5, gap: 12 },
+  gradePickerLabel: { fontSize: 15, fontWeight: "700", marginBottom: 2 },
+  gradePickerSub: { fontSize: 12 },
 });

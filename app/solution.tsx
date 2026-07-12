@@ -27,6 +27,7 @@ import { trpc } from "@/lib/trpc";
 import { getMyClassroom, getJoinedClassroom, shareToClassroom } from "@/lib/classroom";
 import { createSession, renameSession } from "@/lib/chat-sessions";
 import { APP_URL, APP_NAME, buildSolveUrl } from "@/constants/app";
+import { loadGlobalGrade } from "@/lib/grade-levels";
 
 function StepCard({ step, colors, fs }: { step: SolutionStep; colors: any; fs: (n: number) => number }) {
   const [expanded, setExpanded] = useState(true);
@@ -164,6 +165,12 @@ export default function SolutionScreen() {
   const [autoSolving, setAutoSolving] = useState(false);
   const [autoSolveError, setAutoSolveError] = useState<string | null>(null);
   const [liveSolution, setLiveSolution] = useState<MathSolution | null>(null);
+  const [gradeLevel, setGradeLevel] = useState<string | null>(null);
+
+  // Load global grade on mount
+  useEffect(() => {
+    loadGlobalGrade().then((g: string | null) => { if (g) setGradeLevel(g); });
+  }, []);
 
   let parsedSolution: MathSolution | null = null;
   try {
@@ -193,7 +200,7 @@ export default function SolutionScreen() {
     setAutoSolving(true);
     setAutoSolveError(null);
     solveMutation.mutate(
-      { problem: parsedSolution!.problem, subject: parsedSolution!.subject as any },
+      { problem: parsedSolution!.problem, subject: parsedSolution!.subject as any, gradeLevel: gradeLevel ?? undefined },
       {
         onSuccess: (data) => {
           setLiveSolution(data as unknown as MathSolution);
@@ -817,6 +824,7 @@ export default function SolutionScreen() {
                   subject: solution!.subject,
                   difficulty: "medium",
                   count: 3,
+                  gradeLevel: gradeLevel ?? undefined,
                 });
                 setSimilarProblems(result.problems ?? []);
                 setShowSimilar(true);
@@ -912,6 +920,7 @@ export default function SolutionScreen() {
               const result = await explainDiffMutation.mutateAsync({
                 problem: `Re-explain the following problem using a simpler analogy or a completely different method than the standard approach. Be concise and use plain language a student would understand.\n\nProblem: ${solution.problem}\n\nOriginal answer: ${solution.answer}`,
                 subject: solution.subject as any,
+                gradeLevel: gradeLevel ?? undefined,
               });
               const alt = (result as any)?.conceptExplained || (result as any)?.answer || "No alternative explanation available.";
               setAltExplanation(alt);

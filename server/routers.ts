@@ -137,15 +137,26 @@ Format mathematical expressions clearly. Keep responses concise but complete.
 Adapt your tone and vocabulary to the subject — precise for math/science, analytical for literature/history.`;
 
 const GRADE_LEVEL_DESCRIPTIONS: Record<string, string> = {
-  grade6: "Grade 6 (age 11-12): Use very simple language, short sentences, relatable real-world examples. Avoid jargon.",
-  grade7: "Grade 7 (age 12-13): Simple language, concrete examples, introduce basic terminology with clear definitions.",
-  grade8: "Grade 8 (age 13-14): Moderate complexity, introduce subject-specific terms, use step-by-step explanations.",
-  grade9: "Grade 9 (age 14-15): High school level, standard academic vocabulary, structured explanations.",
-  grade10: "Grade 10 (age 15-16): GCSE / sophomore level, precise academic language, multi-step reasoning.",
-  gcse: "GCSE / Grade 10-11: UK secondary school level, exam-focused explanations, mark-scheme style answers.",
-  alevel: "A-Level / Grade 11-12: Advanced pre-university level, rigorous explanations, introduce university concepts.",
-  university: "University / College level: Full academic rigour, technical vocabulary, assume strong prior knowledge.",
+  grade1:     "Grade 1 (age 6-7): Use very simple words, very short sentences, and fun real-world examples a young child would understand. Avoid all jargon.",
+  grade2:     "Grade 2 (age 7-8): Use simple words and short sentences. Relate concepts to everyday objects and activities a child knows.",
+  grade3:     "Grade 3 (age 8-9): Use clear, simple language. Introduce basic subject vocabulary with immediate plain-English definitions.",
+  grade4:     "Grade 4 (age 9-10): Use friendly, clear language. Introduce subject terms with definitions and simple examples.",
+  grade5:     "Grade 5 (age 10-11): Use clear language with some subject-specific terms. Provide step-by-step explanations with relatable examples.",
+  grade6:     "Grade 6 (age 11-12): Use very simple language, short sentences, relatable real-world examples. Avoid jargon.",
+  grade7:     "Grade 7 (age 12-13): Simple language, concrete examples, introduce basic terminology with clear definitions.",
+  grade8:     "Grade 8 (age 13-14): Moderate complexity, introduce subject-specific terms, use step-by-step explanations.",
+  grade9:     "Grade 9 (age 14-15): High school level, standard academic vocabulary, structured explanations.",
+  grade10:    "Grade 10 (age 15-16): GCSE / sophomore level, precise academic language, multi-step reasoning.",
+  gcse:       "GCSE / Grade 10-11: UK secondary school level, exam-focused explanations, mark-scheme style answers.",
+  alevel:     "A-Level / Grade 11-12: Advanced pre-university level, rigorous explanations, introduce university concepts.",
+  university: "University / Degree level: Assume strong subject knowledge, use technical terminology freely, provide rigorous academic-level explanations.",
 };
+
+function gradeContext(gradeLevel?: string): string {
+  if (!gradeLevel) return "";
+  const desc = GRADE_LEVEL_DESCRIPTIONS[gradeLevel];
+  return desc ? `\nADAPT YOUR RESPONSE to this student's level: ${desc}` : "";
+}
 
 function buildPracticePrompt(subject: string, difficulty: string): string {
   const isEnglish = ["american_literature","british_literature","world_literature","composition","creative_writing","debate","journalism","grammar","poetry"].includes(subject);
@@ -202,10 +213,11 @@ const academicRouter = router({
     .input(z.object({
       problem: z.string().min(1),
       subject: z.string().default("other"),
+      gradeLevel: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
       try {
-        const systemPrompt = buildSolveSystemPrompt(input.subject);
+        const systemPrompt = buildSolveSystemPrompt(input.subject) + gradeContext(input.gradeLevel);
         const result = await invokeLLM({
           model: "gpt-4o-mini",
           messages: [
@@ -229,13 +241,14 @@ const academicRouter = router({
       imageBase64: z.string(),
       mimeType: z.string().default("image/jpeg"),
       subject: z.string().default("other"),
+      gradeLevel: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
       try {
         const result = await invokeLLM({
           model: "gpt-4o-mini",
           messages: [
-            { role: "system", content: IMAGE_SOLVE_SYSTEM_PROMPT },
+            { role: "system", content: IMAGE_SOLVE_SYSTEM_PROMPT + gradeContext(input.gradeLevel) },
             {
               role: "user",
               content: [
@@ -263,9 +276,10 @@ const academicRouter = router({
     .input(z.object({
       subject: z.string(),
       difficulty: z.enum(["easy", "medium", "hard"]),
+      gradeLevel: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
-      const practicePrompt = buildPracticePrompt(input.subject, input.difficulty);
+      const practicePrompt = buildPracticePrompt(input.subject, input.difficulty) + gradeContext(input.gradeLevel);
       const result = await invokeLLM({
         model: "gpt-4o-mini",
         messages: [
@@ -286,6 +300,7 @@ const academicRouter = router({
       subject: z.string(),
       difficulty: z.enum(["easy", "medium", "hard"]),
       count: z.number().min(3).max(10).default(5),
+      gradeLevel: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
       const isEnglish = ["american_literature","british_literature","world_literature","composition","creative_writing","debate","journalism","grammar","poetry"].includes(input.subject);
@@ -294,7 +309,7 @@ const academicRouter = router({
       if (isEnglish) taskType = "question";
       if (isSocial) taskType = "question";
 
-      const quizPrompt = `You are TutorSnap, an expert academic tutor.
+      const quizPrompt = `You are TutorSnap, an expert academic tutor.${gradeContext(input.gradeLevel)}
 Generate exactly ${input.count} ${input.difficulty} ${taskType}s for the subject: ${input.subject}.
 Each question must have 4 multiple-choice options (A, B, C, D) with exactly one correct answer.
 Respond ONLY with valid JSON in this exact format:
@@ -329,9 +344,11 @@ Respond ONLY with valid JSON in this exact format:
   studyTip: publicProcedure
     .input(z.object({
       subject: z.string(),
+      gradeLevel: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
-      const tipPrompt = `You are TutorSnap, a friendly academic tutor. Generate a single, practical, actionable study tip for a student studying ${input.subject}. The tip should be specific, encouraging, and 1-2 sentences long. Respond with ONLY the tip text, no preamble, no quotes.`;
+      const gradeHint = input.gradeLevel && GRADE_LEVEL_DESCRIPTIONS[input.gradeLevel] ? ` Tailor the tip for a ${GRADE_LEVEL_DESCRIPTIONS[input.gradeLevel].split(":")[0]} student.` : "";
+      const tipPrompt = `You are TutorSnap, a friendly academic tutor. Generate a single, practical, actionable study tip for a student studying ${input.subject}.${gradeHint} The tip should be specific, encouraging, and 1-2 sentences long. Respond with ONLY the tip text, no preamble, no quotes.`;
       const result = await invokeLLM({
         model: "gpt-4o-mini",
         messages: [
@@ -409,9 +426,10 @@ Respond ONLY with valid JSON in this exact format:
       subject: z.string(),
       difficulty: z.enum(["easy", "medium", "hard"]).default("medium"),
       count: z.number().min(1).max(5).default(3),
+      gradeLevel: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
-      const prompt = `You are TutorSnap, an expert academic tutor.\nThe student just solved this problem:\n"${input.problem}"\n\nGenerate exactly ${input.count} similar practice problems of ${input.difficulty} difficulty in the subject "${input.subject}".\nThe problems should test the same concept or skill but use different numbers, scenarios, or contexts.\n\nFor each problem, provide an ELABORATE hint (2-4 sentences) that:\n- Points toward the right concept or technique WITHOUT giving the answer\n- Explains WHY that approach applies to this specific problem\n- Mentions any formula, theorem, or rule the student should recall\n\nRespond ONLY with valid JSON in this exact format:\n{\n  "problems": [\n    {\n      "id": "p1",\n      "problem": "The practice problem text",\n      "hint": "Elaborate hint — 2-4 sentences pointing to the concept, explaining why it applies, and naming the relevant formula or rule"\n    }\n  ]\n}`;
+      const prompt = `You are TutorSnap, an expert academic tutor.${gradeContext(input.gradeLevel)}\nThe student just solved this problem:\n"${input.problem}"\n\nGenerate exactly ${input.count} similar practice problems of ${input.difficulty} difficulty in the subject "${input.subject}".\nThe problems should test the same concept or skill but use different numbers, scenarios, or contexts.\n\nFor each problem, provide an ELABORATE hint (2-4 sentences) that:\n- Points toward the right concept or technique WITHOUT giving the answer\n- Explains WHY that approach applies to this specific problem\n- Mentions any formula, theorem, or rule the student should recall\n\nRespond ONLY with valid JSON in this exact format:\n{\n  "problems": [\n    {\n      "id": "p1",\n      "problem": "The practice problem text",\n      "hint": "Elaborate hint — 2-4 sentences pointing to the concept, explaining why it applies, and naming the relevant formula or rule"\n    }\n  ]\n}`;
       const result = await invokeLLM({
         model: "gpt-4o-mini",
         messages: [

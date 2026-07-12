@@ -24,6 +24,7 @@ import { useNetworkStatus } from "@/hooks/use-network-status";
 import { getSubjectDifficulty, setSubjectDifficulty } from "@/lib/subject-difficulty";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { type SubjectCategory } from "@/lib/subjects";
+import { GRADE_OPTIONS, GRADE_LABELS, loadGlobalGrade, saveGlobalGrade } from "@/lib/grade-levels";
 
 const QUIZ_COUNTS = [3, 5, 10];
 
@@ -40,6 +41,13 @@ function PracticeScreenContent() {
   const [selectedSubject, setSelectedSubject] = useState<SubjectId>("algebra");
   const [selectedDifficulty, setSelectedDifficulty] = useState<Difficulty>("medium");
   const [preferredCategories, setPreferredCategories] = useState<SubjectCategory[]>([]);
+  const [gradeLevel, setGradeLevel] = useState<string | null>(null);
+  const [showGradePicker, setShowGradePicker] = useState(false);
+
+  // Load global grade default on mount
+  useEffect(() => {
+    loadGlobalGrade().then((g) => { if (g) setGradeLevel(g); });
+  }, []);
 
   // Pre-select subject from navigation params (e.g. from Bookmarks "Practice Similar")
   useEffect(() => {
@@ -105,7 +113,7 @@ function PracticeScreenContent() {
 
   const handleGenerate = () => {
     H.impactMedium();
-    generateMutation.mutate({ subject: selectedSubject, difficulty: selectedDifficulty });
+    generateMutation.mutate({ subject: selectedSubject, difficulty: selectedDifficulty, gradeLevel: gradeLevel ?? undefined });
   };
 
   const handleShowHint = () => {
@@ -140,7 +148,19 @@ function PracticeScreenContent() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={[styles.title, { color: colors.foreground }]}>Practice</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+            <Text style={[styles.title, { color: colors.foreground }]}>Practice</Text>
+            <TouchableOpacity
+              onPress={() => { setShowGradePicker(true); H.impactLight(); }}
+              style={[styles.gradePill, { backgroundColor: gradeLevel ? `${colors.primary}18` : colors.surface, borderColor: gradeLevel ? colors.primary : colors.border }]}
+              accessibilityLabel={gradeLevel ? `Level: ${GRADE_LABELS[gradeLevel]}. Tap to change.` : "Set level"}
+              accessibilityRole="button"
+            >
+              <Text style={[styles.gradePillText, { color: gradeLevel ? colors.primary : colors.muted }]}>
+                {gradeLevel ? GRADE_LABELS[gradeLevel] : "Level"}
+              </Text>
+            </TouchableOpacity>
+          </View>
           <Text style={[styles.subtitle, { color: colors.muted }]}>
             Generate problems to sharpen your skills
           </Text>
@@ -242,7 +262,7 @@ function PracticeScreenContent() {
             ))}
           </View>
           <TouchableOpacity
-            onPress={() => isOnline && router.push({ pathname: "/quiz", params: { subject: selectedSubject, difficulty: selectedDifficulty, count: String(quizCount) } })}
+            onPress={() => isOnline && router.push({ pathname: "/quiz", params: { subject: selectedSubject, difficulty: selectedDifficulty, count: String(quizCount), gradeLevel: gradeLevel ?? "" } })}
             disabled={!isOnline}
             style={[styles.startQuizBtn, { backgroundColor: isOnline ? colors.primary : colors.muted, opacity: isOnline ? 1 : 0.6 }]}
             activeOpacity={0.85}
@@ -431,6 +451,44 @@ function PracticeScreenContent() {
           </View>
         )}
       </ScrollView>
+
+      {/* Grade Picker Sheet */}
+      {showGradePicker && (
+        <View style={StyleSheet.absoluteFillObject}>
+          <TouchableOpacity
+            style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)" }}
+            activeOpacity={1}
+            onPress={() => setShowGradePicker(false)}
+          />
+          <View style={[styles.gradeSheet, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={[styles.gradeSheetHandle, { backgroundColor: colors.border }]} />
+            <Text style={[styles.gradeSheetTitle, { color: colors.foreground }]}>Set your level</Text>
+            <Text style={[{ color: colors.muted, fontSize: 13, marginBottom: 12 }]}>Questions will be tailored to your grade level.</Text>
+            <View style={styles.gradeGrid}>
+              {GRADE_OPTIONS.map((opt) => {
+                const isActive = gradeLevel === opt.id;
+                return (
+                  <TouchableOpacity
+                    key={opt.id}
+                    style={[styles.gradeCell, { backgroundColor: isActive ? `${colors.primary}18` : colors.background, borderColor: isActive ? colors.primary : colors.border }]}
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      const next = isActive ? null : opt.id;
+                      setGradeLevel(next);
+                      saveGlobalGrade(next);
+                      H.impactLight();
+                      setShowGradePicker(false);
+                    }}
+                  >
+                    <Text style={[styles.gradeCellLabel, { color: isActive ? colors.primary : colors.foreground }]}>{opt.label}</Text>
+                    <Text style={[styles.gradeCellSub, { color: colors.muted }]}>{opt.sub}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        </View>
+      )}
     </ScreenContainer>
   );
 }
@@ -625,4 +683,37 @@ const styles = StyleSheet.create({
   suggestionAcceptText: { color: "#fff", fontWeight: "700", fontSize: 13 },
   suggestionDismiss: { padding: 4 },
   suggestionDismissText: { fontSize: 13, fontWeight: "500" },
+  gradePill: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  gradePillText: { fontSize: 13, fontWeight: "700" },
+  gradeSheet: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderWidth: 1,
+    padding: 20,
+    paddingBottom: 36,
+  },
+  gradeSheetHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: "center",
+    marginBottom: 16,
+  },
+  gradeSheetTitle: { fontSize: 18, fontWeight: "800", marginBottom: 4 },
+  gradeGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  gradeCell: {
+    width: "30%",
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    alignItems: "center",
+    gap: 2,
+  },
+  gradeCellLabel: { fontSize: 13, fontWeight: "700", textAlign: "center" },
+  gradeCellSub: { fontSize: 10, textAlign: "center" },
 });

@@ -25,6 +25,7 @@ import { SubjectPicker } from "@/components/subject-picker";
 import { type SubjectId } from "@/lib/subjects";
 import { useNetworkStatus } from "@/hooks/use-network-status";
 import { CameraView, useCameraPermissions } from "@/lib/camera-wrapper";
+import { GRADE_OPTIONS, GRADE_LABELS, loadGlobalGrade, saveGlobalGrade } from "@/lib/grade-levels";
 
 type ScanMode = "camera" | "preview" | "web-picker";
 
@@ -41,6 +42,13 @@ function ScanScreenContent() {
   const [isCameraActive, setIsCameraActive] = useState(Platform.OS !== "web");
   const [facing, setFacing] = useState<"back" | "front">("back");
   const { isOnline } = useNetworkStatus();
+  const [gradeLevel, setGradeLevel] = useState<string | null>(null);
+  const [showGradePicker, setShowGradePicker] = useState(false);
+
+  // Load global grade default on mount
+  useEffect(() => {
+    loadGlobalGrade().then((g: string | null) => { if (g) setGradeLevel(g); });
+  }, []);
 
   const [permission, requestPermission] = useCameraPermissions();
 
@@ -167,6 +175,7 @@ function ScanScreenContent() {
         imageBase64: base64,
         mimeType: "image/jpeg",
         subject: selectedSubject ?? "other",
+        gradeLevel: gradeLevel ?? undefined,
       });
     } catch (_) {
       setIsProcessing(false);
@@ -310,6 +319,23 @@ function ScanScreenContent() {
             <SubjectPicker value={selectedSubject} onChange={setSelectedSubject} showAll />
           </View>
 
+          <View style={{ marginBottom: 16 }}>
+            <Text style={[styles.sectionLabel, { color: colors.muted }]}>GRADE LEVEL (OPTIONAL)</Text>
+            <Text style={[styles.sectionHint, { color: colors.muted }]}>Tailors the explanation depth to your level.</Text>
+            <TouchableOpacity
+              onPress={() => { setShowGradePicker(true); H.impactLight(); }}
+              style={[styles.gradePill, { backgroundColor: gradeLevel ? `${colors.primary}15` : colors.surface, borderColor: gradeLevel ? colors.primary : colors.border }]}
+              accessibilityLabel={gradeLevel ? `Level: ${GRADE_LABELS[gradeLevel]}. Tap to change.` : "Set level"}
+              accessibilityRole="button"
+            >
+              <IconSymbol size={14} name="graduationcap.fill" color={gradeLevel ? colors.primary : colors.muted} />
+              <Text style={[styles.gradePillText, { color: gradeLevel ? colors.primary : colors.muted }]}>
+                {gradeLevel ? GRADE_LABELS[gradeLevel] : "Any level"}
+              </Text>
+              <IconSymbol size={12} name="chevron.right" color={gradeLevel ? colors.primary : colors.muted} />
+            </TouchableOpacity>
+          </View>
+
           <TouchableOpacity
             accessibilityLabel="Solve problem"
             onPress={handleSolve}
@@ -398,7 +424,58 @@ function ScanScreenContent() {
           <Text style={[styles.sectionHint, { color: colors.muted }]}>Helps the AI give a more accurate answer. Leave blank for auto-detect.</Text>
           <SubjectPicker value={selectedSubject} onChange={setSelectedSubject} showAll />
         </View>
+
+        <View style={{ marginTop: 16, marginBottom: 8 }}>
+          <Text style={[styles.sectionLabel, { color: colors.muted }]}>GRADE LEVEL (OPTIONAL)</Text>
+          <Text style={[styles.sectionHint, { color: colors.muted }]}>Tailors the explanation depth to your level.</Text>
+          <TouchableOpacity
+            onPress={() => { setShowGradePicker(true); H.impactLight(); }}
+            style={[styles.gradePill, { backgroundColor: gradeLevel ? `${colors.primary}15` : colors.surface, borderColor: gradeLevel ? colors.primary : colors.border }]}
+            accessibilityLabel={gradeLevel ? `Level: ${GRADE_LABELS[gradeLevel]}. Tap to change.` : "Set level"}
+            accessibilityRole="button"
+          >
+            <IconSymbol size={14} name="graduationcap.fill" color={gradeLevel ? colors.primary : colors.muted} />
+            <Text style={[styles.gradePillText, { color: gradeLevel ? colors.primary : colors.muted }]}>
+              {gradeLevel ? GRADE_LABELS[gradeLevel] : "Any level"}
+            </Text>
+            <IconSymbol size={12} name="chevron.right" color={gradeLevel ? colors.primary : colors.muted} />
+          </TouchableOpacity>
+        </View>
       </ScrollView>
+
+      {/* Grade Picker Sheet */}
+      {showGradePicker && (
+        <View style={StyleSheet.absoluteFillObject}>
+          <TouchableOpacity style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)" }} activeOpacity={1} onPress={() => setShowGradePicker(false)} />
+          <View style={[styles.gradeSheet, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={[styles.gradeSheetHandle, { backgroundColor: colors.border }]} />
+            <Text style={[styles.gradeSheetTitle, { color: colors.foreground }]}>Set your level</Text>
+            <Text style={{ color: colors.muted, fontSize: 13, marginBottom: 12 }}>Explanations will match your grade level.</Text>
+            <View style={styles.gradeGrid}>
+              {GRADE_OPTIONS.map((opt) => {
+                const isActive = gradeLevel === opt.id;
+                return (
+                  <TouchableOpacity
+                    key={opt.id}
+                    style={[styles.gradeCell, { backgroundColor: isActive ? `${colors.primary}18` : colors.background, borderColor: isActive ? colors.primary : colors.border }]}
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      const next = isActive ? null : opt.id;
+                      setGradeLevel(next);
+                      saveGlobalGrade(next);
+                      H.impactLight();
+                      setShowGradePicker(false);
+                    }}
+                  >
+                    <Text style={[styles.gradeCellLabel, { color: isActive ? colors.primary : colors.foreground }]}>{opt.label}</Text>
+                    <Text style={[styles.gradeCellSub, { color: colors.muted }]}>{opt.sub}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        </View>
+      )}
         </ScreenContainer>
   );
 }
@@ -489,4 +566,13 @@ const styles = StyleSheet.create({
   solveBtnText: { fontSize: 17, fontWeight: "700", color: "#FFFFFF" },
   retakeBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", padding: 14, borderRadius: 14, borderWidth: 1, gap: 8 },
   retakeBtnText: { fontSize: 15, fontWeight: "600" },
+  gradePill: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12, borderWidth: 1 },
+  gradePillText: { fontSize: 14, fontWeight: "600", flex: 1 },
+  gradeSheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, borderWidth: 1, padding: 20, paddingBottom: 36 },
+  gradeSheetHandle: { width: 40, height: 4, borderRadius: 2, alignSelf: "center", marginBottom: 16 },
+  gradeSheetTitle: { fontSize: 18, fontWeight: "800", marginBottom: 4 },
+  gradeGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  gradeCell: { width: "30%", padding: 12, borderRadius: 14, borderWidth: 1.5, alignItems: "center", gap: 2 },
+  gradeCellLabel: { fontSize: 13, fontWeight: "700", textAlign: "center" },
+  gradeCellSub: { fontSize: 10, textAlign: "center" },
 });
