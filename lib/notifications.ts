@@ -138,3 +138,72 @@ export function formatReminderTime(hour: number, minute: number): string {
   const m = minute.toString().padStart(2, "0");
   return `${h}:${m} ${period}`;
 }
+
+// ── Monthly Backup Reminder ────────────────────────────────────────────────────
+
+const BACKUP_REMINDER_ID_KEY = "@tutorsnap/backupReminderNotifId";
+const BACKUP_REMINDER_ENABLED_KEY = "@tutorsnap/backupReminderEnabled";
+
+/** Schedule a monthly backup reminder on the 1st of each month at 10:00 AM */
+export async function scheduleMonthlyBackupReminder(): Promise<boolean> {
+  if (Platform.OS === "web") return false;
+  const granted = await requestNotificationPermission();
+  if (!granted) return false;
+
+  // Cancel any existing backup reminder
+  await cancelMonthlyBackupReminder();
+
+  if (Platform.OS === "android") {
+    await Notifications.setNotificationChannelAsync("backup-reminder", {
+      name: "Backup Reminders",
+      importance: Notifications.AndroidImportance.DEFAULT,
+    });
+  }
+
+  try {
+    const id = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: "Back up your TutorSnap data 💾",
+        body: "It's been a month — export your progress to keep it safe.",
+        sound: true,
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
+        day: 1,
+        hour: 10,
+        minute: 0,
+        repeats: true,
+      },
+    });
+    await AsyncStorage.setItem(BACKUP_REMINDER_ID_KEY, id);
+    await AsyncStorage.setItem(BACKUP_REMINDER_ENABLED_KEY, "true");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Cancel the monthly backup reminder */
+export async function cancelMonthlyBackupReminder(): Promise<void> {
+  if (Platform.OS === "web") return;
+  try {
+    const id = await AsyncStorage.getItem(BACKUP_REMINDER_ID_KEY);
+    if (id) {
+      await Notifications.cancelScheduledNotificationAsync(id);
+      await AsyncStorage.removeItem(BACKUP_REMINDER_ID_KEY);
+    }
+    await AsyncStorage.removeItem(BACKUP_REMINDER_ENABLED_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+/** Returns true if the monthly backup reminder is currently scheduled */
+export async function isBackupReminderEnabled(): Promise<boolean> {
+  try {
+    const val = await AsyncStorage.getItem(BACKUP_REMINDER_ENABLED_KEY);
+    return val === "true";
+  } catch {
+    return false;
+  }
+}

@@ -29,6 +29,9 @@ import {
   saveReminderSettings,
   formatReminderTime,
   type ReminderSettings,
+  scheduleMonthlyBackupReminder,
+  cancelMonthlyBackupReminder,
+  isBackupReminderEnabled,
 } from "@/lib/notifications";
 import { SUBJECT_CATEGORIES, type SubjectCategory } from "@/lib/subjects";
 import { useFontSize, FONT_SIZE_SCALES, SCALE_LABELS, type FontSizeScale } from "@/lib/font-size-provider";
@@ -168,10 +171,32 @@ export default function SettingsScreen() {
   const [showNameModal, setShowNameModal] = useState(false);
   const [nameInput, setNameInput] = useState("");
 
+  // Monthly backup reminder
+  const [backupReminderEnabled, setBackupReminderEnabled] = useState(false);
+
   // Redeem referral code
   const [showRedeemModal, setShowRedeemModal] = useState(false);
   const [redeemCode, setRedeemCode] = useState("");
   const [redeemLoading, setRedeemLoading] = useState(false);
+
+  const handleToggleBackupReminder = async (value: boolean) => {
+    if (value) {
+      const ok = await scheduleMonthlyBackupReminder();
+      if (ok) {
+        setBackupReminderEnabled(true);
+      } else {
+        Alert.alert(
+          "Permission Required",
+          Platform.OS === "web"
+            ? "Backup reminders are not available on web."
+            : "Please allow notifications in your device settings to enable backup reminders."
+        );
+      }
+    } else {
+      await cancelMonthlyBackupReminder();
+      setBackupReminderEnabled(false);
+    }
+  };
 
   const handleRedeemCode = async () => {
     const code = redeemCode.trim().toUpperCase();
@@ -230,6 +255,7 @@ export default function SettingsScreen() {
     getSubscriptionStatus().then(setSubStatus).catch(() => {});
     loadGlobalGrade().then((g: string | null) => setGradeLevelState(g));
     AsyncStorage.getItem("@tutorsnap/userName").then((n: string | null) => setUserNameState(n || null));
+    isBackupReminderEnabled().then(setBackupReminderEnabled);
     AsyncStorage.getItem("@tutorsnap/preferredCategories").then((raw) => {
       if (raw) {
         try {
@@ -610,9 +636,13 @@ export default function SettingsScreen() {
   const handleImportData = async () => {
     H.impactLight();
     try {
+      // Accept JSON from local storage, iCloud Drive, and Google Drive.
+      // On iOS, iCloud files arrive as public.json or public.plain-text UTIs;
+      // on Android, Google Drive files may arrive as text/plain or application/octet-stream.
       const result = await DocumentPicker.getDocumentAsync({
-        type: "application/json",
+        type: ["application/json", "text/plain", "application/octet-stream", "*/*"],
         copyToCacheDirectory: true,
+        multiple: false,
       });
       if (result.canceled || !result.assets?.[0]?.uri) return;
       const fileUri = result.assets[0].uri;
@@ -694,6 +724,31 @@ export default function SettingsScreen() {
         ? Math.round(quizHistory.reduce((s: number, q: any) => s + (q.score ?? 0), 0) / totalQuizzes)
         : 0;
 
+      // Subject breakdown
+      const subjectMap: Record<string, { solved: number; quizzes: number; totalScore: number }> = {};
+      for (const h of history) {
+        const s = h.subject ?? "Unknown";
+        if (!subjectMap[s]) subjectMap[s] = { solved: 0, quizzes: 0, totalScore: 0 };
+        subjectMap[s].solved++;
+      }
+      for (const q of quizHistory) {
+        const s = q.subject ?? "Unknown";
+        if (!subjectMap[s]) subjectMap[s] = { solved: 0, quizzes: 0, totalScore: 0 };
+        subjectMap[s].quizzes++;
+        subjectMap[s].totalScore += q.score ?? 0;
+      }
+      const subjectRows = Object.entries(subjectMap)
+        .sort((a, b) => b[1].solved - a[1].solved)
+        .map(([subj, data], i) => {
+          const avgQ = data.quizzes > 0 ? Math.round(data.totalScore / data.quizzes) : null;
+          return `<tr style="background:${i % 2 === 0 ? "#f9f9f9" : "#fff"}">
+            <td style="padding:6px 10px;border:1px solid #e5e7eb">${subj}</td>
+            <td style="padding:6px 10px;border:1px solid #e5e7eb;text-align:center">${data.solved}</td>
+            <td style="padding:6px 10px;border:1px solid #e5e7eb;text-align:center">${data.quizzes}</td>
+            <td style="padding:6px 10px;border:1px solid #e5e7eb;text-align:center">${avgQ !== null ? avgQ + "%" : "—"}</td>
+          </tr>`;
+        }).join("");
+
       const historyRows = history.slice(0, 50).map((h: any, i: number) =>
         `<tr style="background:${i % 2 === 0 ? "#f9f9f9" : "#fff"}">
           <td style="padding:6px 10px;border:1px solid #e5e7eb">${i + 1}</td>
@@ -742,6 +797,7 @@ export default function SettingsScreen() {
     <div class="stat"><div class="stat-val">${avgScore}%</div><div class="stat-lbl">Avg Quiz Score</div></div>
     <div class="stat"><div class="stat-val">${progress.currentStreak ?? 0}🔥</div><div class="stat-lbl">Current Streak</div></div>
   </div>
+  ${subjectRows ? `<h2>Subject Breakdown</h2><table><thead><tr><th>Subject</th><th style="text-align:center">Problems Solved</th><th style="text-align:center">Quizzes</th><th style="text-align:center">Avg Quiz Score</th></tr></thead><tbody>${subjectRows}</tbody></table>` : ""}
   ${historyRows ? `<h2>Solve History (last 50)</h2><table><thead><tr><th>#</th><th>Subject</th><th>Question</th><th>Date</th></tr></thead><tbody>${historyRows}</tbody></table>` : ""}
   ${quizRows ? `<h2>Quiz Results (last 30)</h2><table><thead><tr><th>#</th><th>Subject</th><th>Score</th><th>Correct</th><th>Grade</th><th>Date</th></tr></thead><tbody>${quizRows}</tbody></table>` : ""}
   <p class="footer">Generated by TutorSnap · tutorsnapai.tech</p>
@@ -944,6 +1000,30 @@ export default function SettingsScreen() {
           colors={colors}
           onPress={() => router.push("/notification-center" as any)}
         />
+
+        {/* Monthly backup reminder */}
+        <View style={[styles.row, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={[styles.rowIcon, { backgroundColor: `${colors.primary}15` }]}>
+            <IconSymbol size={18} name="square.and.arrow.down.fill" color={colors.primary} />
+          </View>
+          <View style={styles.rowContent}>
+            <Text style={[styles.rowLabel, { color: colors.foreground }]}>Monthly Backup Reminder</Text>
+            <Text style={[styles.rowSubtitle, { color: colors.muted }]}>
+              {backupReminderEnabled
+                ? "Reminder set for the 1st of each month"
+                : "Get a monthly nudge to export your data"}
+            </Text>
+          </View>
+          <View style={styles.rowRight}>
+            <Switch
+              value={backupReminderEnabled}
+              onValueChange={handleToggleBackupReminder}
+              trackColor={{ false: colors.border, true: `${colors.primary}80` }}
+              thumbColor={backupReminderEnabled ? colors.primary : "#FFFFFF"}
+              disabled={Platform.OS === "web"}
+            />
+          </View>
+        </View>
 
         {/* Progress & Data */}
         <SectionHeader title="PROGRESS & DATA" colors={colors} />
