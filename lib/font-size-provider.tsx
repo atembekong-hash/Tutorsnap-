@@ -5,12 +5,11 @@ export type FontSizeScale = "small" | "medium" | "large" | "xlarge";
 
 const FONT_SIZE_KEY = "@tutorsnap/fontSizeScale";
 
-// All multipliers scaled ×1.4 to increase every widget by 40%
 const SCALE_MULTIPLIERS: Record<FontSizeScale, number> = {
-  small:  1.23,  // was 0.88  × 1.4
-  medium: 1.40,  // was 1.0   × 1.4  (default)
-  large:  1.60,  // was 1.14  × 1.4
-  xlarge: 1.79,  // was 1.28  × 1.4
+  small: 0.88,
+  medium: 1.0,
+  large: 1.14,
+  xlarge: 1.28,
 };
 
 const SCALE_LABELS: Record<FontSizeScale, string> = {

@@ -136,18 +136,6 @@ Be encouraging, clear, and pedagogical. Use examples when helpful.
 Format mathematical expressions clearly. Keep responses concise but complete.
 Adapt your tone and vocabulary to the subject — precise for math/science, analytical for literature/history.`;
 
-function buildGradeLevelContext(gradeLevel: string): string {
-  const levels: Record<string, string> = {
-    elementary:  "The student is in elementary school (Grades 3-5, ages 8-11). Use very simple language, short sentences, relatable everyday examples, and avoid jargon. Explain everything as if for the first time.",
-    middle:      "The student is in middle school (Grades 6-8, ages 11-14). Use clear, accessible language. Introduce proper terminology but always define it. Use relatable examples.",
-    high_school: "The student is in high school (Grades 9-12, ages 14-18). Use standard academic language. Expect familiarity with core concepts. Provide thorough explanations and worked examples.",
-    gcse:        "The student is preparing for GCSE exams (UK, ages 14-16). Align explanations with GCSE curriculum expectations. Use exam-style language and highlight mark-scheme points.",
-    a_level:     "The student is preparing for A-Level exams (UK, ages 16-18). Use rigorous academic language. Cover topics in depth, including derivations and proofs where relevant.",
-    university:  "The student is at university level. Use precise academic and technical language. Assume strong foundational knowledge. Provide rigorous, research-level explanations.",
-  };
-  return levels[gradeLevel] ?? "";
-}
-
 function buildPracticePrompt(subject: string, difficulty: string): string {
   const isEnglish = ["american_literature","british_literature","world_literature","composition","creative_writing","debate","journalism","grammar","poetry"].includes(subject);
   const isSocial = ["us_history","world_history","government","economics","geography","psychology","sociology","civics"].includes(subject);
@@ -353,16 +341,12 @@ Respond ONLY with valid JSON in this exact format:
         content: z.string(),
       })),
       subject: z.string().optional(),
-      gradeLevel: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
       const subjectContext = input.subject
         ? `\nThe student is currently focused on: ${input.subject}. Tailor your explanations to this subject when relevant.`
         : "";
-      const gradeContext = input.gradeLevel
-        ? `\nGrade level context: ${buildGradeLevelContext(input.gradeLevel)}`
-        : "";
-      const systemPrompt = CHAT_SYSTEM_PROMPT + subjectContext + gradeContext;
+      const systemPrompt = CHAT_SYSTEM_PROMPT + subjectContext;
       const result = await invokeLLM({
         model: "gpt-4o-mini",
         messages: [
@@ -372,43 +356,11 @@ Respond ONLY with valid JSON in this exact format:
             content: m.content,
           })),
         ],
-        max_tokens: 1200,
+        max_tokens: 1000,
       });
       const rawContent = result.choices[0]?.message?.content ?? "";
       const text = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
-      return { content: text || "I apologize, I couldn't process your request." };
-    }),
-
-  suggestFollowUps: publicProcedure
-    .input(z.object({
-      aiResponse: z.string().min(1),
-      subject: z.string().optional(),
-    }))
-    .mutation(async ({ input }) => {
-      const prompt = `You are TutorSnap, an academic tutor. Based on the following AI tutor response, generate exactly 4 short, specific follow-up questions a student might want to ask next. Each question should be directly relevant to the content of the response — not generic. Keep each question under 8 words. Respond ONLY with a JSON array of 4 strings, e.g. ["Question 1", "Question 2", "Question 3", "Question 4"].
-
-AI Response:
-${input.aiResponse.slice(0, 800)}`;
-      try {
-        const result = await invokeLLM({
-          model: "gpt-4o-mini",
-          messages: [
-            { role: "system", content: prompt },
-            { role: "user", content: "Generate the 4 follow-up questions now." },
-          ],
-          max_tokens: 200,
-        });
-        const raw = result.choices[0]?.message?.content ?? "";
-        const text = typeof raw === "string" ? raw : JSON.stringify(raw);
-        const match = text.match(/\[.*\]/s);
-        if (match) {
-          const chips: string[] = JSON.parse(match[0]);
-          return { chips: chips.slice(0, 4) };
-        }
-        return { chips: [] };
-      } catch {
-        return { chips: [] };
-      }
+            return { content: text || "I apologize, I couldn't process your request." };
     }),
 
   generateSimilar: publicProcedure
