@@ -465,6 +465,7 @@ function SolveScreenContent() {
   const cursorPosRef = useRef<number>(0);
   const shieldToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [homeGradeLevel, setHomeGradeLevel] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string | null>(null);
 
   const loadProgress = async () => {
     const p = await getProgress();
@@ -516,6 +517,7 @@ function SolveScreenContent() {
       });
       getShieldCount().then(setShieldCount);
       loadGlobalGrade().then((g: string | null) => setHomeGradeLevel(g));
+      AsyncStorage.getItem("@tutorsnap/userName").then((n) => setUserName(n || null));
       loadProgress();
       loadWeeklyData();
       loadDueSoonHomework();
@@ -718,11 +720,27 @@ function SolveScreenContent() {
                 </TouchableOpacity>
               </View>
             </View>
-            {/* Row 2: title left, grade badge + streak badge right */}
+            {/* Row 2: personalised greeting or title left, grade badge + streak badge right */}
             <View style={styles.headerRow2}>
-              <Text style={[styles.title, { color: colors.foreground }]}>
-                Solve Any <Text style={{ color: colors.primary }}>Problem</Text>
-              </Text>
+              {userName ? (
+                <View style={{ flex: 1, flexShrink: 1 }}>
+                  <Text style={[styles.greetingLine, { color: colors.muted }]}>
+                    {(() => {
+                      const h = new Date().getHours();
+                      if (h < 12) return "Good morning,";
+                      if (h < 17) return "Good afternoon,";
+                      return "Good evening,";
+                    })()}
+                  </Text>
+                  <Text style={[styles.title, { color: colors.foreground }]} numberOfLines={1}>
+                    {userName} <Text style={{ color: colors.primary }}>👋</Text>
+                  </Text>
+                </View>
+              ) : (
+                <Text style={[styles.title, { color: colors.foreground }]}>
+                  Solve Any <Text style={{ color: colors.primary }}>Problem</Text>
+                </Text>
+              )}
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
               {homeGradeLevel && (
                 <TouchableOpacity
@@ -853,7 +871,7 @@ function SolveScreenContent() {
 
           {/* Study Tip of the Day — keep as full-width card below the row */}
           {isOnline && selectedSubject && (
-            <StudyTipCard subject={selectedSubject} />
+            <StudyTipCard subject={selectedSubject} gradeLevel={homeGradeLevel} />
           )}
 
           {/* Subject Picker */}
@@ -1199,6 +1217,11 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     letterSpacing: 0.5,
     textTransform: "uppercase",
+  },
+  greetingLine: {
+    fontSize: 13,
+    fontWeight: "500",
+    marginBottom: 2,
   },
   title: {
     fontSize: 22,

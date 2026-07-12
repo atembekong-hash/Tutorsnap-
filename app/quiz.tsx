@@ -119,6 +119,7 @@ function ScoreSummary({
   bonusAwarded,
   bonusStreak,
   subject,
+  gradeLevel,
   onRetry,
   onHome,
   colors,
@@ -129,6 +130,7 @@ function ScoreSummary({
   bonusAwarded: boolean;
   bonusStreak: number;
   subject: string;
+  gradeLevel: string | null;
   onRetry: () => void;
   onHome: () => void;
   colors: any;
@@ -141,6 +143,7 @@ function ScoreSummary({
   const mins = Math.floor(timeTaken / 60);
   const secs = timeTaken % 60;
   const subjectLabel = getSubjectLabel(subject);
+  const { GRADE_LABELS } = require("@/lib/grade-levels") as { GRADE_LABELS: Record<string, string> };
 
   const [copied, setCopied] = React.useState(false);
   const copiedTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -191,6 +194,14 @@ function ScoreSummary({
         <Text style={[styles.timeText, { color: colors.muted }]}>
           ⏱ {mins > 0 ? `${mins}m ` : ""}{secs}s
         </Text>
+        {/* Grade level badge */}
+        {gradeLevel ? (
+          <View style={[styles.gradeLevelBadge, { backgroundColor: `${colors.primary}15`, borderColor: `${colors.primary}35` }]}>
+            <Text style={[styles.gradeLevelBadgeText, { color: colors.primary }]}>
+              📚 {GRADE_LABELS[gradeLevel] ?? gradeLevel}
+            </Text>
+          </View>
+        ) : null}
         {bonusAwarded && (
           <View style={[styles.bonusBadge, { backgroundColor: `${colors.warning}20`, borderColor: `${colors.warning}50` }]}>
             <Text style={[styles.bonusBadgeText, { color: colors.warning }]}>
@@ -506,6 +517,7 @@ export default function QuizScreen() {
             bonusAwarded={bonusAwarded}
             bonusStreak={bonusStreak}
             subject={subject}
+            gradeLevel={gradeLevel}
             onRetry={handleRetry}
             onHome={() => router.push("/(tabs)/practice" as any)}
             colors={colors}
@@ -740,4 +752,13 @@ const styles = StyleSheet.create({
   },
   sharePromptTitle: { fontSize: 15, fontWeight: "700", lineHeight: 21 },
   sharePromptSubtext: { fontSize: 12, lineHeight: 17 },
+  gradeLevelBadge: {
+    marginTop: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1,
+    alignSelf: "center",
+  },
+  gradeLevelBadgeText: { fontSize: 13, fontWeight: "700" },
 });
