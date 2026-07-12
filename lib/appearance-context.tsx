@@ -223,6 +223,8 @@ export interface AppearanceSettings {
   reduceMotion: boolean;
   highContrast: boolean;
   largeTapTargets: boolean;
+  /** ID of the last applied preset, or null if no preset is active */
+  activePresetId: string | null;
 }
 
 export const DEFAULT_APPEARANCE: AppearanceSettings = {
@@ -250,6 +252,7 @@ export const DEFAULT_APPEARANCE: AppearanceSettings = {
   reduceMotion: false,
   highContrast: false,
   largeTapTargets: false,
+  activePresetId: null,
 };
 
 // ─── Derived helpers ──────────────────────────────────────────────────────────
@@ -309,6 +312,8 @@ interface AppearanceContextValue {
   resetSettings: () => void;
   /** Apply a named preset theme (merges preset settings into current settings) */
   applyPreset: (presetId: string) => void;
+  /** Reset only per-subject accent colour overrides to their defaults */
+  resetSubjectAccents: () => void;
   /** Convenience: scale a base font size by the current multiplier */
   fs: (base: number) => number;
   /** Resolved accent color for current color scheme */
@@ -333,6 +338,7 @@ const AppearanceContext = createContext<AppearanceContextValue>({
   updateSetting: () => {},
   resetSettings: () => {},
   applyPreset: () => {},
+  resetSubjectAccents: () => {},
   fs: (base) => base,
   accentColor: () => ACCENT_COLORS[0].light,
   getSubjectAccent: () => ACCENT_COLORS[0].light,
@@ -386,7 +392,15 @@ export function AppearanceProvider({ children }: { children: React.ReactNode }) 
     const preset = PRESET_THEMES.find((p) => p.id === presetId);
     if (!preset) return;
     setSettings((prev) => {
-      const next = { ...prev, ...preset.settings };
+      const next = { ...prev, ...preset.settings, activePresetId: presetId };
+      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next)).catch(() => {});
+      return next;
+    });
+  }, []);
+
+  const resetSubjectAccents = useCallback(() => {
+    setSettings((prev) => {
+      const next = { ...prev, subjectAccentColors: { ...DEFAULT_SUBJECT_ACCENT_COLORS }, activePresetId: null };
       AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next)).catch(() => {});
       return next;
     });
@@ -437,6 +451,7 @@ export function AppearanceProvider({ children }: { children: React.ReactNode }) 
         updateSetting,
         resetSettings,
         applyPreset,
+        resetSubjectAccents,
         fs,
         accentColor,
         getSubjectAccent,

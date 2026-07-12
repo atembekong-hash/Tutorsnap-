@@ -17,13 +17,31 @@ import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { trpc } from "@/lib/trpc";
-import { getSubjectColor, getSubjectLabel } from "@/lib/subjects";
+import { getSubjectDef, getSubjectLabel } from "@/lib/subjects";
+import { useAppearance } from "@/lib/appearance-context";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import { saveQuizResult } from "@/lib/quiz-history";
 import { recordQuizBonus } from "@/lib/progress";
 import { usePremium } from "@/hooks/use-premium";
 import { FREE_LIMITS } from "@/lib/subscription";
 import { QuizNudgeBanner } from "@/components/quiz-nudge-banner";
 import { maybeRequestReview } from "@/lib/review-prompt";
+
+function getAppearanceSubjectKey(subjectId: string): string {
+  const def = getSubjectDef(subjectId);
+  switch (def.label) {
+    case "Physics":
+    case "Chemistry":
+    case "Biology":
+    case "Statistics":
+    case "Economics":
+    case "Geometry":
+    case "Computer Science":
+      return def.label;
+    default:
+      return def.category === "math" ? "Mathematics" : def.label;
+  }
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -248,7 +266,9 @@ export default function QuizScreen() {
   const difficulty = (params.difficulty ?? "medium") as "easy" | "medium" | "hard";
   const count = parseInt(params.count ?? "5", 10);
 
-  const subjectColor = getSubjectColor(subject);
+  const colorScheme = useColorScheme();
+  const { getSubjectAccent } = useAppearance();
+  const subjectColor = getSubjectAccent(getAppearanceSubjectKey(subject), colorScheme);
   const subjectLabel = getSubjectLabel(subject);
 
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);

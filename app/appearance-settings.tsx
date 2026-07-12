@@ -237,7 +237,7 @@ export default function AppearanceSettingsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const colorScheme = useColorScheme() ?? "light";
-  const { settings, updateSetting, resetSettings, applyPreset, accentColor } = useAppearance();
+  const { settings, updateSetting, resetSettings, applyPreset, resetSubjectAccents, accentColor } = useAppearance();
 
   const handleReset = useCallback(() => {
     Alert.alert(
@@ -315,10 +315,8 @@ export default function AppearanceSettingsScreen() {
           contentContainerStyle={styles.presetsRow}
         >
           {PRESET_THEMES.map((preset) => {
-            // A preset is "active" if all its settings match the current settings
-            const isActive = Object.entries(preset.settings).every(
-              ([k, v]) => (settings as unknown as Record<string, unknown>)[k] === v,
-            );
+            // A preset is "active" if it was the last one explicitly applied
+            const isActive = settings.activePresetId === preset.id;
             return (
               <TouchableOpacity
                 key={preset.id}
@@ -452,7 +450,18 @@ export default function AppearanceSettingsScreen() {
         </View>
 
         {/* ── 4. Per-Subject Colours ────────────────────────────────────── */}
-        <SectionHeader title="PER-SUBJECT COLOURS" />
+        <View style={styles.sectionHeaderRow}>
+          <Text style={[styles.sectionHeader, { color: colors.muted }]}>PER-SUBJECT COLOURS</Text>
+          <TouchableOpacity
+            onPress={() => {
+              triggerHaptic();
+              resetSubjectAccents();
+            }}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.resetSubjectBtn, { color: colors.muted }]}>Reset to defaults</Text>
+          </TouchableOpacity>
+        </View>
         <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Row>
             <Text style={[styles.rowSub, { color: colors.muted, flex: 1, lineHeight: 18 }]}>
@@ -664,6 +673,15 @@ const styles = StyleSheet.create({
   backText: { fontSize: 17, fontWeight: "500" },
   headerTitle: { fontSize: 17, fontWeight: "700" },
   scroll: { paddingHorizontal: 16, paddingTop: 16 },
+  sectionHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 24,
+    marginBottom: 8,
+    marginLeft: 4,
+    marginRight: 4,
+  },
   sectionHeader: {
     fontSize: 11,
     fontWeight: "700",
@@ -671,6 +689,10 @@ const styles = StyleSheet.create({
     marginTop: 24,
     marginBottom: 8,
     marginLeft: 4,
+  },
+  resetSubjectBtn: {
+    fontSize: 12,
+    fontWeight: "600",
   },
   card: {
     borderRadius: 16,
