@@ -60,6 +60,7 @@ import {
   getSubjectDef,
 } from "@/lib/subjects";
 import { useNetworkStatus } from "@/hooks/use-network-status";
+import { Swipeable } from "react-native-gesture-handler";
 import { useFontSize } from "@/lib/font-size-provider";
 import { ErrorBoundary } from "@/components/error-boundary";
 import {
@@ -455,6 +456,30 @@ function showAIBubbleMenu(
   ]);
 }
 
+// ─── Grade level constants ───────────────────────────────────────────────────
+
+const GRADE_LABELS: Record<string, string> = {
+  grade6: "Gr 6",
+  grade7: "Gr 7",
+  grade8: "Gr 8",
+  grade9: "Gr 9",
+  grade10: "Gr 10",
+  gcse: "GCSE",
+  alevel: "A-Level",
+  university: "Uni",
+};
+
+const GRADE_OPTIONS = [
+  { id: "grade6", label: "Grade 6", sub: "Age 11-12" },
+  { id: "grade7", label: "Grade 7", sub: "Age 12-13" },
+  { id: "grade8", label: "Grade 8", sub: "Age 13-14" },
+  { id: "grade9", label: "Grade 9", sub: "Age 14-15" },
+  { id: "grade10", label: "Grade 10", sub: "Age 15-16" },
+  { id: "gcse", label: "GCSE", sub: "UK Grade 10-11" },
+  { id: "alevel", label: "A-Level", sub: "UK Grade 12-13" },
+  { id: "university", label: "University", sub: "Degree level" },
+];
+
 // ─── Chat Screen Content ──────────────────────────────────────────────────────
 
 function ChatScreenContent() {
@@ -481,12 +506,24 @@ function ChatScreenContent() {
   const [showPaywallModal, setShowPaywallModal] = useState(false);
   const [sessionMessageCount, setSessionMessageCount] = useState(0);
   const { isPremium, isDevMode, incrementUsage: incUsage } = usePremium();
+  const [gradeLevel, setGradeLevel] = useState<string | null>(null);
+  const [showGradePicker, setShowGradePicker] = useState(false);
+  const [replyTo, setReplyTo] = useState<string | null>(null);
+  const [contextualChips, setContextualChips] = useState<string[]>([]);
 
   const flatListRef = useRef<FlatList>(null);
   const { isOnline } = useNetworkStatus();
 
   const bottomPadding = Platform.OS === "web" ? 12 : Math.max(insets.bottom, 8);
   const TAB_BAR_HEIGHT = 60 + bottomPadding;
+
+  // ── Load saved grade level ──────────────────────────────────────────────────
+
+  useEffect(() => {
+    AsyncStorage.getItem("chat_grade_level").then((v) => {
+      if (v) setGradeLevel(v);
+    });
+  }, []);
 
   // ── Session init ────────────────────────────────────────────────────────────
 
@@ -566,6 +603,14 @@ function ChatScreenContent() {
 
   // ── Chat mutation ───────────────────────────────────────────────────────────
 
+  const suggestFollowUpsMutation = trpc.academic.suggestFollowUps.useMutation({
+    onSuccess: (data) => {
+      if (data.chips && data.chips.length > 0) {
+        setContextualChips(data.chips);
+      }
+    },
+  });
+
   const chatMutation = trpc.academic.chat.useMutation({
     onSuccess: (data) => {
       const aiMessage: ChatMessage = {
@@ -579,6 +624,12 @@ function ChatScreenContent() {
         if (session) persistMessages(next, session);
         return next;
       });
+      setContextualChips([]);
+      // Trigger contextual follow-up chip generation
+      suggestFollowUpsMutation.mutate({
+        aiResponse: data.content,
+        subject: undefined,
+      });
       setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
     },
   });
@@ -587,8 +638,13 @@ function ChatScreenContent() {
 
   const handleSend = useCallback(
     async (text?: string) => {
-      const messageText = (text || inputText).trim();
-      if (!messageText || !isOnline || !session) return;
+      const baseText = (text || inputText).trim();
+      if (!baseText || !isOnline || !session) return;
+
+      // Prepend reply-to quote if active
+      const messageText = replyTo
+        ? `> ${replyTo.slice(0, 120).replace(/\n/g, " ")}\n\n${baseText}`
+        : baseText;
 
       if (!isPremium && !isDevMode) {
         if (sessionMessageCount >= FREE_LIMITS.chatMessagesPerSession) {
@@ -603,6 +659,9 @@ function ChatScreenContent() {
       if (Platform.OS !== "web") {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       }
+
+      setReplyTo(null);
+      setContextualChips([]);
 
       const userMessage: ChatMessage = {
         id: `user-${Date.now()}`,
@@ -625,9 +684,10 @@ function ChatScreenContent() {
       chatMutation.mutate({
         messages: contextMessages,
         subject: selectedSubject ?? undefined,
+        gradeLevel: gradeLevel ?? undefined,
       });
     },
-    [inputText, isOnline, session, messages, persistMessages, selectedSubject, chatMutation]
+    [inputText, isOnline, session, messages, persistMessages, selectedSubject, gradeLevel, replyTo, chatMutation]
   );
 
   // ── Long-press AI bubble handler ────────────────────────────────────────────
@@ -856,14 +916,9 @@ function ChatScreenContent() {
   );
 
   // Follow-up chips — shown inline after the last AI message
-  const FOLLOW_UP_CHIPS = [
-    "Give me an example",
-    "Quiz me on this",
-    "Explain differently",
-    "Step by step",
-    "Why does this work?",
-    "Common mistakes?",
-  ];
+  // Uses LLM-generated contextual chips; falls back to generic ones while loading
+  const FALLBACK_CHIPS = ["Give me an example", "Explain differently", "Quiz me on this"];
+  const displayChips = contextualChips.length > 0 ? contextualChips : FALLBACK_CHIPS;
 
   const isLastAIMessage = useCallback(
     (index: number): boolean => {
@@ -932,6 +987,23 @@ function ChatScreenContent() {
           </View>
 
           <View style={chatStyles.headerActions}>
+            {/* Grade level pill */}
+            <TouchableOpacity
+              onPress={() => setShowGradePicker(true)}
+              accessibilityLabel="Set grade level"
+              style={[
+                chatStyles.gradePill,
+                {
+                  backgroundColor: gradeLevel ? `${colors.primary}18` : colors.surface,
+                  borderColor: gradeLevel ? colors.primary : colors.border,
+                },
+              ]}
+              activeOpacity={0.7}
+            >
+              <Text style={[chatStyles.gradePillText, { color: gradeLevel ? colors.primary : colors.muted, fontSize: fs(11) }]}>
+                {gradeLevel ? GRADE_LABELS[gradeLevel] ?? gradeLevel : "Level"}
+              </Text>
+            </TouchableOpacity>
             <TouchableOpacity
               onPress={() => setShowSubjectPicker(true)}
               accessibilityLabel="Change subject"
@@ -998,31 +1070,68 @@ function ChatScreenContent() {
             keyExtractor={(item) => item.id}
             renderItem={({ item, index }) => (
               <View>
-                <MessageBubble
-                  message={item}
-                  isFirstInRun={isFirstInRun(index)}
-                  colors={colors}
-                  fs={fs}
-                  onLongPressAI={handleLongPressAI}
-                />
+                {item.role === "assistant" && !item.id.startsWith("welcome") ? (
+                  <Swipeable
+                    renderRightActions={() => (
+                      <View style={[chatStyles.swipeReplyHint, { backgroundColor: `${colors.primary}18` }]}>
+                        <IconSymbol size={18} name="arrowshape.turn.up.left.fill" color={colors.primary} />
+                        <Text style={[chatStyles.swipeReplyLabel, { color: colors.primary, fontSize: fs(11) }]}>Reply</Text>
+                      </View>
+                    )}
+                    rightThreshold={60}
+                    overshootRight={false}
+                    friction={2}
+                    onSwipeableOpen={() => {
+                      const plainText = item.content
+                        .replace(/#{1,6}\s/g, "")
+                        .replace(/\*\*|__/g, "")
+                        .replace(/\*|_/g, "")
+                        .replace(/`{1,3}/g, "")
+                        .trim()
+                        .slice(0, 120);
+                      setReplyTo(plainText);
+                      if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    }}
+                  >
+                    <MessageBubble
+                      message={item}
+                      isFirstInRun={isFirstInRun(index)}
+                      colors={colors}
+                      fs={fs}
+                      onLongPressAI={handleLongPressAI}
+                    />
+                  </Swipeable>
+                ) : (
+                  <MessageBubble
+                    message={item}
+                    isFirstInRun={isFirstInRun(index)}
+                    colors={colors}
+                    fs={fs}
+                    onLongPressAI={handleLongPressAI}
+                  />
+                )}
                 {/* Follow-up chips — only after the last AI response */}
                 {isLastAIMessage(index) && !chatMutation.isPending && (
                   <View style={chatStyles.followUpRow}>
-                    {FOLLOW_UP_CHIPS.map((chip) => (
-                      <TouchableOpacity
-                        key={chip}
-                        onPress={() => handleSend(chip)}
-                        style={[
-                          chatStyles.followUpChip,
-                          { backgroundColor: colors.surface, borderColor: colors.border },
-                        ]}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={[chatStyles.followUpChipText, { color: colors.foreground, fontSize: fs(12) }]}>
-                          {chip}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
+                    {suggestFollowUpsMutation.isPending ? (
+                      <ActivityIndicator size="small" color={colors.muted} style={{ marginLeft: 8 }} />
+                    ) : (
+                      displayChips.map((chip: string) => (
+                        <TouchableOpacity
+                          key={chip}
+                          onPress={() => handleSend(chip)}
+                          style={[
+                            chatStyles.followUpChip,
+                            { backgroundColor: colors.surface, borderColor: colors.border },
+                          ]}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={[chatStyles.followUpChipText, { color: colors.foreground, fontSize: fs(12) }]}>
+                            {chip}
+                          </Text>
+                        </TouchableOpacity>
+                      ))
+                    )}
                   </View>
                 )}
               </View>
@@ -1083,6 +1192,27 @@ function ChatScreenContent() {
                 color={isAtLimit ? colors.error : colors.warning}
               />
             </TouchableOpacity>
+          )}
+
+          {/* Reply-to preview */}
+          {replyTo && (
+            <View style={[chatStyles.replyPreview, { backgroundColor: `${colors.primary}12`, borderLeftColor: colors.primary }]}>
+              <View style={chatStyles.replyBar}>
+                <Text
+                  style={[chatStyles.replyText, { color: colors.foreground, fontSize: fs(12) }]}
+                  numberOfLines={2}
+                >
+                  {replyTo}
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setReplyTo(null)}
+                style={chatStyles.replyClose}
+                activeOpacity={0.7}
+              >
+                <IconSymbol size={16} name="xmark.circle.fill" color={colors.muted} />
+              </TouchableOpacity>
+            </View>
           )}
 
           {/* Pill input card */}
@@ -1199,6 +1329,64 @@ function ChatScreenContent() {
                 Cancel
               </Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {/* ── Grade level picker sheet ── */}
+      {showGradePicker && (
+        <View style={StyleSheet.absoluteFillObject}>
+          <TouchableOpacity
+            style={[chatStyles.backdrop, { backgroundColor: "rgba(0,0,0,0.5)" }]}
+            activeOpacity={1}
+            onPress={() => setShowGradePicker(false)}
+          />
+          <View
+            style={[
+              chatStyles.gradePickerSheet,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+          >
+            <View style={[chatStyles.sheetHandle, { backgroundColor: colors.border }]} />
+            <Text style={[chatStyles.sheetTitle, { color: colors.foreground, fontSize: fs(16) }]}>
+              Explain at my level
+            </Text>
+            <Text style={[{ color: colors.muted, fontSize: fs(13), marginBottom: 4 }]}>
+              AI responses will be tailored to your level.
+            </Text>
+            <View style={chatStyles.gradeGrid}>
+              {GRADE_OPTIONS.map((opt) => {
+                const isActive = gradeLevel === opt.id;
+                return (
+                  <TouchableOpacity
+                    key={opt.id}
+                    style={[
+                      chatStyles.gradeCell,
+                      {
+                        backgroundColor: isActive ? `${colors.primary}18` : colors.background,
+                        borderColor: isActive ? colors.primary : colors.border,
+                      },
+                    ]}
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      const next = isActive ? null : opt.id;
+                      setGradeLevel(next);
+                      if (next) AsyncStorage.setItem("chat_grade_level", next);
+                      else AsyncStorage.removeItem("chat_grade_level");
+                      if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setShowGradePicker(false);
+                    }}
+                  >
+                    <Text style={[chatStyles.gradeCellLabel, { color: isActive ? colors.primary : colors.foreground, fontSize: fs(14) }]}>
+                      {opt.label}
+                    </Text>
+                    <Text style={[chatStyles.gradeCellSub, { color: colors.muted, fontSize: fs(11) }]}>
+                      {opt.sub}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
         </View>
       )}
@@ -1481,4 +1669,69 @@ const chatStyles = StyleSheet.create({
     paddingVertical: 6,
   },
   followUpChipText: { fontWeight: "500" },
+  swipeReplyHint: {
+    width: 64,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 3,
+    borderRadius: 12,
+    marginRight: 8,
+    marginVertical: 4,
+  },
+  swipeReplyLabel: { fontWeight: "600" },
+  replyPreview: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    marginBottom: 4,
+    borderRadius: 10,
+    borderLeftWidth: 3,
+    gap: 8,
+  },
+  replyBar: { flex: 1 },
+  replyText: { fontWeight: "500", flex: 1 },
+  replyClose: { padding: 4 },
+  gradePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  gradePillText: { fontWeight: "600" },
+  gradePickerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  gradePickerSheet: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    borderTopWidth: 1,
+    paddingTop: 12,
+    paddingBottom: 40,
+    paddingHorizontal: 20,
+  },
+  gradeGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    marginTop: 12,
+  },
+  gradeCell: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    minWidth: "45%",
+    flex: 1,
+    alignItems: "center",
+  },
+  gradeCellLabel: { fontWeight: "600", textAlign: "center" },
+  gradeCellSub: { textAlign: "center", marginTop: 2 },
 });

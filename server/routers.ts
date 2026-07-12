@@ -136,6 +136,17 @@ Be encouraging, clear, and pedagogical. Use examples when helpful.
 Format mathematical expressions clearly. Keep responses concise but complete.
 Adapt your tone and vocabulary to the subject — precise for math/science, analytical for literature/history.`;
 
+const GRADE_LEVEL_DESCRIPTIONS: Record<string, string> = {
+  grade6: "Grade 6 (age 11-12): Use very simple language, short sentences, relatable real-world examples. Avoid jargon.",
+  grade7: "Grade 7 (age 12-13): Simple language, concrete examples, introduce basic terminology with clear definitions.",
+  grade8: "Grade 8 (age 13-14): Moderate complexity, introduce subject-specific terms, use step-by-step explanations.",
+  grade9: "Grade 9 (age 14-15): High school level, standard academic vocabulary, structured explanations.",
+  grade10: "Grade 10 (age 15-16): GCSE / sophomore level, precise academic language, multi-step reasoning.",
+  gcse: "GCSE / Grade 10-11: UK secondary school level, exam-focused explanations, mark-scheme style answers.",
+  alevel: "A-Level / Grade 11-12: Advanced pre-university level, rigorous explanations, introduce university concepts.",
+  university: "University / College level: Full academic rigour, technical vocabulary, assume strong prior knowledge.",
+};
+
 function buildPracticePrompt(subject: string, difficulty: string): string {
   const isEnglish = ["american_literature","british_literature","world_literature","composition","creative_writing","debate","journalism","grammar","poetry"].includes(subject);
   const isSocial = ["us_history","world_history","government","economics","geography","psychology","sociology","civics"].includes(subject);
@@ -341,12 +352,16 @@ Respond ONLY with valid JSON in this exact format:
         content: z.string(),
       })),
       subject: z.string().optional(),
+      gradeLevel: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
       const subjectContext = input.subject
         ? `\nThe student is currently focused on: ${input.subject}. Tailor your explanations to this subject when relevant.`
         : "";
-      const systemPrompt = CHAT_SYSTEM_PROMPT + subjectContext;
+      const gradeContext = input.gradeLevel && GRADE_LEVEL_DESCRIPTIONS[input.gradeLevel]
+        ? `\nADAPT YOUR RESPONSE to this student's level: ${GRADE_LEVEL_DESCRIPTIONS[input.gradeLevel]}`
+        : "";
+      const systemPrompt = CHAT_SYSTEM_PROMPT + subjectContext + gradeContext;
       const result = await invokeLLM({
         model: "gpt-4o-mini",
         messages: [
@@ -360,7 +375,32 @@ Respond ONLY with valid JSON in this exact format:
       });
       const rawContent = result.choices[0]?.message?.content ?? "";
       const text = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
-            return { content: text || "I apologize, I couldn't process your request." };
+      return { content: text || "I apologize, I couldn't process your request." };
+    }),
+  suggestFollowUps: publicProcedure
+    .input(z.object({
+      aiResponse: z.string(),
+      subject: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const prompt = `You are a helpful academic tutor assistant. Based on the following AI tutor response, generate exactly 3 short follow-up questions or prompts a student might want to ask next. Each should be 3-7 words, specific to the content of the response, and help deepen understanding.\n\nAI response:\n"${input.aiResponse.slice(0, 800)}"\n\nRespond ONLY with valid JSON in this exact format:\n{"chips": ["Question 1", "Question 2", "Question 3"]}`;
+      const result = await invokeLLM({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: prompt },
+          { role: "user", content: "Generate the 3 follow-up chips now." },
+        ],
+        max_tokens: 120,
+        response_format: { type: "json_object" },
+      });
+      const rawContent = result.choices[0]?.message?.content ?? "";
+      const text = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
+      try {
+        const parsed = JSON.parse(extractJsonFromContent(text)) as { chips: string[] };
+        return { chips: (parsed.chips || []).slice(0, 3) };
+      } catch {
+        return { chips: ["Give me an example", "Explain differently", "Quiz me on this"] };
+      }
     }),
 
   generateSimilar: publicProcedure
