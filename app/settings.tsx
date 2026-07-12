@@ -643,7 +643,20 @@ export default function SettingsScreen() {
                   .map(([k, v]) => [k, typeof v === "string" ? v : JSON.stringify(v)]);
                 await AsyncStorage.multiSet(pairs);
                 H.notificationSuccess();
-                Alert.alert("Restored", "Your data has been restored. Restart the app to see all changes.");
+                // Build a human-readable summary
+                const d = parsed.data as Record<string, any>;
+                const historyCount = (() => { try { const h = typeof d["math_history"] === "string" ? JSON.parse(d["math_history"]) : d["math_history"]; return Array.isArray(h) ? h.length : 0; } catch { return 0; } })();
+                const bookmarkCount = (() => { try { const b = typeof d["math_bookmarks"] === "string" ? JSON.parse(d["math_bookmarks"]) : d["math_bookmarks"]; return Array.isArray(b) ? b.length : 0; } catch { return 0; } })();
+                const quizCount = (() => { try { const q = typeof d["tutorsnap_quiz_history"] === "string" ? JSON.parse(d["tutorsnap_quiz_history"]) : d["tutorsnap_quiz_history"]; return Array.isArray(q) ? q.length : 0; } catch { return 0; } })();
+                const streakVal = (() => { try { const p = typeof d["math_progress"] === "string" ? JSON.parse(d["math_progress"]) : d["math_progress"]; return p?.currentStreak ?? 0; } catch { return 0; } })();
+                const lines = [
+                  historyCount > 0 ? `• ${historyCount} solved problem${historyCount !== 1 ? "s" : ""}` : null,
+                  bookmarkCount > 0 ? `• ${bookmarkCount} bookmark${bookmarkCount !== 1 ? "s" : ""}` : null,
+                  quizCount > 0 ? `• ${quizCount} quiz result${quizCount !== 1 ? "s" : ""}` : null,
+                  streakVal > 0 ? `• ${streakVal}-day streak` : null,
+                ].filter(Boolean);
+                const summary = lines.length > 0 ? `\n\n${lines.join("\n")}` : "";
+                Alert.alert("Data Restored", `Your backup has been restored successfully.${summary}\n\nRestart the app to see all changes.`);
               } catch {
                 Alert.alert("Restore Failed", "Could not restore data. Please try again.");
               }
@@ -673,6 +686,8 @@ export default function SettingsScreen() {
       const progress: any = progressRaw ? JSON.parse(progressRaw) : {};
 
       const today = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+      const reportName = userName ? `${userName}'s TutorSnap Report` : "TutorSnap Progress Report";
+      const gradeLine = gradeLevel ? ` · ${GRADE_LABELS[gradeLevel as keyof typeof GRADE_LABELS] ?? gradeLevel}` : "";
       const totalSolvedCount = history.length;
       const totalQuizzes = quizHistory.length;
       const avgScore = totalQuizzes > 0
@@ -718,8 +733,8 @@ export default function SettingsScreen() {
   </style>
 </head>
 <body>
-  <h1>🎓 TutorSnap — Progress Report</h1>
-  <p class="meta">Exported on ${today} · App v${Constants.expoConfig?.version ?? "1.1.0"}</p>
+  <h1>🎓 ${reportName}</h1>
+  <p class="meta">Exported on ${today}${gradeLine} · App v${Constants.expoConfig?.version ?? "1.1.0"}</p>
   <div class="stats">
     <div class="stat"><div class="stat-val">${totalSolvedCount}</div><div class="stat-lbl">Problems Solved</div></div>
     <div class="stat"><div class="stat-val">${bookmarks.length}</div><div class="stat-lbl">Bookmarks</div></div>
