@@ -1605,7 +1605,7 @@ function ChatScreenContent() {
               style={{ position: "absolute", top: 16, right: 20, zIndex: 10, padding: 8 }}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Text style={{ fontSize: 16, color: "#9BA1A6" }}>✕</Text>
+              <Text style={{ fontSize: 16, color: colors.muted }}>✕</Text>
             </TouchableOpacity>
             {React.createElement(require("../paywall").default)}
           </View>

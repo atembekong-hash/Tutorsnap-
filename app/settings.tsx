@@ -447,6 +447,17 @@ export default function SettingsScreen() {
                 "@tutorsnap/lastReviewPromptDate",
                 "@tutorsnap/lastUpdateCheckDismissed",
                 "@tutorsnap/trialStartedAt",
+                // Backup reminder
+                "@tutorsnap/backupReminderEnabled",
+                "@tutorsnap/backupReminderDay",
+                "@tutorsnap/backupReminderHour",
+                "@tutorsnap/backupReminderMinute",
+                "@tutorsnap/backupReminderNotifId",
+                // Classroom display name
+                "@tutorsnap/classroom_display_name",
+                // Data operation log & export timestamp
+                "@tutorsnap/dataOpLog",
+                "@tutorsnap/lastExportedAt",
               ];
               await AsyncStorage.multiRemove(keysToDelete);
               // Clear per-subject difficulty keys, per-day quiz-bonus keys, and per-session chat keys
@@ -572,6 +583,10 @@ export default function SettingsScreen() {
                 "@tutorsnap/firstLaunchDate", "@tutorsnap/lastReviewPromptDate",
                 "@tutorsnap/lastUpdateCheckDismissed", "@tutorsnap/trialStartedAt",
                 "@tutorsnap/colorScheme",
+                "@tutorsnap/backupReminderEnabled", "@tutorsnap/backupReminderDay",
+                "@tutorsnap/backupReminderHour", "@tutorsnap/backupReminderMinute",
+                "@tutorsnap/backupReminderNotifId", "@tutorsnap/classroom_display_name",
+                "@tutorsnap/dataOpLog", "@tutorsnap/lastExportedAt",
               ];
               await AsyncStorage.multiRemove(keysToDelete);
               // Also remove all dynamic keys
