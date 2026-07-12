@@ -14,7 +14,7 @@
  * 9. Reset to defaults
  */
 
-import React, { useCallback } from "react";
+import React, { useCallback, useState } from "react";
 import {
   View,
   Text,
@@ -24,6 +24,7 @@ import {
   StyleSheet,
   Alert,
   Platform,
+  TextInput,
   useColorScheme,
 } from "react-native";
 import { useRouter } from "expo-router";
@@ -50,6 +51,9 @@ import {
   type StepStyle,
 } from "@/lib/appearance-context";
 import { impactLight as triggerHaptic, impactMedium } from "@/lib/haptics";
+import * as Clipboard from "expo-clipboard";
+import * as Sharing from "expo-sharing";
+import * as FileSystem from "expo-file-system/legacy";
 
 // ─── Section header ───────────────────────────────────────────────────────────
 function SectionHeader({ title }: { title: string }) {
@@ -252,7 +256,11 @@ export default function AppearanceSettingsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const colorScheme = useColorScheme() ?? "light";
-  const { settings, updateSetting, resetSettings, applyPreset, resetSubjectAccents, saveCustomPreset, accentColor } = useAppearance();
+  const { settings, updateSetting, resetSettings, applyPreset, resetSubjectAccents, saveCustomPreset, renameCustomPreset, accentColor } = useAppearance();
+  const [customPresetNameInput, setCustomPresetNameInput] = React.useState(settings.customPresetName);
+  const [importText, setImportText] = useState("");
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importSuccess, setImportSuccess] = useState(false);
 
   const handleReset = useCallback(() => {
     Alert.alert(
@@ -296,8 +304,60 @@ export default function AppearanceSettingsScreen() {
 
   const handleSaveCustomPreset = useCallback(() => {
     impactMedium();
-    saveCustomPreset();
-  }, [saveCustomPreset]);
+    const name = customPresetNameInput.trim() || "Custom";
+    saveCustomPreset(name);
+  }, [saveCustomPreset, customPresetNameInput]);
+
+  const handleRenameCustomPreset = useCallback((name: string) => {
+    setCustomPresetNameInput(name);
+    renameCustomPreset(name);
+  }, [renameCustomPreset]);
+
+  const handleExportSettings = useCallback(async () => {
+    impactMedium();
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { customPreset: _cp, ...exportable } = settings;
+      const json = JSON.stringify(exportable, null, 2);
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        const path = `${FileSystem.cacheDirectory}tutorsnap-appearance.json`;
+        await FileSystem.writeAsStringAsync(path, json);
+        await Sharing.shareAsync(path, { mimeType: "application/json", dialogTitle: "Share Appearance Settings" });
+      } else {
+        await Clipboard.setStringAsync(json);
+        Alert.alert("Copied!", "Appearance settings JSON copied to clipboard.");
+      }
+    } catch {
+      Alert.alert("Export failed", "Could not export settings.");
+    }
+  }, [settings]);
+
+  const handleImportSettings = useCallback(() => {
+    setImportError(null);
+    setImportSuccess(false);
+    const text = importText.trim();
+    if (!text) {
+      setImportError("Paste your settings JSON first.");
+      return;
+    }
+    try {
+      const parsed = JSON.parse(text) as Record<string, unknown>;
+      if (typeof parsed !== "object" || parsed === null) throw new Error("Not an object");
+      const keys = Object.keys(parsed) as Array<keyof typeof settings>;
+      keys.forEach((k) => {
+        if (k in settings && k !== "customPreset") {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          updateSetting(k, (parsed as any)[k]);
+        }
+      });
+      impactMedium();
+      setImportSuccess(true);
+      setImportText("");
+    } catch {
+      setImportError("Invalid JSON. Make sure you pasted the full exported text.");
+    }
+  }, [importText, settings, updateSetting]);
 
   const setSubjectAccent = useCallback((subject: string, colorId: string) => {
     triggerHaptic();
@@ -349,7 +409,18 @@ export default function AppearanceSettingsScreen() {
                   },
                 ]}
                 activeOpacity={0.8}
+                accessibilityLabel={`Apply ${preset.label} preset`}
+                accessibilityRole="button"
               >
+                {/* Colour swatch strip */}
+                <View style={styles.presetSwatchRow}>
+                  {preset.swatches.map((swatch, i) => (
+                    <View
+                      key={i}
+                      style={[styles.presetSwatch, { backgroundColor: swatch, borderColor: `${swatch}60` }]}
+                    />
+                  ))}
+                </View>
                 <Text style={styles.presetEmoji}>{preset.emoji}</Text>
                 <Text style={[styles.presetLabel, { color: isActive ? globalAccent : colors.foreground }]}>
                   {preset.label}
@@ -372,10 +443,32 @@ export default function AppearanceSettingsScreen() {
             const hasCustom = settings.customPreset != null;
             return (
               <View style={[styles.presetCard, { backgroundColor: isCustomActive ? `${globalAccent}18` : colors.surface, borderColor: isCustomActive ? globalAccent : colors.border, borderStyle: hasCustom ? "solid" : "dashed" }]}>
+                {/* Colour swatch strip for custom preset */}
+                <View style={styles.presetSwatchRow}>
+                  {hasCustom ? (
+                    [globalAccent, colors.surface, colors.background].map((sw, i) => (
+                      <View key={i} style={[styles.presetSwatch, { backgroundColor: sw, borderColor: `${sw}60` }]} />
+                    ))
+                  ) : (
+                    [colors.muted, colors.surface, colors.background].map((sw, i) => (
+                      <View key={i} style={[styles.presetSwatch, { backgroundColor: sw, borderColor: `${sw}60` }]} />
+                    ))
+                  )}
+                </View>
                 <Text style={styles.presetEmoji}>✏️</Text>
-                <Text style={[styles.presetLabel, { color: isCustomActive ? globalAccent : colors.foreground }]}>Custom</Text>
+                {/* Editable name */}
+                <TextInput
+                  value={customPresetNameInput}
+                  onChangeText={handleRenameCustomPreset}
+                  style={[styles.customPresetNameInput, { color: isCustomActive ? globalAccent : colors.foreground, borderColor: `${globalAccent}40` }]}
+                  placeholder="Name your preset"
+                  placeholderTextColor={colors.muted}
+                  maxLength={24}
+                  returnKeyType="done"
+                  accessibilityLabel="Custom preset name"
+                />
                 <Text style={[styles.presetDesc, { color: colors.muted }]} numberOfLines={2}>
-                  {hasCustom ? "Your saved look." : "Save your current settings here."}
+                  {hasCustom ? "Your saved look. Tap Update to overwrite." : "Name it, then tap Save."}
                 </Text>
                 <View style={styles.customPresetBtns}>
                   {hasCustom && (
@@ -383,6 +476,8 @@ export default function AppearanceSettingsScreen() {
                       onPress={() => handleApplyPreset("custom")}
                       style={[styles.customPresetApplyBtn, { backgroundColor: globalAccent }]}
                       activeOpacity={0.8}
+                      accessibilityLabel={`Apply ${customPresetNameInput} preset`}
+                      accessibilityRole="button"
                     >
                       <Text style={styles.customPresetApplyBtnText}>Apply</Text>
                     </TouchableOpacity>
@@ -391,6 +486,8 @@ export default function AppearanceSettingsScreen() {
                     onPress={handleSaveCustomPreset}
                     style={[styles.customPresetSaveBtn, { borderColor: globalAccent }]}
                     activeOpacity={0.8}
+                    accessibilityLabel={hasCustom ? `Update ${customPresetNameInput} preset` : "Save current settings as custom preset"}
+                    accessibilityRole="button"
                   >
                     <Text style={[styles.customPresetSaveBtnText, { color: globalAccent }]}>
                       {hasCustom ? "Update" : "Save"}
@@ -705,7 +802,54 @@ export default function AppearanceSettingsScreen() {
           </Row>
         </View>
 
-        {/* ── 9. Reset ──────────────────────────────────────────────────── */}
+        {/* ── 9. Export / Import ────────────────────────────────────────── */}
+        <SectionHeader title="BACKUP & RESTORE" />
+        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Row>
+            <View style={styles.rowTextBlock}>
+              <Text style={[styles.rowLabel, { color: colors.foreground }]}>Export Settings</Text>
+              <Text style={[styles.rowSub, { color: colors.muted }]}>Share or copy as JSON</Text>
+            </View>
+            <TouchableOpacity
+              onPress={handleExportSettings}
+              style={[styles.exportBtn, { backgroundColor: `${globalAccent}18`, borderColor: `${globalAccent}40` }]}
+              activeOpacity={0.8}
+              accessibilityLabel="Export appearance settings"
+              accessibilityRole="button"
+            >
+              <Text style={[styles.exportBtnText, { color: globalAccent }]}>Export</Text>
+            </TouchableOpacity>
+          </Row>
+          <Row last>
+            <View style={{ flex: 1, gap: 8 }}>
+              <Text style={[styles.rowLabel, { color: colors.foreground }]}>Import Settings</Text>
+              <TextInput
+                value={importText}
+                onChangeText={(t) => { setImportText(t); setImportError(null); setImportSuccess(false); }}
+                style={[styles.importInput, { color: colors.foreground, backgroundColor: colors.background, borderColor: importError ? colors.error : importSuccess ? colors.success : colors.border }]}
+                placeholder="Paste exported JSON here…"
+                placeholderTextColor={colors.muted}
+                multiline
+                numberOfLines={4}
+                returnKeyType="done"
+                accessibilityLabel="Import appearance settings JSON"
+              />
+              {importError && <Text style={[styles.importFeedback, { color: colors.error }]}>{importError}</Text>}
+              {importSuccess && <Text style={[styles.importFeedback, { color: colors.success }]}>Settings imported successfully!</Text>}
+              <TouchableOpacity
+                onPress={handleImportSettings}
+                style={[styles.importBtn, { backgroundColor: globalAccent }]}
+                activeOpacity={0.8}
+                accessibilityLabel="Apply imported settings"
+                accessibilityRole="button"
+              >
+                <Text style={styles.importBtnText}>Apply Import</Text>
+              </TouchableOpacity>
+            </View>
+          </Row>
+        </View>
+
+        {/* ── 10. Reset ─────────────────────────────────────────────────── */}
         <TouchableOpacity
           onPress={handleReset}
           style={[styles.resetBtn, { borderColor: colors.error }]}
@@ -779,6 +923,56 @@ const styles = StyleSheet.create({
   },
   customPresetSaveBtnText: {
     fontSize: 12,
+    fontWeight: "600",
+  },
+  customPresetNameInput: {
+    fontSize: 14,
+    fontWeight: "700",
+    borderBottomWidth: 1,
+    paddingBottom: 2,
+    marginBottom: 4,
+  },
+  presetSwatchRow: {
+    flexDirection: "row",
+    gap: 4,
+    marginBottom: 8,
+  },
+  presetSwatch: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 1,
+  },
+  exportBtn: {
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+  },
+  exportBtnText: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  importInput: {
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 10,
+    fontSize: 12,
+    minHeight: 80,
+    textAlignVertical: "top",
+  },
+  importFeedback: {
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  importBtn: {
+    borderRadius: 10,
+    paddingVertical: 10,
+    alignItems: "center",
+  },
+  importBtnText: {
+    color: "#FFFFFF",
+    fontSize: 14,
     fontWeight: "600",
   },
   previewTitleRow: {
