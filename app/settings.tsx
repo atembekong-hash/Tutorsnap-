@@ -36,6 +36,9 @@ import { SUPPORT_EMAIL, PRIVACY_URL, TERMS_URL } from "@/constants/app";
 import { GRADE_OPTIONS, GRADE_LABELS, loadGlobalGrade, saveGlobalGrade } from "@/lib/grade-levels";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
+import * as DocumentPicker from "expo-document-picker";
+import * as MailComposer from "expo-mail-composer";
+import * as Print from "expo-print";
 import {
   getSubscriptionStatus,
   restorePurchases,
@@ -531,6 +534,20 @@ export default function SettingsScreen() {
               );
               if (dynamicKeys.length > 0) await AsyncStorage.multiRemove(dynamicKeys);
               H.notificationSuccess();
+              // Offer a GDPR data-deletion confirmation email
+              try {
+                const canMail = await MailComposer.isAvailableAsync();
+                if (canMail) {
+                  await MailComposer.composeAsync({
+                    recipients: [SUPPORT_EMAIL],
+                    subject: "TutorSnap — Data Deletion Confirmation",
+                    body:
+                      `Hi TutorSnap Team,\n\nI have just deleted my account and all local data from the TutorSnap app on this device.\n\nPlease confirm that any server-side data associated with my account has also been removed in accordance with your Privacy Policy.\n\nDate: ${new Date().toISOString()}\n\nThank you.`,
+                  });
+                }
+              } catch {
+                // Mail composer unavailable — silently skip
+              }
               // Navigate to onboarding
               router.replace("/onboarding" as any);
             } catch {
@@ -586,6 +603,148 @@ export default function SettingsScreen() {
       }
     } catch (e: any) {
       Alert.alert("Export Failed", "Could not export your data. Please try again.");
+    }
+  };
+
+  // ── Import My Data ───────────────────────────────────────────────────────────
+  const handleImportData = async () => {
+    H.impactLight();
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: "application/json",
+        copyToCacheDirectory: true,
+      });
+      if (result.canceled || !result.assets?.[0]?.uri) return;
+      const fileUri = result.assets[0].uri;
+      const raw = await FileSystem.readAsStringAsync(fileUri, { encoding: FileSystem.EncodingType.UTF8 });
+      let parsed: any;
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        Alert.alert("Invalid File", "The selected file is not a valid TutorSnap export.");
+        return;
+      }
+      if (!parsed?.data || typeof parsed.data !== "object") {
+        Alert.alert("Invalid File", "The file does not contain a valid TutorSnap data export.");
+        return;
+      }
+      Alert.alert(
+        "Restore Data?",
+        `This will overwrite your current data with the backup from ${parsed.exportedAt ? new Date(parsed.exportedAt).toLocaleDateString() : "unknown date"}. Continue?`,
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Restore",
+            style: "destructive",
+            onPress: async () => {
+              try {
+                const pairs: [string, string][] = Object.entries(parsed.data)
+                  .filter(([, v]) => v !== null && v !== undefined)
+                  .map(([k, v]) => [k, typeof v === "string" ? v : JSON.stringify(v)]);
+                await AsyncStorage.multiSet(pairs);
+                H.notificationSuccess();
+                Alert.alert("Restored", "Your data has been restored. Restart the app to see all changes.");
+              } catch {
+                Alert.alert("Restore Failed", "Could not restore data. Please try again.");
+              }
+            },
+          },
+        ]
+      );
+    } catch {
+      Alert.alert("Import Failed", "Could not open the file. Please try again.");
+    }
+  };
+
+  // ── Export as PDF ────────────────────────────────────────────────────────────
+  const handleExportPDF = async () => {
+    H.impactLight();
+    try {
+      // Gather data
+      const [historyRaw, bookmarksRaw, quizRaw, progressRaw] = await Promise.all([
+        AsyncStorage.getItem("math_history"),
+        AsyncStorage.getItem("math_bookmarks"),
+        AsyncStorage.getItem("tutorsnap_quiz_history"),
+        AsyncStorage.getItem("math_progress"),
+      ]);
+      const history: any[] = historyRaw ? JSON.parse(historyRaw) : [];
+      const bookmarks: any[] = bookmarksRaw ? JSON.parse(bookmarksRaw) : [];
+      const quizHistory: any[] = quizRaw ? JSON.parse(quizRaw) : [];
+      const progress: any = progressRaw ? JSON.parse(progressRaw) : {};
+
+      const today = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+      const totalSolvedCount = history.length;
+      const totalQuizzes = quizHistory.length;
+      const avgScore = totalQuizzes > 0
+        ? Math.round(quizHistory.reduce((s: number, q: any) => s + (q.score ?? 0), 0) / totalQuizzes)
+        : 0;
+
+      const historyRows = history.slice(0, 50).map((h: any, i: number) =>
+        `<tr style="background:${i % 2 === 0 ? "#f9f9f9" : "#fff"}">
+          <td style="padding:6px 10px;border:1px solid #e5e7eb">${i + 1}</td>
+          <td style="padding:6px 10px;border:1px solid #e5e7eb">${h.subject ?? "—"}</td>
+          <td style="padding:6px 10px;border:1px solid #e5e7eb;max-width:300px;word-break:break-word">${(h.question ?? "").slice(0, 120)}${(h.question ?? "").length > 120 ? "…" : ""}</td>
+          <td style="padding:6px 10px;border:1px solid #e5e7eb">${h.timestamp ? new Date(h.timestamp).toLocaleDateString() : "—"}</td>
+        </tr>`
+      ).join("");
+
+      const quizRows = quizHistory.slice(0, 30).map((q: any, i: number) =>
+        `<tr style="background:${i % 2 === 0 ? "#f9f9f9" : "#fff"}">
+          <td style="padding:6px 10px;border:1px solid #e5e7eb">${i + 1}</td>
+          <td style="padding:6px 10px;border:1px solid #e5e7eb">${q.subject ?? "—"}</td>
+          <td style="padding:6px 10px;border:1px solid #e5e7eb">${q.score ?? 0}%</td>
+          <td style="padding:6px 10px;border:1px solid #e5e7eb">${q.correctAnswers ?? 0}/${q.totalQuestions ?? 0}</td>
+          <td style="padding:6px 10px;border:1px solid #e5e7eb">${q.gradeLevel ? (GRADE_LABELS[q.gradeLevel as keyof typeof GRADE_LABELS] ?? q.gradeLevel) : "—"}</td>
+          <td style="padding:6px 10px;border:1px solid #e5e7eb">${q.completedAt ? new Date(q.completedAt).toLocaleDateString() : "—"}</td>
+        </tr>`
+      ).join("");
+
+      const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    body { font-family: -apple-system, Arial, sans-serif; margin: 32px; color: #11181C; }
+    h1 { color: #0a7ea4; font-size: 24px; margin-bottom: 4px; }
+    h2 { color: #0a7ea4; font-size: 16px; margin: 24px 0 8px; border-bottom: 2px solid #0a7ea4; padding-bottom: 4px; }
+    .meta { color: #687076; font-size: 13px; margin-bottom: 24px; }
+    .stats { display: flex; gap: 24px; margin-bottom: 24px; }
+    .stat { background: #f5f5f5; border-radius: 10px; padding: 12px 20px; text-align: center; }
+    .stat-val { font-size: 28px; font-weight: bold; color: #0a7ea4; }
+    .stat-lbl { font-size: 12px; color: #687076; margin-top: 2px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { background: #0a7ea4; color: #fff; padding: 8px 10px; text-align: left; }
+    .footer { margin-top: 32px; color: #687076; font-size: 11px; text-align: center; }
+  </style>
+</head>
+<body>
+  <h1>🎓 TutorSnap — Progress Report</h1>
+  <p class="meta">Exported on ${today} · App v${Constants.expoConfig?.version ?? "1.1.0"}</p>
+  <div class="stats">
+    <div class="stat"><div class="stat-val">${totalSolvedCount}</div><div class="stat-lbl">Problems Solved</div></div>
+    <div class="stat"><div class="stat-val">${bookmarks.length}</div><div class="stat-lbl">Bookmarks</div></div>
+    <div class="stat"><div class="stat-val">${totalQuizzes}</div><div class="stat-lbl">Quizzes Taken</div></div>
+    <div class="stat"><div class="stat-val">${avgScore}%</div><div class="stat-lbl">Avg Quiz Score</div></div>
+    <div class="stat"><div class="stat-val">${progress.currentStreak ?? 0}🔥</div><div class="stat-lbl">Current Streak</div></div>
+  </div>
+  ${historyRows ? `<h2>Solve History (last 50)</h2><table><thead><tr><th>#</th><th>Subject</th><th>Question</th><th>Date</th></tr></thead><tbody>${historyRows}</tbody></table>` : ""}
+  ${quizRows ? `<h2>Quiz Results (last 30)</h2><table><thead><tr><th>#</th><th>Subject</th><th>Score</th><th>Correct</th><th>Grade</th><th>Date</th></tr></thead><tbody>${quizRows}</tbody></table>` : ""}
+  <p class="footer">Generated by TutorSnap · tutorsnapai.tech</p>
+</body>
+</html>`;
+
+      const { uri } = await Print.printToFileAsync({ html, base64: false });
+      const pdfName = `tutorsnap-report-${new Date().toISOString().slice(0, 10)}.pdf`;
+      const destUri = (FileSystem.cacheDirectory ?? "") + pdfName;
+      await FileSystem.moveAsync({ from: uri, to: destUri });
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(destUri, { mimeType: "application/pdf", UTI: "com.adobe.pdf", dialogTitle: "Export Progress Report" });
+      } else {
+        Alert.alert("PDF Saved", `Report saved to:\n${destUri}`);
+      }
+    } catch {
+      Alert.alert("Export Failed", "Could not generate the PDF. Please try again.");
     }
   };
 
@@ -868,6 +1027,20 @@ export default function SettingsScreen() {
           subtitle="Download your history, progress, and settings as JSON"
           colors={colors}
           onPress={handleExportData}
+        />
+        <SettingsRow
+          icon="square.and.arrow.down.fill"
+          label="Import My Data"
+          subtitle="Restore a previous TutorSnap JSON backup"
+          colors={colors}
+          onPress={handleImportData}
+        />
+        <SettingsRow
+          icon="doc.text.fill"
+          label="Export as PDF"
+          subtitle="Share a formatted progress report with solve history and quiz scores"
+          colors={colors}
+          onPress={handleExportPDF}
         />
         <SettingsRow
           icon="person.crop.circle.badge.minus"

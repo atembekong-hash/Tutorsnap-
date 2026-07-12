@@ -101,6 +101,7 @@ const MAPPING = {
   "star.bubble.fill": "rate-review",
   "square.and.arrow.up.fill": "ios-share",
   "square.and.arrow.up.on.square.fill": "upload-file",
+  "square.and.arrow.down.fill": "download",
   "person.crop.circle.badge.minus": "person-remove",
   "person.crop.circle.fill": "account-circle",
   // Code
