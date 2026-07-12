@@ -264,12 +264,17 @@ export async function restorePurchases(): Promise<boolean> {
 }
 
 export async function openManageSubscriptions(): Promise<void> {
-  if (_devMode || Platform.OS === "web") return;
-  if (_rcDisabled) return;
+  if (_devMode || Platform.OS === "web" || _rcDisabled) {
+    // Cannot open native subscription manager in dev/web/rc-disabled mode.
+    // Throw so the caller can show a helpful fallback message.
+    throw new Error("manage_subscriptions_unavailable");
+  }
   try {
     const Purchases = (await import("react-native-purchases")).default;
     await Purchases.showManageSubscriptions();
-  } catch { /* ignore */ }
+  } catch (e: any) {
+    if (e?.message !== "manage_subscriptions_unavailable") throw e;
+  }
 }
 
 // ─── Offerings (for displaying prices from the store) ────────────────────────

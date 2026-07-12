@@ -354,14 +354,45 @@ export default function SettingsScreen() {
                 "@tutorsnap/chatSessions/index",
                 "@tutorsnap/chatSessions/pins",
                 "@tutorsnap/chatHistory",
+                "@tutorsnap/chatSessionsMigrated",
                 // Notification prefs
                 "@tutorsnap/notificationPrefs",
                 "@tutorsnap/reminderEnabled",
                 "@tutorsnap/reminderHour",
                 "@tutorsnap/reminderMinute",
                 "@tutorsnap/reminderNotifId",
+                "@tutorsnap/streakAlertNotifId",
+                "@tutorsnap/weeklyReportNotifId",
+                "@tutorsnap/plannerNotifIds",
+                "@tutorsnap/hw_notif_ids",
+                // Study planner
+                "@tutorsnap/studyPlanner",
+                // Daily challenge
+                "@tutorsnap/dailyChallengeState",
+                // Classroom
+                "@tutorsnap/classroom",
+                "@tutorsnap/classroom_feed",
+                "@tutorsnap/classroom_leaderboard",
+                "@tutorsnap/classroom_notif_prefs",
+                "@tutorsnap/joined_classroom",
+                "@tutorsnap/problem_comments",
+                // Affiliate / referral
+                "@tutorsnap/affiliateLastActivity",
+                "@tutorsnap/leaderboard_friends",
+                "@tutorsnap/my_invite_code",
+                "@referral_applied",
+                // Appearance & preferences
+                "@tutorsnap/appearanceSettings",
+                "@tutorsnap/preferredCategories",
+                "chat_grade_level",
+                "global_grade_level",
                 // Consent
                 "@tutorsnap/consent",
+                // Misc
+                "@tutorsnap/firstLaunchDate",
+                "@tutorsnap/lastReviewPromptDate",
+                "@tutorsnap/lastUpdateCheckDismissed",
+                "@tutorsnap/trialStartedAt",
               ];
               await AsyncStorage.multiRemove(keysToDelete);
               // Clear per-subject difficulty keys, per-day quiz-bonus keys, and per-session chat keys
@@ -373,11 +404,15 @@ export default function SettingsScreen() {
               );
               if (dynamicKeys.length > 0) await AsyncStorage.multiRemove(dynamicKeys);
               H.notificationSuccess()
-              // Refresh stats
+              // Refresh UI state
               setStreak(0);
               setTodaySolved(0);
               setTotalSolved(0);
               setDailyGoalState(3);
+              setGradeLevelState(null);
+              setUserNameState(null);
+              setPreferredCategories(new Set(["math", "english", "science", "social"]));
+              setReminder({ enabled: false, hour: 19, minute: 0 });
               Alert.alert("Reset Complete", "All progress and data has been cleared.");
             } catch {
               Alert.alert("Error", "Could not reset all data. Please try again.");
@@ -417,8 +452,8 @@ export default function SettingsScreen() {
       }
       // Fallback: open store page
       const url = Platform.OS === "ios"
-        ? "https://apps.apple.com/app/id0000000000"
-        : "https://play.google.com/store/apps/details?id=com.tutorsnap.app";
+        ? "https://apps.apple.com/app/tutorsnap/id6748052679"
+        : "https://play.google.com/store/apps/details?id=space.manus.mathgenius";
       await Linking.openURL(url);
     } catch { /* store review or linking failure is non-critical */ }
   };
@@ -444,8 +479,16 @@ export default function SettingsScreen() {
   };
 
   const handleManageSubscription = async () => {
-    H.impactLight()
-    await openManageSubscriptions();
+    H.impactLight();
+    try {
+      await openManageSubscriptions();
+    } catch {
+      // openManageSubscriptions is a no-op on web/dev — show a helpful fallback
+      Alert.alert(
+        "Manage Subscription",
+        "To manage your subscription, open the App Store (iOS) or Google Play Store (Android), go to your account, and select Subscriptions."
+      );
+    }
   };
 
   const handlePrivacyPolicy = () => {
@@ -1048,7 +1091,7 @@ export default function SettingsScreen() {
             </View>
             <View style={styles.aboutRow}>
               <Text style={[styles.aboutRowLabel, { color: colors.muted }]}>Subjects</Text>
-              <Text style={[styles.aboutRowValue, { color: colors.foreground }]}>36 across 4 categories</Text>
+              <Text style={[styles.aboutRowValue, { color: colors.foreground }]}>38 across 4 categories</Text>
             </View>
             <View style={[styles.aboutDivider, { backgroundColor: colors.border }]} />
             <View style={styles.modalButtons}>
@@ -1135,7 +1178,7 @@ export default function SettingsScreen() {
           >
             <Text style={[styles.redeemTitle, { color: colors.foreground }]}>🎁 Redeem a Friend's Code</Text>
             <Text style={[styles.redeemSubtitle, { color: colors.muted }]}>
-              Enter the referral code your friend shared with you to activate your 14-day free trial.
+              Enter the referral code your friend shared with you. Each device can redeem one code.
             </Text>
             <TextInput
               style={[styles.redeemInput, { backgroundColor: colors.background, borderColor: colors.border, color: colors.foreground }]}
