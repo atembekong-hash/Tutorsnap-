@@ -798,6 +798,28 @@ function ChatScreenContent() {
         let buffer = "";
         let accumulated = "";
 
+        // Token queue for smooth rendering — tokens arrive faster than we display them
+        const tokenQueue: string[] = [];
+        let renderLoopRunning = false;
+
+        // Render loop: drains the queue at a natural reading pace (~25ms per token)
+        const drainQueue = () => {
+          if (tokenQueue.length === 0) {
+            renderLoopRunning = false;
+            return;
+          }
+          renderLoopRunning = true;
+          // Drain up to 2 tokens per frame to keep up without feeling instant
+          const batch = tokenQueue.splice(0, 2).join("");
+          accumulated += batch;
+          const snap = accumulated;
+          setMessages((prev) =>
+            prev.map((m) => (m.id === msgId ? { ...m, content: snap } : m))
+          );
+          flatListRef.current?.scrollToEnd({ animated: false });
+          setTimeout(drainQueue, 25);
+        };
+
         // eslint-disable-next-line no-constant-condition
         while (true) {
           const { done, value } = await reader.read();
@@ -814,20 +836,26 @@ function ChatScreenContent() {
             try {
               const parsed = JSON.parse(raw) as { token?: string };
               if (parsed.token) {
-                accumulated += parsed.token;
-                const snap = accumulated;
-                setMessages((prev) =>
-                  prev.map((m) =>
-                    m.id === msgId ? { ...m, content: snap } : m
-                  )
-                );
-                flatListRef.current?.scrollToEnd({ animated: false });
+                tokenQueue.push(parsed.token);
+                if (!renderLoopRunning) drainQueue();
               }
             } catch {
               // skip malformed chunk
             }
           }
         }
+
+        // Wait for the render queue to fully drain before finalizing
+        await new Promise<void>((resolve) => {
+          const wait = () => {
+            if (tokenQueue.length === 0 && !renderLoopRunning) {
+              resolve();
+            } else {
+              setTimeout(wait, 30);
+            }
+          };
+          wait();
+        });
 
         // Streaming complete — finalize and persist
         const finalMsg: ChatMessage = {
