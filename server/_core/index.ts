@@ -6,6 +6,7 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { registerStorageProxy } from "./storageProxy";
 import { registerVoiceUploadRoute } from "./voiceUpload";
+import { registerChatStreamRoute } from "./chatStream";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 
@@ -59,6 +60,7 @@ async function startServer() {
   registerStorageProxy(app);
   registerOAuthRoutes(app);
   registerVoiceUploadRoute(app);
+  registerChatStreamRoute(app);
 
   app.get("/api/health", (_req, res) => {
     res.json({ ok: true, timestamp: Date.now() });

@@ -81,6 +81,8 @@ import { FREE_LIMITS } from "@/lib/subscription";
 import { APP_URL, APP_NAME } from "@/constants/app";
 import { useAppearance } from "@/lib/appearance-context";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { getApiBaseUrl } from "@/constants/oauth";
+import * as Auth from "@/lib/_core/auth";
 
 function getAppearanceSubjectKey(subjectId: string | null): string {
   if (!subjectId) return "Mathematics";
@@ -245,12 +247,14 @@ function MessageBubble({
   colors,
   fs,
   onLongPressAI,
+  streaming = false,
 }: {
   message: ChatMessage;
   isFirstInRun: boolean;
   colors: ReturnType<typeof useColors>;
   fs: (n: number) => number;
   onLongPressAI: (content: string) => void;
+  streaming?: boolean;
 }) {
   const isUser = message.role === "user";
   const { settings } = useAppearance();
@@ -340,7 +344,8 @@ function MessageBubble({
               color={colors.foreground}
               codeBackground={colors.surface}
               flavor="github"
-              stripPreamble
+              streaming={streaming}
+              stripPreamble={!streaming}
             />
           </AIResponseErrorBoundary>
           <Text
@@ -630,6 +635,9 @@ function ChatScreenContent() {
   const [showGradePicker, setShowGradePicker] = useState(false);
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [contextualChips, setContextualChips] = useState<string[]>([]);
+  const [isStreaming, setIsStreaming] = useState(false);
+  const streamAbortRef = useRef<AbortController | null>(null);
+  const streamingMsgIdRef = useRef<string | null>(null);
 
   const flatListRef = useRef<FlatList>(null);
   const shareCopiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -685,7 +693,10 @@ function ChatScreenContent() {
     }
 
     init();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      streamAbortRef.current?.abort();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -731,28 +742,127 @@ function ChatScreenContent() {
     },
   });
 
-  const chatMutation = trpc.academic.chat.useMutation({
-    onSuccess: (data) => {
-      const aiMessage: ChatMessage = {
-        id: `ai-${Date.now()}`,
+  // Streaming chat send — replaces the old tRPC chatMutation
+  const sendStreamingChat = useCallback(
+    async (
+      contextMessages: Array<{ role: "user" | "assistant"; content: string }>,
+      subject: string | undefined,
+      gradeLevel: string | undefined,
+      currentSession: ChatSession,
+    ) => {
+      // Abort any in-flight stream
+      streamAbortRef.current?.abort();
+      const controller = new AbortController();
+      streamAbortRef.current = controller;
+
+      const msgId = `ai-stream-${Date.now()}`;
+      streamingMsgIdRef.current = msgId;
+
+      // Insert a transient (empty) assistant bubble immediately
+      const placeholder: ChatMessage = {
+        id: msgId,
         role: "assistant",
-        content: data.content,
+        content: "",
         timestamp: Date.now(),
       };
-      setMessages((prev) => {
-        const next = [...prev, aiMessage];
-        if (session) persistMessages(next, session);
-        return next;
-      });
+      setMessages((prev) => [...prev, placeholder]);
+      setIsStreaming(true);
       setContextualChips([]);
-      // Trigger contextual follow-up chip generation
-      suggestFollowUpsMutation.mutate({
-        aiResponse: data.content,
-        subject: undefined,
-      });
+
       setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+
+      try {
+        const headers: Record<string, string> = { "Content-Type": "application/json" };
+        if (Platform.OS !== "web") {
+          const token = await Auth.getSessionToken();
+          if (token) headers["Authorization"] = `Bearer ${token}`;
+        }
+        const baseUrl = getApiBaseUrl();
+        const cleanBase = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
+        const url = `${cleanBase}/api/chat/stream`;
+
+        const response = await fetch(url, {
+          method: "POST",
+          headers,
+          credentials: "include",
+          body: JSON.stringify({ messages: contextMessages, subject, gradeLevel }),
+          signal: controller.signal,
+        });
+
+        if (!response.ok || !response.body) {
+          throw new Error(`Stream error: ${response.status}`);
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let accumulated = "";
+
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? "";
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed.startsWith("data:")) continue;
+            const raw = trimmed.slice(5).trim();
+            if (raw === "[DONE]") break;
+            try {
+              const parsed = JSON.parse(raw) as { token?: string };
+              if (parsed.token) {
+                accumulated += parsed.token;
+                const snap = accumulated;
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === msgId ? { ...m, content: snap } : m
+                  )
+                );
+                flatListRef.current?.scrollToEnd({ animated: false });
+              }
+            } catch {
+              // skip malformed chunk
+            }
+          }
+        }
+
+        // Streaming complete — finalize and persist
+        const finalMsg: ChatMessage = {
+          id: `ai-${Date.now()}`,
+          role: "assistant",
+          content: accumulated,
+          timestamp: Date.now(),
+        };
+        setMessages((prev) => {
+          const next = prev.map((m) => (m.id === msgId ? finalMsg : m));
+          persistMessages(next, currentSession);
+          return next;
+        });
+        streamingMsgIdRef.current = null;
+        setIsStreaming(false);
+
+        // Trigger follow-up chip suggestions
+        suggestFollowUpsMutation.mutate({
+          aiResponse: accumulated,
+          subject: undefined,
+        });
+        setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+      } catch (err: unknown) {
+        const isAbort = err instanceof Error && err.name === "AbortError";
+        if (!isAbort) {
+          console.error("[chat stream] error:", err);
+          // Remove the placeholder bubble on error
+          setMessages((prev) => prev.filter((m) => m.id !== msgId));
+        }
+        streamingMsgIdRef.current = null;
+        setIsStreaming(false);
+      }
     },
-  });
+    [persistMessages, suggestFollowUpsMutation]
+  );
 
   // ── Send ────────────────────────────────────────────────────────────────────
 
@@ -799,13 +909,14 @@ function ChatScreenContent() {
         .filter((m) => !m.id.startsWith("welcome"))
         .map((m) => ({ role: m.role, content: m.content }));
 
-      chatMutation.mutate({
-        messages: contextMessages,
-        subject: selectedSubject ?? undefined,
-        gradeLevel: gradeLevel ?? undefined,
-      });
+      sendStreamingChat(
+        contextMessages,
+        selectedSubject ?? undefined,
+        gradeLevel ?? undefined,
+        session,
+      );
     },
-    [inputText, isOnline, session, messages, persistMessages, selectedSubject, gradeLevel, replyTo, chatMutation]
+    [inputText, isOnline, session, messages, persistMessages, selectedSubject, gradeLevel, replyTo, sendStreamingChat]
   );
 
   // ── Long-press AI bubble handler ────────────────────────────────────────────
@@ -855,7 +966,10 @@ function ChatScreenContent() {
   // ── New Chat ────────────────────────────────────────────────────────────────
 
   const handleNewChat = useCallback(async () => {
-    H.impactMedium()
+    streamAbortRef.current?.abort();
+    streamingMsgIdRef.current = null;
+    setIsStreaming(false);
+    H.impactMedium();
     const newSession = await createSession(null);
     setSession(newSession);
     setMessages([]);
@@ -994,6 +1108,9 @@ function ChatScreenContent() {
         text: "Clear",
         style: "destructive",
         onPress: async () => {
+          streamAbortRef.current?.abort();
+          streamingMsgIdRef.current = null;
+          setIsStreaming(false);
           setMessages([]);
           setSessionMessageCount(0);
           if (session) {
@@ -1193,6 +1310,7 @@ function ChatScreenContent() {
                       colors={colors}
                       fs={fs}
                       onLongPressAI={handleLongPressAI}
+                      streaming={item.id === streamingMsgIdRef.current && isStreaming}
                     />
                   </Swipeable>
                 ) : (
@@ -1202,10 +1320,11 @@ function ChatScreenContent() {
                     colors={colors}
                     fs={fs}
                     onLongPressAI={handleLongPressAI}
+                    streaming={item.id === streamingMsgIdRef.current && isStreaming}
                   />
                 )}
                 {/* Follow-up chips — only after the last AI response */}
-                {isLastAIMessage(index) && !chatMutation.isPending && (
+                {isLastAIMessage(index) && !isStreaming && (
                   <View style={chatStyles.followUpRow}>
                     {suggestFollowUpsMutation.isPending ? (
                       <ActivityIndicator size="small" color={colors.muted} style={{ marginLeft: 8 }} />
@@ -1231,7 +1350,7 @@ function ChatScreenContent() {
               flatListRef.current?.scrollToEnd({ animated: false })
             }
             ListFooterComponent={
-              chatMutation.isPending ? (
+              isStreaming && (messages.length === 0 || messages[messages.length - 1]?.content === "") ? (
                 <View style={chatStyles.typingRow}>
                   <View style={chatStyles.typingAvatarCol}>
                     <AIAvatar size={30} />
@@ -1354,7 +1473,7 @@ function ChatScreenContent() {
             <TouchableOpacity
               accessibilityLabel="Send message"
               onPress={() => handleSend()}
-              disabled={!inputText.trim() || chatMutation.isPending || !isOnline || isAtLimit}
+              disabled={!inputText.trim() || isStreaming || !isOnline || isAtLimit}
               style={[
                 chatStyles.sendBtn,
                 {
