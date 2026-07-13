@@ -880,13 +880,9 @@ export default function ClassroomTabScreen() {
       {/* Active classroom */}
       {activeClassroom && !showCreate && !showJoin && (
         <>
-          {/* Tab bar — pill style */}
+          {/* Tab bar — static, evenly distributed pills */}
           <View style={[styles.tabsContainer, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.tabsScrollContent}
-            >
+            <View style={styles.tabsRow}>
               {tabs.map((tab) => {
                 const isActive = activeTab === tab.key;
                 return (
@@ -904,16 +900,19 @@ export default function ClassroomTabScreen() {
                     onPress={() => setActiveTab(tab.key)}
                     activeOpacity={0.75}
                   >
-                    <Text style={[
-                      styles.tabPillLabel,
-                      { color: isActive ? "#FFFFFF" : colors.muted },
-                    ]}>
+                    <Text
+                      style={[
+                        styles.tabPillLabel,
+                        { color: isActive ? "#FFFFFF" : colors.muted },
+                      ]}
+                      numberOfLines={1}
+                    >
                       {tab.label}
                     </Text>
                   </TouchableOpacity>
                 );
               })}
-            </ScrollView>
+            </View>
           </View>
 
           {/* Feed tab */}
@@ -1549,20 +1548,23 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     paddingVertical: 10,
   },
-  tabsScrollContent: {
-    paddingHorizontal: 16,
-    gap: 8,
+  tabsRow: {
     flexDirection: "row",
+    paddingHorizontal: 12,
+    gap: 8,
     alignItems: "center",
   },
   tabPill: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 22,
     borderWidth: 1,
     borderColor: "transparent",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  tabPillLabel: { fontSize: 13, fontWeight: "700" },
+  tabPillLabel: { fontSize: 14, fontWeight: "800", textAlign: "center" },
   emptyContainer: {
     flex: 1,
     alignItems: "center",
