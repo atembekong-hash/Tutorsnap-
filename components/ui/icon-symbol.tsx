@@ -131,6 +131,10 @@ const MAPPING = {
   "paintbrush.fill": "brush",
   "slider.horizontal.3": "tune",
   "arrow.up.arrow.down": "swap-vert",
+  "graduationcap.fill": "school",
+  "arrow.clockwise.circle.fill": "refresh",
+  "creditcard.fill": "credit-card",
+  "gift.fill": "card-giftcard",
 } as unknown as IconMapping;
 
 export function IconSymbol({
