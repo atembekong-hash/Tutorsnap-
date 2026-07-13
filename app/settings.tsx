@@ -997,6 +997,15 @@ export default function SettingsScreen() {
     .map((c) => SUBJECT_CATEGORIES[c]?.emoji)
     .join(" ");
 
+  // ── Settings search ─────────────────────────────────────────────────────────
+  const [settingsQuery, setSettingsQuery] = useState("");
+  const sq = settingsQuery.toLowerCase().trim();
+  /** Returns true when the row should be visible given the current search query. */
+  const ms = (label: string, subtitle?: string) =>
+    sq === "" ||
+    label.toLowerCase().includes(sq) ||
+    (subtitle ?? "").toLowerCase().includes(sq);
+
   return (
     <ScreenContainer>
       {/* Header */}
@@ -1028,59 +1037,91 @@ export default function SettingsScreen() {
           </View>
         </View>
 
+        {/* Search bar */}
+        <View style={[styles.searchBar, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <IconSymbol size={16} name="magnifyingglass" color={colors.muted} />
+          <TextInput
+            value={settingsQuery}
+            onChangeText={setSettingsQuery}
+            placeholder="Search settings…"
+            placeholderTextColor={colors.muted}
+            returnKeyType="search"
+            clearButtonMode="while-editing"
+            style={[styles.searchInput, { color: colors.foreground }]}
+            autoCorrect={false}
+            autoCapitalize="none"
+          />
+          {settingsQuery.length > 0 && Platform.OS !== "ios" && (
+            <TouchableOpacity onPress={() => setSettingsQuery("")} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <IconSymbol size={16} name="xmark.circle.fill" color={colors.muted} />
+            </TouchableOpacity>
+          )}
+        </View>
+
         {/* ── PROFILE ─────────────────────────────────────────────────────── */}
-        <SectionHeader title="PROFILE" colors={colors} />
-        <SettingsRow
-          icon="person.crop.circle.fill"
-          label="Your Name"
-          subtitle={userName || "Not set — tap to add your name"}
-          colors={colors}
-          onPress={() => {
-            setNameInput(userName || "");
-            setShowNameModal(true);
-          }}
-        />
-        <SettingsRow
-          icon="graduationcap.fill"
-          label="Default Grade Level"
-          subtitle={gradeLevel ? GRADE_LABELS[gradeLevel] : "Not set — all screens will ask per session"}
-          colors={colors}
-          onPress={() => setShowGradePicker(true)}
-        />
-        <SettingsRow
-          icon="person.2.fill"
-          label="Preferred Subjects"
-          subtitle={preferredCategoryLabels || "All subjects"}
-          colors={colors}
-          onPress={() => setShowSubjectPicker(true)}
-        />
+        {(ms("Your Name") || ms("Default Grade Level") || ms("Preferred Subjects")) && <SectionHeader title="PROFILE" colors={colors} />}
+        {ms("Your Name", "Not set") && (
+          <SettingsRow
+            icon="person.crop.circle.fill"
+            label="Your Name"
+            subtitle={userName || "Not set — tap to add your name"}
+            colors={colors}
+            onPress={() => {
+              setNameInput(userName || "");
+              setShowNameModal(true);
+            }}
+          />
+        )}
+        {ms("Default Grade Level", "Not set — all screens will ask per session") && (
+          <SettingsRow
+            icon="graduationcap.fill"
+            label="Default Grade Level"
+            subtitle={gradeLevel ? GRADE_LABELS[gradeLevel] : "Not set — all screens will ask per session"}
+            colors={colors}
+            onPress={() => setShowGradePicker(true)}
+          />
+        )}
+        {ms("Preferred Subjects", "All subjects") && (
+          <SettingsRow
+            icon="person.2.fill"
+            label="Preferred Subjects"
+            subtitle={preferredCategoryLabels || "All subjects"}
+            colors={colors}
+            onPress={() => setShowSubjectPicker(true)}
+          />
+        )}
 
         {/* ── APPEARANCE ──────────────────────────────────────────────────── */}
-        <SectionHeader title="APPEARANCE" colors={colors} />
-        <SettingsRow
-          icon="paintbrush.fill"
-          label="Appearance & Personalisation"
-          subtitle="Fonts, colors, widgets, chat style, accessibility"
-          colors={colors}
-          onPress={() => router.push("/appearance-settings" as any)}
-        />
-        <SettingsRow
-          icon="gear"
-          label="Dark Mode"
-          subtitle={isDark ? "Currently using dark theme" : "Currently using light theme"}
-          colors={colors}
-          right={
-            <Switch
-              value={isDark}
-              onValueChange={handleToggleTheme}
-              trackColor={{ false: colors.border, true: `${colors.primary}80` }}
-              thumbColor={isDark ? colors.primary : "#FFFFFF"}
-            />
-          }
-        />
+        {(ms("Appearance & Personalisation", "Fonts, colors, widgets") || ms("Dark Mode")) && <SectionHeader title="APPEARANCE" colors={colors} />}
+        {ms("Appearance & Personalisation", "Fonts, colors, widgets, chat style, accessibility") && (
+          <SettingsRow
+            icon="paintbrush.fill"
+            label="Appearance & Personalisation"
+            subtitle="Fonts, colors, widgets, chat style, accessibility"
+            colors={colors}
+            onPress={() => router.push("/appearance-settings" as any)}
+          />
+        )}
+        {ms("Dark Mode", "theme") && (
+          <SettingsRow
+            icon="gear"
+            label="Dark Mode"
+            subtitle={isDark ? "Currently using dark theme" : "Currently using light theme"}
+            colors={colors}
+            right={
+              <Switch
+                value={isDark}
+                onValueChange={handleToggleTheme}
+                trackColor={{ false: colors.border, true: `${colors.primary}80` }}
+                thumbColor={isDark ? colors.primary : "#FFFFFF"}
+              />
+            }
+          />
+        )}
 
         {/* ── DAILY GOAL ──────────────────────────────────────────────────── */}
-        <SectionHeader title="DAILY GOAL" colors={colors} />
+        {ms("Daily Goal", "Problems per day") && <SectionHeader title="DAILY GOAL" colors={colors} />}
+        {ms("Daily Goal", "Problems per day") && (
         <View style={[styles.goalCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={styles.goalHeader}>
             <View style={[styles.rowIcon, { backgroundColor: `${colors.warning}15` }]}>
@@ -1117,9 +1158,11 @@ export default function SettingsScreen() {
             ))}
           </View>
         </View>
+        )}
 
         {/* ── NOTIFICATIONS ─────────────────────────────────────────────── */}
-        <SectionHeader title="NOTIFICATIONS" colors={colors} />
+        {(ms("Daily Study Reminder") || ms("Reminder Time") || ms("All Notification Settings") || ms("Monthly Backup Reminder") || ms("Backup Reminder Schedule")) && <SectionHeader title="NOTIFICATIONS" colors={colors} />}
+        {ms("Daily Study Reminder", "daily nudge") && (
         <View style={[styles.row, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={[styles.rowIcon, { backgroundColor: `${colors.primary}15` }]}>
             <IconSymbol size={18} name="bell.fill" color={colors.primary} />
@@ -1144,7 +1187,8 @@ export default function SettingsScreen() {
             )}
           </View>
         </View>
-        {reminder.enabled && Platform.OS !== "web" && (
+        )}
+        {ms("Reminder Time") && reminder.enabled && Platform.OS !== "web" && (
           <TouchableOpacity
             accessibilityLabel="Edit"
             onPress={handleEditTime}
@@ -1163,39 +1207,40 @@ export default function SettingsScreen() {
             <IconSymbol size={16} name="chevron.right" color={colors.muted} />
           </TouchableOpacity>
         )}
-
-        <SettingsRow
-          icon="bell.badge.fill"
-          label="All Notification Settings"
+        {ms("All Notification Settings", "Manage streaks, homework") && (
+          <SettingsRow
+            icon="bell.badge.fill"
+            label="All Notification Settings"
           subtitle="Manage streaks, homework, weekly reports, and more"
           colors={colors}
-          onPress={() => router.push("/notification-center" as any)}
-        />
-
-        {/* Monthly backup reminder */}
-        <View style={[styles.row, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <View style={[styles.rowIcon, { backgroundColor: `${colors.primary}15` }]}>
-            <IconSymbol size={18} name="square.and.arrow.down.fill" color={colors.primary} />
+            onPress={() => router.push("/notification-center" as any)}
+          />
+        )}
+        {ms("Monthly Backup Reminder", "monthly nudge") && (
+          <View style={[styles.row, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={[styles.rowIcon, { backgroundColor: `${colors.primary}15` }]}>
+              <IconSymbol size={18} name="square.and.arrow.down.fill" color={colors.primary} />
+            </View>
+            <View style={styles.rowContent}>
+              <Text style={[styles.rowLabel, { color: colors.foreground }]}>Monthly Backup Reminder</Text>
+              <Text style={[styles.rowSubtitle, { color: colors.muted }]}>
+                {backupReminderEnabled
+                  ? "Reminder set for the 1st of each month"
+                  : "Get a monthly nudge to export your data"}
+              </Text>
+            </View>
+            <View style={styles.rowRight}>
+              <Switch
+                value={backupReminderEnabled}
+                onValueChange={handleToggleBackupReminder}
+                trackColor={{ false: colors.border, true: `${colors.primary}80` }}
+                thumbColor={backupReminderEnabled ? colors.primary : "#FFFFFF"}
+                disabled={Platform.OS === "web"}
+              />
+            </View>
           </View>
-          <View style={styles.rowContent}>
-            <Text style={[styles.rowLabel, { color: colors.foreground }]}>Monthly Backup Reminder</Text>
-            <Text style={[styles.rowSubtitle, { color: colors.muted }]}>
-              {backupReminderEnabled
-                ? "Reminder set for the 1st of each month"
-                : "Get a monthly nudge to export your data"}
-            </Text>
-          </View>
-          <View style={styles.rowRight}>
-            <Switch
-              value={backupReminderEnabled}
-              onValueChange={handleToggleBackupReminder}
-              trackColor={{ false: colors.border, true: `${colors.primary}80` }}
-              thumbColor={backupReminderEnabled ? colors.primary : "#FFFFFF"}
-              disabled={Platform.OS === "web"}
-            />
-          </View>
-        </View>
-        {backupReminderEnabled && Platform.OS !== "web" && (
+        )}
+        {ms("Backup Reminder Schedule") && backupReminderEnabled && Platform.OS !== "web" && (
           <TouchableOpacity
             accessibilityLabel="Edit backup reminder schedule"
             onPress={() => setShowBackupTimePicker(true)}
@@ -1216,46 +1261,26 @@ export default function SettingsScreen() {
         )}
 
         {/* ── LEARNING ──────────────────────────────────────────────────── */}
-        <SectionHeader title="LEARNING" colors={colors} />
-        <SettingsRow
-          icon="chart.xyaxis.line"
-          label="View Progress"
-          subtitle="Streaks, mastery, and weekly activity"
-          colors={colors}
-          onPress={() => router.push("/progress" as any)}
-        />
-        <SettingsRow
-          icon="bookmark.fill"
-          label="Bookmarks"
-          subtitle="Your saved solutions"
-          colors={colors}
-          onPress={() => router.push("/bookmarks" as any)}
-        />
-        <SettingsRow
-          icon="rectangle.stack.fill"
-          label="Flashcards"
-          subtitle="Review saved problems as flashcards"
-          colors={colors}
-          onPress={() => router.push("/flashcards" as any)}
-        />
-        <SettingsRow
-          icon="calendar"
-          label="Study Planner"
-          subtitle="Schedule weekly study sessions with reminders"
-          colors={colors}
-          onPress={() => router.push("/study-planner" as any)}
-        />
-        <SettingsRow
-          icon="person.2.fill"
-          label="Classroom"
-          subtitle="Share problems with your class or join one"
-          colors={colors}
-          onPress={() => router.push("/(tabs)/classroom" as any)}
-        />
+        {(ms("View Progress") || ms("Bookmarks") || ms("Flashcards") || ms("Study Planner") || ms("Classroom")) && <SectionHeader title="LEARNING" colors={colors} />}
+        {ms("View Progress", "Streaks, mastery") && (
+          <SettingsRow icon="chart.xyaxis.line" label="View Progress" subtitle="Streaks, mastery, and weekly activity" colors={colors} onPress={() => router.push("/progress" as any)} />
+        )}
+        {ms("Bookmarks", "saved solutions") && (
+          <SettingsRow icon="bookmark.fill" label="Bookmarks" subtitle="Your saved solutions" colors={colors} onPress={() => router.push("/bookmarks" as any)} />
+        )}
+        {ms("Flashcards", "Review saved problems") && (
+          <SettingsRow icon="rectangle.stack.fill" label="Flashcards" subtitle="Review saved problems as flashcards" colors={colors} onPress={() => router.push("/flashcards" as any)} />
+        )}
+        {ms("Study Planner", "Schedule weekly") && (
+          <SettingsRow icon="calendar" label="Study Planner" subtitle="Schedule weekly study sessions with reminders" colors={colors} onPress={() => router.push("/study-planner" as any)} />
+        )}
+        {ms("Classroom", "Share problems") && (
+          <SettingsRow icon="person.2.fill" label="Classroom" subtitle="Share problems with your class or join one" colors={colors} onPress={() => router.push("/(tabs)/classroom" as any)} />
+        )}
 
-        {/* ── SUBSCRIPTION & REFERRALS ──────────────────────────────────── */}
-        <SectionHeader title="SUBSCRIPTION & REFERRALS" colors={colors} />
-        {subStatus && (
+        {/* ── SUBSCRIPTION & REFERRALS ──────────────────────────────── */}
+        {(ms("TutorSnap Premium") || ms("View Premium Plans") || ms("Restore Purchases") || ms("Manage Subscription") || ms("Affiliate & Referrals") || ms("Redeem")) && <SectionHeader title="SUBSCRIPTION & REFERRALS" colors={colors} />}
+        {ms("TutorSnap Premium", "subscription") && subStatus && (
           <View style={[styles.row, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <View style={[styles.rowIcon, { backgroundColor: `${colors.primary}15` }]}>
               <IconSymbol size={18} name="star.fill" color={colors.primary} />
@@ -1279,61 +1304,33 @@ export default function SettingsScreen() {
             )}
           </View>
         )}
-        <SettingsRow
-          icon="crown.fill"
-          label="View Premium Plans"
-          subtitle="Upgrade for unlimited access"
-          colors={colors}
-          onPress={() => router.push("/paywall" as any)}
-        />
-        <SettingsRow
-          icon="arrow.clockwise.circle.fill"
-          label={restoringPurchases ? "Restoring…" : "Restore Purchases"}
-          subtitle="Recover a previous subscription"
-          colors={colors}
-          onPress={restoringPurchases ? undefined : handleRestorePurchases}
-        />
-        <SettingsRow
-          icon="creditcard.fill"
-          label="Manage Subscription"
-          subtitle="Change or cancel your plan in the App Store"
-          colors={colors}
-          onPress={handleManageSubscription}
-        />
-        <SettingsRow
-          icon="paperplane.fill"
-          label="Affiliate & Referrals"
-          subtitle="Earn free days — 5 ways to earn, tier rewards"
-          colors={colors}
-          onPress={() => router.push("/refer" as any)}
-        />
-        <SettingsRow
-          icon="gift.fill"
-          label="Redeem a Friend's Code"
-          subtitle="Enter a referral code to activate your free trial"
-          colors={colors}
-          onPress={() => setShowRedeemModal(true)}
-        />
+        {ms("View Premium Plans", "Upgrade") && (
+          <SettingsRow icon="crown.fill" label="View Premium Plans" subtitle="Upgrade for unlimited access" colors={colors} onPress={() => router.push("/paywall" as any)} />
+        )}
+        {ms("Restore Purchases", "subscription") && (
+          <SettingsRow icon="arrow.clockwise.circle.fill" label={restoringPurchases ? "Restoring…" : "Restore Purchases"} subtitle="Recover a previous subscription" colors={colors} onPress={restoringPurchases ? undefined : handleRestorePurchases} />
+        )}
+        {ms("Manage Subscription", "cancel your plan") && (
+          <SettingsRow icon="creditcard.fill" label="Manage Subscription" subtitle="Change or cancel your plan in the App Store" colors={colors} onPress={handleManageSubscription} />
+        )}
+        {ms("Affiliate & Referrals", "Earn free days") && (
+          <SettingsRow icon="paperplane.fill" label="Affiliate & Referrals" subtitle="Earn free days — 5 ways to earn, tier rewards" colors={colors} onPress={() => router.push("/refer" as any)} />
+        )}
+        {ms("Redeem a Friend's Code", "referral code") && (
+          <SettingsRow icon="gift.fill" label="Redeem a Friend's Code" subtitle="Enter a referral code to activate your free trial" colors={colors} onPress={() => setShowRedeemModal(true)} />
+        )}
 
         {/* ── COMMUNITY ─────────────────────────────────────────────────── */}
-        <SectionHeader title="COMMUNITY" colors={colors} />
-        <SettingsRow
-          icon="trophy.fill"
-          label="Leaderboard"
-          subtitle="Compare streaks and see the weekly top learners"
-          colors={colors}
-          onPress={() => router.push("/(tabs)/leaderboard" as any)}
-        />
-        <SettingsRow
-          icon="square.and.arrow.up.fill"
-          label="Share Progress"
-          subtitle="Share your streak and stats with friends"
-          colors={colors}
-          onPress={handleShareProgress}
-        />
+        {(ms("Leaderboard") || ms("Share Progress")) && <SectionHeader title="COMMUNITY" colors={colors} />}
+        {ms("Leaderboard", "weekly top learners") && (
+          <SettingsRow icon="trophy.fill" label="Leaderboard" subtitle="Compare streaks and see the weekly top learners" colors={colors} onPress={() => router.push("/(tabs)/leaderboard" as any)} />
+        )}
+        {ms("Share Progress", "streak and stats") && (
+          <SettingsRow icon="square.and.arrow.up.fill" label="Share Progress" subtitle="Share your streak and stats with friends" colors={colors} onPress={handleShareProgress} />
+        )}
 
         {/* ── DATA MANAGEMENT ───────────────────────────────────────────── */}
-        <SectionHeader title="DATA MANAGEMENT" colors={colors} />
+        {(ms("Export My Data") || ms("Export as PDF") || ms("Import My Data") || ms("Import from URL") || ms("Clear History") || ms("Reset All Progress") || ms("Delete Account") || ms("Recent Data Activity")) && <SectionHeader title="DATA MANAGEMENT" colors={colors} />}
         {!lastExportedAt ? (
           <TouchableOpacity
             onPress={handleExportData}
@@ -1364,59 +1361,73 @@ export default function SettingsScreen() {
             </TouchableOpacity>
           ) : null;
         })()}
-        <SettingsRow
-          icon="square.and.arrow.up.on.square.fill"
-          label="Export My Data"
+        {ms("Export My Data", "Download your history") && (
+          <SettingsRow
+            icon="square.and.arrow.up.on.square.fill"
+            label="Export My Data"
           subtitle={lastExportedAt ? `Last exported: ${(() => { const d = new Date(lastExportedAt); const diff = Math.floor((Date.now() - d.getTime()) / 86400000); return diff === 0 ? "today" : diff === 1 ? "yesterday" : `${diff} days ago`; })()}` : "Download your history, progress, and settings as JSON"}
           colors={colors}
           onPress={handleExportData}
-        />
-        <SettingsRow
-          icon="doc.text.fill"
-          label="Export as PDF Report"
+          />
+        )}
+        {ms("Export as PDF Report", "progress report") && (
+          <SettingsRow
+            icon="doc.text.fill"
+            label="Export as PDF Report"
           subtitle="Share a formatted progress report with solve history and quiz scores"
           colors={colors}
           onPress={handleExportPDF}
-        />
-        <SettingsRow
-          icon="square.and.arrow.down.fill"
-          label="Import My Data"
+          />
+        )}
+        {ms("Import My Data", "Restore a previous") && (
+          <SettingsRow
+            icon="square.and.arrow.down.fill"
+            label="Import My Data"
           subtitle="Restore a previous TutorSnap JSON backup"
           colors={colors}
           onPress={handleImportData}
-        />
-        <SettingsRow
-          icon="link"
-          label="Import from URL"
+          />
+        )}
+        {ms("Import from URL", "cloud share link") && (
+          <SettingsRow
+            icon="link"
+            label="Import from URL"
           subtitle="Restore a backup from a cloud share link"
           colors={colors}
           onPress={() => { H.impactLight(); setShowImportUrlModal(true); }}
-        />
-        <SettingsRow
-          icon="eraser.fill"
-          label="Clear History"
+          />
+        )}
+        {ms("Clear History", "Delete all solved") && (
+          <SettingsRow
+            icon="eraser.fill"
+            label="Clear History"
           subtitle="Delete all solved problems"
           colors={colors}
           onPress={handleClearHistory}
-          danger
-        />
-        <SettingsRow
-          icon="arrow.counterclockwise.circle.fill"
-          label="Reset All Progress"
+            danger
+          />
+        )}
+        {ms("Reset All Progress", "Delete streak") && (
+          <SettingsRow
+            icon="arrow.counterclockwise.circle.fill"
+            label="Reset All Progress"
           subtitle="Delete streak, stats, badges, and history"
           colors={colors}
           onPress={handleResetProgress}
-          danger
-        />
-        <SettingsRow
-          icon="person.crop.circle.badge.minus"
-          label="Delete Account"
+            danger
+          />
+        )}
+        {ms("Delete Account", "Permanently erase") && (
+          <SettingsRow
+            icon="person.crop.circle.badge.minus"
+            label="Delete Account"
           subtitle="Permanently erase all data and return to onboarding"
           colors={colors}
           onPress={handleDeleteAccount}
-          danger
-        />
-        {dataOpLog.length > 0 && (
+            danger
+          />
+        )}
+        {ms("Recent Data Activity") && dataOpLog.length > 0 && (
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, marginTop: 12 }]}>
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
               <Text style={[styles.cardTitle, { color: colors.foreground, marginBottom: 0 }]}>Recent Data Activity</Text>
@@ -1451,66 +1462,82 @@ export default function SettingsScreen() {
         )}
 
         {/* ── ABOUT & SUPPORT ───────────────────────────────────────────── */}
-        <SectionHeader title="ABOUT & SUPPORT" colors={colors} />
-        <SettingsRow
-          icon="info.circle"
-          label="About TutorSnap"
+        {(ms("About TutorSnap") || ms("How to Use") || ms("Help Center") || ms("Rate TutorSnap") || ms("Contact Support") || ms("Send Feedback") || ms("Report a Bug")) && <SectionHeader title="ABOUT & SUPPORT" colors={colors} />}
+        {ms("About TutorSnap", "AI-powered") && (
+          <SettingsRow
+            icon="info.circle"
+            label="About TutorSnap"
           subtitle={`Version ${Constants.expoConfig?.version ?? "1.1.0"} — AI-powered academic tutor`}
           colors={colors}
           onPress={() => setShowAbout(true)}
-        />
-        <SettingsRow
-          icon="book.fill"
-          label="How to Use TutorSnap"
+          />
+        )}
+        {ms("How to Use TutorSnap", "Step-by-step guide") && (
+          <SettingsRow
+            icon="book.fill"
+            label="How to Use TutorSnap"
           subtitle="Step-by-step guide for all features"
           colors={colors}
           onPress={() => setShowHowTo(true)}
-        />
-        <SettingsRow
-          icon="questionmark.circle"
-          label="Help Center / FAQ"
+          />
+        )}
+        {ms("Help Center / FAQ", "25+ answers") && (
+          <SettingsRow
+            icon="questionmark.circle"
+            label="Help Center / FAQ"
           subtitle="Browse 25+ answers to common questions"
           colors={colors}
           onPress={() => router.push("/faq" as any)}
-        />
-        <SettingsRow
-          icon="star.bubble.fill"
-          label="Rate TutorSnap"
+          />
+        )}
+        {ms("Rate TutorSnap", "Leave us a review") && (
+          <SettingsRow
+            icon="star.bubble.fill"
+            label="Rate TutorSnap"
           subtitle="Love the app? Leave us a review"
           colors={colors}
           onPress={handleRateApp}
-        />
-        <SettingsRow
-          icon="envelope.fill"
-          label="Contact Support"
+          />
+        )}
+        {ms("Contact Support", "Get help") && (
+          <SettingsRow
+            icon="envelope.fill"
+            label="Contact Support"
           subtitle="Get help with your account or a feature"
           colors={colors}
           onPress={handleContactSupport}
-        />
-        <SettingsRow
-          icon="bubble.left.and.text.bubble.right.fill"
-          label="Send Feedback"
+          />
+        )}
+        {ms("Send Feedback", "ideas, suggestions") && (
+          <SettingsRow
+            icon="bubble.left.and.text.bubble.right.fill"
+            label="Send Feedback"
           subtitle="Share ideas, suggestions, or compliments"
           colors={colors}
           onPress={() => router.push("/feedback" as any)}
-        />
-        <SettingsRow
-          icon="ladybug.fill"
-          label="Report a Bug"
+          />
+        )}
+        {ms("Report a Bug", "Found a problem") && (
+          <SettingsRow
+            icon="ladybug.fill"
+            label="Report a Bug"
           subtitle="Found a problem? Let us know"
           colors={colors}
           onPress={() => router.push("/report-bug" as any)}
-        />
+          />
+        )}
 
         {/* ── LEGAL & PRIVACY ───────────────────────────────────────────── */}
-        <SectionHeader title="LEGAL & PRIVACY" colors={colors} />
-        <SettingsRow
-          icon="scale.3d"
-          label="Legal & Privacy Hub"
+        {ms("Legal & Privacy Hub", "Privacy Policy, Terms") && <SectionHeader title="LEGAL & PRIVACY" colors={colors} />}
+        {ms("Legal & Privacy Hub", "Privacy Policy, Terms") && (
+          <SettingsRow
+            icon="scale.3d"
+            label="Legal & Privacy Hub"
           subtitle="Privacy Policy, Terms of Service, Licenses, and more"
           colors={colors}
           onPress={() => router.push("/legal" as any)}
-        />
+          />
+        )}
 
         {/* What's New */}
         <View
@@ -2317,4 +2344,22 @@ const styles = StyleSheet.create({
   dataOpIcon: { fontSize: 18, fontWeight: "700", width: 22, textAlign: "center" },
   dataOpLabel: { fontSize: 14, fontWeight: "600" },
   dataOpMeta: { fontSize: 12, marginTop: 1 },
+  // Search bar
+  searchBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginHorizontal: 16,
+    marginBottom: 8,
+    marginTop: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    paddingVertical: 0,
+  },
 });
