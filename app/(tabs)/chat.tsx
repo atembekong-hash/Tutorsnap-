@@ -667,6 +667,7 @@ function ChatScreenContent() {
   const [isStreaming, setIsStreaming] = useState(false);
   const streamAbortRef = useRef<AbortController | null>(null);
   const streamingMsgIdRef = useRef<string | null>(null);
+  const sendBtnScaleAnim = useRef(new Animated.Value(1)).current;
 
   const flatListRef = useRef<FlatList>(null);
   const shareCopiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -676,6 +677,14 @@ function ChatScreenContent() {
   const subjectAccent = selectedSubject
     ? getSubjectAccent(getAppearanceSubjectKey(selectedSubject), colorScheme)
     : colors.primary;
+
+  // Animate send/stop button scale on state change
+  useEffect(() => {
+    Animated.sequence([
+      Animated.timing(sendBtnScaleAnim, { toValue: 0.7, duration: 80, useNativeDriver: true, easing: Easing.out(Easing.quad) }),
+      Animated.timing(sendBtnScaleAnim, { toValue: 1, duration: 140, useNativeDriver: true, easing: Easing.out(Easing.back(1.5)) }),
+    ]).start();
+  }, [isStreaming, sendBtnScaleAnim]);
 
   // Typing speed → ms per character
   const TYPING_SPEED_MS: Record<TypingSpeed, number> = { slow: 30, normal: 15, fast: 5 };
@@ -1388,7 +1397,30 @@ function ChatScreenContent() {
                   />
                 )}
                 {/* Follow-up chips — only after the last AI response */}
-                {isLastAIMessage(index) && !isStreaming && (
+                {/* Stopped badge + regenerate button */}
+                {item.role === "assistant" && item.stopped && !isStreaming && (
+                  <View style={chatStyles.stoppedRow}>
+                    <Text style={[chatStyles.stoppedBadge, { color: colors.muted }]}>⏹ Response stopped</Text>
+                    <TouchableOpacity
+                      style={[chatStyles.regenerateBtn, { borderColor: colors.primary }]}
+                      onPress={() => {
+                        // Remove the stopped message and re-send the last user message
+                        const lastUser = [...messages].reverse().find((m) => m.role === "user");
+                        if (!lastUser || !session) return;
+                        setMessages((prev) => prev.filter((m) => m.id !== item.id));
+                        H.impactLight();
+                        const contextMessages = messages
+                          .filter((m) => m.id !== item.id && !m.id.startsWith("welcome"))
+                          .map((m) => ({ role: m.role, content: m.content }));
+                        sendStreamingChat(contextMessages, selectedSubject ?? undefined, gradeLevel ?? undefined, session);
+                      }}
+                      activeOpacity={0.75}
+                    >
+                      <Text style={[chatStyles.regenerateBtnText, { color: colors.primary }]}>↺ Regenerate</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+                {isLastAIMessage(index) && !isStreaming && !item.stopped && (
                   <View style={chatStyles.followUpRow}>
                     {suggestFollowUpsMutation.isPending ? (
                       <ActivityIndicator size="small" color={colors.muted} style={{ marginLeft: 8 }} />
@@ -1534,48 +1566,56 @@ function ChatScreenContent() {
               editable={!isAtLimit}
             />
 
-            {isStreaming ? (
-              <TouchableOpacity
-                accessibilityLabel="Stop generating"
-                onPress={() => {
-                  streamAbortRef.current?.abort();
-                  streamingMsgIdRef.current = null;
-                  setIsStreaming(false);
-                  H.impactMedium();
-                }}
-                style={[
-                  chatStyles.sendBtn,
-                  { backgroundColor: colors.error },
-                ]}
-                activeOpacity={0.8}
-              >
-                <IconSymbol size={16} name="stop.fill" color="#FFFFFF" />
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                accessibilityLabel="Send message"
-                onPress={() => handleSend()}
-                disabled={!inputText.trim() || !isOnline || isAtLimit}
-                style={[
-                  chatStyles.sendBtn,
-                  {
-                    backgroundColor:
-                      isOnline && !isAtLimit && inputText.trim()
-                        ? colors.primary
-                        : colors.border,
-                  },
-                ]}
-                activeOpacity={0.8}
-              >
-                <IconSymbol
-                  size={17}
-                  name={isOnline ? "paperplane.fill" : "wifi.slash"}
-                  color={
-                    isOnline && !isAtLimit && inputText.trim() ? "#FFFFFF" : colors.muted
-                  }
-                />
-              </TouchableOpacity>
-            )}
+            <Animated.View style={{ transform: [{ scale: sendBtnScaleAnim }] }}>
+              {isStreaming ? (
+                <TouchableOpacity
+                  accessibilityLabel="Stop generating"
+                  onPress={() => {
+                    const stoppedId = streamingMsgIdRef.current;
+                    streamAbortRef.current?.abort();
+                    streamingMsgIdRef.current = null;
+                    setIsStreaming(false);
+                    H.impactMedium();
+                    if (stoppedId) {
+                      setMessages((prev) =>
+                        prev.map((m) => (m.id === stoppedId ? { ...m, stopped: true } : m))
+                      );
+                    }
+                  }}
+                  style={[
+                    chatStyles.sendBtn,
+                    { backgroundColor: colors.error },
+                  ]}
+                  activeOpacity={0.8}
+                >
+                  <IconSymbol size={16} name="stop.fill" color="#FFFFFF" />
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  accessibilityLabel="Send message"
+                  onPress={() => handleSend()}
+                  disabled={!inputText.trim() || !isOnline || isAtLimit}
+                  style={[
+                    chatStyles.sendBtn,
+                    {
+                      backgroundColor:
+                        isOnline && !isAtLimit && inputText.trim()
+                          ? colors.primary
+                          : colors.border,
+                    },
+                  ]}
+                  activeOpacity={0.8}
+                >
+                  <IconSymbol
+                    size={17}
+                    name={isOnline ? "paperplane.fill" : "wifi.slash"}
+                    color={
+                      isOnline && !isAtLimit && inputText.trim() ? "#FFFFFF" : colors.muted
+                    }
+                  />
+                </TouchableOpacity>
+              )}
+            </Animated.View>
           </View>
 
           {userMessageCount > 0 && (
@@ -1901,6 +1941,28 @@ const chatStyles = StyleSheet.create({
   },
   clearRow: { alignItems: "center", paddingBottom: 2 },
   clearText: { textDecorationLine: "underline" },
+  stoppedRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 50,
+    paddingTop: 4,
+    paddingBottom: 10,
+  },
+  stoppedBadge: {
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  regenerateBtn: {
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+  },
+  regenerateBtnText: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
   backdrop: { ...StyleSheet.absoluteFillObject },
   sheet: {
     position: "absolute",

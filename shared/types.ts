@@ -96,4 +96,5 @@ export type ChatMessage = {
   role: "user" | "assistant";
   content: string;
   timestamp: number;
+  stopped?: boolean; // true when user manually stopped streaming
 };
