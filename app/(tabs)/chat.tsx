@@ -85,6 +85,11 @@ import {
   useAppearance,
   type TypingSpeed,
 } from "@/lib/appearance-context";
+import {
+  GRADE_OPTIONS,
+  GRADE_LABELS as GRADE_LABELS_LIB,
+  getGradePromptContext,
+} from "@/lib/grade-levels";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { getApiBaseUrl } from "@/constants/oauth";
 import * as Auth from "@/lib/_core/auth";
@@ -612,29 +617,7 @@ function AnimatedChip({
   );
 }
 
-// ─── Grade level constants ───────────────────────────────────────────────────
-
-const GRADE_LABELS: Record<string, string> = {
-  grade6: "Gr 6",
-  grade7: "Gr 7",
-  grade8: "Gr 8",
-  grade9: "Gr 9",
-  grade10: "Gr 10",
-  gcse: "GCSE",
-  alevel: "A-Level",
-  university: "Uni",
-};
-
-const GRADE_OPTIONS = [
-  { id: "grade6", label: "Grade 6", sub: "Age 11-12" },
-  { id: "grade7", label: "Grade 7", sub: "Age 12-13" },
-  { id: "grade8", label: "Grade 8", sub: "Age 13-14" },
-  { id: "grade9", label: "Grade 9", sub: "Age 14-15" },
-  { id: "grade10", label: "Grade 10", sub: "Age 15-16" },
-  { id: "gcse", label: "GCSE", sub: "UK Grade 10-11" },
-  { id: "alevel", label: "A-Level", sub: "UK Grade 12-13" },
-  { id: "university", label: "University", sub: "Degree level" },
-];
+// Grade level constants imported from @/lib/grade-levels (GRADE_OPTIONS, GRADE_LABELS_LIB)
 
 // ─── Chat Screen Content ──────────────────────────────────────────────────────
 
@@ -670,6 +653,9 @@ function ChatScreenContent() {
   const streamAbortRef = useRef<AbortController | null>(null);
   const streamingMsgIdRef = useRef<string | null>(null);
   const sendBtnScaleAnim = useRef(new Animated.Value(1)).current;
+  const [bookmarked, setBookmarked] = useState(false);
+  const [copyLinkFeedback, setCopyLinkFeedback] = useState(false);
+  const copyLinkFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const flatListRef = useRef<FlatList>(null);
   const shareCopiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1178,6 +1164,128 @@ function ChatScreenContent() {
     } catch { /* user cancelled */ }
   }, [buildShareText]);
 
+  // ── Copy Link ───────────────────────────────────────────────────────────────
+
+  const handleCopyLink = useCallback(async () => {
+    setShowShareMenu(false);
+    if (!session) return;
+    const encoded = encodeURIComponent(session.title || "chat");
+    const subject = selectedSubject ?? "general";
+    const link = `https://stutorsnapai.tech/chat?q=${encoded}&subject=${subject}`;
+    try {
+      const Clipboard = await import("expo-clipboard");
+      await Clipboard.setStringAsync(link);
+      setCopyLinkFeedback(true);
+      if (copyLinkFeedbackTimerRef.current) clearTimeout(copyLinkFeedbackTimerRef.current);
+      copyLinkFeedbackTimerRef.current = setTimeout(() => setCopyLinkFeedback(false), 2000);
+    } catch { /* ignore */ }
+  }, [session, selectedSubject]);
+
+  // ── Practice This Topic ─────────────────────────────────────────────────────
+
+  const handlePracticeThisTopic = useCallback(() => {
+    setShowShareMenu(false);
+    if (Platform.OS !== "web") {
+      const Haptics = require("expo-haptics");
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+    router.push({ pathname: "/(tabs)/practice", params: selectedSubject ? { subject: selectedSubject } : {} } as any);
+  }, [selectedSubject, router]);
+
+  // ── Share to Classroom ──────────────────────────────────────────────────────
+
+  const handleShareToClassroom = useCallback(async () => {
+    setShowShareMenu(false);
+    try {
+      const { getMyClassroom, getJoinedClassroom, shareToClassroom } = await import("@/lib/classroom");
+      const mine = await getMyClassroom();
+      const joined = await getJoinedClassroom();
+      const classroom = mine || joined;
+      if (!classroom) {
+        Alert.alert(
+          "No Classroom",
+          "You haven't joined or created a classroom yet. Go to Settings → Classroom to get started.",
+          [{ text: "OK" }]
+        );
+        return;
+      }
+      // Build a summary of the last user question and AI answer
+      const lastUser = [...messages].reverse().find((m) => m.role === "user");
+      const lastAI = [...messages].reverse().find((m) => m.role === "assistant");
+      if (!lastUser) {
+        Alert.alert("Nothing to share", "Send a message first before sharing to classroom.");
+        return;
+      }
+      if (Platform.OS !== "web") {
+        const Haptics = require("expo-haptics");
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+      await shareToClassroom(classroom.code, {
+        problem: lastUser.content,
+        answer: lastAI?.content ?? "",
+        subject: selectedSubject ?? "general",
+        steps: [],
+        sharedBy: "You",
+      });
+      Alert.alert("Shared!", `Added to "${classroom.name}" feed.`);
+    } catch {
+      Alert.alert("Error", "Could not share to classroom. Please try again.");
+    }
+  }, [messages, selectedSubject]);
+
+  // ── Bookmark ────────────────────────────────────────────────────────────────
+
+  const handleBookmark = useCallback(async () => {
+    setShowShareMenu(false);
+    try {
+      const { toggleBookmark, isBookmarked } = await import("@/lib/bookmarks");
+      const lastUser = [...messages].reverse().find((m) => m.role === "user");
+      const lastAI = [...messages].reverse().find((m) => m.role === "assistant");
+      if (!lastUser) {
+        Alert.alert("Nothing to bookmark", "Send a message first before bookmarking.");
+        return;
+      }
+      const item = {
+        id: `chat-bm-${Date.now()}`,
+        problem: lastUser.content,
+        answer: lastAI?.content ?? "",
+        subject: (selectedSubject ?? "general") as any,
+        steps: [],
+        solvedAt: Date.now(),
+      };
+      const added = await toggleBookmark(item);
+      setBookmarked(added);
+      if (Platform.OS !== "web") {
+        const Haptics = require("expo-haptics");
+        if (added) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        else Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+    } catch {
+      Alert.alert("Error", "Could not save bookmark. Please try again.");
+    }
+  }, [messages, selectedSubject]);
+
+  // ── Invite a Friend ─────────────────────────────────────────────────────────
+
+  const handleInviteFriend = useCallback(async () => {
+    setShowShareMenu(false);
+    try {
+      const { getOrCreateReferralCode } = await import("@/lib/affiliate");
+      const code = await getOrCreateReferralCode();
+      const lastUser = [...messages].reverse().find((m) => m.role === "user");
+      const question = lastUser?.content ?? "a tough question";
+      const msg = `TutorSnap just answered this for me in seconds 🤯\n\n"${question.length > 80 ? question.slice(0, 80) + "…" : question}"\n\nTry it free with my code: ${code}\nhttps://stutorsnapai.tech`;
+      if (Platform.OS !== "web") {
+        const Share = await import("react-native");
+        await Share.Share.share({ message: msg });
+      } else {
+        const Clipboard = await import("expo-clipboard");
+        await Clipboard.setStringAsync(msg);
+        Alert.alert("Copied!", "Invite message copied to clipboard.");
+      }
+    } catch { /* user cancelled */ }
+  }, [messages]);
+
   // ── Subject change ──────────────────────────────────────────────────────────
 
   const handleSubjectChange = useCallback(
@@ -1318,7 +1426,7 @@ function ChatScreenContent() {
               activeOpacity={0.7}
             >
               <Text style={[chatStyles.gradePillText, { color: gradeLevel ? colors.primary : colors.muted, fontSize: fs(14) }]}>
-                {gradeLevel ? GRADE_LABELS[gradeLevel] ?? gradeLevel : "Level"}
+                {gradeLevel ? GRADE_LABELS_LIB[gradeLevel] ?? gradeLevel : "Level"}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -1752,69 +1860,117 @@ function ChatScreenContent() {
 
       {/* ── Share menu sheet ── */}
       {showShareMenu && (
-        <View style={StyleSheet.absoluteFillObject}>
-          <TouchableOpacity
-            style={[chatStyles.backdrop, { backgroundColor: "rgba(0,0,0,0.5)" }]}
-            activeOpacity={1}
-            onPress={() => setShowShareMenu(false)}
-          />
-          <View
-            style={[
-              chatStyles.sheet,
-              { backgroundColor: colors.surface, borderColor: colors.border },
-            ]}
-          >
-            <View style={[chatStyles.sheetHandle, { backgroundColor: colors.border }]} />
-            <Text style={[chatStyles.sheetTitle, { color: colors.foreground, fontSize: fs(16) }]}>
-              Share Chat
-            </Text>
-            {Platform.OS !== "web" && (
-              <TouchableOpacity
-                style={[chatStyles.sheetOption, { borderColor: colors.border }]}
-                onPress={handleSharePDF}
-                activeOpacity={0.7}
-              >
-                <IconSymbol size={22} name="doc.fill" color={colors.error} />
-                <View style={chatStyles.sheetOptionText}>
-                  <Text style={[chatStyles.sheetOptionTitle, { color: colors.foreground, fontSize: fs(15) }]}>
-                    Save as PDF
-                  </Text>
-                  <Text style={[chatStyles.sheetOptionSub, { color: colors.muted, fontSize: fs(12) }]}>
-                    Export a formatted PDF of this conversation
-                  </Text>
+        <TouchableOpacity
+          style={[StyleSheet.absoluteFillObject, chatStyles.backdrop, { backgroundColor: "rgba(0,0,0,0.5)" }]}
+          activeOpacity={1}
+          onPress={() => setShowShareMenu(false)}
+        >
+          <View style={{ flex: 1 }} />
+          <TouchableOpacity activeOpacity={1}>
+            <View style={[chatStyles.sheet, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <View style={[chatStyles.sheetHandle, { backgroundColor: colors.border }]} />
+              <Text style={[chatStyles.sheetTitle, { color: colors.foreground, fontSize: fs(16) }]}>Share Chat</Text>
+
+              {/* Share as Text */}
+              <TouchableOpacity style={[chatStyles.shareMenuItem, { borderBottomWidth: 0.5, borderBottomColor: colors.border }]} onPress={handleShareText} activeOpacity={0.7}>
+                <View style={[chatStyles.shareMenuIcon, { backgroundColor: `${colors.primary}18` }]}>
+                  <IconSymbol size={18} name="square.and.arrow.up.fill" color={colors.primary} />
                 </View>
+                <View style={chatStyles.shareMenuInfo}>
+                  <Text style={[chatStyles.shareMenuLabel, { color: colors.foreground, fontSize: fs(14) }]}>{Platform.OS === "web" ? "Copy as Text" : "Share as Text"}</Text>
+                  <Text style={[chatStyles.shareMenuDesc, { color: colors.muted, fontSize: fs(12) }]}>Send to WhatsApp, iMessage, etc.</Text>
+                </View>
+                <IconSymbol size={14} name="chevron.right" color={colors.muted} />
               </TouchableOpacity>
-            )}
-            <TouchableOpacity
-              style={[chatStyles.sheetOption, { borderColor: colors.border }]}
-              onPress={handleShareText}
-              activeOpacity={0.7}
-            >
-              <IconSymbol size={22} name="square.and.arrow.up.fill" color={colors.primary} />
-              <View style={chatStyles.sheetOptionText}>
-                <Text style={[chatStyles.sheetOptionTitle, { color: colors.foreground, fontSize: fs(15) }]}>
-                  {Platform.OS === "web" ? "Copy as Text" : "Share as Text"}
-                </Text>
-                <Text style={[chatStyles.sheetOptionSub, { color: colors.muted, fontSize: fs(12) }]}>
-                  {Platform.OS === "web"
-                    ? "Copy conversation to clipboard"
-                    : "Share via messages, email, or notes"}
-                </Text>
-              </View>
-              {shareCopied && (
-                <IconSymbol size={18} name="checkmark.circle.fill" color={colors.success} />
+
+              {/* Share as PDF */}
+              {Platform.OS !== "web" && (
+                <TouchableOpacity style={[chatStyles.shareMenuItem, { borderBottomWidth: 0.5, borderBottomColor: colors.border }]} onPress={handleSharePDF} activeOpacity={0.7} disabled={pdfLoading}>
+                  <View style={[chatStyles.shareMenuIcon, { backgroundColor: `${colors.error}18` }]}>
+                    {pdfLoading ? <ActivityIndicator size="small" color={colors.error} /> : <IconSymbol size={18} name="doc.fill" color={colors.error} />}
+                  </View>
+                  <View style={chatStyles.shareMenuInfo}>
+                    <Text style={[chatStyles.shareMenuLabel, { color: colors.foreground, fontSize: fs(14) }]}>Share as PDF</Text>
+                    <Text style={[chatStyles.shareMenuDesc, { color: colors.muted, fontSize: fs(12) }]}>Formatted document with all steps</Text>
+                  </View>
+                  <IconSymbol size={14} name="chevron.right" color={colors.muted} />
+                </TouchableOpacity>
               )}
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[chatStyles.sheetCancel, { borderColor: colors.border }]}
-              onPress={() => setShowShareMenu(false)}
-              activeOpacity={0.7}
-            >
-              <Text style={[chatStyles.sheetCancelText, { color: colors.muted, fontSize: fs(15) }]}>
-                Cancel
-              </Text>
-            </TouchableOpacity>
-          </View>
+
+              {/* Copy Link */}
+              <TouchableOpacity style={[chatStyles.shareMenuItem, { borderBottomWidth: 0.5, borderBottomColor: colors.border }]} onPress={handleCopyLink} activeOpacity={0.7}>
+                <View style={[chatStyles.shareMenuIcon, { backgroundColor: `${colors.success}18` }]}>
+                  <IconSymbol size={18} name="link" color={colors.success} />
+                </View>
+                <View style={chatStyles.shareMenuInfo}>
+                  <Text style={[chatStyles.shareMenuLabel, { color: colors.foreground, fontSize: fs(14) }]}>Copy Link</Text>
+                  <Text style={[chatStyles.shareMenuDesc, { color: colors.muted, fontSize: fs(12) }]}>Copy stutorsnapai.tech solve link to clipboard</Text>
+                </View>
+                <IconSymbol size={14} name={copyLinkFeedback ? "checkmark.circle.fill" : "chevron.right"} color={copyLinkFeedback ? colors.success : colors.muted} />
+              </TouchableOpacity>
+
+              {/* Practice This Topic */}
+              <TouchableOpacity style={[chatStyles.shareMenuItem, { borderBottomWidth: 0.5, borderBottomColor: colors.border }]} onPress={handlePracticeThisTopic} activeOpacity={0.7}>
+                <View style={[chatStyles.shareMenuIcon, { backgroundColor: `${colors.warning}18` }]}>
+                  <IconSymbol size={18} name="pencil.and.list.clipboard" color={colors.warning} />
+                </View>
+                <View style={chatStyles.shareMenuInfo}>
+                  <Text style={[chatStyles.shareMenuLabel, { color: colors.foreground, fontSize: fs(14) }]}>Practice This Topic</Text>
+                  <Text style={[chatStyles.shareMenuDesc, { color: colors.muted, fontSize: fs(12) }]}>Go to Practice mode for this subject</Text>
+                </View>
+                <IconSymbol size={14} name="chevron.right" color={colors.muted} />
+              </TouchableOpacity>
+
+              {/* Share to Classroom */}
+              <TouchableOpacity style={[chatStyles.shareMenuItem, { borderBottomWidth: 0.5, borderBottomColor: colors.border }]} onPress={handleShareToClassroom} activeOpacity={0.7}>
+                <View style={[chatStyles.shareMenuIcon, { backgroundColor: `${colors.primary}20` }]}>
+                  <IconSymbol size={18} name="person.2.fill" color={colors.primary} />
+                </View>
+                <View style={chatStyles.shareMenuInfo}>
+                  <Text style={[chatStyles.shareMenuLabel, { color: colors.foreground, fontSize: fs(14) }]}>Share to Classroom</Text>
+                  <Text style={[chatStyles.shareMenuDesc, { color: colors.muted, fontSize: fs(12) }]}>Add to your class problem feed</Text>
+                </View>
+                <IconSymbol size={14} name="chevron.right" color={colors.muted} />
+              </TouchableOpacity>
+
+              {/* Bookmark */}
+              <TouchableOpacity style={[chatStyles.shareMenuItem, { borderBottomWidth: 0.5, borderBottomColor: colors.border }]} onPress={handleBookmark} activeOpacity={0.7}>
+                <View style={[chatStyles.shareMenuIcon, { backgroundColor: `${colors.warning}18` }]}>
+                  <IconSymbol size={18} name={bookmarked ? "bookmark.fill" : "bookmark"} color={colors.warning} />
+                </View>
+                <View style={chatStyles.shareMenuInfo}>
+                  <Text style={[chatStyles.shareMenuLabel, { color: colors.foreground, fontSize: fs(14) }]}>{bookmarked ? "Remove Bookmark" : "Bookmark"}</Text>
+                  <Text style={[chatStyles.shareMenuDesc, { color: colors.muted, fontSize: fs(12) }]}>{bookmarked ? "Remove from your saved solutions" : "Save to your bookmarks"}</Text>
+                </View>
+                <IconSymbol size={14} name="chevron.right" color={colors.muted} />
+              </TouchableOpacity>
+
+              {/* Invite a Friend */}
+              <TouchableOpacity style={chatStyles.shareMenuItem} onPress={handleInviteFriend} activeOpacity={0.7}>
+                <View style={[chatStyles.shareMenuIcon, { backgroundColor: `${colors.success}18` }]}>
+                  <IconSymbol size={18} name="person.badge.plus" color={colors.success} />
+                </View>
+                <View style={chatStyles.shareMenuInfo}>
+                  <Text style={[chatStyles.shareMenuLabel, { color: colors.foreground, fontSize: fs(14) }]}>Invite a Friend</Text>
+                  <Text style={[chatStyles.shareMenuDesc, { color: colors.muted, fontSize: fs(12) }]}>Share your result + referral code</Text>
+                </View>
+                <IconSymbol size={14} name="chevron.right" color={colors.muted} />
+              </TouchableOpacity>
+
+              {/* Cancel */}
+              <TouchableOpacity style={[chatStyles.sheetCancel, { borderColor: colors.border, marginTop: 8 }]} onPress={() => setShowShareMenu(false)} activeOpacity={0.7}>
+                <Text style={[chatStyles.sheetCancelText, { color: colors.muted, fontSize: fs(15) }]}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      )}
+
+      {/* ── Copy Link toast ── */}
+      {copyLinkFeedback && (
+        <View style={[chatStyles.linkToast, { backgroundColor: colors.success }]}>
+          <IconSymbol size={14} name="checkmark.circle.fill" color="#fff" />
+          <Text style={chatStyles.linkToastText}>Link copied!</Text>
         </View>
       )}
 
@@ -2115,4 +2271,11 @@ const chatStyles = StyleSheet.create({
   },
   gradeCellLabel: { fontWeight: "600", textAlign: "center" },
   gradeCellSub: { textAlign: "center", marginTop: 2 },
+  shareMenuItem: { flexDirection: "row", alignItems: "center", paddingVertical: 12, paddingHorizontal: 16, gap: 12 },
+  shareMenuIcon: { width: 36, height: 36, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  shareMenuInfo: { flex: 1 },
+  shareMenuLabel: { fontWeight: "600", marginBottom: 1 },
+  shareMenuDesc: { lineHeight: 16 },
+  linkToast: { position: "absolute", bottom: 100, alignSelf: "center", flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20 },
+  linkToastText: { color: "#fff", fontSize: 13, fontWeight: "600" },
 });
