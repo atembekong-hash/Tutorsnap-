@@ -474,3 +474,6 @@
 - [x] Long-press subject pill in AI Tutor input bar to clear subject (reset to General)
 - [x] Fade-in/out animation on scroll-to-top and scroll-to-bottom FABs
 - [x] Tap-to-dismiss on voice transcript toast
+
+## Round 28: Fix AI Chat Responses in APK Build
+- [x] Update EXPO_PUBLIC_API_BASE_URL to production domain so APK can reach the backend
