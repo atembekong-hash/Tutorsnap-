@@ -1128,7 +1128,7 @@ function ChatScreenContent() {
               style={chatStyles.headerBtn}
               activeOpacity={0.7}
             >
-              <IconSymbol size={19} name="clock.fill" color={colors.muted} />
+              <IconSymbol size={24} name="clock.fill" color={colors.muted} />
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => setShowShareMenu(true)}
@@ -1137,7 +1137,7 @@ function ChatScreenContent() {
               activeOpacity={0.7}
             >
               <IconSymbol
-                size={19}
+                size={24}
                 name={shareCopied ? "checkmark.circle.fill" : "square.and.arrow.up.fill"}
                 color={shareCopied ? colors.success : colors.muted}
               />
@@ -1152,7 +1152,7 @@ function ChatScreenContent() {
               ]}
               activeOpacity={0.7}
             >
-              <IconSymbol size={17} name="plus" color={colors.primary} />
+              <IconSymbol size={22} name="plus" color={colors.primary} />
             </TouchableOpacity>
           </View>
         </View>
@@ -1636,9 +1636,9 @@ const chatStyles = StyleSheet.create({
   statusDot: { width: 6, height: 6, borderRadius: 3 },
   statusText: { fontWeight: "500" },
   statusSep: { fontSize: 10, marginHorizontal: 2 },
-  headerActions: { flexDirection: "row", alignItems: "center", gap: 2 },
-  headerBtn: { padding: 8 },
-  newChatBtn: { borderRadius: 10, padding: 7 },
+  headerActions: { flexDirection: "row", alignItems: "center", gap: 4 },
+  headerBtn: { padding: 9 },
+  newChatBtn: { borderRadius: 10, padding: 8 },
   loadingCenter: { flex: 1, alignItems: "center", justifyContent: "center" },
   typingRow: {
     flexDirection: "row",
