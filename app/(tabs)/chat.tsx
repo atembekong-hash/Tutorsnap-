@@ -1123,18 +1123,6 @@ function ChatScreenContent() {
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              onPress={() => setShowSubjectPicker(true)}
-              accessibilityLabel="Change subject"
-              style={chatStyles.headerBtn}
-              activeOpacity={0.7}
-            >
-              <IconSymbol
-                size={19}
-                name="book.fill"
-                color={selectedSubject ? subjectAccent : colors.muted}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
               onPress={() => router.push("/chat-history")}
               accessibilityLabel="Chat history"
               style={chatStyles.headerBtn}
