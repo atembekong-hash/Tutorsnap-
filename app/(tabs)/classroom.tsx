@@ -738,15 +738,15 @@ export default function ClassroomTabScreen() {
 
   const tabs: { key: Tab; label: string }[] = myClassroom
     ? [
-        { key: "feed", label: "📋 Feed" },
-        { key: "leaderboard", label: "🏆 Ranks" },
-        { key: "analytics", label: "📊 Stats" },
-        { key: "manage", label: "⚙️ Manage" },
+        { key: "feed", label: "Feed" },
+        { key: "leaderboard", label: "Ranks" },
+        { key: "analytics", label: "Stats" },
+        { key: "manage", label: "Manage" },
       ]
     : [
-        { key: "feed", label: "📋 Feed" },
-        { key: "leaderboard", label: "🏆 Ranks" },
-        { key: "manage", label: "⚙️ Manage" },
+        { key: "feed", label: "Feed" },
+        { key: "leaderboard", label: "Ranks" },
+        { key: "manage", label: "Manage" },
       ];
 
   return (
