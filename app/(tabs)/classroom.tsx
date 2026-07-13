@@ -67,7 +67,7 @@ import { APP_URL } from "@/constants/app";
 
 const HW_DONE_KEY = "@tutorsnap/hw_done";
 
-type Tab = "feed" | "leaderboard" | "analytics" | "manage";
+type Tab = "feed" | "leaderboard" | "analytics" | "homework" | "manage";
 
 // Due-date helpers
 function formatDueDate(iso: string): string {
@@ -739,12 +739,14 @@ export default function ClassroomTabScreen() {
   const tabs: { key: Tab; label: string }[] = myClassroom
     ? [
         { key: "feed", label: "Feed" },
+        { key: "homework", label: "Homework" },
         { key: "leaderboard", label: "Ranks" },
         { key: "analytics", label: "Stats" },
         { key: "manage", label: "Manage" },
       ]
     : [
         { key: "feed", label: "Feed" },
+        { key: "homework", label: "Homework" },
         { key: "leaderboard", label: "Ranks" },
         { key: "manage", label: "Manage" },
       ];
@@ -1030,6 +1032,130 @@ export default function ClassroomTabScreen() {
               }
             />
           )}
+
+          {/* Homework tab */}
+          {activeTab === "homework" && (() => {
+            const now = Date.now();
+            const sorted = [...homeworkItems].sort((a, b) => {
+              const aTime = a.dueDate ? new Date(a.dueDate).getTime() : Infinity;
+              const bTime = b.dueDate ? new Date(b.dueDate).getTime() : Infinity;
+              return aTime - bTime;
+            });
+            const doneCount = sorted.filter((p) => completedHomework.has(p.id)).length;
+            const progress = sorted.length > 0 ? doneCount / sorted.length : 0;
+
+            type HWGroup = { label: string; color: string; items: ClassroomProblem[] };
+            const groups: HWGroup[] = [
+              { label: "Overdue", color: colors.error, items: [] },
+              { label: "Due Today", color: colors.warning, items: [] },
+              { label: "Due Soon (2–3 days)", color: colors.primary, items: [] },
+              { label: "Upcoming", color: colors.success, items: [] },
+              { label: "No Due Date", color: colors.muted, items: [] },
+            ];
+            sorted.forEach((p) => {
+              if (!p.dueDate) { groups[4].items.push(p); return; }
+              const diff = Math.ceil((new Date(p.dueDate).getTime() - now) / (1000 * 60 * 60 * 24));
+              if (diff < 0) groups[0].items.push(p);
+              else if (diff <= 1) groups[1].items.push(p);
+              else if (diff <= 3) groups[2].items.push(p);
+              else groups[3].items.push(p);
+            });
+            const activeGroups = groups.filter((g) => g.items.length > 0);
+
+            return (
+              <ScrollView
+                style={{ flex: 1 }}
+                contentContainerStyle={styles.hwTabContent}
+                showsVerticalScrollIndicator={false}
+              >
+                {/* Progress summary card */}
+                {sorted.length > 0 && (
+                  <View style={[styles.hwProgressCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <View style={styles.hwProgressHeader}>
+                      <Text style={[styles.hwProgressTitle, { color: colors.foreground }]}>
+                        📚 {doneCount} of {sorted.length} completed
+                      </Text>
+                      <Text style={[styles.hwProgressPct, { color: colors.primary }]}>
+                        {Math.round(progress * 100)}%
+                      </Text>
+                    </View>
+                    <View style={[styles.hwProgressTrack, { backgroundColor: colors.border }]}>
+                      <View style={[styles.hwProgressFill, { width: `${Math.round(progress * 100)}%` as any, backgroundColor: colors.primary }]} />
+                    </View>
+                  </View>
+                )}
+
+                {/* Grouped homework items */}
+                {activeGroups.map((group) => (
+                  <View key={group.label}>
+                    <View style={styles.hwGroupHeader}>
+                      <View style={[styles.hwGroupDot, { backgroundColor: group.color }]} />
+                      <Text style={[styles.hwGroupLabel, { color: group.color }]}>{group.label}</Text>
+                      <Text style={[styles.hwGroupCount, { color: colors.muted }]}>{group.items.length}</Text>
+                    </View>
+                    {group.items.map((item) => {
+                      const done = completedHomework.has(item.id);
+                      const dueColor = item.dueDate ? dueDateColor(item.dueDate, colors) : colors.muted;
+                      return (
+                        <View
+                          key={item.id}
+                          style={[
+                            styles.hwCard,
+                            { backgroundColor: colors.surface, borderColor: done ? colors.success : colors.border, opacity: done ? 0.7 : 1 },
+                          ]}
+                        >
+                          <View style={styles.hwCardTop}>
+                            <View style={{ flex: 1 }}>
+                              <Text style={[styles.hwCardTitle, { color: colors.foreground }]} numberOfLines={2}>
+                                {item.homeworkTitle || item.problem.slice(0, 80)}
+                              </Text>
+                              {item.dueDate && (
+                                <View style={styles.hwCardDueRow}>
+                                  <IconSymbol size={12} name="calendar" color={dueColor} />
+                                  <Text style={[styles.hwCardDue, { color: dueColor }]}>
+                                    Due {formatDueDate(item.dueDate)}
+                                  </Text>
+                                </View>
+                              )}
+                            </View>
+                            <TouchableOpacity
+                              accessibilityLabel={done ? "Mark as not done" : "Mark as done"}
+                              style={[styles.hwDoneBtn, { backgroundColor: done ? colors.success : colors.border }]}
+                              onPress={() => handleMarkHomeworkDone(item.id)}
+                              activeOpacity={0.75}
+                            >
+                              <IconSymbol size={16} name={done ? "checkmark.circle.fill" : "circle"} color={done ? "#FFFFFF" : colors.muted} />
+                            </TouchableOpacity>
+                          </View>
+                          <TouchableOpacity
+                            style={[styles.hwViewBtn, { borderColor: colors.border }]}
+                            onPress={() => router.push({ pathname: "/solution", params: { problem: item.problem } })}
+                            activeOpacity={0.75}
+                          >
+                            <Text style={[styles.hwViewBtnText, { color: colors.primary }]}>View Problem</Text>
+                            <IconSymbol size={12} name="chevron.right" color={colors.primary} />
+                          </TouchableOpacity>
+                        </View>
+                      );
+                    })}
+                  </View>
+                ))}
+
+                {/* Empty state */}
+                {sorted.length === 0 && (
+                  <View style={styles.hwEmpty}>
+                    <Text style={styles.hwEmptyIcon}>📝</Text>
+                    <Text style={[styles.hwEmptyTitle, { color: colors.foreground }]}>No homework assigned</Text>
+                    <Text style={[styles.hwEmptyText, { color: colors.muted }]}>
+                      {myClassroom
+                        ? "Assign problems as homework from the Feed tab."
+                        : "Your teacher hasn't assigned any homework yet."}
+                    </Text>
+                  </View>
+                )}
+              </ScrollView>
+            );
+          })()}
 
           {/* Leaderboard tab */}
           {activeTab === "leaderboard" && (
@@ -1998,4 +2124,27 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
   },
+  hwTabContent: { padding: 16, gap: 12, paddingBottom: 32 },
+  hwProgressCard: { borderRadius: 14, borderWidth: 1, padding: 14, gap: 8 },
+  hwProgressHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  hwProgressTitle: { fontSize: 14, fontWeight: "700" },
+  hwProgressPct: { fontSize: 16, fontWeight: "800" },
+  hwProgressTrack: { height: 6, borderRadius: 3, overflow: "hidden" },
+  hwProgressFill: { height: 6, borderRadius: 3 },
+  hwGroupHeader: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8, marginBottom: 4 },
+  hwGroupDot: { width: 8, height: 8, borderRadius: 4 },
+  hwGroupLabel: { fontSize: 12, fontWeight: "700", flex: 1, textTransform: "uppercase", letterSpacing: 0.5 },
+  hwGroupCount: { fontSize: 12, fontWeight: "600" },
+  hwCard: { borderRadius: 12, borderWidth: 1, padding: 12, gap: 10 },
+  hwCardTop: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
+  hwCardTitle: { fontSize: 14, fontWeight: "600", lineHeight: 20 },
+  hwCardDueRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 },
+  hwCardDue: { fontSize: 12, fontWeight: "600" },
+  hwDoneBtn: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  hwViewBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 4, paddingVertical: 8, borderTopWidth: 1 },
+  hwViewBtnText: { fontSize: 13, fontWeight: "600" },
+  hwEmpty: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32, gap: 12, marginTop: 40 },
+  hwEmptyIcon: { fontSize: 56, marginBottom: 8 },
+  hwEmptyTitle: { fontSize: 18, fontWeight: "700", textAlign: "center" },
+  hwEmptyText: { fontSize: 14, textAlign: "center", lineHeight: 21 },
 });
