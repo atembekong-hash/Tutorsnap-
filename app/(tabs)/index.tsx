@@ -183,8 +183,8 @@ function TodayRow({
         accessibilityLabel={`Streak: ${streak} days`}
       >
         <Text style={trStyles.cardEmoji}>{streakEmoji}</Text>
-        <Text style={[trStyles.cardTitle, { color: colors.foreground }]}>{streak} day{streak !== 1 ? "s" : ""}</Text>
-        <Text style={[trStyles.cardSub, { color: colors.muted }]}>{shieldLabel}</Text>
+        <Text style={[trStyles.cardTitle, { color: colors.foreground }]} numberOfLines={1}>{streak} day{streak !== 1 ? "s" : ""}</Text>
+        <Text style={[trStyles.cardSub, { color: colors.muted }]} numberOfLines={2}>{shieldLabel}</Text>
         {canEarn && (
           <TouchableOpacity
             onPress={async () => {
@@ -214,8 +214,8 @@ function TodayRow({
       accessibilityLabel="Open Daily Challenge"
     >
       <Text style={trStyles.cardEmoji}>⚡</Text>
-      <Text style={[trStyles.cardTitle, { color: colors.foreground }]}>Daily Challenge</Text>
-      <Text style={[trStyles.cardSub, { color: colors.muted }]}>
+      <Text style={[trStyles.cardTitle, { color: colors.foreground }]} numberOfLines={1}>Daily Challenge</Text>
+      <Text style={[trStyles.cardSub, { color: colors.muted }]} numberOfLines={2}>
         {challengeCompleted ? (challengeCorrect ? "✅ Done" : "❌ Attempted") : `+${q.bonusXp} XP`}
       </Text>
     </TouchableOpacity>
@@ -231,8 +231,8 @@ function TodayRow({
       accessibilityLabel="View global rankings"
     >
       <Text style={trStyles.cardEmoji}>🏆</Text>
-      <Text style={[trStyles.cardTitle, { color: colors.foreground }]}>Rankings</Text>
-      <Text style={[trStyles.cardSub, { color: colors.muted }]}>Weekly top</Text>
+      <Text style={[trStyles.cardTitle, { color: colors.foreground }]} numberOfLines={1}>Rankings</Text>
+      <Text style={[trStyles.cardSub, { color: colors.muted }]} numberOfLines={1}>Weekly top</Text>
     </TouchableOpacity>
   );
 
@@ -251,8 +251,8 @@ function TodayRow({
         accessibilityLabel="Open study planner"
       >
         <Text style={trStyles.cardEmoji}>📅</Text>
-        <Text style={[trStyles.cardTitle, { color: colors.foreground }]}>Study Plan</Text>
-        <Text style={[trStyles.cardSub, { color: colors.muted }]}>{todaySlots.length} session{todaySlots.length !== 1 ? "s" : ""} · {formatTime(next.hour, next.minute)}</Text>
+        <Text style={[trStyles.cardTitle, { color: colors.foreground }]} numberOfLines={1}>Study Plan</Text>
+        <Text style={[trStyles.cardSub, { color: colors.muted }]} numberOfLines={2}>{todaySlots.length} session{todaySlots.length !== 1 ? "s" : ""} · {formatTime(next.hour, next.minute)}</Text>
       </TouchableOpacity>
     );
   }
@@ -268,8 +268,8 @@ function TodayRow({
         accessibilityLabel="View weekly goals"
       >
         <Text style={trStyles.cardEmoji}>🎯</Text>
-        <Text style={[trStyles.cardTitle, { color: colors.foreground }]}>Weekly Goal</Text>
-        <Text style={[trStyles.cardSub, { color: colors.muted }]}>{weeklyData.goalPct}% · {weeklyData.quizzesThisWeek}/{weeklyData.weeklyGoal} quizzes</Text>
+        <Text style={[trStyles.cardTitle, { color: colors.foreground }]} numberOfLines={1}>Weekly Goal</Text>
+        <Text style={[trStyles.cardSub, { color: colors.muted }]} numberOfLines={2}>{weeklyData.goalPct}% · {weeklyData.quizzesThisWeek}/{weeklyData.weeklyGoal} quizzes</Text>
         <View style={[trStyles.progressBar, { backgroundColor: colors.border }]}>
           <View style={[trStyles.progressFill, { width: `${weeklyData.goalPct}%` as any, backgroundColor: colors.success }]} />
         </View>
@@ -290,8 +290,8 @@ function TodayRow({
         accessibilityLabel={`Almost ${almostBadge.nextTier} badge in ${almostBadge.subjectLabel}`}
       >
         <Text style={trStyles.cardEmoji}>{tierEmoji}</Text>
-        <Text style={[trStyles.cardTitle, { color: colors.foreground }]}>{almostBadge.subjectLabel}</Text>
-        <Text style={[trStyles.cardSub, { color: colors.muted }]}>{almostBadge.remaining} more for {almostBadge.nextTier}</Text>
+        <Text style={[trStyles.cardTitle, { color: colors.foreground }]} numberOfLines={1}>{almostBadge.subjectLabel}</Text>
+        <Text style={[trStyles.cardSub, { color: colors.muted }]} numberOfLines={2}>{almostBadge.remaining} more for {almostBadge.nextTier}</Text>
       </TouchableOpacity>
     );
   }
@@ -307,8 +307,8 @@ function TodayRow({
         accessibilityLabel="Protect your streak"
       >
         <Text style={trStyles.cardEmoji}>⚠️</Text>
-        <Text style={[trStyles.cardTitle, { color: colors.warning }]}>Streak at risk!</Text>
-        <Text style={[trStyles.cardSub, { color: colors.muted }]}>Solve now to keep it</Text>
+        <Text style={[trStyles.cardTitle, { color: colors.warning }]} numberOfLines={1}>Streak at risk!</Text>
+        <Text style={[trStyles.cardSub, { color: colors.muted }]} numberOfLines={2}>Solve now to keep it</Text>
       </TouchableOpacity>
     );
   }
@@ -324,8 +324,8 @@ function TodayRow({
         accessibilityLabel="View affiliate earnings"
       >
         <Text style={trStyles.cardEmoji}>💰</Text>
-        <Text style={[trStyles.cardTitle, { color: colors.foreground }]}>Earnings</Text>
-        <Text style={[trStyles.cardSub, { color: colors.muted }]}>{affiliatePending} days pending</Text>
+        <Text style={[trStyles.cardTitle, { color: colors.foreground }]} numberOfLines={1}>Earnings</Text>
+        <Text style={[trStyles.cardSub, { color: colors.muted }]} numberOfLines={1}>{affiliatePending} days pending</Text>
       </TouchableOpacity>
     );
   }
@@ -338,6 +338,10 @@ function TodayRow({
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={trStyles.row}
       style={trStyles.container}
+      snapToInterval={widgetWidth + 10}
+      snapToAlignment="start"
+      decelerationRate="fast"
+      pagingEnabled={false}
     >
       {cards}
     </ScrollView>
@@ -698,10 +702,10 @@ function SolveScreenContent() {
               activeOpacity={0.8}
             >
               <View style={styles.goalBarLeft}>
-                <Text style={[styles.goalBarLabel, { color: colors.foreground }]}>
+                <Text style={[styles.goalBarLabel, { color: colors.foreground }]} numberOfLines={1}>
                   Daily Goal
                 </Text>
-                <Text style={[styles.goalBarCount, { color: colors.muted }]}>
+                <Text style={[styles.goalBarCount, { color: colors.muted }]} numberOfLines={1}>
                   {streak.todaySolved} / {streak.dailyGoal} solved today
                 </Text>
               </View>
@@ -1266,11 +1270,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
+    overflow: "hidden",
   },
-  goalBarLeft: { flex: 1 },
+  goalBarLeft: { flex: 1, minWidth: 0 },
   goalBarLabel: { fontSize: 13, fontWeight: "700" },
   goalBarCount: { fontSize: 12, marginTop: 2 },
-  goalBarRight: { alignItems: "flex-end", gap: 4 },
+  goalBarRight: { alignItems: "flex-end", gap: 4, flexShrink: 0 },
   goalBarTrack: {
     width: 80,
     height: 6,
