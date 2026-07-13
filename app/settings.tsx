@@ -1028,7 +1028,34 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        {/* Appearance */}
+        {/* ── PROFILE ─────────────────────────────────────────────────────── */}
+        <SectionHeader title="PROFILE" colors={colors} />
+        <SettingsRow
+          icon="person.crop.circle.fill"
+          label="Your Name"
+          subtitle={userName || "Not set — tap to add your name"}
+          colors={colors}
+          onPress={() => {
+            setNameInput(userName || "");
+            setShowNameModal(true);
+          }}
+        />
+        <SettingsRow
+          icon="graduationcap.fill"
+          label="Default Grade Level"
+          subtitle={gradeLevel ? GRADE_LABELS[gradeLevel] : "Not set — all screens will ask per session"}
+          colors={colors}
+          onPress={() => setShowGradePicker(true)}
+        />
+        <SettingsRow
+          icon="person.2.fill"
+          label="Preferred Subjects"
+          subtitle={preferredCategoryLabels || "All subjects"}
+          colors={colors}
+          onPress={() => setShowSubjectPicker(true)}
+        />
+
+        {/* ── APPEARANCE ──────────────────────────────────────────────────── */}
         <SectionHeader title="APPEARANCE" colors={colors} />
         <SettingsRow
           icon="paintbrush.fill"
@@ -1052,7 +1079,7 @@ export default function SettingsScreen() {
           }
         />
 
-        {/* Daily Goal */}
+        {/* ── DAILY GOAL ──────────────────────────────────────────────────── */}
         <SectionHeader title="DAILY GOAL" colors={colors} />
         <View style={[styles.goalCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={styles.goalHeader}>
@@ -1091,7 +1118,7 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        {/* Notifications */}
+        {/* ── NOTIFICATIONS ─────────────────────────────────────────────── */}
         <SectionHeader title="NOTIFICATIONS" colors={colors} />
         <View style={[styles.row, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={[styles.rowIcon, { backgroundColor: `${colors.primary}15` }]}>
@@ -1139,8 +1166,8 @@ export default function SettingsScreen() {
 
         <SettingsRow
           icon="bell.badge.fill"
-          label="Notification Center"
-          subtitle="Manage all notification types"
+          label="All Notification Settings"
+          subtitle="Manage streaks, homework, weekly reports, and more"
           colors={colors}
           onPress={() => router.push("/notification-center" as any)}
         />
@@ -1188,8 +1215,8 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         )}
 
-        {/* Progress & Data */}
-        <SectionHeader title="PROGRESS & DATA" colors={colors} />
+        {/* ── LEARNING ──────────────────────────────────────────────────── */}
+        <SectionHeader title="LEARNING" colors={colors} />
         <SettingsRow
           icon="chart.xyaxis.line"
           label="View Progress"
@@ -1219,49 +1246,151 @@ export default function SettingsScreen() {
           onPress={() => router.push("/study-planner" as any)}
         />
         <SettingsRow
-          icon="trophy.fill"
-          label="Streak Leaderboard"
-          subtitle="Compare streaks with friends"
-          colors={colors}
-          onPress={() => router.push("/(tabs)/leaderboard" as any)}
-        />
-        <SettingsRow
-          icon="person.2.fill"
-          label="Preferred Subjects"
-          subtitle={preferredCategoryLabels || "All subjects"}
-          colors={colors}
-          onPress={() => setShowSubjectPicker(true)}
-        />
-        <SettingsRow
-          icon="person.crop.circle.fill"
-          label="Your Name"
-          subtitle={userName || "Not set — tap to add your name"}
-          colors={colors}
-          onPress={() => {
-            setNameInput(userName || "");
-            setShowNameModal(true);
-          }}
-        />
-        <SettingsRow
-          icon="graduationcap.fill"
-          label="Default Grade Level"
-          subtitle={gradeLevel ? GRADE_LABELS[gradeLevel] : "Not set — all screens will ask per session"}
-          colors={colors}
-          onPress={() => setShowGradePicker(true)}
-        />
-        <SettingsRow
           icon="person.2.fill"
           label="Classroom"
           subtitle="Share problems with your class or join one"
           colors={colors}
           onPress={() => router.push("/(tabs)/classroom" as any)}
         />
+
+        {/* ── SUBSCRIPTION & REFERRALS ──────────────────────────────────── */}
+        <SectionHeader title="SUBSCRIPTION & REFERRALS" colors={colors} />
+        {subStatus && (
+          <View style={[styles.row, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={[styles.rowIcon, { backgroundColor: `${colors.primary}15` }]}>
+              <IconSymbol size={18} name="star.fill" color={colors.primary} />
+            </View>
+            <View style={styles.rowContent}>
+              <Text style={[styles.rowLabel, { color: colors.foreground }]}>TutorSnap Premium</Text>
+              <Text style={[styles.rowSubtitle, { color: colors.muted }]}>
+                {subStatus.isDevMode
+                  ? "Dev mode — all features unlocked"
+                  : subStatus.activeProductId
+                  ? `Active — ${subStatus.activeProductId === "tutorsnap_annual" ? "Annual plan" : "Monthly plan"}`
+                  : subStatus.isTrialActive
+                  ? `Free trial — ${subStatus.trialDaysRemaining} day${subStatus.trialDaysRemaining !== 1 ? "s" : ""} remaining`
+                  : "Free tier — upgrade to unlock all features"}
+              </Text>
+            </View>
+            {(subStatus.isPremium || subStatus.isTrialActive) && (
+              <View style={[styles.goalBadge, { backgroundColor: `${colors.primary}20` }]}>
+                <Text style={[styles.goalBadgeText, { color: colors.primary }]}>✓</Text>
+              </View>
+            )}
+          </View>
+        )}
+        <SettingsRow
+          icon="crown.fill"
+          label="View Premium Plans"
+          subtitle="Upgrade for unlimited access"
+          colors={colors}
+          onPress={() => router.push("/paywall" as any)}
+        />
+        <SettingsRow
+          icon="arrow.clockwise.circle.fill"
+          label={restoringPurchases ? "Restoring…" : "Restore Purchases"}
+          subtitle="Recover a previous subscription"
+          colors={colors}
+          onPress={restoringPurchases ? undefined : handleRestorePurchases}
+        />
+        <SettingsRow
+          icon="creditcard.fill"
+          label="Manage Subscription"
+          subtitle="Change or cancel your plan in the App Store"
+          colors={colors}
+          onPress={handleManageSubscription}
+        />
+        <SettingsRow
+          icon="paperplane.fill"
+          label="Affiliate & Referrals"
+          subtitle="Earn free days — 5 ways to earn, tier rewards"
+          colors={colors}
+          onPress={() => router.push("/refer" as any)}
+        />
+        <SettingsRow
+          icon="gift.fill"
+          label="Redeem a Friend's Code"
+          subtitle="Enter a referral code to activate your free trial"
+          colors={colors}
+          onPress={() => setShowRedeemModal(true)}
+        />
+
+        {/* ── COMMUNITY ─────────────────────────────────────────────────── */}
+        <SectionHeader title="COMMUNITY" colors={colors} />
+        <SettingsRow
+          icon="trophy.fill"
+          label="Leaderboard"
+          subtitle="Compare streaks and see the weekly top learners"
+          colors={colors}
+          onPress={() => router.push("/(tabs)/leaderboard" as any)}
+        />
         <SettingsRow
           icon="square.and.arrow.up.fill"
           label="Share Progress"
-          subtitle="Share your streak and stats"
+          subtitle="Share your streak and stats with friends"
           colors={colors}
           onPress={handleShareProgress}
+        />
+
+        {/* ── DATA MANAGEMENT ───────────────────────────────────────────── */}
+        <SectionHeader title="DATA MANAGEMENT" colors={colors} />
+        {!lastExportedAt ? (
+          <TouchableOpacity
+            onPress={handleExportData}
+            accessibilityRole="button"
+            accessibilityLabel="Back up your data"
+            style={{ marginHorizontal: 16, marginBottom: 8, backgroundColor: `${colors.warning}22`, borderRadius: 10, padding: 12, flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1, borderColor: `${colors.warning}55` }}
+          >
+            <Text style={{ fontSize: 18 }}>⚠️</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 13, fontWeight: "700", color: colors.warning }}>No backup yet</Text>
+              <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>Tap to export your data and keep it safe.</Text>
+            </View>
+          </TouchableOpacity>
+        ) : (() => {
+          const daysSince = Math.floor((Date.now() - new Date(lastExportedAt).getTime()) / 86400000);
+          return daysSince > 30 ? (
+            <TouchableOpacity
+              onPress={handleExportData}
+              accessibilityRole="button"
+              accessibilityLabel="Back up your data"
+              style={{ marginHorizontal: 16, marginBottom: 8, backgroundColor: `${colors.warning}22`, borderRadius: 10, padding: 12, flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1, borderColor: `${colors.warning}55` }}
+            >
+              <Text style={{ fontSize: 18 }}>⚠️</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 13, fontWeight: "700", color: colors.warning }}>Backup is {daysSince} days old</Text>
+                <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>Tap to export a fresh backup of your data.</Text>
+              </View>
+            </TouchableOpacity>
+          ) : null;
+        })()}
+        <SettingsRow
+          icon="square.and.arrow.up.on.square.fill"
+          label="Export My Data"
+          subtitle={lastExportedAt ? `Last exported: ${(() => { const d = new Date(lastExportedAt); const diff = Math.floor((Date.now() - d.getTime()) / 86400000); return diff === 0 ? "today" : diff === 1 ? "yesterday" : `${diff} days ago`; })()}` : "Download your history, progress, and settings as JSON"}
+          colors={colors}
+          onPress={handleExportData}
+        />
+        <SettingsRow
+          icon="doc.text.fill"
+          label="Export as PDF Report"
+          subtitle="Share a formatted progress report with solve history and quiz scores"
+          colors={colors}
+          onPress={handleExportPDF}
+        />
+        <SettingsRow
+          icon="square.and.arrow.down.fill"
+          label="Import My Data"
+          subtitle="Restore a previous TutorSnap JSON backup"
+          colors={colors}
+          onPress={handleImportData}
+        />
+        <SettingsRow
+          icon="link"
+          label="Import from URL"
+          subtitle="Restore a backup from a cloud share link"
+          colors={colors}
+          onPress={() => { H.impactLight(); setShowImportUrlModal(true); }}
         />
         <SettingsRow
           icon="eraser.fill"
@@ -1279,67 +1408,6 @@ export default function SettingsScreen() {
           onPress={handleResetProgress}
           danger
         />
-        {/* Stale backup nudge: show when no export or last export > 30 days ago */}
-        {(() => {
-          if (!lastExportedAt) return (
-            <TouchableOpacity
-              onPress={handleExportData}
-              accessibilityRole="button"
-              accessibilityLabel="Back up your data"
-              style={{ marginHorizontal: 16, marginBottom: 8, backgroundColor: `${colors.warning}22`, borderRadius: 10, padding: 12, flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1, borderColor: `${colors.warning}55` }}
-            >
-              <Text style={{ fontSize: 18 }}>⚠️</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 13, fontWeight: "700", color: colors.warning }}>No backup yet</Text>
-                <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>Tap to export your data and keep it safe.</Text>
-              </View>
-            </TouchableOpacity>
-          );
-          const daysSince = Math.floor((Date.now() - new Date(lastExportedAt).getTime()) / 86400000);
-          if (daysSince > 30) return (
-            <TouchableOpacity
-              onPress={handleExportData}
-              accessibilityRole="button"
-              accessibilityLabel="Back up your data"
-              style={{ marginHorizontal: 16, marginBottom: 8, backgroundColor: `${colors.warning}22`, borderRadius: 10, padding: 12, flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1, borderColor: `${colors.warning}55` }}
-            >
-              <Text style={{ fontSize: 18 }}>⚠️</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 13, fontWeight: "700", color: colors.warning }}>Backup is {daysSince} days old</Text>
-                <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>Tap to export a fresh backup of your data.</Text>
-              </View>
-            </TouchableOpacity>
-          );
-          return null;
-        })()}
-        <SettingsRow
-          icon="square.and.arrow.up.on.square.fill"
-          label="Export My Data"
-          subtitle={lastExportedAt ? `Last exported: ${(() => { const d = new Date(lastExportedAt); const diff = Math.floor((Date.now() - d.getTime()) / 86400000); return diff === 0 ? "today" : diff === 1 ? "yesterday" : `${diff} days ago`; })()}` : "Download your history, progress, and settings as JSON"}
-          colors={colors}
-          onPress={handleExportData}
-        />
-        <SettingsRow
-          icon="square.and.arrow.down.fill"
-          label="Import My Data"
-          subtitle="Restore a previous TutorSnap JSON backup"
-          colors={colors}
-          onPress={handleImportData}
-        />
-        <SettingsRow
-          icon="link"
-          label="Import from URL"
-          subtitle="Restore a backup from a cloud share link"
-          colors={colors}
-          onPress={() => { H.impactLight(); setShowImportUrlModal(true); }}
-        />
-        <SettingsRow
-          icon="doc.text.fill"
-          label="Export as PDF"
-          subtitle="Share a formatted progress report with solve history and quiz scores"
-          colors={colors}
-          onPress={handleExportPDF}
-        />
         <SettingsRow
           icon="person.crop.circle.badge.minus"
           label="Delete Account"
@@ -1348,8 +1416,6 @@ export default function SettingsScreen() {
           onPress={handleDeleteAccount}
           danger
         />
-
-        {/* Data Operation Log */}
         {dataOpLog.length > 0 && (
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, marginTop: 12 }]}>
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
@@ -1384,78 +1450,8 @@ export default function SettingsScreen() {
           </View>
         )}
 
-        {/* Subscription */}
-        <SectionHeader title="SUBSCRIPTION" colors={colors} />
-        {/* Status row */}
-        {subStatus && (
-          <View style={[styles.row, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <View style={[styles.rowIcon, { backgroundColor: `${colors.primary}15` }]}>
-              <IconSymbol size={18} name="star.fill" color={colors.primary} />
-            </View>
-            <View style={styles.rowContent}>
-              <Text style={[styles.rowLabel, { color: colors.foreground }]}>TutorSnap Premium</Text>
-              <Text style={[styles.rowSubtitle, { color: colors.muted }]}>
-                {subStatus.isDevMode
-                  ? "Dev mode — all features unlocked"
-                  : subStatus.activeProductId
-                  ? `Active — ${subStatus.activeProductId === "tutorsnap_annual" ? "Annual plan" : "Monthly plan"}`
-                  : subStatus.isTrialActive
-                  ? `Free trial — ${subStatus.trialDaysRemaining} day${subStatus.trialDaysRemaining !== 1 ? "s" : ""} remaining`
-                  : "Free tier — upgrade to unlock all features"}
-              </Text>
-            </View>
-            {(subStatus.isPremium || subStatus.isTrialActive) && (
-              <View style={[styles.goalBadge, { backgroundColor: `${colors.primary}20` }]}>
-                <Text style={[styles.goalBadgeText, { color: colors.primary }]}>✓</Text>
-              </View>
-            )}
-          </View>
-        )}
-        <SettingsRow
-          icon="arrow.clockwise.circle.fill"
-          label={restoringPurchases ? "Restoring…" : "Restore Purchases"}
-          subtitle="Recover a previous subscription"
-          colors={colors}
-          onPress={restoringPurchases ? undefined : handleRestorePurchases}
-        />
-        <SettingsRow
-          icon="creditcard.fill"
-          label="Manage Subscription"
-          subtitle="Change or cancel your plan in the App Store"
-          colors={colors}
-          onPress={handleManageSubscription}
-        />
-        <SettingsRow
-          icon="crown.fill"
-          label="View Premium Plans"
-          subtitle="Upgrade for unlimited access"
-          colors={colors}
-          onPress={() => router.push("/paywall" as any)}
-        />
-        <SettingsRow
-          icon="paperplane.fill"
-          label="Affiliate & Referrals"
-          subtitle="Earn free days — 5 ways to earn, tier rewards"
-          colors={colors}
-          onPress={() => router.push("/refer" as any)}
-        />
-        <SettingsRow
-          icon="trophy.fill"
-          label="Global Rankings"
-          subtitle="See the weekly top learners"
-          colors={colors}
-          onPress={() => router.push("/(tabs)/leaderboard" as any)}
-        />
-        <SettingsRow
-          icon="gift.fill"
-          label="Redeem a Friend's Code"
-          subtitle="Enter a referral code to activate your free trial"
-          colors={colors}
-          onPress={() => setShowRedeemModal(true)}
-        />
-
-        {/* About */}
-        <SectionHeader title="ABOUT" colors={colors} />
+        {/* ── ABOUT & SUPPORT ───────────────────────────────────────────── */}
+        <SectionHeader title="ABOUT & SUPPORT" colors={colors} />
         <SettingsRow
           icon="info.circle"
           label="About TutorSnap"
@@ -1465,7 +1461,7 @@ export default function SettingsScreen() {
         />
         <SettingsRow
           icon="book.fill"
-          label="How to use TutorSnap"
+          label="How to Use TutorSnap"
           subtitle="Step-by-step guide for all features"
           colors={colors}
           onPress={() => setShowHowTo(true)}
@@ -1485,23 +1481,9 @@ export default function SettingsScreen() {
           onPress={handleRateApp}
         />
         <SettingsRow
-          icon="hand.raised.fill"
-          label="Privacy Policy"
-          subtitle="How we handle your data"
-          colors={colors}
-          onPress={handlePrivacyPolicy}
-        />
-        <SettingsRow
-          icon="doc.text.fill"
-          label="Terms of Service"
-          subtitle="Usage terms and conditions"
-          colors={colors}
-          onPress={handleTerms}
-        />
-        <SettingsRow
           icon="envelope.fill"
           label="Contact Support"
-          subtitle="Get help or send feedback"
+          subtitle="Get help with your account or a feature"
           colors={colors}
           onPress={handleContactSupport}
         />
@@ -1520,12 +1502,12 @@ export default function SettingsScreen() {
           onPress={() => router.push("/report-bug" as any)}
         />
 
-        {/* Legal */}
+        {/* ── LEGAL & PRIVACY ───────────────────────────────────────────── */}
         <SectionHeader title="LEGAL & PRIVACY" colors={colors} />
         <SettingsRow
           icon="scale.3d"
           label="Legal & Privacy Hub"
-          subtitle="Privacy Policy, Terms, Licenses, and more"
+          subtitle="Privacy Policy, Terms of Service, Licenses, and more"
           colors={colors}
           onPress={() => router.push("/legal" as any)}
         />
