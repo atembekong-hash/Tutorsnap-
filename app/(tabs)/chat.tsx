@@ -653,11 +653,9 @@ function ChatScreenContent() {
 
       if (params.newSession === "1" || !params.sessionId) {
         const newSession = await createSession(null);
-        const welcome = makeWelcomeMessage(null);
-        const withWelcome: ChatSession = { ...newSession, messages: [welcome] };
         if (!cancelled) {
-          setSession(withWelcome);
-          setMessages([welcome]);
+          setSession(newSession);
+          setMessages([]);
           setSessionLoaded(true);
         }
       } else {
@@ -666,9 +664,7 @@ function ChatScreenContent() {
           if (existing) {
             setSession(existing);
             setMessages(
-              existing.messages.length > 0
-                ? existing.messages
-                : [makeWelcomeMessage(existing.subject as SubjectId | null)]
+              existing.messages.filter((m) => !m.id.startsWith("welcome"))
             );
             setSelectedSubject((existing.subject as SubjectId | null) ?? null);
             // Load per-session grade level, fall back to global preference
@@ -680,9 +676,8 @@ function ChatScreenContent() {
             }
           } else {
             const newSession = await createSession(null);
-            const welcome = makeWelcomeMessage(null);
-            setSession({ ...newSession, messages: [welcome] });
-            setMessages([welcome]);
+            setSession(newSession);
+            setMessages([]);
           }
           setSessionLoaded(true);
         }
@@ -862,14 +857,12 @@ function ChatScreenContent() {
   const handleNewChat = useCallback(async () => {
     H.impactMedium()
     const newSession = await createSession(null);
-    const welcome = makeWelcomeMessage(null);
-    const withWelcome: ChatSession = { ...newSession, messages: [welcome] };
-    setSession(withWelcome);
-    setMessages([welcome]);
+    setSession(newSession);
+    setMessages([]);
     setSelectedSubject(null);
     setInputText("");
     setSessionMessageCount(0);
-    await saveSession(withWelcome);
+    await saveSession(newSession);
   }, []);
 
   // ── Build share text ────────────────────────────────────────────────────────
@@ -987,11 +980,7 @@ function ChatScreenContent() {
       const updated: ChatSession = { ...session, subject: id };
       setSession(updated);
       await saveSession(updated);
-      if (messages.filter((m) => !m.id.startsWith("welcome")).length === 0) {
-        const welcome = makeWelcomeMessage(id);
-        setMessages([welcome]);
-        await saveSession({ ...updated, messages: [welcome] });
-      }
+      // No welcome message injection needed — WelcomeCard handles empty state
     },
     [session, messages]
   );
@@ -1005,11 +994,10 @@ function ChatScreenContent() {
         text: "Clear",
         style: "destructive",
         onPress: async () => {
-          const welcome = makeWelcomeMessage(selectedSubject);
-          setMessages([welcome]);
+          setMessages([]);
           setSessionMessageCount(0);
           if (session) {
-            await saveSession({ ...session, messages: [welcome], messageCount: 1 });
+            await saveSession({ ...session, messages: [], messageCount: 0 });
           }
         },
       },
