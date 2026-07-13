@@ -16,7 +16,7 @@ function ScanTabIcon({ color: _color, focused: _focused }: { color: string; focu
         { backgroundColor: colors.primary },
       ]}
     >
-      <IconSymbol size={26} name="camera.fill" color="#FFFFFF" />
+      <IconSymbol size={32} name="camera.fill" color="#FFFFFF" />
     </View>
   );
 }
@@ -25,7 +25,7 @@ export default function TabLayout() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const bottomPadding = Platform.OS === "web" ? 12 : Math.max(insets.bottom, 8);
-  const tabBarHeight = 60 + bottomPadding;
+  const     tabBarHeight = 64 + bottomPadding;
 
   return (
     <Tabs
@@ -53,14 +53,14 @@ export default function TabLayout() {
         name="index"
         options={{
           title: "Solve",
-          tabBarIcon: ({ color }) => <IconSymbol size={24} name="sum" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="sum" color={color} />,
         }}
       />
       <Tabs.Screen
         name="practice"
         options={{
           title: "Practice",
-          tabBarIcon: ({ color }) => <IconSymbol size={24} name="pencil.and.list.clipboard" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="pencil.and.list.clipboard" color={color} />,
         }}
       />
       <Tabs.Screen
@@ -88,14 +88,14 @@ export default function TabLayout() {
         name="chat"
         options={{
           title: "AI Tutor",
-          tabBarIcon: ({ color }) => <IconSymbol size={24} name="bubble.left.fill" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="bubble.left.fill" color={color} />,
         }}
       />
       <Tabs.Screen
         name="classroom"
         options={{
           title: "Classroom",
-          tabBarIcon: ({ color }) => <IconSymbol size={24} name="person.2.fill" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.2.fill" color={color} />,
         }}
       />
       <Tabs.Screen
@@ -110,9 +110,9 @@ export default function TabLayout() {
 
 const styles = StyleSheet.create({
   scanIconContainer: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
+    width: 62,
+    height: 62,
+    borderRadius: 31,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 10,

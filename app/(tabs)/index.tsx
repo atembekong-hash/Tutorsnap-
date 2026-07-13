@@ -232,7 +232,7 @@ function TodayRow({
     >
       <Text style={trStyles.cardEmoji}>🏆</Text>
       <Text style={[trStyles.cardTitle, { color: colors.foreground }]}>Rankings</Text>
-      <Text style={[trStyles.cardSub, { color: colors.muted }]}>Weekly top</Text>
+      <Text style={[trStyles.cardSub, { color: colors.muted }]} numberOfLines={1}>Weekly top</Text>
     </TouchableOpacity>
   );
 
@@ -269,7 +269,7 @@ function TodayRow({
       >
         <Text style={trStyles.cardEmoji}>🎯</Text>
         <Text style={[trStyles.cardTitle, { color: colors.foreground }]}>Weekly Goal</Text>
-        <Text style={[trStyles.cardSub, { color: colors.muted }]}>{weeklyData.goalPct}% · {weeklyData.quizzesThisWeek}/{weeklyData.weeklyGoal} quizzes</Text>
+        <Text style={[trStyles.cardSub, { color: colors.muted }]} numberOfLines={2}>{weeklyData.goalPct}% · {weeklyData.quizzesThisWeek}/{weeklyData.weeklyGoal} quizzes</Text>
         <View style={[trStyles.progressBar, { backgroundColor: colors.border }]}>
           <View style={[trStyles.progressFill, { width: `${weeklyData.goalPct}%` as any, backgroundColor: colors.success }]} />
         </View>
@@ -353,6 +353,7 @@ const trStyles = StyleSheet.create({
     borderWidth: 1.5,
     padding: 14,
     gap: 4,
+    overflow: "hidden",
   },
   cardEmoji: { fontSize: 24 },
   cardTitle: { fontSize: 13, fontWeight: "700", marginTop: 4 },
@@ -698,10 +699,10 @@ function SolveScreenContent() {
               activeOpacity={0.8}
             >
               <View style={styles.goalBarLeft}>
-                <Text style={[styles.goalBarLabel, { color: colors.foreground }]}>
+                <Text style={[styles.goalBarLabel, { color: colors.foreground }]} numberOfLines={1}>
                   Daily Goal
                 </Text>
-                <Text style={[styles.goalBarCount, { color: colors.muted }]}>
+                <Text style={[styles.goalBarCount, { color: colors.muted }]} numberOfLines={1}>
                   {streak.todaySolved} / {streak.dailyGoal} solved today
                 </Text>
               </View>
@@ -910,7 +911,7 @@ function SolveScreenContent() {
             </View>
           )}
 
-          {/* Solve Row: subject picker (left) + mic + solve button (right) */}
+          {/* Solve Row: subject picker (left) + mic + scan + solve button (right) */}
           <View style={styles.solveRow}>
             {/* Subject picker — bottom-left, single tap opens picker */}
             <SubjectPicker
@@ -927,6 +928,16 @@ function SolveScreenContent() {
                 }}
               />
             )}
+            {/* Scan / Camera button — navigates to scan tab */}
+            <TouchableOpacity
+              accessibilityLabel="Scan a problem with camera"
+              accessibilityRole="button"
+              onPress={() => { H.impactLight(); router.push("/(tabs)/scan" as any); }}
+              style={[styles.scanShortcutBtn, { backgroundColor: `${colors.primary}15`, borderColor: `${colors.primary}30` }]}
+              activeOpacity={0.75}
+            >
+              <IconSymbol size={22} name="camera.fill" color={colors.primary} />
+            </TouchableOpacity>
             {/* Solve Button */}
             <TouchableOpacity
               accessibilityLabel="Solve problem"
@@ -1267,10 +1278,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
   },
-  goalBarLeft: { flex: 1 },
+  goalBarLeft: { flex: 1, minWidth: 0 },
   goalBarLabel: { fontSize: 13, fontWeight: "700" },
   goalBarCount: { fontSize: 12, marginTop: 2 },
-  goalBarRight: { alignItems: "flex-end", gap: 4 },
+  goalBarRight: { alignItems: "flex-end", gap: 4, flexShrink: 0 },
   goalBarTrack: {
     width: 80,
     height: 6,
@@ -1362,6 +1373,15 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     color: "#FFFFFF",
     letterSpacing: 0.2,
+  },
+  scanShortcutBtn: {
+    width: 50,
+    height: 50,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    flexShrink: 0,
   },
   featureRow: {
     flexDirection: "row",

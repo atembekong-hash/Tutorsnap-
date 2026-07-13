@@ -197,18 +197,30 @@ function HistoryScreenContent() {
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <Text style={[styles.title, { color: colors.foreground }]}>History</Text>
-          {history.length > 0 && (
-            <View style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
-              <TouchableOpacity onPress={() => router.push("/bookmarks" as any)} style={styles.clearAllBtn}
-                accessibilityLabel="View bookmarks">
-                <IconSymbol size={20} name="bookmark.fill" color={colors.warning} />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={handleClearAll} style={styles.clearAllBtn}
-                accessibilityLabel="Clear">
-                <Text style={[styles.clearAllText, { color: colors.error }]}>Clear All</Text>
-              </TouchableOpacity>
-            </View>
-          )}
+          <View style={{ flexDirection: "row", gap: 10, alignItems: "center" }}>
+            {/* Scan shortcut — navigate to scan tab to capture a new problem */}
+            <TouchableOpacity
+              accessibilityLabel="Scan a new problem"
+              accessibilityRole="button"
+              onPress={() => router.push("/(tabs)/scan" as any)}
+              style={[styles.clearAllBtn, { backgroundColor: `${colors.primary}12`, borderRadius: 10, padding: 6 }]}
+              activeOpacity={0.75}
+            >
+              <IconSymbol size={20} name="camera.fill" color={colors.primary} />
+            </TouchableOpacity>
+            {history.length > 0 && (
+              <>
+                <TouchableOpacity onPress={() => router.push("/bookmarks" as any)} style={styles.clearAllBtn}
+                  accessibilityLabel="View bookmarks">
+                  <IconSymbol size={20} name="bookmark.fill" color={colors.warning} />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={handleClearAll} style={styles.clearAllBtn}
+                  accessibilityLabel="Clear">
+                  <Text style={[styles.clearAllText, { color: colors.error }]}>Clear All</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
         </View>
         <Text style={[styles.subtitle, { color: colors.muted }]}>
           {history.length} problem{history.length !== 1 ? "s" : ""} solved

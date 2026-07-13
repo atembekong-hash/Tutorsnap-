@@ -1359,6 +1359,17 @@ function ChatScreenContent() {
               />
             </TouchableOpacity>
 
+            {/* Scan shortcut — opens camera/gallery to scan a problem */}
+            <TouchableOpacity
+              accessibilityLabel="Scan a problem with camera"
+              accessibilityRole="button"
+              onPress={() => router.push("/(tabs)/scan" as any)}
+              style={[chatStyles.scanBtn, { backgroundColor: `${colors.primary}12`, borderColor: `${colors.primary}25` }]}
+              activeOpacity={0.75}
+            >
+              <IconSymbol size={18} name="camera.fill" color={colors.primary} />
+            </TouchableOpacity>
+
             <TextInput
               style={[
                 chatStyles.input,
@@ -1719,6 +1730,15 @@ const chatStyles = StyleSheet.create({
     borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
+    flexShrink: 0,
+  },
+  scanBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
     flexShrink: 0,
   },
   clearRow: { alignItems: "center", paddingBottom: 2 },
