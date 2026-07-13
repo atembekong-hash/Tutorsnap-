@@ -1118,7 +1118,7 @@ function ChatScreenContent() {
               ]}
               activeOpacity={0.7}
             >
-              <Text style={[chatStyles.gradePillText, { color: gradeLevel ? colors.primary : colors.muted, fontSize: fs(11) }]}>
+              <Text style={[chatStyles.gradePillText, { color: gradeLevel ? colors.primary : colors.muted, fontSize: fs(14) }]}>
                 {gradeLevel ? GRADE_LABELS[gradeLevel] ?? gradeLevel : "Level"}
               </Text>
             </TouchableOpacity>
@@ -1804,12 +1804,12 @@ const chatStyles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: 11,
+    paddingVertical: 6,
     borderRadius: 12,
-    borderWidth: 1,
+    borderWidth: 1.5,
   },
-  gradePillText: { fontWeight: "600" },
+  gradePillText: { fontWeight: "700" },
   gradePickerOverlay: {
     ...StyleSheet.absoluteFillObject,
   },
