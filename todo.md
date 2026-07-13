@@ -463,3 +463,9 @@
 - [x] Phase 8: Performance (all 20 timer refs have cleanup, no memory leaks found)
 - [x] Phase 9: Final validation (TS 0 errors, ESLint 0 errors 52 warnings, dev server clean)
 - [x] Phase 10: Deliver structured completion report
+
+## Round 26: AI Tutor Scroll Controls, Voice Transcript Toast, and Subject Memory
+- [x] Add left-side scroll-to-top floating button in AI Tutor chat
+- [x] Add right-side scroll-to-bottom floating button in AI Tutor chat
+- [x] Add voice transcript confidence toast in AI Tutor chat
+- [x] Persist last-used AI Tutor subject across sessions and new chats

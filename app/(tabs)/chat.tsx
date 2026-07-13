@@ -657,6 +657,10 @@ function ChatScreenContent() {
   const [bookmarked, setBookmarked] = useState(false);
   const [copyLinkFeedback, setCopyLinkFeedback] = useState(false);
   const copyLinkFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const [showScrollBottom, setShowScrollBottom] = useState(false);
+  const [transcriptToast, setTranscriptToast] = useState<string | null>(null);
+  const transcriptToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const flatListRef = useRef<FlatList>(null);
   const isUserScrolledUpRef = useRef(false);
@@ -709,10 +713,13 @@ function ChatScreenContent() {
       await migrateOldChatHistory();
 
       if (params.newSession === "1" || !params.sessionId) {
+        // Load last-used subject to pre-select for new sessions
+        const lastSubject = await AsyncStorage.getItem("chat_last_subject");
         const newSession = await createSession(null);
         if (!cancelled) {
           setSession(newSession);
           setMessages([]);
+          if (lastSubject) setSelectedSubject(lastSubject as SubjectId);
           setSessionLoaded(true);
         }
       } else {
@@ -1054,10 +1061,12 @@ function ChatScreenContent() {
     streamingMsgIdRef.current = null;
     setIsStreaming(false);
     H.impactMedium();
+    // Restore last-used subject for new chats
+    const lastSubject = await AsyncStorage.getItem("chat_last_subject");
     const newSession = await createSession(null);
     setSession(newSession);
     setMessages([]);
-    setSelectedSubject(null);
+    setSelectedSubject(lastSubject ? (lastSubject as SubjectId) : null);
     setInputText("");
     setSessionMessageCount(0);
     await saveSession(newSession);
@@ -1296,6 +1305,9 @@ function ChatScreenContent() {
     async (id: SubjectId | null) => {
       setSelectedSubject(id);
       setShowSubjectPicker(false);
+      // Persist last-used subject globally so new sessions start with it
+      if (id) AsyncStorage.setItem("chat_last_subject", id);
+      else AsyncStorage.removeItem("chat_last_subject");
       if (!session) return;
       const updated: ChatSession = { ...session, subject: id };
       setSession(updated);
@@ -1586,6 +1598,9 @@ function ChatScreenContent() {
               if (distanceFromBottom < 40) {
                 isUserScrolledUpRef.current = false;
               }
+              // Show/hide scroll buttons based on position
+              setShowScrollTop(contentOffset.y > 120);
+              setShowScrollBottom(distanceFromBottom > 120);
             }}
             onContentSizeChange={() => {
               if (!isUserScrolledUpRef.current) {
@@ -1729,6 +1744,10 @@ function ChatScreenContent() {
               <VoiceButton
                 size={38}
                 onTranscript={(text) => {
+                  // Show transcript confidence toast for ~2.5 seconds before inserting
+                  if (transcriptToastTimerRef.current) clearTimeout(transcriptToastTimerRef.current);
+                  setTranscriptToast(text);
+                  transcriptToastTimerRef.current = setTimeout(() => setTranscriptToast(null), 2500);
                   setInputText((prev) => (prev ? `${prev} ${text}` : text));
                 }}
               />
@@ -1799,6 +1818,62 @@ function ChatScreenContent() {
           )}
         </View>
       </KeyboardAvoidingView>
+
+      {/* ── Floating scroll buttons ── */}
+      {showScrollTop && (
+        <TouchableOpacity
+          accessibilityLabel="Scroll to top"
+          onPress={() => {
+            flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+            H.impactLight();
+          }}
+          style={[
+            chatStyles.scrollFab,
+            chatStyles.scrollFabLeft,
+            { backgroundColor: colors.surface, borderColor: colors.border, bottom: TAB_BAR_HEIGHT + 80 },
+          ]}
+          activeOpacity={0.8}
+        >
+          <IconSymbol size={18} name="chevron.up" color={colors.foreground} />
+        </TouchableOpacity>
+      )}
+      {showScrollBottom && (
+        <TouchableOpacity
+          accessibilityLabel="Scroll to bottom"
+          onPress={() => {
+            flatListRef.current?.scrollToEnd({ animated: true });
+            isUserScrolledUpRef.current = false;
+            H.impactLight();
+          }}
+          style={[
+            chatStyles.scrollFab,
+            chatStyles.scrollFabRight,
+            { backgroundColor: colors.surface, borderColor: colors.border, bottom: TAB_BAR_HEIGHT + 80 },
+          ]}
+          activeOpacity={0.8}
+        >
+          <IconSymbol size={18} name="chevron.down" color={colors.foreground} />
+        </TouchableOpacity>
+      )}
+
+      {/* ── Voice transcript toast ── */}
+      {transcriptToast !== null && (
+        <View
+          style={[
+            chatStyles.transcriptToast,
+            { backgroundColor: colors.foreground, bottom: TAB_BAR_HEIGHT + 130 },
+          ]}
+          pointerEvents="none"
+        >
+          <IconSymbol size={14} name="mic.fill" color={colors.background} />
+          <Text
+            style={[chatStyles.transcriptToastText, { color: colors.background }]}
+            numberOfLines={2}
+          >
+            {transcriptToast}
+          </Text>
+        </View>
+      )}
 
       {/* ── Subject picker sheet ── controlled directly via SubjectPicker */}
       <SubjectPicker
@@ -2296,4 +2371,38 @@ const chatStyles = StyleSheet.create({
   linkToastText: { color: "#fff", fontSize: 13, fontWeight: "600" },
   speedBadge: { position: "absolute", top: -5, right: -5, minWidth: 16, height: 16, borderRadius: 8, alignItems: "center", justifyContent: "center", paddingHorizontal: 3 },
   speedBadgeText: { color: "#fff", fontSize: 9, fontWeight: "800", letterSpacing: 0.3 },
+  scrollFab: {
+    position: "absolute",
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  scrollFabLeft: { left: 14 },
+  scrollFabRight: { right: 14 },
+  transcriptToast: {
+    position: "absolute",
+    left: 20,
+    right: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 22,
+    alignSelf: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 6,
+    elevation: 6,
+  },
+  transcriptToastText: { fontSize: 13, fontWeight: "600", flex: 1, lineHeight: 18 },
 });
