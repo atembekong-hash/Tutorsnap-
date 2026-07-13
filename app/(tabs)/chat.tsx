@@ -66,6 +66,7 @@ import { useNetworkStatus } from "@/hooks/use-network-status";
 import { Swipeable } from "react-native-gesture-handler";
 import { useFontSize } from "@/lib/font-size-provider";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { VoiceButton } from "@/components/voice-button";
 import {
   AIResponseRenderer,
   AIResponseErrorBoundary,
@@ -658,6 +659,7 @@ function ChatScreenContent() {
   const copyLinkFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const flatListRef = useRef<FlatList>(null);
+  const isUserScrolledUpRef = useRef(false);
   const shareCopiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { isOnline } = useNetworkStatus();
   const colorScheme = useColorScheme();
@@ -865,7 +867,9 @@ function ChatScreenContent() {
           setMessages((prev) =>
             prev.map((m) => (m.id === msgId ? { ...m, content: snap } : m))
           );
-          flatListRef.current?.scrollToEnd({ animated: false });
+          if (!isUserScrolledUpRef.current) {
+            flatListRef.current?.scrollToEnd({ animated: false });
+          }
           setTimeout(drainQueue, reqDelayMs);
         };
 
@@ -1571,9 +1575,23 @@ function ChatScreenContent() {
             )}
             contentContainerStyle={{ paddingTop: 12, paddingBottom: 16 }}
             showsVerticalScrollIndicator={false}
-            onContentSizeChange={() =>
-              flatListRef.current?.scrollToEnd({ animated: false })
-            }
+            scrollEventThrottle={16}
+            onScrollBeginDrag={() => {
+              isUserScrolledUpRef.current = true;
+            }}
+            onScroll={(e) => {
+              const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+              const distanceFromBottom = contentSize.height - contentOffset.y - layoutMeasurement.height;
+              // If user scrolls back to within 40px of bottom, re-enable auto-scroll
+              if (distanceFromBottom < 40) {
+                isUserScrolledUpRef.current = false;
+              }
+            }}
+            onContentSizeChange={() => {
+              if (!isUserScrolledUpRef.current) {
+                flatListRef.current?.scrollToEnd({ animated: false });
+              }
+            }}
             ListFooterComponent={
               isStreaming && (messages.length === 0 || messages[messages.length - 1]?.content === "") ? (
                 <View style={chatStyles.typingRow}>
@@ -1706,6 +1724,16 @@ function ChatScreenContent() {
               editable={!isAtLimit}
             />
 
+            {/* Voice input button — only shown when not streaming and input is empty */}
+            {!isStreaming && !inputText.trim() && (
+              <VoiceButton
+                size={38}
+                onTranscript={(text) => {
+                  setInputText((prev) => (prev ? `${prev} ${text}` : text));
+                }}
+              />
+            )}
+
             <Animated.View style={{ transform: [{ scale: sendBtnScaleAnim }] }}>
               {isStreaming ? (
                 <TouchableOpacity
@@ -1772,37 +1800,14 @@ function ChatScreenContent() {
         </View>
       </KeyboardAvoidingView>
 
-      {/* ── Subject picker sheet ── */}
-      {showSubjectPicker && (
-        <View style={StyleSheet.absoluteFillObject}>
-          <TouchableOpacity
-            style={[chatStyles.backdrop, { backgroundColor: "rgba(0,0,0,0.5)" }]}
-            activeOpacity={1}
-            onPress={() => setShowSubjectPicker(false)}
-          />
-          <View
-            style={[
-              chatStyles.sheet,
-              { backgroundColor: colors.surface, borderColor: colors.border },
-            ]}
-          >
-            <View style={[chatStyles.sheetHandle, { backgroundColor: colors.border }]} />
-            <Text style={[chatStyles.sheetTitle, { color: colors.foreground, fontSize: fs(16) }]}>
-              Focus Subject
-            </Text>
-            <SubjectPicker value={selectedSubject} onChange={handleSubjectChange} showAll />
-            <TouchableOpacity
-              style={[chatStyles.sheetCancel, { borderColor: colors.border }]}
-              onPress={() => setShowSubjectPicker(false)}
-              activeOpacity={0.7}
-            >
-              <Text style={[chatStyles.sheetCancelText, { color: colors.muted, fontSize: fs(15) }]}>
-                Cancel
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
+      {/* ── Subject picker sheet ── controlled directly via SubjectPicker */}
+      <SubjectPicker
+        value={selectedSubject}
+        onChange={handleSubjectChange}
+        showAll
+        open={showSubjectPicker}
+        onClose={() => setShowSubjectPicker(false)}
+      />
 
       {/* ── Grade level picker sheet ── */}
       {showGradePicker && (

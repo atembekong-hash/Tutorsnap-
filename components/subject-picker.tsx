@@ -40,6 +40,10 @@ interface SubjectPickerProps {
   showAll?: boolean;
   /** Categories to highlight as preferred (from Settings). First preferred category becomes the default active tab. */
   preferredCategories?: SubjectCategory[];
+  /** Controlled open state — when provided, the internal trigger pill is hidden and the modal is opened externally */
+  open?: boolean;
+  /** Called when the modal requests to close (backdrop tap, back button) */
+  onClose?: () => void;
 }
 
 const CATEGORIES: SubjectCategory[] = ["math", "english", "science", "social"];
@@ -49,9 +53,13 @@ export function SubjectPicker({
   onChange,
   showAll = true,
   preferredCategories = [],
+  open: controlledOpen,
+  onClose,
 }: SubjectPickerProps) {
   const colors = useColors();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
 
   // Default to first preferred category if set, otherwise "math"
   const defaultCategory: SubjectCategory = (
@@ -62,13 +70,21 @@ export function SubjectPicker({
   const grouped = getSubjectsByCategory();
   const selectedDef = value ? ALL_SUBJECTS.find((s) => s.id === value) : null;
 
+  const handleClose = useCallback(() => {
+    if (isControlled) {
+      onClose?.();
+    } else {
+      setInternalOpen(false);
+    }
+  }, [isControlled, onClose]);
+
   const handleSelect = useCallback(
     (id: SubjectId | null) => {
       H.impactLight()
       onChange(id);
-      setOpen(false);
+      handleClose();
     },
-    [onChange],
+    [onChange, handleClose],
   );
 
   const buttonLabel = selectedDef ? `${selectedDef.emoji}  ${selectedDef.label}` : "📚  All Subjects";
@@ -76,24 +92,26 @@ export function SubjectPicker({
 
   return (
     <>
-      {/* Trigger pill */}
-      <TouchableOpacity
-        accessibilityLabel="Open subject picker"
-        style={[
-          styles.trigger,
-          { borderColor: buttonColor, backgroundColor: buttonColor + "18" },
-        ]}
-        onPress={() => {
-          H.impactLight()
-          setOpen(true);
-        }}
-        activeOpacity={0.75}
-      >
-        <Text style={[styles.triggerText, { color: buttonColor }]} numberOfLines={1}>
-          {buttonLabel}
-        </Text>
-        <Text style={[styles.chevron, { color: buttonColor }]}>{"▾"}</Text>
-      </TouchableOpacity>
+      {/* Trigger pill — only shown when not controlled externally */}
+      {!isControlled && (
+        <TouchableOpacity
+          accessibilityLabel="Open subject picker"
+          style={[
+            styles.trigger,
+            { borderColor: buttonColor, backgroundColor: buttonColor + "18" },
+          ]}
+          onPress={() => {
+            H.impactLight()
+            setInternalOpen(true);
+          }}
+          activeOpacity={0.75}
+        >
+          <Text style={[styles.triggerText, { color: buttonColor }]} numberOfLines={1}>
+            {buttonLabel}
+          </Text>
+          <Text style={[styles.chevron, { color: buttonColor }]}>{"▾"}</Text>
+        </TouchableOpacity>
+      )}
 
       {/* Bottom sheet modal */}
       <Modal
@@ -101,7 +119,7 @@ export function SubjectPicker({
         transparent
         animationType="slide"
         statusBarTranslucent
-        onRequestClose={() => setOpen(false)}
+        onRequestClose={handleClose}
       >
         {/*
          * Backdrop: uses absoluteFillObject so it covers the entire screen
@@ -109,7 +127,7 @@ export function SubjectPicker({
          */}
         <Pressable
           style={styles.backdrop}
-          onPress={() => setOpen(false)}
+          onPress={handleClose}
           accessibilityLabel="Close subject picker"
         />
 
@@ -135,7 +153,7 @@ export function SubjectPicker({
               Choose Subject
             </Text>
             <TouchableOpacity
-              onPress={() => setOpen(false)}
+              onPress={handleClose}
               style={styles.closeBtn}
               accessibilityLabel="Close subject picker"
             >
