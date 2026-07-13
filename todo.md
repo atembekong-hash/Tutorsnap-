@@ -477,3 +477,5 @@
 
 ## Round 28: Fix AI Chat Responses in APK Build
 - [x] Update EXPO_PUBLIC_API_BASE_URL to production domain so APK can reach the backend
+- [x] Fix CORS middleware to always send ACAO header (native Android has no Origin header)
+- [x] Fix credentials mode to use omit on native (Bearer token auth) vs include on web (cookie auth)

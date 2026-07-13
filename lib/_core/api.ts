@@ -44,7 +44,8 @@ export async function apiCall<T>(endpoint: string, options: RequestInit = {}): P
     const response = await fetch(url, {
       ...options,
       headers,
-      credentials: "include",
+      // Use "include" on web (cookie auth), "omit" on native (Bearer token auth)
+      credentials: Platform.OS === "web" ? "include" : "omit",
     });
 
     console.log("[API] Response status:", response.status, response.statusText);

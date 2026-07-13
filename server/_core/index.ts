@@ -33,18 +33,22 @@ async function startServer() {
   const app = express();
   const server = createServer(app);
 
-  // Enable CORS for all routes - reflect the request origin to support credentials
+  // Enable CORS for all routes.
+  // Native Android/iOS fetch calls do NOT send an Origin header, so we must
+  // always set Access-Control-Allow-Origin regardless of whether Origin is present.
   app.use((req, res, next) => {
     const origin = req.headers.origin;
-    if (origin) {
-      res.header("Access-Control-Allow-Origin", origin);
-    }
+    // Reflect origin if present (needed for web + credentials); otherwise allow all
+    res.header("Access-Control-Allow-Origin", origin || "*");
     res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
     res.header(
       "Access-Control-Allow-Headers",
       "Origin, X-Requested-With, Content-Type, Accept, Authorization",
     );
-    res.header("Access-Control-Allow-Credentials", "true");
+    // Only send Allow-Credentials when we have a specific origin (wildcard + credentials is invalid)
+    if (origin) {
+      res.header("Access-Control-Allow-Credentials", "true");
+    }
 
     // Handle preflight requests
     if (req.method === "OPTIONS") {

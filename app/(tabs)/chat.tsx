@@ -861,12 +861,16 @@ function ChatScreenContent() {
         const response = await fetch(url, {
           method: "POST",
           headers,
-          credentials: "include",
+          // credentials: "include" breaks on Android native (no cookie jar for cross-origin);
+          // use "same-origin" on web, "omit" on native (auth is via Bearer token header instead)
+          credentials: Platform.OS === "web" ? "include" : "omit",
           body: JSON.stringify({ messages: contextMessages, subject, gradeLevel }),
           signal: controller.signal,
         });
 
         if (!response.ok || !response.body) {
+          const errText = await response.text().catch(() => "");
+          console.error(`[chat stream] HTTP ${response.status}:`, errText);
           throw new Error(`Stream error: ${response.status}`);
         }
 

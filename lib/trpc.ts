@@ -4,6 +4,7 @@ import superjson from "superjson";
 import type { AppRouter } from "@/server/routers";
 import { getApiBaseUrl } from "@/constants/oauth";
 import * as Auth from "@/lib/_core/auth";
+import { Platform } from "react-native";
 
 /**
  * tRPC React client for type-safe API calls.
@@ -29,11 +30,13 @@ export function createTRPCClient() {
           const token = await Auth.getSessionToken();
           return token ? { Authorization: `Bearer ${token}` } : {};
         },
-        // Custom fetch to include credentials for cookie-based auth
+        // On web use "include" for cookie-based auth; on native use "omit"
+        // because Android's HTTP stack rejects cross-origin credentialed requests
+        // without a matching ACAO header — auth is handled via Bearer token instead.
         fetch(url, options) {
           return fetch(url, {
             ...options,
-            credentials: "include",
+            credentials: Platform.OS === "web" ? "include" : "omit",
           });
         },
       }),
