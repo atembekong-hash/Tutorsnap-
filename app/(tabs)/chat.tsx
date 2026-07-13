@@ -802,22 +802,22 @@ function ChatScreenContent() {
         const tokenQueue: string[] = [];
         let renderLoopRunning = false;
 
-        // Render loop: drains the queue at a natural reading pace (~25ms per token)
+        // Render loop: drains the queue at a natural reading pace (~50ms per token)
         const drainQueue = () => {
           if (tokenQueue.length === 0) {
             renderLoopRunning = false;
             return;
           }
           renderLoopRunning = true;
-          // Drain up to 2 tokens per frame to keep up without feeling instant
-          const batch = tokenQueue.splice(0, 2).join("");
+          // Drain 1 token at a time for a slow, readable typewriter effect
+          const batch = tokenQueue.splice(0, 1).join("");
           accumulated += batch;
           const snap = accumulated;
           setMessages((prev) =>
             prev.map((m) => (m.id === msgId ? { ...m, content: snap } : m))
           );
           flatListRef.current?.scrollToEnd({ animated: false });
-          setTimeout(drainQueue, 25);
+          setTimeout(drainQueue, 50);
         };
 
         // eslint-disable-next-line no-constant-condition
