@@ -490,6 +490,22 @@ const voiceRouter = router({
 // Keep math router as alias for backward compatibility
 const mathRouter = academicRouter;
 
+// User settings router
+const userRouter = router({
+  getAppearanceSettings: protectedProcedure.query(async ({ ctx }) => {
+    const { getAppearanceSettings } = await import("./db");
+    const raw = await getAppearanceSettings(ctx.user.id);
+    return { settings: raw ?? null };
+  }),
+  saveAppearanceSettings: protectedProcedure
+    .input(z.object({ settings: z.string().max(65535) }))
+    .mutation(async ({ ctx, input }) => {
+      const { saveAppearanceSettings } = await import("./db");
+      await saveAppearanceSettings(ctx.user.id, input.settings);
+      return { success: true };
+    }),
+});
+
 // Auth router stub (required by tests)
 const authRouter = router({
   logout: protectedProcedure.mutation(async ({ ctx }) => {
@@ -508,6 +524,7 @@ export const appRouter = router({
   math: mathRouter,
   academic: academicRouter,
   auth: authRouter,
+  user: userRouter,
   system: systemRouter,
   voice: voiceRouter,
 });

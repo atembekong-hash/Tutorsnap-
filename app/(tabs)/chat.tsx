@@ -1677,6 +1677,17 @@ function ChatScreenContent() {
                 name="book.fill"
                 color={selectedSubject ? subjectAccent : colors.muted}
               />
+              {(() => {
+                const subjectKey = getAppearanceSubjectKey(selectedSubject);
+                const overrideStep = appearanceSettings.subjectSpeedOverrides?.[subjectKey];
+                if (!overrideStep || overrideStep < 1) return null;
+                const SPEED_SHORT = ["", "VS", "S", "N", "F", "VF"];
+                return (
+                  <View style={[chatStyles.speedBadge, { backgroundColor: subjectAccent || colors.primary }]}>
+                    <Text style={chatStyles.speedBadgeText}>{SPEED_SHORT[overrideStep]}</Text>
+                  </View>
+                );
+              })()}
             </TouchableOpacity>
 
             <TextInput
@@ -2278,4 +2289,6 @@ const chatStyles = StyleSheet.create({
   shareMenuDesc: { lineHeight: 16 },
   linkToast: { position: "absolute", bottom: 100, alignSelf: "center", flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20 },
   linkToastText: { color: "#fff", fontSize: 13, fontWeight: "600" },
+  speedBadge: { position: "absolute", top: -5, right: -5, minWidth: 16, height: 16, borderRadius: 8, alignItems: "center", justifyContent: "center", paddingHorizontal: 3 },
+  speedBadgeText: { color: "#fff", fontSize: 9, fontWeight: "800", letterSpacing: 0.3 },
 });

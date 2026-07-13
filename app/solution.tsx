@@ -10,6 +10,7 @@ import {
   Alert,
   Platform,
   ActivityIndicator,
+  Animated,
 } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -29,10 +30,20 @@ import { createSession, renameSession } from "@/lib/chat-sessions";
 import { APP_URL } from "@/constants/app";
 import { loadGlobalGrade, GRADE_LABELS } from "@/lib/grade-levels";
 
-function StepCard({ step, colors, fs }: { step: SolutionStep; colors: any; fs: (n: number) => number }) {
+function StepCard({ step, colors, fs, delay = 0 }: { step: SolutionStep; colors: any; fs: (n: number) => number; delay?: number }) {
   const [expanded, setExpanded] = useState(true);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(24)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 350, delay, useNativeDriver: true }),
+      Animated.timing(slideAnim, { toValue: 0, duration: 350, delay, useNativeDriver: true }),
+    ]).start();
+  }, []);
 
   return (
+    <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
     <TouchableOpacity
       accessibilityLabel="Toggle expanded"
       onPress={() => setExpanded(!expanded)}
@@ -91,6 +102,7 @@ function StepCard({ step, colors, fs }: { step: SolutionStep; colors: any; fs: (
         </View>
       )}
     </TouchableOpacity>
+    </Animated.View>
   );
 }
 
@@ -737,7 +749,7 @@ export default function SolutionScreen() {
             </Text>
           </View>
           {solution.steps?.map((step, index) => (
-            <StepCard key={index} step={step} colors={colors} fs={fs} />
+            <StepCard key={index} step={step} colors={colors} fs={fs} delay={index * 120} />
           ))}
         </View>
 

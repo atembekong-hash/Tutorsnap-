@@ -89,4 +89,17 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
+export async function getAppearanceSettings(userId: number): Promise<string | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const result = await db.select({ appearanceSettings: users.appearanceSettings }).from(users).where(eq(users.id, userId)).limit(1);
+  return result.length > 0 ? (result[0].appearanceSettings ?? null) : null;
+}
+
+export async function saveAppearanceSettings(userId: number, settings: string): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(users).set({ appearanceSettings: settings }).where(eq(users.id, userId));
+}
+
 // TODO: add feature queries here as your schema grows.

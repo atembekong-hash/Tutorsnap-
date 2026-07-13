@@ -12,8 +12,13 @@
  * All settings persist to AsyncStorage and are applied app-wide.
  */
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { createTRPCClient, httpBatchLink } from "@trpc/client";
+import superjson from "superjson";
+import { getApiBaseUrl } from "@/constants/oauth";
+import { getSessionToken } from "@/lib/_core/auth";
+import type { AppRouter } from "@/server/routers";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -475,6 +480,22 @@ export const BUBBLE_BORDER_RADIUS: Record<ChatBubbleStyle, number> = {
 
 const STORAGE_KEY = "@tutorsnap/appearanceSettings";
 
+// ─── Remote tRPC client (lazy, used only when authenticated) ──────────────────
+function makeRemoteClient() {
+  return createTRPCClient<AppRouter>({
+    links: [
+      httpBatchLink({
+        url: `${getApiBaseUrl()}/api/trpc`,
+        transformer: superjson,
+        async headers() {
+          const token = await getSessionToken();
+          return token ? { Authorization: `Bearer ${token}` } : {};
+        },
+      }),
+    ],
+  });
+}
+
 interface AppearanceContextValue {
   settings: AppearanceSettings;
   updateSetting: <K extends keyof AppearanceSettings>(key: K, value: AppearanceSettings[K]) => void;
@@ -529,24 +550,61 @@ const AppearanceContext = createContext<AppearanceContextValue>({
 export function AppearanceProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = useState<AppearanceSettings>(DEFAULT_APPEARANCE);
   const [loaded, setLoaded] = useState(false);
+  const remoteClientRef = useRef<ReturnType<typeof makeRemoteClient> | null>(null);
+  const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Load persisted settings on mount
+  function getRemoteClient() {
+    if (!remoteClientRef.current) {
+      remoteClientRef.current = makeRemoteClient();
+    }
+    return remoteClientRef.current;
+  }
+
+  function mergeSettings(saved: Partial<AppearanceSettings>): AppearanceSettings {
+    return {
+      ...DEFAULT_APPEARANCE,
+      ...saved,
+      widgetVisibility: { ...DEFAULT_APPEARANCE.widgetVisibility, ...(saved.widgetVisibility ?? {}) },
+      widgetOrder: saved.widgetOrder ?? DEFAULT_APPEARANCE.widgetOrder,
+      subjectAccentColors: { ...DEFAULT_SUBJECT_ACCENT_COLORS, ...(saved.subjectAccentColors ?? {}) },
+    };
+  }
+
+  // Debounced backend sync — fires 2s after last change
+  function scheduleRemoteSync(next: AppearanceSettings) {
+    if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+    syncTimerRef.current = setTimeout(async () => {
+      try {
+        const token = await getSessionToken();
+        if (!token) return; // not authenticated, skip
+        const safe = { ...next, customPreset: next.customPreset ? { ...next.customPreset, customPreset: undefined } : null };
+        await getRemoteClient().user.saveAppearanceSettings.mutate({ settings: JSON.stringify(safe) });
+      } catch { /* silent — local storage is the source of truth */ }
+    }, 2000);
+  }
+
+  // Load persisted settings on mount — local first, then try backend
   useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY).then((raw) => {
+    AsyncStorage.getItem(STORAGE_KEY).then(async (raw) => {
       if (raw) {
         try {
           const saved = JSON.parse(raw) as Partial<AppearanceSettings>;
-          // Deep merge: ensure all new keys from DEFAULT_APPEARANCE are present
-          setSettings((prev) => ({
-            ...prev,
-            ...saved,
-            widgetVisibility: { ...DEFAULT_APPEARANCE.widgetVisibility, ...(saved.widgetVisibility ?? {}) },
-            widgetOrder: saved.widgetOrder ?? DEFAULT_APPEARANCE.widgetOrder,
-            subjectAccentColors: { ...DEFAULT_SUBJECT_ACCENT_COLORS, ...(saved.subjectAccentColors ?? {}) },
-          }));
+          setSettings(mergeSettings(saved));
         } catch { /* ignore malformed */ }
       }
       setLoaded(true);
+      // Try to load from backend (may override local if newer)
+      try {
+        const token = await getSessionToken();
+        if (!token) return;
+        const result = await getRemoteClient().user.getAppearanceSettings.query();
+        if (result.settings) {
+          const remote = JSON.parse(result.settings) as Partial<AppearanceSettings>;
+          const merged = mergeSettings(remote);
+          setSettings(merged);
+          AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(merged)).catch(() => {});
+        }
+      } catch { /* silent — local storage remains */ }
     });
   }, []);
 
@@ -568,6 +626,7 @@ export function AppearanceProvider({ children }: { children: React.ReactNode }) 
       // Guard: never serialise customPreset.customPreset (circular-like nesting)
       const safe = { ...next, customPreset: next.customPreset ? { ...next.customPreset, customPreset: undefined } : null };
       AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(safe)).catch(() => {});
+      scheduleRemoteSync(next);
       return next;
     });
   }, []);
