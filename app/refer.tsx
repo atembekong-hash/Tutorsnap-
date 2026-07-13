@@ -295,10 +295,17 @@ export default function ReferScreen() {
     H.impactMedium();
     try {
       if (Platform.OS === "web") {
+        // Web: copy to clipboard and award bonus immediately (no share sheet)
         await Clipboard.setStringAsync(shareMessage);
         showToast("Invite link copied to clipboard!");
+        const earned = await recordSocialShare();
+        if (earned > 0) {
+          H.notificationSuccess();
+          showToast(`+${earned} days earned for sharing! 🎉`);
+          await load();
+        }
       } else {
-        await Share.share(
+        const result = await Share.share(
           {
             message: shareMessage,
             url: APP_URL,
@@ -306,11 +313,25 @@ export default function ReferScreen() {
           },
           { dialogTitle: "Share your TutorSnap invite" }
         );
+        // Award bonus only when the user actually completed the share
+        // (iOS: action === sharedAction; Android: always sharedAction)
+        if (result.action === Share.sharedAction) {
+          const earned = await recordSocialShare();
+          if (earned > 0) {
+            H.notificationSuccess();
+            showToast(`+${earned} days earned for sharing! 🎉`);
+            await load();
+          } else {
+            // Cooldown active — already shared today
+            showToast("Already earned today — share again tomorrow for more days!");
+          }
+        }
+        // If dismissedAction: user cancelled, no toast needed
       }
     } catch (_) {
-      // user cancelled — no-op
+      // share sheet error — no-op
     }
-  }, [shareMessage]);
+  }, [shareMessage, load]);
 
   const handleCopyCode = useCallback(async () => {
     H.impactLight()
