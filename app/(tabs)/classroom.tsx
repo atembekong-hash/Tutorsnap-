@@ -936,14 +936,9 @@ export default function ClassroomTabScreen() {
                     </TouchableOpacity>
                   </View>
 
-                  {/* Subject filter chips */}
+                  {/* Subject filter chips — evenly distributed, wrapping */}
                   {feedSubjects.length > 1 && (
-                    <ScrollView
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                      style={styles.subjectChipsScroll}
-                      contentContainerStyle={styles.subjectChipsContent}
-                    >
+                    <View style={styles.subjectChipsWrap}>
                       <TouchableOpacity
                         accessibilityLabel="All subjects"
                         style={[styles.subjectChip, {
@@ -977,7 +972,7 @@ export default function ClassroomTabScreen() {
                           </TouchableOpacity>
                         );
                       })}
-                    </ScrollView>
+                    </View>
                   )}
 
                   {/* Homework summary banner */}
@@ -1905,29 +1900,29 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  subjectChipsScroll: {
-    marginBottom: 8,
-  },
-  subjectChipsContent: {
+  subjectChipsWrap: {
     flexDirection: "row",
-    gap: 6,
-    paddingRight: 4,
+    flexWrap: "wrap",
+    justifyContent: "space-evenly",
+    gap: 8,
+    marginBottom: 8,
   },
   subjectChip: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 20,
+    gap: 5,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 22,
     borderWidth: 1.5,
   },
   subjectChipEmoji: {
-    fontSize: 12,
+    fontSize: 14,
   },
   subjectChipText: {
-    fontSize: 12,
-    fontWeight: "600",
+    fontSize: 13,
+    fontWeight: "700",
+    letterSpacing: 0.1,
   },
   // Sort menu modal
   sortMenuOverlay: {
