@@ -1,4 +1,4 @@
-# TutorSnap — Full Application Audit Findings
+# MathGenius AI — Full Application Audit Findings
 
 ## Issues Found and Fixed
 
