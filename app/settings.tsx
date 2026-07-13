@@ -507,7 +507,7 @@ export default function SettingsScreen() {
       // Fallback: open store page
       const url = Platform.OS === "ios"
         ? "https://apps.apple.com/app/tutorsnap/id6748052679"
-        : "https://play.google.com/store/apps/details?id=space.manus.mathgenius";
+        : "https://play.google.com/store/apps/details?id=com.tutorsnap.app";
       await Linking.openURL(url);
     } catch { /* store review or linking failure is non-critical */ }
   };
@@ -738,6 +738,12 @@ export default function SettingsScreen() {
       setShowImportUrlModal(false);
       setImportUrlInput("");
       await restoreFromParsed(parsed);
+      // Log URL import operation
+      const urlImportNow = new Date().toISOString();
+      const prevUrlLog = JSON.parse((await AsyncStorage.getItem("@tutorsnap/dataOpLog")) ?? "[]");
+      const newUrlLog = [...prevUrlLog.slice(-2), { type: "import_url", date: urlImportNow, items: 0 }];
+      await AsyncStorage.setItem("@tutorsnap/dataOpLog", JSON.stringify(newUrlLog));
+      setDataOpLog(newUrlLog);
     } catch (e: any) {
       Alert.alert("Download Failed", e?.message ?? "Could not download the backup file. Check the URL and try again.");
     } finally {
@@ -1258,6 +1264,39 @@ export default function SettingsScreen() {
           onPress={handleResetProgress}
           danger
         />
+        {/* Stale backup nudge: show when no export or last export > 30 days ago */}
+        {(() => {
+          if (!lastExportedAt) return (
+            <TouchableOpacity
+              onPress={handleExportData}
+              accessibilityRole="button"
+              accessibilityLabel="Back up your data"
+              style={{ marginHorizontal: 16, marginBottom: 8, backgroundColor: `${colors.warning}22`, borderRadius: 10, padding: 12, flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1, borderColor: `${colors.warning}55` }}
+            >
+              <Text style={{ fontSize: 18 }}>⚠️</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 13, fontWeight: "700", color: colors.warning }}>No backup yet</Text>
+                <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>Tap to export your data and keep it safe.</Text>
+              </View>
+            </TouchableOpacity>
+          );
+          const daysSince = Math.floor((Date.now() - new Date(lastExportedAt).getTime()) / 86400000);
+          if (daysSince > 30) return (
+            <TouchableOpacity
+              onPress={handleExportData}
+              accessibilityRole="button"
+              accessibilityLabel="Back up your data"
+              style={{ marginHorizontal: 16, marginBottom: 8, backgroundColor: `${colors.warning}22`, borderRadius: 10, padding: 12, flexDirection: "row", alignItems: "center", gap: 10, borderWidth: 1, borderColor: `${colors.warning}55` }}
+            >
+              <Text style={{ fontSize: 18 }}>⚠️</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 13, fontWeight: "700", color: colors.warning }}>Backup is {daysSince} days old</Text>
+                <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>Tap to export a fresh backup of your data.</Text>
+              </View>
+            </TouchableOpacity>
+          );
+          return null;
+        })()}
         <SettingsRow
           icon="square.and.arrow.up.on.square.fill"
           label="Export My Data"
@@ -1298,7 +1337,19 @@ export default function SettingsScreen() {
         {/* Data Operation Log */}
         {dataOpLog.length > 0 && (
           <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border, marginTop: 12 }]}>
-            <Text style={[styles.cardTitle, { color: colors.foreground }]}>Recent Data Activity</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+              <Text style={[styles.cardTitle, { color: colors.foreground, marginBottom: 0 }]}>Recent Data Activity</Text>
+              <TouchableOpacity
+                onPress={async () => {
+                  await AsyncStorage.removeItem("@tutorsnap/dataOpLog");
+                  setDataOpLog([]);
+                }}
+                accessibilityLabel="Clear activity log"
+                accessibilityRole="button"
+              >
+                <Text style={{ fontSize: 12, color: colors.error, fontWeight: "600" }}>Clear</Text>
+              </TouchableOpacity>
+            </View>
             {dataOpLog.slice().reverse().map((op, i) => {
               const opLabel = op.type === "export_json" ? "Exported JSON" : op.type === "export_pdf" ? "Exported PDF" : op.type === "import_file" ? "Imported from file" : "Imported from URL";
               const opIcon = op.type.startsWith("export") ? "↑" : "↓";

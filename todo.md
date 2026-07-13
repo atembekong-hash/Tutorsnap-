@@ -1,4 +1,4 @@
-# MathGenius AI - TODO
+# TutorSnap - TODO
 
 ## Core Setup
 - [x] Update theme colors (violet brand palette)
