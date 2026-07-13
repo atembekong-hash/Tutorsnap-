@@ -790,17 +790,69 @@ export default function AppearanceSettingsScreen() {
             />
           </Row>
 
-          {/* Typing Speed */}
+          {/* Typing Speed Preset */}
           <Row>
             <Text style={[styles.rowLabel, { color: colors.foreground }]}>Typing Speed</Text>
           </Row>
-          <Row last>
+          <Row>
             <SegmentedControl<TypingSpeed>
               options={["slow", "normal", "fast"]}
               labels={{ slow: "Slow", normal: "Normal", fast: "Fast" }}
               value={settings.typingSpeed}
               onChange={(v) => updateSetting("typingSpeed", v)}
             />
+          </Row>
+
+          {/* Global Speed Multiplier */}
+          <Row>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.rowLabel, { color: colors.foreground }]}>Speed Adjustment</Text>
+              <Text style={[styles.rowSub, { color: colors.muted }]}>
+                Fine-tune the typewriter pace. Math & Science auto-slow for complex symbols.
+              </Text>
+            </View>
+          </Row>
+          <Row last>
+            <View style={{ flex: 1, gap: 8 }}>
+              {/* Speed step labels */}
+              <View style={{ flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 2 }}>
+                {["Very Slow", "Slow", "Normal", "Fast", "Very Fast"].map((label, i) => (
+                  <Text
+                    key={label}
+                    style={[
+                      { fontSize: 10, fontWeight: "500", textAlign: "center", width: 52 },
+                      { color: settings.typingSpeedMultiplier === i + 1 ? colors.primary : colors.muted },
+                    ]}
+                  >
+                    {label}
+                  </Text>
+                ))}
+              </View>
+              {/* Tap-segment slider */}
+              <View style={{ flexDirection: "row", gap: 4 }}>
+                {[1, 2, 3, 4, 5].map((step) => (
+                  <TouchableOpacity
+                    key={step}
+                    onPress={() => { triggerHaptic(); updateSetting("typingSpeedMultiplier", step); }}
+                    style={[
+                      {
+                        flex: 1,
+                        height: 8,
+                        borderRadius: 4,
+                        backgroundColor:
+                          step <= (settings.typingSpeedMultiplier ?? 3)
+                            ? colors.primary
+                            : colors.border,
+                      },
+                    ]}
+                    activeOpacity={0.7}
+                  />
+                ))}
+              </View>
+              <Text style={{ fontSize: 11, color: colors.muted, textAlign: "center" }}>
+                {["Very Slow (60ms/char)", "Slow (40ms/char)", "Normal (20ms/char)", "Fast (10ms/char)", "Very Fast (3ms/char)"][(settings.typingSpeedMultiplier ?? 3) - 1]}
+              </Text>
+            </View>
           </Row>
         </View>
 

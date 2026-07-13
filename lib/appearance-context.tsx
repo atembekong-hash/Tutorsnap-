@@ -363,6 +363,12 @@ export interface AppearanceSettings {
   chatBubbleStyle: ChatBubbleStyle;
   messageDensity: MessageDensity;
   typingSpeed: TypingSpeed;
+  /**
+   * Global speed multiplier for the typewriter animation.
+   * Range 1–5: 1 = Very Slow (60ms/char), 5 = Very Fast (3ms/char).
+   * Applied on top of the per-preset base delay and subject-aware adjustment.
+   */
+  typingSpeedMultiplier: number;
   // Solution
   stepStyle: StepStyle;
   // Accessibility
@@ -401,6 +407,7 @@ export const DEFAULT_APPEARANCE: AppearanceSettings = {
   chatBubbleStyle: "rounded",
   messageDensity: "comfortable",
   typingSpeed: "slow",
+  typingSpeedMultiplier: 3,
   stepStyle: "cards",
   reduceMotion: false,
   highContrast: false,

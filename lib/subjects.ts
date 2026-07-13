@@ -109,6 +109,12 @@ export function isMathSubject(id: SubjectId | string | null): boolean {
   return getSubjectDef(id as SubjectId).category === "math";
 }
 
+/** Returns true if the subject belongs to the Science category */
+export function isScienceSubject(id: SubjectId | string | null): boolean {
+  if (!id) return false;
+  return getSubjectDef(id as SubjectId).category === "science";
+}
+
 /** Returns a subject-specific input placeholder string */
 export function getSubjectPlaceholder(id: SubjectId | string | null): string {
   if (!id) return "Type your question or problem here...";

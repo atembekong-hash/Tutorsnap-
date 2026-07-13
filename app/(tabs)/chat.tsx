@@ -59,6 +59,8 @@ import {
   getSubjectLabel,
   getSubjectEmoji,
   getSubjectDef,
+  isMathSubject,
+  isScienceSubject,
 } from "@/lib/subjects";
 import { useNetworkStatus } from "@/hooks/use-network-status";
 import { Swipeable } from "react-native-gesture-handler";
@@ -687,8 +689,18 @@ function ChatScreenContent() {
   }, [isStreaming, sendBtnScaleAnim]);
 
   // Typing speed → ms per character
-  const TYPING_SPEED_MS: Record<TypingSpeed, number> = { slow: 30, normal: 15, fast: 5 };
-  const typingDelayMs = TYPING_SPEED_MS[appearanceSettings.typingSpeed ?? "slow"];
+  // Base delays per preset (ms/char)
+  const TYPING_SPEED_MS: Record<TypingSpeed, number> = { slow: 40, normal: 20, fast: 8 };
+  // Global multiplier step delays: 1=60ms, 2=40ms, 3=20ms, 4=10ms, 5=3ms
+  const MULTIPLIER_DELAYS = [60, 40, 20, 10, 3];
+  const multiplierMs = MULTIPLIER_DELAYS[(appearanceSettings.typingSpeedMultiplier ?? 3) - 1];
+  // Blend: average of preset base and global multiplier
+  const baseDelayMs = Math.round((TYPING_SPEED_MS[appearanceSettings.typingSpeed ?? "slow"] + multiplierMs) / 2);
+  // Subject-aware: Math & Science get +15ms extra for complex symbols
+  const getTypingDelayMs = (subject: string | undefined): number => {
+    const isComplex = isMathSubject(subject ?? null) || isScienceSubject(subject ?? null);
+    return isComplex ? baseDelayMs + 15 : baseDelayMs;
+  };
 
   const bottomPadding = Platform.OS === "web" ? 12 : Math.max(insets.bottom, 8);
   const TAB_BAR_HEIGHT = 60 + bottomPadding;
@@ -844,6 +856,8 @@ function ChatScreenContent() {
         // true letter-by-letter typewriter effect at ~30ms per character
         const charQueue: string[] = [];
         let renderLoopRunning = false;
+        // Subject-aware delay for this request (Math/Science get +15ms)
+        const reqDelayMs = getTypingDelayMs(subject);
 
         const drainQueue = () => {
           if (charQueue.length === 0) {
@@ -859,7 +873,7 @@ function ChatScreenContent() {
             prev.map((m) => (m.id === msgId ? { ...m, content: snap } : m))
           );
           flatListRef.current?.scrollToEnd({ animated: false });
-          setTimeout(drainQueue, typingDelayMs);
+          setTimeout(drainQueue, reqDelayMs);
         };
 
         // eslint-disable-next-line no-constant-condition
@@ -896,7 +910,7 @@ function ChatScreenContent() {
             if (charQueue.length === 0 && !renderLoopRunning) {
               resolve();
             } else {
-              setTimeout(wait, typingDelayMs);
+              setTimeout(wait, reqDelayMs);
             }
           };
           wait();
@@ -934,7 +948,7 @@ function ChatScreenContent() {
         setIsStreaming(false);
       }
     },
-    [persistMessages, suggestFollowUpsMutation, typingDelayMs]
+    [persistMessages, suggestFollowUpsMutation, getTypingDelayMs]
   );
 
   // ── Send ────────────────────────────────────────────────────────────────────
