@@ -880,22 +880,41 @@ export default function ClassroomTabScreen() {
       {/* Active classroom */}
       {activeClassroom && !showCreate && !showJoin && (
         <>
-          {/* Tab bar */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={[styles.tabsScroll, { borderBottomColor: colors.border }]}>
-            {tabs.map((tab) => (
-              <TouchableOpacity
-                accessibilityLabel="Toggle active tab"
-                key={tab.key}
-                style={[styles.tab, activeTab === tab.key && { borderBottomColor: colors.primary, borderBottomWidth: 2.5 }]}
-                onPress={() => setActiveTab(tab.key)}
-                activeOpacity={0.7}
-              >
-                <Text style={[styles.tabLabel, { color: activeTab === tab.key ? colors.primary : colors.muted }]}>
-                  {tab.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+          {/* Tab bar — pill style */}
+          <View style={[styles.tabsContainer, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.tabsScrollContent}
+            >
+              {tabs.map((tab) => {
+                const isActive = activeTab === tab.key;
+                return (
+                  <TouchableOpacity
+                    accessibilityLabel={`${tab.label} tab`}
+                    accessibilityRole="tab"
+                    accessibilityState={{ selected: isActive }}
+                    key={tab.key}
+                    style={[
+                      styles.tabPill,
+                      isActive
+                        ? { backgroundColor: colors.primary }
+                        : { backgroundColor: colors.surface, borderColor: colors.border },
+                    ]}
+                    onPress={() => setActiveTab(tab.key)}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={[
+                      styles.tabPillLabel,
+                      { color: isActive ? "#FFFFFF" : colors.muted },
+                    ]}>
+                      {tab.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
 
           {/* Feed tab */}
           {activeTab === "feed" && (
@@ -1526,17 +1545,24 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   codePillText: { fontSize: 14, fontWeight: "800", letterSpacing: 2 },
-  tabsScroll: {
+  tabsContainer: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-    flexGrow: 0,
+    paddingVertical: 10,
   },
-  tab: {
-    paddingVertical: 12,
+  tabsScrollContent: {
     paddingHorizontal: 16,
-    borderBottomWidth: 2.5,
-    borderBottomColor: "transparent",
+    gap: 8,
+    flexDirection: "row",
+    alignItems: "center",
   },
-  tabLabel: { fontSize: 12, fontWeight: "600" },
+  tabPill: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "transparent",
+  },
+  tabPillLabel: { fontSize: 13, fontWeight: "700" },
   emptyContainer: {
     flex: 1,
     alignItems: "center",
