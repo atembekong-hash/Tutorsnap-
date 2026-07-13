@@ -1,11 +1,11 @@
 import "@/global.css";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Stack } from "expo-router";
+import { Stack , useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-reanimated";
-import { Platform } from "react-native";
+import { Platform , Alert } from "react-native";
 import "@/lib/_core/nativewind-pressable";
 import { ThemeProvider } from "@/lib/theme-provider";
 import {
@@ -24,14 +24,12 @@ import { FontSizeProvider } from "@/lib/font-size-provider";
 import { AppearanceProvider, type AppearanceSettings } from "@/lib/appearance-context";
 import { applyImportedAppearance } from "@/lib/appearance-deep-link";
 import * as Notifications from "expo-notifications";
-import { useRouter } from "expo-router";
 import * as Linking from "expo-linking";
 import { syncAllStreakNotifications } from "@/lib/streak-notifications";
 import { initRevenueCat, getSubscriptionStatus } from "@/lib/subscription";
 import { recordFirstLaunch } from "@/lib/review-prompt";
-import { recordReferral, getOrCreateReferralCode, scheduleWeeklyAffiliateDigest } from "@/lib/affiliate";
+import { getOrCreateReferralCode, scheduleWeeklyAffiliateDigest } from "@/lib/affiliate";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Alert } from "react-native";
 
 // Show notifications as banners when app is in foreground
 if (Platform.OS !== "web") {

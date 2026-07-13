@@ -9,21 +9,19 @@ import {
   ActivityIndicator,
   Platform,
 } from "react-native";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter, useLocalSearchParams , useFocusEffect } from "expo-router";
 import * as H from "@/lib/haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { trpc } from "@/lib/trpc";
-import type { PracticeQuestion, MathSubject, Difficulty } from "@/shared/types";
+import type { PracticeQuestion, Difficulty } from "@/shared/types";
 import { SubjectPicker } from "@/components/subject-picker";
-import { type SubjectId, getSubjectColor, getSubjectLabel } from "@/lib/subjects";
+import { type SubjectId, getSubjectColor, getSubjectLabel , type SubjectCategory } from "@/lib/subjects";
 import { loadQuizStats, getAdaptiveDifficultySuggestion, type QuizStats, type DifficultyUpSuggestion } from "@/lib/quiz-history";
-import { useFocusEffect } from "expo-router";
 import { useNetworkStatus } from "@/hooks/use-network-status";
 import { getSubjectDifficulty, setSubjectDifficulty } from "@/lib/subject-difficulty";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { type SubjectCategory } from "@/lib/subjects";
 import { GRADE_OPTIONS, GRADE_LABELS, loadGlobalGrade, saveGlobalGrade } from "@/lib/grade-levels";
 
 const QUIZ_COUNTS = [3, 5, 10];

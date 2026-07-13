@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Platform } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import * as H from "@/lib/haptics";
 import { useColors } from "@/hooks/use-colors";
 import { getShieldCount, earnShield } from "@/lib/progress";

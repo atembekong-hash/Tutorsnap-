@@ -41,7 +41,8 @@ type ShareablePayload = Partial<Record<(typeof SHAREABLE_KEYS)[number], unknown>
  */
 export async function encodeAppearanceForLink(): Promise<string> {
   const raw = await AsyncStorage.getItem(STORAGE_KEY);
-  const settings: Record<string, unknown> = raw ? JSON.parse(raw) : {};
+  let settings: Record<string, unknown> = {};
+  try { settings = raw ? JSON.parse(raw) : {}; } catch { /* ignore */ }
   const payload: ShareablePayload = {};
   for (const key of SHAREABLE_KEYS) {
     if (key in settings) {
@@ -59,12 +60,14 @@ export async function encodeAppearanceForLink(): Promise<string> {
  */
 export async function applyImportedAppearance(base64: string): Promise<void> {
   const json = decodeURIComponent(escape(atob(base64)));
-  const incoming = JSON.parse(json) as Record<string, unknown>;
+  let incoming: Record<string, unknown> = {};
+  try { incoming = JSON.parse(json) as Record<string, unknown>; } catch { return; }
   if (typeof incoming !== "object" || incoming === null) {
     throw new Error("Invalid appearance payload");
   }
   const raw = await AsyncStorage.getItem(STORAGE_KEY);
-  const current: Record<string, unknown> = raw ? JSON.parse(raw) : {};
+  let current: Record<string, unknown> = {};
+  try { current = raw ? JSON.parse(raw) : {}; } catch { /* ignore */ }
   for (const key of SHAREABLE_KEYS) {
     if (key in incoming) {
       current[key] = incoming[key];

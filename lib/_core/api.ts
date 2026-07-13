@@ -2,7 +2,7 @@ import { Platform } from "react-native";
 import { getApiBaseUrl } from "@/constants/oauth";
 import * as Auth from "./auth";
 
-type ApiResponse<T> = {
+type _ApiResponse<T> = {
   data?: T;
   error?: string;
 };

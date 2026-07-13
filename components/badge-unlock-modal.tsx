@@ -4,7 +4,7 @@
  * Shown the first time a user earns a new mastery badge tier.
  * Uses Reanimated for a scale-in pop + confetti particle burst.
  */
-import React, { useEffect, useRef } from "react";
+import React, { useEffect } from "react";
 import {
   View,
   Text,

@@ -20,7 +20,7 @@
  */
 
 import React, { useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, Platform, Linking } from 'react-native';
+import { View, Text, StyleSheet, Linking } from 'react-native';
 import { EnrichedMarkdownText } from 'react-native-enriched-markdown';
 import type { MarkdownStyle } from 'react-native-enriched-markdown';
 import { processAIResponse } from '@/lib/ai-response-pipeline';

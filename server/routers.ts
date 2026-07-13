@@ -337,7 +337,8 @@ Respond ONLY with valid JSON in this exact format:
       const rawContent = result.choices[0]?.message?.content ?? "";
       const text = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
       const jsonStr = extractJsonFromContent(text);
-      const parsed = JSON.parse(jsonStr);
+      let parsed: any;
+      try { parsed = JSON.parse(jsonStr); } catch { throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid JSON in AI response" }); }
       return parsed.questions ?? [];
     }),
 

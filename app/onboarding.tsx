@@ -82,8 +82,8 @@ export default function OnboardingScreen() {
   const [userName, setUserName] = useState("");
 
   const isLastSlide = currentSlide === SLIDES.length - 1;
-  const isTrialSlide = SLIDES[currentSlide]?.id === "trial";
-  const isSubjectsSlide = SLIDES[currentSlide]?.id === "subjects";
+  const _isTrialSlide = SLIDES[currentSlide]?.id === "trial";
+  const _isSubjectsSlide = SLIDES[currentSlide]?.id === "subjects";
 
   const goNext = () => {
     H.impactLight()

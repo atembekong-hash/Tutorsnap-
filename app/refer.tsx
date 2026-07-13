@@ -32,7 +32,7 @@ import { useRouter, useFocusEffect } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
-import { APP_URL, APP_NAME } from "@/constants/app";
+import { APP_URL } from "@/constants/app";
 import {
   getOrCreateReferralCode,
   getAffiliateStats,

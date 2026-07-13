@@ -48,7 +48,7 @@ type ThemeContextValue = {
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const systemScheme = (useSystemColorScheme() ?? "dark") as ColorScheme;
+  const _systemScheme = (useSystemColorScheme() ?? "dark") as ColorScheme;
 
   // On web: read localStorage synchronously so first render is correct.
   // On native: start with dark mode; AsyncStorage load will correct it if user changed it.

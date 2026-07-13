@@ -25,6 +25,9 @@ import * as H from "@/lib/haptics";
 import { useRouter } from "expo-router";
 import { useColors } from "@/hooks/use-colors";
 
+// Need useRef — import it at the top of the module
+import { useRef } from "react";
+
 interface StreakProtectionBannerProps {
   /** Current streak length. Banner only shows when > 0. */
   currentStreak: number;
@@ -149,9 +152,6 @@ export function StreakProtectionBanner({
     </Animated.View>
   );
 }
-
-// Need useRef — import it at the top of the module
-import { useRef } from "react";
 
 const styles = StyleSheet.create({
   banner: {

@@ -8,7 +8,7 @@ import * as Haptics from "expo-haptics";
 
 const isNative = Platform.OS !== "web";
 
-/* eslint-disable @typescript-eslint/no-floating-promises */
+ 
 
 export function impactLight(): void {
   if (isNative) void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);

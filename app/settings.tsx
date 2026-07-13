@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect , useRef } from "react";
 import {
   View,
   Text,
@@ -12,7 +12,6 @@ import {
   TextInput,
   type ScrollView as ScrollViewType,
 } from "react-native";
-import { useRef } from "react";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import Constants from "expo-constants";
 import * as H from "@/lib/haptics";
@@ -37,7 +36,7 @@ import {
   type BackupReminderSettings,
 } from "@/lib/notifications";
 import { SUBJECT_CATEGORIES, type SubjectCategory } from "@/lib/subjects";
-import { useFontSize, FONT_SIZE_SCALES, SCALE_LABELS, type FontSizeScale } from "@/lib/font-size-provider";
+import { useFontSize, type FontSizeScale } from "@/lib/font-size-provider";
 import { SUPPORT_EMAIL, PRIVACY_URL, TERMS_URL } from "@/constants/app";
 import { GRADE_OPTIONS, GRADE_LABELS, loadGlobalGrade, saveGlobalGrade } from "@/lib/grade-levels";
 import * as FileSystem from "expo-file-system/legacy";
@@ -442,6 +441,9 @@ export default function SettingsScreen() {
                 "global_grade_level",
                 // Consent
                 "@tutorsnap/consent",
+                // Data export log
+                "@tutorsnap/dataOpLog",
+                "@tutorsnap/lastExportedAt",
                 // Misc
                 "@tutorsnap/firstLaunchDate",
                 "@tutorsnap/lastReviewPromptDate",
@@ -904,8 +906,10 @@ export default function SettingsScreen() {
       const pdfNow = new Date().toISOString();
       await AsyncStorage.setItem("@tutorsnap/lastExportedAt", pdfNow);
       setLastExportedAt(pdfNow);
+      let prevPdfLog: any[] = [];
+      try { prevPdfLog = JSON.parse((await AsyncStorage.getItem("@tutorsnap/dataOpLog")) ?? "[]"); } catch { /* ignore */ }
       const newPdfLog = [
-        ...(JSON.parse((await AsyncStorage.getItem("@tutorsnap/dataOpLog")) ?? "[]")).slice(-2),
+        ...prevPdfLog.slice(-2),
         { type: "export_pdf", date: pdfNow, items: totalSolvedCount },
       ];
       await AsyncStorage.setItem("@tutorsnap/dataOpLog", JSON.stringify(newPdfLog));

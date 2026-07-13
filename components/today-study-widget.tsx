@@ -1,11 +1,10 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter , useFocusEffect } from "expo-router";
 import { useColors } from "@/hooks/use-colors";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { loadStudySlots, formatTime, type StudySlot } from "@/lib/study-planner";
 import { getSubjectDef } from "@/lib/subjects";
-import { useFocusEffect } from "expo-router";
 
 /**
  * Compact card shown on the home screen displaying today's scheduled study sessions.

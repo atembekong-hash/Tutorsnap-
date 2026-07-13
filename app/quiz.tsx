@@ -1,6 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
-import { Share, Modal } from "react-native";
-import {
+import { Share, Modal ,
   View,
   Text,
   TouchableOpacity,

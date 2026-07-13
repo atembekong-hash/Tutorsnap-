@@ -18,7 +18,7 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { getBookmarks, removeBookmark } from "@/lib/bookmarks";
 import type { HistoryItem } from "@/shared/types";
-import { getSubjectColor, getSubjectLabel, getSubjectEmoji, ALL_SUBJECTS } from "@/lib/subjects";
+import { getSubjectColor, getSubjectLabel, getSubjectEmoji } from "@/lib/subjects";
 import { GRADE_LABELS } from "@/lib/grade-levels";
 
 // Sort options

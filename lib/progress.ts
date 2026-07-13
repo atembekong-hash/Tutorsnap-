@@ -36,7 +36,7 @@ function getYesterdayString(): string {
   return d.toISOString().split("T")[0];
 }
 
-function getDayString(daysAgo: number): string {
+function _getDayString(daysAgo: number): string {
   const d = new Date();
   d.setDate(d.getDate() - daysAgo);
   return d.toISOString().split("T")[0];
@@ -48,7 +48,7 @@ export async function getProgress(): Promise<ProgressData> {
     if (stored) {
       return JSON.parse(stored) as ProgressData;
     }
-  } catch (e) {
+  } catch (_) {
     // ignore
   }
   return getDefaultProgress();

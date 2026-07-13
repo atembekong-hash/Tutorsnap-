@@ -9,7 +9,7 @@ export async function getBookmarks(): Promise<HistoryItem[]> {
     if (stored) {
       return JSON.parse(stored) as HistoryItem[];
     }
-  } catch (e) {
+  } catch (_) {
     // ignore
   }
   return [];

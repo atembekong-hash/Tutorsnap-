@@ -223,7 +223,7 @@ export default function LeaderboardScreen() {
             <Text style={[styles.myRankEmoji]}>{rankMedal(userEntry.rank)}</Text>
             <View style={styles.myRankText}>
               <Text style={[styles.myRankTitle, { color: colors.foreground }]}>
-                You're ranked #{userEntry.rank} this week
+                You2019re ranked #{userEntry.rank} this week
               </Text>
               <Text style={[styles.myRankSub, { color: colors.muted }]}>
                 {userEntry.solvedThisWeek} problems solved · {userEntry.streak}-day streak

@@ -20,13 +20,13 @@ import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { toggleBookmark, isBookmarked } from "@/lib/bookmarks";
-import type { MathSolution, SolutionStep, HistoryItem, MathSubject, WorkedExample } from "@/shared/types";
+import type { MathSolution, SolutionStep, HistoryItem, MathSubject } from "@/shared/types";
 import { getSubjectColor, getSubjectLabel } from "@/lib/subjects";
 import { useFontSize } from "@/lib/font-size-provider";
 import { trpc } from "@/lib/trpc";
 import { getMyClassroom, getJoinedClassroom, shareToClassroom } from "@/lib/classroom";
 import { createSession, renameSession } from "@/lib/chat-sessions";
-import { APP_URL, APP_NAME, buildSolveUrl } from "@/constants/app";
+import { APP_URL } from "@/constants/app";
 import { loadGlobalGrade, GRADE_LABELS } from "@/lib/grade-levels";
 
 function StepCard({ step, colors, fs }: { step: SolutionStep; colors: any; fs: (n: number) => number }) {
@@ -153,6 +153,14 @@ export default function SolutionScreen() {
   const [expandedHint, setExpandedHint] = useState<string | null>(null);
   const [copiedProblemId, setCopiedProblemId] = useState<string | null>(null);
   const copiedProblemIdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Cleanup all feedback timers on unmount
+  useEffect(() => {
+    return () => {
+      if (copyFeedbackTimerRef.current) clearTimeout(copyFeedbackTimerRef.current);
+      if (copyLinkFeedbackTimerRef.current) clearTimeout(copyLinkFeedbackTimerRef.current);
+      if (copiedProblemIdTimerRef.current) clearTimeout(copiedProblemIdTimerRef.current);
+    };
+  }, []);
   const generateSimilarMutation = trpc.math.generateSimilar.useMutation();
   const [discussLoading, setDiscussLoading] = useState(false);
   const [explainDiffLoading, setExplainDiffLoading] = useState(false);
@@ -356,7 +364,7 @@ export default function SolutionScreen() {
         dialogTitle: "Share Solution",
         UTI: "com.adobe.pdf",
       });
-    } catch (e) {
+    } catch (_) {
       // User cancelled or error — ignore
     } finally {
       setShareLoading(false);
@@ -452,7 +460,7 @@ export default function SolutionScreen() {
       setCopyFeedback(true);
       if (copyFeedbackTimerRef.current) clearTimeout(copyFeedbackTimerRef.current);
       copyFeedbackTimerRef.current = setTimeout(() => setCopyFeedback(false), 1500);
-    } catch (e) {
+    } catch (_) {
       // ignore
     }
   };

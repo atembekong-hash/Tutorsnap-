@@ -114,7 +114,7 @@ export function buildShareText(
 export function rankEntries(
   me: { name: string; streak: number; totalSolved: number },
   friends: FriendEntry[]
-): Array<{
+): {
   rank: number;
   name: string;
   streak: number;
@@ -122,7 +122,7 @@ export function rankEntries(
   avatar: string;
   isMe: boolean;
   id: string;
-}> {
+}[] {
   const all = [
     { name: me.name, streak: me.streak, totalSolved: me.totalSolved, avatar: "🧑‍🎓", isMe: true, id: "me" },
     ...friends.map((f) => ({ ...f, isMe: false })),

@@ -89,7 +89,7 @@ export default function ProgressScreen() {
   useFocusEffect(
     useCallback(() => {
       loadProgress();
-    }, [])  // eslint-disable-line react-hooks/exhaustive-deps
+    }, [])   
   );
 
   const handleSetGoal = async (goal: number) => {

@@ -106,7 +106,7 @@ const SAVED_NOTES_KEY = "tutor_saved_notes";
 async function saveNote(content: string): Promise<void> {
   try {
     const raw = await AsyncStorage.getItem(SAVED_NOTES_KEY);
-    const notes: Array<{ id: string; content: string; savedAt: number }> = raw
+    const notes: { id: string; content: string; savedAt: number }[] = raw
       ? JSON.parse(raw)
       : [];
     notes.unshift({ id: `note-${Date.now()}`, content, savedAt: Date.now() });
@@ -126,7 +126,7 @@ const GENERIC_PROMPTS = [
   { label: "Supply & demand", text: "What is supply and demand?" },
 ];
 
-const SUBJECT_PROMPTS: Partial<Record<string, Array<{ label: string; text: string }>>> = {
+const SUBJECT_PROMPTS: Partial<Record<string, { label: string; text: string }[]>> = {
   algebra:        [{ label: "Solve a quadratic", text: "Solve: 2x² + 5x - 3 = 0" }, { label: "Factor a polynomial", text: "Factor x² - 5x + 6" }, { label: "Systems of equations", text: "Solve the system: 2x + y = 7, x - y = 2" }, { label: "Inequalities", text: "Solve and graph: 3x - 4 > 8" }, { label: "Exponent rules", text: "Explain the rules of exponents with examples" }, { label: "Slope-intercept form", text: "Explain slope-intercept form y = mx + b" }],
   calculus:       [{ label: "Differentiate f(x)", text: "Find the derivative of f(x) = x³ + 2x²" }, { label: "Integrate f(x)", text: "Evaluate ∫(3x² + 2x) dx" }, { label: "Chain rule", text: "Explain the chain rule with an example" }, { label: "Limits", text: "Find the limit as x→2 of (x²-4)/(x-2)" }, { label: "Related rates", text: "Explain related rates problems" }, { label: "Fundamental theorem", text: "Explain the fundamental theorem of calculus" }],
   geometry:       [{ label: "Triangle area", text: "Find the area of a triangle with base 8 and height 5" }, { label: "Pythagorean theorem", text: "Explain the Pythagorean theorem with examples" }, { label: "Circle formulas", text: "What are the area and circumference formulas for a circle?" }, { label: "Similar triangles", text: "Explain similar triangles and how to use them" }, { label: "Volume formulas", text: "What are the volume formulas for common 3D shapes?" }, { label: "Proof techniques", text: "How do I write a geometric proof?" }],

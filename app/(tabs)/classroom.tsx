@@ -63,7 +63,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ProblemCommentSheet } from "@/components/problem-comment-sheet";
 import { getCommentCount } from "@/lib/problem-comments";
 import { toggleBookmark, isBookmarked } from "@/lib/bookmarks";
-import { APP_URL, APP_NAME } from "@/constants/app";
+import { APP_URL } from "@/constants/app";
 
 const HW_DONE_KEY = "@tutorsnap/hw_done";
 
@@ -111,7 +111,7 @@ export default function ClassroomTabScreen() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [notifPrefs, setNotifPrefs] = useState<ClassroomNotifPrefs>({ enabled: true, newProblem: true, newHomework: true });
   const [activeTab, setActiveTab] = useState<Tab>("feed");
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
 
   const [showCreate, setShowCreate] = useState(false);
   const [classroomName, setClassroomName] = useState("");
@@ -167,7 +167,8 @@ export default function ClassroomTabScreen() {
     AsyncStorage.getItem(HW_DONE_KEY)
       .then((raw) => {
         if (raw) {
-          const ids: string[] = JSON.parse(raw);
+          let ids: string[] = [];
+          try { ids = JSON.parse(raw); } catch { /* corrupted data */ }
           setCompletedHomework(new Set(ids));
         }
       })

@@ -1,6 +1,5 @@
-import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { Modal } from "react-native";
-import {
+import React, { useState, useRef, useCallback } from "react";
+import { Modal ,
   View,
   Text,
   TextInput,
@@ -453,12 +452,12 @@ function SolveScreenContent() {
   const [weeklyData, setWeeklyData] = useState<WeeklyData | null>(null);
   const [almostBadge, setAlmostBadge] = useState<{ subject: string; subjectLabel: string; remaining: number; nextTier: "bronze" | "silver" | "gold" } | null>(null);
   const [bannerDismissed, setBannerDismissed] = useState(false);
-  const [shieldCount, setShieldCount] = useState(0);
+  const [_shieldCount, setShieldCount] = useState(0);
   const [shieldUsedToast, setShieldUsedToast] = useState(false);
   const [pendingBadge, setPendingBadge] = useState<{ tier: BadgeTier; subjectLabel: string } | null>(null);
   const [dueSoonHomework, setDueSoonHomework] = useState<ClassroomProblem | null>(null);
   const [homeworkBannerDismissed, setHomeworkBannerDismissed] = useState(false);
-  const [pendingNotifCount, setPendingNotifCount] = useState(0);
+  const [_pendingNotifCount, setPendingNotifCount] = useState(0);
   const [showPaywallModal, setShowPaywallModal] = useState(false);
   const { isPremium, usage, checkLimit, incrementUsage: incUsage, isDevMode } = usePremium();
   const inputRef = useRef<TextInput>(null);
@@ -557,7 +556,7 @@ function SolveScreenContent() {
         const history: HistoryItem[] = existing ? JSON.parse(existing) : [];
         history.unshift(historyItem);
         await AsyncStorage.setItem("math_history", JSON.stringify(history.slice(0, 100)));
-      } catch (e) {
+      } catch (_) {
         // ignore
       }
       // Record solve in progress

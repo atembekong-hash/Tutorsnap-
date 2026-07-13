@@ -52,7 +52,7 @@ function HistoryScreenContent() {
       }
       const bm = await getBookmarks();
       setBookmarkedIds(new Set(bm.map((b) => b.problem)));
-    } catch (e) {
+    } catch (_) {
       // ignore
     }
   };

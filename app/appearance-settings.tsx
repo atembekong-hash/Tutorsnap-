@@ -352,7 +352,7 @@ export default function AppearanceSettingsScreen() {
   const handleExportSettings = useCallback(async () => {
     impactMedium();
     try {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+       
       const { customPreset: _cp, ...exportable } = settings;
       const json = JSON.stringify(exportable, null, 2);
       const canShare = await Sharing.isAvailableAsync();
@@ -380,10 +380,10 @@ export default function AppearanceSettingsScreen() {
     try {
       const parsed = JSON.parse(text) as Record<string, unknown>;
       if (typeof parsed !== "object" || parsed === null) throw new Error("Not an object");
-      const keys = Object.keys(parsed) as Array<keyof typeof settings>;
+      const keys = Object.keys(parsed) as (keyof typeof settings)[];
       keys.forEach((k) => {
         if (k in settings && k !== "customPreset") {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+           
           updateSetting(k, (parsed as any)[k]);
         }
       });

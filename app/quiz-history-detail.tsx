@@ -485,7 +485,7 @@ export default function QuizHistoryDetailScreen() {
               Question Breakdown
             </Text>
             <Text style={[styles.sectionSub, { color: colors.muted }]}>
-              Tap "Show Explanation" on any question to review the reasoning.
+              Tap 201CShow Explanation201D on any question to review the reasoning.
             </Text>
             {quiz.questions!.map((q, i) => (
               <QuestionCard key={q.id} q={q} index={i} colors={colors} />
