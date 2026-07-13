@@ -798,26 +798,26 @@ function ChatScreenContent() {
         let buffer = "";
         let accumulated = "";
 
-        // Token queue for smooth rendering — tokens arrive faster than we display them
-        const tokenQueue: string[] = [];
+        // Character queue — split every token into individual characters for a
+        // true letter-by-letter typewriter effect at ~30ms per character
+        const charQueue: string[] = [];
         let renderLoopRunning = false;
 
-        // Render loop: drains the queue at a natural reading pace (~50ms per token)
         const drainQueue = () => {
-          if (tokenQueue.length === 0) {
+          if (charQueue.length === 0) {
             renderLoopRunning = false;
             return;
           }
           renderLoopRunning = true;
-          // Drain 1 token at a time for a slow, readable typewriter effect
-          const batch = tokenQueue.splice(0, 1).join("");
-          accumulated += batch;
+          // One character at a time, 30ms between each
+          const ch = charQueue.shift()!;
+          accumulated += ch;
           const snap = accumulated;
           setMessages((prev) =>
             prev.map((m) => (m.id === msgId ? { ...m, content: snap } : m))
           );
           flatListRef.current?.scrollToEnd({ animated: false });
-          setTimeout(drainQueue, 50);
+          setTimeout(drainQueue, 30);
         };
 
         // eslint-disable-next-line no-constant-condition
@@ -836,7 +836,10 @@ function ChatScreenContent() {
             try {
               const parsed = JSON.parse(raw) as { token?: string };
               if (parsed.token) {
-                tokenQueue.push(parsed.token);
+                // Split token into individual characters for letter-by-letter effect
+                for (const ch of parsed.token) {
+                  charQueue.push(ch);
+                }
                 if (!renderLoopRunning) drainQueue();
               }
             } catch {
@@ -845,10 +848,10 @@ function ChatScreenContent() {
           }
         }
 
-        // Wait for the render queue to fully drain before finalizing
+        // Wait for the character queue to fully drain before finalizing
         await new Promise<void>((resolve) => {
           const wait = () => {
-            if (tokenQueue.length === 0 && !renderLoopRunning) {
+            if (charQueue.length === 0 && !renderLoopRunning) {
               resolve();
             } else {
               setTimeout(wait, 30);
