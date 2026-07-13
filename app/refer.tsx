@@ -291,6 +291,27 @@ export default function ReferScreen() {
 
   const classroomMessage = `Hi! I'm using TutorSnap to manage my classroom 🏫\n\nJoin with my teacher link and we both get 14 bonus days:\n${APP_URL}/classroom?ref=${code}`;
 
+  const handleNativeShare = useCallback(async () => {
+    H.impactMedium();
+    try {
+      if (Platform.OS === "web") {
+        await Clipboard.setStringAsync(shareMessage);
+        showToast("Invite link copied to clipboard!");
+      } else {
+        await Share.share(
+          {
+            message: shareMessage,
+            url: APP_URL,
+            title: "Join TutorSnap — get 7 free days!",
+          },
+          { dialogTitle: "Share your TutorSnap invite" }
+        );
+      }
+    } catch (_) {
+      // user cancelled — no-op
+    }
+  }, [shareMessage]);
+
   const handleCopyCode = useCallback(async () => {
     H.impactLight()
     await Clipboard.setStringAsync(code);
@@ -475,23 +496,36 @@ export default function ReferScreen() {
           <Text style={[styles.codeLabel, { color: colors.muted }]}>Your invite code</Text>
           <View style={styles.codeRow}>
             <Text style={[styles.codeText, { color: colors.primary }]}>{code || "Loading…"}</Text>
-            <TouchableOpacity
-              onPress={handleCopyCode}
-              style={[styles.copyBtn, {
-                backgroundColor: copied ? `${colors.success}18` : `${colors.primary}18`,
-                borderColor: copied ? colors.success : colors.primary,
-              }]}
-              accessibilityLabel={copied ? "Code copied" : "Copy invite code"}
-            >
-              <IconSymbol size={15} name={copied ? "checkmark.circle.fill" : "square.and.arrow.up.fill"} color={copied ? colors.success : colors.primary} />
-              <Text style={[styles.copyBtnText, { color: copied ? colors.success : colors.primary }]}>
-                {copied ? "Copied!" : "Copy"}
-              </Text>
-            </TouchableOpacity>
+            <View style={styles.codeActions}>
+              <TouchableOpacity
+                onPress={handleCopyCode}
+                style={[styles.copyBtn, {
+                  backgroundColor: copied ? `${colors.success}18` : `${colors.primary}18`,
+                  borderColor: copied ? colors.success : colors.primary,
+                }]}
+                accessibilityLabel={copied ? "Code copied" : "Copy invite code"}
+              >
+                <IconSymbol size={15} name={copied ? "checkmark.circle.fill" : "doc.on.doc.fill"} color={copied ? colors.success : colors.primary} />
+                <Text style={[styles.copyBtnText, { color: copied ? colors.success : colors.primary }]}>
+                  {copied ? "Copied!" : "Copy"}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
           <Text style={[styles.codeSubtext, { color: colors.muted }]}>
             Share this code with friends, students, and teachers
           </Text>
+          {/* Native share CTA */}
+          <TouchableOpacity
+            onPress={handleNativeShare}
+            style={[styles.shareCtaBtn, { backgroundColor: colors.primary }]}
+            activeOpacity={0.85}
+            accessibilityLabel="Share your invite link"
+            accessibilityRole="button"
+          >
+            <IconSymbol size={18} name="square.and.arrow.up.fill" color="#fff" />
+            <Text style={styles.shareCtaBtnText}>Share Your Invite Link</Text>
+          </TouchableOpacity>
         </View>
 
         {/* ── Earning Options ── */}
@@ -663,6 +697,12 @@ const styles = StyleSheet.create({
   },
   copyBtnText: { fontSize: 13, fontWeight: "700" },
   codeSubtext: { fontSize: 12, lineHeight: 17 },
+  codeActions: { flexDirection: "row", alignItems: "center", gap: 8 },
+  shareCtaBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+    paddingVertical: 13, borderRadius: 14, marginTop: 4,
+  },
+  shareCtaBtnText: { color: "#FFFFFF", fontSize: 15, fontWeight: "700" },
 
   // Earning options
   sectionTitle: { fontSize: 16, fontWeight: "700", marginBottom: 4 },
