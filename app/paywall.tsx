@@ -454,14 +454,16 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
 
     // Dev mode
     devNotice: {
-      backgroundColor: "#FFF3CD",
+      backgroundColor: `${colors.warning}20`,
       borderRadius: 10,
       padding: 12,
       marginBottom: 16,
+      borderWidth: 1,
+      borderColor: `${colors.warning}50`,
     },
     devNoticeText: {
       fontSize: 12,
-      color: "#856404",
+      color: colors.warning,
       textAlign: "center",
     },
 

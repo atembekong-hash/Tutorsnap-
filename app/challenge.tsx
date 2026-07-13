@@ -23,6 +23,7 @@ import * as H from "@/lib/haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import { getSubjectColor, getSubjectLabel, getSubjectEmoji } from "@/lib/subjects";
 import { recordChallengeResult, getClassroomDisplayName } from "@/lib/classroom";
 import { saveChallengeAttempt } from "@/lib/challenge-history";
@@ -35,6 +36,7 @@ type Duration = (typeof CHALLENGE_DURATIONS)[number];
 
 export default function ChallengeScreen() {
   const colors = useColors();
+  const colorScheme = useColorScheme() ?? "light";
   const router = useRouter();
   const params = useLocalSearchParams<{
     problem: string;
@@ -60,7 +62,7 @@ export default function ChallengeScreen() {
   const startTimeRef = useRef<number>(0);
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
-  const subjectColor = getSubjectColor(subject);
+  const subjectColor = getSubjectColor(subject, colorScheme);
   const subjectLabel = getSubjectLabel(subject);
   const subjectEmoji = getSubjectEmoji(subject);
 

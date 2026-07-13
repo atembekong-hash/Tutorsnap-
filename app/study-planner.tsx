@@ -18,6 +18,7 @@ import * as H from "@/lib/haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import {
   loadStudySlots,
   upsertStudySlot,
@@ -41,6 +42,7 @@ const SUBJECT_OPTIONS = ALL_SUBJECTS.slice(0, 20); // top 20 subjects for picker
 
 export default function StudyPlannerScreen() {
   const colors = useColors();
+  const colorScheme = useColorScheme() ?? "light";
   const router = useRouter();
   const [slots, setSlots] = useState<StudySlot[]>([]);
   const [selectedDay, setSelectedDay] = useState<Weekday>(
@@ -263,7 +265,7 @@ export default function StudyPlannerScreen() {
         ) : (
           <View style={styles.slotsList}>
             {slotsForDay.map((slot) => {
-              const subjectColor = getSubjectColor(slot.subject);
+              const subjectColor = getSubjectColor(slot.subject, colorScheme);
               return (
                 <TouchableOpacity
                   key={slot.id}
@@ -339,11 +341,11 @@ export default function StudyPlannerScreen() {
             <TouchableOpacity
               accessibilityLabel="Toggle show subject picker"
               onPress={() => setShowSubjectPicker(true)}
-              style={[styles.subjectTrigger, { backgroundColor: colors.surface, borderColor: getSubjectColor(formSubject) }]}
+              style={[styles.subjectTrigger, { backgroundColor: colors.surface, borderColor: getSubjectColor(formSubject, colorScheme) }]}
               activeOpacity={0.75}
             >
-              <View style={[styles.subjectDot, { backgroundColor: getSubjectColor(formSubject) }]} />
-              <Text style={[styles.subjectTriggerText, { color: getSubjectColor(formSubject) }]}>
+              <View style={[styles.subjectDot, { backgroundColor: getSubjectColor(formSubject, colorScheme) }]} />
+              <Text style={[styles.subjectTriggerText, { color: getSubjectColor(formSubject, colorScheme) }]}>
                 {getSubjectLabel(formSubject)}
               </Text>
               <Text style={{ color: colors.muted }}>{"▾"}</Text>

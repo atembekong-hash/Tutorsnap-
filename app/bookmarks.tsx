@@ -16,6 +16,7 @@ import * as H from "@/lib/haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import { getBookmarks, removeBookmark } from "@/lib/bookmarks";
 import type { HistoryItem } from "@/shared/types";
 import { getSubjectColor, getSubjectLabel, getSubjectEmoji } from "@/lib/subjects";
@@ -32,6 +33,7 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
 
 export default function BookmarksScreen() {
   const colors = useColors();
+  const colorScheme = useColorScheme() ?? "light";
   const router = useRouter();
   const [bookmarks, setBookmarks] = useState<HistoryItem[]>([]);
   const [search, setSearch] = useState("");
@@ -149,7 +151,7 @@ export default function BookmarksScreen() {
   );
 
   const renderItem = ({ item }: { item: HistoryItem }) => {
-    const subjectColor = getSubjectColor(item.subject);
+    const subjectColor = getSubjectColor(item.subject, colorScheme);
     const subjectLabel = getSubjectLabel(item.subject);
     const subjectEmoji = getSubjectEmoji(item.subject);
     const date = item.solvedAt
@@ -309,7 +311,7 @@ export default function BookmarksScreen() {
                 </Text>
               </TouchableOpacity>
               {presentSubjects.map((subj) => {
-                const color = getSubjectColor(subj);
+                const color = getSubjectColor(subj, colorScheme);
                 const label = getSubjectLabel(subj);
                 const emoji = getSubjectEmoji(subj);
                 const isActive = activeSubject === subj;

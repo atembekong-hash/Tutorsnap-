@@ -15,6 +15,7 @@ import * as H from "@/lib/haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { toggleBookmark, getBookmarks } from "@/lib/bookmarks";
 import type { HistoryItem, MathSubject } from "@/shared/types";
@@ -37,6 +38,7 @@ function formatTime(timestamp: number): string {
 
 function HistoryScreenContent() {
   const colors = useColors();
+  const colorScheme = useColorScheme() ?? "light";
   const router = useRouter();
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
@@ -136,7 +138,7 @@ function HistoryScreenContent() {
   );
 
   const renderItem = ({ item }: { item: HistoryItem }) => {
-    const subjectColor = getSubjectColor(item.subject);
+    const subjectColor = getSubjectColor(item.subject, colorScheme);
     const subjectLabel = getSubjectLabel(item.subject);
 
     return (
@@ -315,7 +317,7 @@ function HistoryScreenContent() {
               </TouchableOpacity>
               {uniqueSubjects.map((subject) => {
                 const isSelected = filterSubject === subject;
-                const color = getSubjectColor(subject);
+                const color = getSubjectColor(subject, colorScheme);
                 return (
                   <TouchableOpacity
                     accessibilityLabel="Toggle filter subject"
