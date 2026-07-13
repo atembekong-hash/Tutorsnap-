@@ -113,6 +113,22 @@ const config: ExpoConfig = {
   },
   plugins: [
     "expo-router",
+    ["react-native-enriched-markdown", { enableMath: true }],
+    "expo-font",
+    "expo-secure-store",
+    "expo-system-ui",
+    "expo-web-browser",
+    "expo-file-system",
+    "expo-document-picker",
+    "expo-mail-composer",
+    [
+      "expo-notifications",
+      {
+        "icon": "./assets/images/icon.png",
+        "color": "#0a7ea4",
+        "sounds": []
+      }
+    ],
     [
       "expo-image-picker",
       {
