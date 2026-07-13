@@ -25,7 +25,6 @@ import {
 } from "react-native";
 import * as H from "@/lib/haptics";
 import { useColors } from "@/hooks/use-colors";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import {
   ALL_SUBJECTS,
   SUBJECT_CATEGORIES,
@@ -52,7 +51,6 @@ export function SubjectPicker({
   preferredCategories = [],
 }: SubjectPickerProps) {
   const colors = useColors();
-  const colorScheme = useColorScheme() ?? "light";
   const [open, setOpen] = useState(false);
 
   // Default to first preferred category if set, otherwise "math"
@@ -74,9 +72,7 @@ export function SubjectPicker({
   );
 
   const buttonLabel = selectedDef ? `${selectedDef.emoji}  ${selectedDef.label}` : "📚  All Subjects";
-  const buttonColor = selectedDef
-    ? (colorScheme === "dark" && selectedDef.darkColor ? selectedDef.darkColor : selectedDef.color)
-    : colors.primary;
+  const buttonColor = selectedDef ? selectedDef.color : colors.primary;
 
   return (
     <>
@@ -249,7 +245,6 @@ export function SubjectPicker({
                 selected={value === item.id}
                 onSelect={handleSelect}
                 colors={colors}
-                colorScheme={colorScheme}
               />
             )}
           />
@@ -264,22 +259,19 @@ function SubjectCell({
   selected,
   onSelect,
   colors,
-  colorScheme,
 }: {
   item: SubjectDef;
   selected: boolean;
   onSelect: (id: SubjectId) => void;
   colors: ReturnType<typeof useColors>;
-  colorScheme: "light" | "dark";
 }) {
-  const c = colorScheme === "dark" && item.darkColor ? item.darkColor : item.color;
   return (
     <TouchableOpacity
       style={[
         styles.cell,
         {
-          backgroundColor: selected ? c + "22" : colors.surface,
-          borderColor: selected ? c : colors.border,
+          backgroundColor: selected ? item.color + "22" : colors.surface,
+          borderColor: selected ? item.color : colors.border,
         },
       ]}
       onPress={() => onSelect(item.id)}
@@ -289,14 +281,14 @@ function SubjectCell({
       <Text
         style={[
           styles.cellLabel,
-          { color: selected ? c : colors.foreground },
+          { color: selected ? item.color : colors.foreground },
         ]}
         numberOfLines={2}
       >
         {item.label}
       </Text>
       {selected && (
-        <Text style={[styles.cellCheck, { color: c }]}>{"✓"}</Text>
+        <Text style={[styles.cellCheck, { color: item.color }]}>{"✓"}</Text>
       )}
     </TouchableOpacity>
   );

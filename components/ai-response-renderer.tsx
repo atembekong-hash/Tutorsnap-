@@ -353,7 +353,7 @@ export class AIResponseErrorBoundary extends React.Component<
 
   render() {
     if (this.state.hasError) {
-      const { fallbackText = '', fontSize = 15, color = '#888888' } = this.props;
+      const { fallbackText = '', fontSize = 15, color = '#11181C' } = this.props;
       return (
         <FallbackRenderer text={fallbackText} fontSize={fontSize} color={color} />
       );

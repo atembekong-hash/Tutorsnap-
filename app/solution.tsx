@@ -19,7 +19,6 @@ import * as Sharing from "expo-sharing";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import { toggleBookmark, isBookmarked } from "@/lib/bookmarks";
 import type { MathSolution, SolutionStep, HistoryItem, MathSubject } from "@/shared/types";
 import { getSubjectColor, getSubjectLabel } from "@/lib/subjects";
@@ -139,7 +138,6 @@ function WorkedExampleCopyButton({
 
 export default function SolutionScreen() {
   const colors = useColors();
-  const colorScheme = useColorScheme() ?? "light";
   const { fs } = useFontSize();
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -294,7 +292,7 @@ export default function SolutionScreen() {
     );
   }
 
-  const subjectColor = getSubjectColor(solution.subject, colorScheme);
+  const subjectColor = getSubjectColor(solution.subject);
   const subjectLabel = getSubjectLabel(solution.subject);
 
   const buildShareHtml = () => {

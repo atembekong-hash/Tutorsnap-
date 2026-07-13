@@ -14,7 +14,6 @@ import * as H from "@/lib/haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import { trpc } from "@/lib/trpc";
 import type { PracticeQuestion, Difficulty } from "@/shared/types";
 import { SubjectPicker } from "@/components/subject-picker";
@@ -68,7 +67,6 @@ function getDifficulties(gradeLevel: string | null): { id: Difficulty; label: st
 
 function PracticeScreenContent() {
   const colors = useColors();
-  const colorScheme = useColorScheme() ?? "light";
   const router = useRouter();
   const params = useLocalSearchParams<{ subject?: string }>();
   const [selectedSubject, setSelectedSubject] = useState<SubjectId>("algebra");
@@ -411,8 +409,8 @@ function PracticeScreenContent() {
                     {currentQuestion.difficulty.toUpperCase()}
                   </Text>
                 </View>
-                <View style={[styles.subjectBadge, { backgroundColor: `${getSubjectColor(currentQuestion.subject, colorScheme)}20` }]}>
-                  <Text style={[styles.subjectBadgeText, { color: getSubjectColor(currentQuestion.subject, colorScheme) }]}>
+                <View style={[styles.subjectBadge, { backgroundColor: `${getSubjectColor(currentQuestion.subject)}20` }]}>
+                  <Text style={[styles.subjectBadgeText, { color: getSubjectColor(currentQuestion.subject) }]}>
                     {getSubjectLabel(currentQuestion.subject)}
                   </Text>
                 </View>

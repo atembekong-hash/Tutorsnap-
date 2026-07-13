@@ -30,7 +30,6 @@ import * as H from "@/lib/haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import {
   getMyClassroom,
   getJoinedClassroom,
@@ -104,7 +103,6 @@ function getDateOptions(): { label: string; iso: string }[] {
 
 export default function ClassroomTabScreen() {
   const colors = useColors();
-  const colorScheme = useColorScheme() ?? "light";
   const router = useRouter();
 
   const [myClassroom, setMyClassroom] = useState<ClassroomInfo | null>(null);
@@ -538,7 +536,7 @@ export default function ClassroomTabScreen() {
   const homeworkItems = useMemo(() => feed.filter((p) => p.isHomework), [feed]);
 
   const renderProblemCard = ({ item }: { item: ClassroomProblem }) => {
-    const subjectColor = getSubjectColor(item.subject, colorScheme);
+    const subjectColor = getSubjectColor(item.subject);
     const subjectLabel = getSubjectLabel(item.subject);
     const subjectEmoji = getSubjectEmoji(item.subject);
     const date = new Date(item.sharedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" });
@@ -953,7 +951,7 @@ export default function ClassroomTabScreen() {
                         <Text style={[styles.subjectChipText, { color: feedSubjectFilter === null ? "#FFFFFF" : colors.muted }]}>All</Text>
                       </TouchableOpacity>
                       {feedSubjects.map((subj) => {
-                        const subjectColor = getSubjectColor(subj as any, colorScheme);
+                        const subjectColor = getSubjectColor(subj as any);
                         const emoji = getSubjectEmoji(subj as any);
                         const active = feedSubjectFilter === subj;
                         return (
@@ -1077,7 +1075,7 @@ export default function ClassroomTabScreen() {
                 </View>
               ) : (
                 subjectBreakdown.map(({ subject, count }) => {
-                  const color = getSubjectColor(subject, colorScheme);
+                  const color = getSubjectColor(subject);
                   const label = getSubjectLabel(subject);
                   const emoji = getSubjectEmoji(subject);
                   const pct = feed.length > 0 ? (count / feed.length) * 100 : 0;

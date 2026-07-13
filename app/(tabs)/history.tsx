@@ -15,7 +15,6 @@ import * as H from "@/lib/haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
-import { useColorScheme } from "@/hooks/use-color-scheme";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { toggleBookmark, getBookmarks } from "@/lib/bookmarks";
 import type { HistoryItem, MathSubject } from "@/shared/types";
@@ -38,7 +37,6 @@ function formatTime(timestamp: number): string {
 
 function HistoryScreenContent() {
   const colors = useColors();
-  const colorScheme = useColorScheme() ?? "light";
   const router = useRouter();
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
@@ -138,7 +136,7 @@ function HistoryScreenContent() {
   );
 
   const renderItem = ({ item }: { item: HistoryItem }) => {
-    const subjectColor = getSubjectColor(item.subject, colorScheme);
+    const subjectColor = getSubjectColor(item.subject);
     const subjectLabel = getSubjectLabel(item.subject);
 
     return (
@@ -199,30 +197,18 @@ function HistoryScreenContent() {
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <Text style={[styles.title, { color: colors.foreground }]}>History</Text>
-          <View style={{ flexDirection: "row", gap: 10, alignItems: "center" }}>
-            {/* Scan shortcut — navigate to scan tab to capture a new problem */}
-            <TouchableOpacity
-              accessibilityLabel="Scan a new problem"
-              accessibilityRole="button"
-              onPress={() => router.push("/(tabs)/scan" as any)}
-              style={[styles.clearAllBtn, { backgroundColor: `${colors.primary}12`, borderRadius: 10, padding: 6 }]}
-              activeOpacity={0.75}
-            >
-              <IconSymbol size={20} name="camera.fill" color={colors.primary} />
-            </TouchableOpacity>
-            {history.length > 0 && (
-              <>
-                <TouchableOpacity onPress={() => router.push("/bookmarks" as any)} style={styles.clearAllBtn}
-                  accessibilityLabel="View bookmarks">
-                  <IconSymbol size={20} name="bookmark.fill" color={colors.warning} />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={handleClearAll} style={styles.clearAllBtn}
-                  accessibilityLabel="Clear">
-                  <Text style={[styles.clearAllText, { color: colors.error }]}>Clear All</Text>
-                </TouchableOpacity>
-              </>
-            )}
-          </View>
+          {history.length > 0 && (
+            <View style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
+              <TouchableOpacity onPress={() => router.push("/bookmarks" as any)} style={styles.clearAllBtn}
+                accessibilityLabel="View bookmarks">
+                <IconSymbol size={20} name="bookmark.fill" color={colors.warning} />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleClearAll} style={styles.clearAllBtn}
+                accessibilityLabel="Clear">
+                <Text style={[styles.clearAllText, { color: colors.error }]}>Clear All</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
         <Text style={[styles.subtitle, { color: colors.muted }]}>
           {history.length} problem{history.length !== 1 ? "s" : ""} solved
@@ -317,7 +303,7 @@ function HistoryScreenContent() {
               </TouchableOpacity>
               {uniqueSubjects.map((subject) => {
                 const isSelected = filterSubject === subject;
-                const color = getSubjectColor(subject, colorScheme);
+                const color = getSubjectColor(subject);
                 return (
                   <TouchableOpacity
                     accessibilityLabel="Toggle filter subject"
