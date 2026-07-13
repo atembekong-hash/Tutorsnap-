@@ -605,7 +605,7 @@ function SolveScreenContent() {
                   activeOpacity={0.7}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <IconSymbol size={20} name="clock.fill" color={colors.foreground} />
+                  <IconSymbol size={24} name="clock.fill" color={colors.foreground} />
                 </TouchableOpacity>
                 <TouchableOpacity
                   accessibilityLabel="Toggle color scheme"
@@ -619,7 +619,7 @@ function SolveScreenContent() {
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
                   <IconSymbol
-                    size={20}
+                    size={24}
                     name={colorScheme === "dark" ? "sun.max.fill" : "moon.fill"}
                     color={colors.foreground}
                   />
@@ -641,7 +641,7 @@ function SolveScreenContent() {
                   activeOpacity={0.7}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Text style={{ fontSize: 17, lineHeight: 20 }}>
+                  <Text style={{ fontSize: 20, lineHeight: 24 }}>
                     {isPremium || isDevMode ? "👑" : "⭐"}
                   </Text>
                 </TouchableOpacity>
@@ -652,31 +652,12 @@ function SolveScreenContent() {
                   activeOpacity={0.7}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <IconSymbol size={20} name="gear" color={colors.foreground} />
+                  <IconSymbol size={24} name="gear" color={colors.foreground} />
                 </TouchableOpacity>
               </View>
             </View>
-            {/* Row 2: personalised greeting or title left, grade badge + streak badge right */}
-            <View style={styles.headerRow2}>
-              {userName ? (
-                <View style={{ flex: 1, flexShrink: 1 }}>
-                  <Text style={[styles.greetingLine, { color: colors.muted }]}>
-                    {(() => {
-                      const h = new Date().getHours();
-                      if (h < 12) return "Good morning,";
-                      if (h < 17) return "Good afternoon,";
-                      return "Good evening,";
-                    })()}
-                  </Text>
-                  <Text style={[styles.title, { color: colors.foreground }]} numberOfLines={1}>
-                    {userName} <Text style={{ color: colors.primary }}>👋</Text>
-                  </Text>
-                </View>
-              ) : (
-                <Text style={[styles.title, { color: colors.foreground }]}>
-                  Solve Any <Text style={{ color: colors.primary }}>Problem</Text>
-                </Text>
-              )}
+            {/* Row 2: grade badge + streak badge */}
+            <View style={[styles.headerRow2, { justifyContent: "flex-end" }]}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
               {homeGradeLevel && (
                 <TouchableOpacity
@@ -810,18 +791,6 @@ function SolveScreenContent() {
             <StudyTipCard subject={selectedSubject} gradeLevel={homeGradeLevel} />
           )}
 
-          {/* Subject Picker */}
-          <View style={styles.subjectRow}>
-            <Text style={[styles.sectionLabel, { color: colors.muted }]}>SUBJECT</Text>
-            <View style={{ marginTop: 10 }}>
-              <SubjectPicker
-                value={selectedSubject}
-                onChange={handleSubjectChange}
-                showAll
-              />
-            </View>
-          </View>
-
           {/* Input */}
           <View style={styles.inputSection}>
             <View
@@ -891,14 +860,7 @@ function SolveScreenContent() {
                       </Text>
                     </TouchableOpacity>
                   )}
-                  {Platform.OS !== "web" && (
-                    <VoiceButton
-                      size={36}
-                      onTranscript={(text) => {
-                        setProblem((prev) => prev ? `${prev} ${text}` : text);
-                      }}
-                    />
-                  )}
+                  {/* mic moved to solve row below */}
                   {problem.length > 0 && (
                     <TouchableOpacity onPress={() => setProblem("")} style={styles.clearBtn}
                       accessibilityLabel="Toggle problem">
@@ -948,36 +910,54 @@ function SolveScreenContent() {
             </View>
           )}
 
-          {/* Solve Button */}
-          <TouchableOpacity
-            accessibilityLabel="Solve problem"
-            onPress={handleSolve}
-            disabled={!problem.trim() || solveMutation.isPending || !isOnline}
-            style={[
-              styles.solveBtn,
-              { opacity: !problem.trim() || solveMutation.isPending || !isOnline ? 0.6 : 1 },
-            ]}
-            activeOpacity={0.85}
-          >
-            <View style={[styles.solveBtnInner, { backgroundColor: isOnline ? colors.primary : colors.muted }]}>
-              {solveMutation.isPending ? (
-                <>
-                  <ActivityIndicator color="#FFFFFF" size="small" />
-                  <Text style={styles.solveBtnText}>Solving...</Text>
-                </>
-              ) : !isOnline ? (
-                <>
-                  <IconSymbol size={20} name="wifi.slash" color="#FFFFFF" />
-                  <Text style={styles.solveBtnText}>No Internet</Text>
-                </>
-              ) : (
-                <>
-                  <IconSymbol size={20} name="wand.and.stars" color="#FFFFFF" />
-                  <Text style={styles.solveBtnText}>Solve with AI</Text>
-                </>
-              )}
-            </View>
-          </TouchableOpacity>
+          {/* Solve Row: subject picker (left) + mic + solve button (right) */}
+          <View style={styles.solveRow}>
+            {/* Subject picker — bottom-left, single tap opens picker */}
+            <SubjectPicker
+              value={selectedSubject}
+              onChange={handleSubjectChange}
+              showAll
+            />
+            {/* Mic button */}
+            {Platform.OS !== "web" && (
+              <VoiceButton
+                size={50}
+                onTranscript={(text) => {
+                  setProblem((prev) => prev ? `${prev} ${text}` : text);
+                }}
+              />
+            )}
+            {/* Solve Button */}
+            <TouchableOpacity
+              accessibilityLabel="Solve problem"
+              onPress={handleSolve}
+              disabled={!problem.trim() || solveMutation.isPending || !isOnline}
+              style={[
+                styles.solveBtn,
+                { flex: 1, opacity: !problem.trim() || solveMutation.isPending || !isOnline ? 0.6 : 1 },
+              ]}
+              activeOpacity={0.85}
+            >
+              <View style={[styles.solveBtnInner, { backgroundColor: isOnline ? colors.primary : colors.muted }]}>
+                {solveMutation.isPending ? (
+                  <>
+                    <ActivityIndicator color="#FFFFFF" size="small" />
+                    <Text style={styles.solveBtnText}>Solving...</Text>
+                  </>
+                ) : !isOnline ? (
+                  <>
+                    <IconSymbol size={20} name="wifi.slash" color="#FFFFFF" />
+                    <Text style={styles.solveBtnText}>No Internet</Text>
+                  </>
+                ) : (
+                  <>
+                    <IconSymbol size={20} name="wand.and.stars" color="#FFFFFF" />
+                    <Text style={styles.solveBtnText}>Solve with AI</Text>
+                  </>
+                )}
+              </View>
+            </TouchableOpacity>
+          </View>
 
           {/* Upsell nudge banner — shown after first solve, hidden for premium/dev */}
           <UpsellNudgeBanner
@@ -1240,9 +1220,9 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   iconBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1359,9 +1339,14 @@ const styles = StyleSheet.create({
   },
   keyboardToggleText: { fontSize: 13, fontWeight: "700" },
   clearBtn: { padding: 2 },
-  solveBtn: {
-    marginHorizontal: 16,
+  solveRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
     marginTop: 16,
+    gap: 10,
+  },
+  solveBtn: {
     borderRadius: 16,
     overflow: "hidden",
   },
