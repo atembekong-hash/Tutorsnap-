@@ -14,7 +14,8 @@
  * 9. Reset to defaults
  */
 
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useState, useEffect, useRef } from "react";
+import { Animated } from "react-native";
 import {
   View,
   Text,
@@ -221,6 +222,9 @@ function LivePreviewPanel() {
         </View>
       </View>
 
+      {/* Typing speed live preview */}
+      <TypingSpeedPreview settings={settings} colors={colors} />
+
       {/* Widget preview */}
       <View style={[
         styles.previewWidget,
@@ -249,6 +253,68 @@ function LivePreviewPanel() {
         <View style={[styles.previewWidgetDot, { backgroundColor: accent }]} />
       </View>
     </View>
+  );
+}
+
+// ─── Typing Speed Live Preview ───────────────────────────────────────────────
+const PREVIEW_TEXT = "The derivative of x\u00b2 + 3x is 2x + 3.";
+const MULTIPLIER_DELAYS_PREVIEW = [60, 40, 20, 10, 3];
+const TYPING_SPEED_MS_PREVIEW: Record<string, number> = { slow: 40, normal: 20, fast: 8 };
+
+function TypingSpeedPreview({ settings, colors }: { settings: any; colors: any }) {
+  const [displayed, setDisplayed] = useState("");
+  const [isPlaying, setIsPlaying] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const indexRef = useRef(0);
+
+  const getDelay = () => {
+    const multiplierMs = MULTIPLIER_DELAYS_PREVIEW[(settings.typingSpeedMultiplier ?? 3) - 1];
+    const baseMs = TYPING_SPEED_MS_PREVIEW[settings.typingSpeed ?? "slow"] ?? 40;
+    return Math.round((baseMs + multiplierMs) / 2);
+  };
+
+  const startPreview = () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    setDisplayed("");
+    indexRef.current = 0;
+    setIsPlaying(true);
+    const type = () => {
+      if (indexRef.current >= PREVIEW_TEXT.length) {
+        setIsPlaying(false);
+        return;
+      }
+      const ch = PREVIEW_TEXT[indexRef.current];
+      indexRef.current += 1;
+      setDisplayed((prev) => prev + ch);
+      timerRef.current = setTimeout(type, getDelay());
+    };
+    timerRef.current = setTimeout(type, getDelay());
+  };
+
+  useEffect(() => {
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, []);
+
+  return (
+    <TouchableOpacity
+      onPress={startPreview}
+      activeOpacity={0.85}
+      style={{
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: colors.border,
+        backgroundColor: colors.background,
+        padding: 10,
+        gap: 4,
+      }}
+    >
+      <Text style={{ fontSize: 10, fontWeight: "700", color: colors.muted, letterSpacing: 0.5 }}>
+        TYPING SPEED PREVIEW {isPlaying ? "\u25a0" : "\u25b6 TAP TO PLAY"}
+      </Text>
+      <Text style={{ fontSize: 13, color: colors.foreground, minHeight: 20 }}>
+        {displayed}{isPlaying ? "|" : ""}
+      </Text>
+    </TouchableOpacity>
   );
 }
 
@@ -402,6 +468,23 @@ export default function AppearanceSettingsScreen() {
       [subject]: colorId,
     });
   }, [settings.subjectAccentColors, updateSetting]);
+
+  const setSubjectSpeed = useCallback((subject: string, step: number) => {
+    triggerHaptic();
+    const current = settings.subjectSpeedOverrides ?? {};
+    const updated = { ...current };
+    if (step === 0) {
+      delete updated[subject];
+    } else {
+      updated[subject] = step;
+    }
+    updateSetting("subjectSpeedOverrides", updated);
+  }, [settings.subjectSpeedOverrides, updateSetting]);
+
+  const resetSubjectSpeeds = useCallback(() => {
+    triggerHaptic();
+    updateSetting("subjectSpeedOverrides", {});
+  }, [updateSetting]);
 
   const globalAccent = accentColor(colorScheme);
 
@@ -700,6 +783,55 @@ export default function AppearanceSettingsScreen() {
                       </TouchableOpacity>
                     );
                   })}
+                </ScrollView>
+              </Row>
+            );
+          })}
+        </View>
+
+        {/* ── 4b. Per-Subject Speed ─────────────────────────────────── */}
+        <View style={styles.sectionHeaderRow}>
+          <Text style={[styles.sectionHeader, { color: colors.muted }]}>PER-SUBJECT SPEED</Text>
+          <TouchableOpacity onPress={resetSubjectSpeeds} activeOpacity={0.7}>
+            <Text style={[styles.resetSubjectBtn, { color: colors.muted }]}>Reset all</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Row>
+            <Text style={[styles.rowSub, { color: colors.muted, flex: 1, lineHeight: 18 }]}>
+              Override typing speed per subject. 0 = use global. Math & Science auto-slow when no override is set.
+            </Text>
+          </Row>
+          {SUBJECT_NAMES.map((subject, idx) => {
+            const override = (settings.subjectSpeedOverrides ?? {})[subject] ?? 0;
+            const SPEED_LABELS = ["Global", "V.Slow", "Slow", "Normal", "Fast", "V.Fast"];
+            return (
+              <Row key={subject} last={idx === SUBJECT_NAMES.length - 1}>
+                <Text style={[styles.rowLabel, { color: colors.foreground, minWidth: 120, fontSize: 13 }]} numberOfLines={1}>
+                  {subject}
+                </Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: "row", gap: 4, paddingRight: 4 }}>
+                  {[0, 1, 2, 3, 4, 5].map((step) => (
+                    <TouchableOpacity
+                      key={step}
+                      onPress={() => setSubjectSpeed(subject, step)}
+                      style={[
+                        {
+                          borderRadius: 8,
+                          borderWidth: 1,
+                          paddingHorizontal: 8,
+                          paddingVertical: 5,
+                          borderColor: override === step ? colors.primary : colors.border,
+                          backgroundColor: override === step ? `${colors.primary}18` : "transparent",
+                        },
+                      ]}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={{ fontSize: 11, fontWeight: "600", color: override === step ? colors.primary : colors.muted }}>
+                        {SPEED_LABELS[step]}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
                 </ScrollView>
               </Row>
             );

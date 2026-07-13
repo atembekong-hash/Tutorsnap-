@@ -369,6 +369,11 @@ export interface AppearanceSettings {
    * Applied on top of the per-preset base delay and subject-aware adjustment.
    */
   typingSpeedMultiplier: number;
+  /**
+   * Per-subject speed overrides. Keys are SubjectName; value is 1–5 multiplier.
+   * 0 = use global multiplier (no override).
+   */
+  subjectSpeedOverrides: Record<string, number>;
   // Solution
   stepStyle: StepStyle;
   // Accessibility
@@ -408,6 +413,7 @@ export const DEFAULT_APPEARANCE: AppearanceSettings = {
   messageDensity: "comfortable",
   typingSpeed: "slow",
   typingSpeedMultiplier: 3,
+  subjectSpeedOverrides: {},
   stepStyle: "cards",
   reduceMotion: false,
   highContrast: false,

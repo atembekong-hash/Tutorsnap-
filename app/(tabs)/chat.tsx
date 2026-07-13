@@ -696,8 +696,15 @@ function ChatScreenContent() {
   const multiplierMs = MULTIPLIER_DELAYS[(appearanceSettings.typingSpeedMultiplier ?? 3) - 1];
   // Blend: average of preset base and global multiplier
   const baseDelayMs = Math.round((TYPING_SPEED_MS[appearanceSettings.typingSpeed ?? "slow"] + multiplierMs) / 2);
-  // Subject-aware: Math & Science get +15ms extra for complex symbols
+  // Subject-aware: check per-subject override first, then Math/Science auto-slow
   const getTypingDelayMs = (subject: string | undefined): number => {
+    // Per-subject override: if user set a specific speed for this subject, use it
+    const subjectKey = getAppearanceSubjectKey(subject ?? null);
+    const overrideStep = appearanceSettings.subjectSpeedOverrides?.[subjectKey];
+    if (overrideStep && overrideStep >= 1 && overrideStep <= 5) {
+      return MULTIPLIER_DELAYS[overrideStep - 1];
+    }
+    // Auto-slow for Math & Science (complex symbols)
     const isComplex = isMathSubject(subject ?? null) || isScienceSubject(subject ?? null);
     return isComplex ? baseDelayMs + 15 : baseDelayMs;
   };
