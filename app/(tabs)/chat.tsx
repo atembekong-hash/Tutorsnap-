@@ -79,7 +79,10 @@ import {
 import { usePremium } from "@/hooks/use-premium";
 import { FREE_LIMITS } from "@/lib/subscription";
 import { APP_URL, APP_NAME } from "@/constants/app";
-import { useAppearance } from "@/lib/appearance-context";
+import {
+  useAppearance,
+  type TypingSpeed,
+} from "@/lib/appearance-context";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { getApiBaseUrl } from "@/constants/oauth";
 import * as Auth from "@/lib/_core/auth";
@@ -239,6 +242,29 @@ function AIAvatar({ size = 30 }: { size?: number }) {
   );
 }
 
+// ─── Blinking Cursor ─────────────────────────────────────────────────────────
+
+function BlinkingCursor({ color, fontSize }: { color: string; fontSize: number }) {
+  const opacity = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, { toValue: 0, duration: 500, useNativeDriver: true, easing: Easing.linear }),
+        Animated.timing(opacity, { toValue: 1, duration: 500, useNativeDriver: true, easing: Easing.linear }),
+      ])
+    );
+    anim.start();
+    return () => anim.stop();
+  }, [opacity]);
+
+  return (
+    <Animated.Text style={{ opacity, color, fontSize, lineHeight: fontSize * 1.4, fontWeight: "300" }}>
+      {"|"}  
+    </Animated.Text>
+  );
+}
+
 // ─── Message Bubble ───────────────────────────────────────────────────────────
 
 function MessageBubble({
@@ -347,6 +373,9 @@ function MessageBubble({
               streaming={streaming}
               stripPreamble={!streaming}
             />
+            {streaming && message.content.length > 0 && (
+              <BlinkingCursor color={colors.muted} fontSize={fs(15)} />
+            )}
           </AIResponseErrorBoundary>
           <Text
             style={[
@@ -643,10 +672,14 @@ function ChatScreenContent() {
   const shareCopiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { isOnline } = useNetworkStatus();
   const colorScheme = useColorScheme();
-  const { getSubjectAccent } = useAppearance();
+  const { getSubjectAccent, settings: appearanceSettings } = useAppearance();
   const subjectAccent = selectedSubject
     ? getSubjectAccent(getAppearanceSubjectKey(selectedSubject), colorScheme)
     : colors.primary;
+
+  // Typing speed → ms per character
+  const TYPING_SPEED_MS: Record<TypingSpeed, number> = { slow: 30, normal: 15, fast: 5 };
+  const typingDelayMs = TYPING_SPEED_MS[appearanceSettings.typingSpeed ?? "slow"];
 
   const bottomPadding = Platform.OS === "web" ? 12 : Math.max(insets.bottom, 8);
   const TAB_BAR_HEIGHT = 60 + bottomPadding;
@@ -817,7 +850,7 @@ function ChatScreenContent() {
             prev.map((m) => (m.id === msgId ? { ...m, content: snap } : m))
           );
           flatListRef.current?.scrollToEnd({ animated: false });
-          setTimeout(drainQueue, 30);
+          setTimeout(drainQueue, typingDelayMs);
         };
 
         // eslint-disable-next-line no-constant-condition
@@ -854,7 +887,7 @@ function ChatScreenContent() {
             if (charQueue.length === 0 && !renderLoopRunning) {
               resolve();
             } else {
-              setTimeout(wait, 30);
+              setTimeout(wait, typingDelayMs);
             }
           };
           wait();
@@ -892,7 +925,7 @@ function ChatScreenContent() {
         setIsStreaming(false);
       }
     },
-    [persistMessages, suggestFollowUpsMutation]
+    [persistMessages, suggestFollowUpsMutation, typingDelayMs]
   );
 
   // ── Send ────────────────────────────────────────────────────────────────────
@@ -1501,29 +1534,48 @@ function ChatScreenContent() {
               editable={!isAtLimit}
             />
 
-            <TouchableOpacity
-              accessibilityLabel="Send message"
-              onPress={() => handleSend()}
-              disabled={!inputText.trim() || isStreaming || !isOnline || isAtLimit}
-              style={[
-                chatStyles.sendBtn,
-                {
-                  backgroundColor:
-                    isOnline && !isAtLimit && inputText.trim()
-                      ? colors.primary
-                      : colors.border,
-                },
-              ]}
-              activeOpacity={0.8}
-            >
-              <IconSymbol
-                size={17}
-                name={isOnline ? "paperplane.fill" : "wifi.slash"}
-                color={
-                  isOnline && !isAtLimit && inputText.trim() ? "#FFFFFF" : colors.muted
-                }
-              />
-            </TouchableOpacity>
+            {isStreaming ? (
+              <TouchableOpacity
+                accessibilityLabel="Stop generating"
+                onPress={() => {
+                  streamAbortRef.current?.abort();
+                  streamingMsgIdRef.current = null;
+                  setIsStreaming(false);
+                  H.impactMedium();
+                }}
+                style={[
+                  chatStyles.sendBtn,
+                  { backgroundColor: colors.error },
+                ]}
+                activeOpacity={0.8}
+              >
+                <IconSymbol size={16} name="stop.fill" color="#FFFFFF" />
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                accessibilityLabel="Send message"
+                onPress={() => handleSend()}
+                disabled={!inputText.trim() || !isOnline || isAtLimit}
+                style={[
+                  chatStyles.sendBtn,
+                  {
+                    backgroundColor:
+                      isOnline && !isAtLimit && inputText.trim()
+                        ? colors.primary
+                        : colors.border,
+                  },
+                ]}
+                activeOpacity={0.8}
+              >
+                <IconSymbol
+                  size={17}
+                  name={isOnline ? "paperplane.fill" : "wifi.slash"}
+                  color={
+                    isOnline && !isAtLimit && inputText.trim() ? "#FFFFFF" : colors.muted
+                  }
+                />
+              </TouchableOpacity>
+            )}
           </View>
 
           {userMessageCount > 0 && (

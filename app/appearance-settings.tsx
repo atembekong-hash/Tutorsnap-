@@ -48,6 +48,7 @@ import {
   type ChatBubbleStyle,
   type MessageDensity,
   type StepStyle,
+  type TypingSpeed,
 } from "@/lib/appearance-context";
 import { impactLight as triggerHaptic, impactMedium } from "@/lib/haptics";
 import * as Clipboard from "expo-clipboard";
@@ -780,12 +781,25 @@ export default function AppearanceSettingsScreen() {
           <Row>
             <Text style={[styles.rowLabel, { color: colors.foreground }]}>Message Density</Text>
           </Row>
-          <Row last>
+          <Row>
             <SegmentedControl<MessageDensity>
               options={["compact", "comfortable", "spacious"]}
               labels={{ compact: "Compact", comfortable: "Comfortable", spacious: "Spacious" }}
               value={settings.messageDensity}
               onChange={(v) => updateSetting("messageDensity", v)}
+            />
+          </Row>
+
+          {/* Typing Speed */}
+          <Row>
+            <Text style={[styles.rowLabel, { color: colors.foreground }]}>Typing Speed</Text>
+          </Row>
+          <Row last>
+            <SegmentedControl<TypingSpeed>
+              options={["slow", "normal", "fast"]}
+              labels={{ slow: "Slow", normal: "Normal", fast: "Fast" }}
+              value={settings.typingSpeed}
+              onChange={(v) => updateSetting("typingSpeed", v)}
             />
           </Row>
         </View>

@@ -24,6 +24,7 @@ export type WidgetSize = "compact" | "normal" | "large";
 export type ChatBubbleStyle = "rounded" | "flat" | "minimal";
 export type MessageDensity = "compact" | "comfortable" | "spacious";
 export type StepStyle = "cards" | "list" | "minimal";
+export type TypingSpeed = "slow" | "normal" | "fast";
 
 export type WidgetId =
   | "streak"
@@ -361,6 +362,7 @@ export interface AppearanceSettings {
   // Chat
   chatBubbleStyle: ChatBubbleStyle;
   messageDensity: MessageDensity;
+  typingSpeed: TypingSpeed;
   // Solution
   stepStyle: StepStyle;
   // Accessibility
@@ -398,6 +400,7 @@ export const DEFAULT_APPEARANCE: AppearanceSettings = {
   subjectAccentColors: { ...DEFAULT_SUBJECT_ACCENT_COLORS },
   chatBubbleStyle: "rounded",
   messageDensity: "comfortable",
+  typingSpeed: "slow",
   stepStyle: "cards",
   reduceMotion: false,
   highContrast: false,
