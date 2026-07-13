@@ -14,3 +14,8 @@ export const TERMS_URL = `${APP_URL}/terms`;
 export function buildSolveUrl(problem: string, subject: string): string {
   return `${APP_URL}/solve?q=${encodeURIComponent(problem)}&subject=${encodeURIComponent(subject)}`;
 }
+
+/** Build a referral deep-link URL with the user's invite code attached */
+export function buildReferralUrl(code: string): string {
+  return `${APP_URL}?ref=${encodeURIComponent(code)}`;
+}

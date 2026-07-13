@@ -32,7 +32,7 @@ import { useRouter, useFocusEffect } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
-import { APP_URL } from "@/constants/app";
+import { APP_URL, buildReferralUrl } from "@/constants/app";
 import {
   getOrCreateReferralCode,
   getAffiliateStats,
@@ -287,9 +287,11 @@ export default function ReferScreen() {
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
-  const shareMessage = `Hey! I've been using TutorSnap to ace my homework and quizzes 📚\n\nUse my invite code ${code} to get 7 extra free days when you start your trial.\n\nDownload here: ${APP_URL}`;
+  const referralUrl = code ? buildReferralUrl(code) : APP_URL;
+  const shareMessage = `Hey! I've been using TutorSnap to ace my homework and quizzes 📚\n\nUse my invite code ${code} to get 7 extra free days when you start your trial.\n\nDownload here: ${referralUrl}`;
 
-  const classroomMessage = `Hi! I'm using TutorSnap to manage my classroom 🏫\n\nJoin with my teacher link and we both get 14 bonus days:\n${APP_URL}/classroom?ref=${code}`;
+  const classroomUrl = code ? `${APP_URL}/classroom?ref=${encodeURIComponent(code)}` : APP_URL;
+  const classroomMessage = `Hi! I'm using TutorSnap to manage my classroom 🏫\n\nJoin with my teacher link and we both get 14 bonus days:\n${classroomUrl}`;
 
   const handleNativeShare = useCallback(async () => {
     H.impactMedium();
@@ -308,7 +310,7 @@ export default function ReferScreen() {
         const result = await Share.share(
           {
             message: shareMessage,
-            url: APP_URL,
+            url: referralUrl,
             title: "Join TutorSnap — get 7 free days!",
           },
           { dialogTitle: "Share your TutorSnap invite" }
@@ -331,7 +333,7 @@ export default function ReferScreen() {
     } catch (_) {
       // share sheet error — no-op
     }
-  }, [shareMessage, load]);
+  }, [shareMessage, referralUrl, load]);
 
   const handleCopyCode = useCallback(async () => {
     H.impactLight()
