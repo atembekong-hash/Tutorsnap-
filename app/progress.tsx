@@ -25,7 +25,6 @@ import {
   computeMasteryBadges,
   BADGE_COLORS,
   BADGE_EMOJI,
-  BADGE_THRESHOLDS,
   getSeenBadges,
   markBadgeSeen,
   getTierForSolves,

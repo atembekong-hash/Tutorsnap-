@@ -29,26 +29,20 @@ import { CheatSheetBottomSheet } from "@/components/cheat-sheet-bottom-sheet";
 import { hasCheatSheet } from "@/lib/cheat-sheets";
 import { useNetworkStatus } from "@/hooks/use-network-status";
 import { ErrorBoundary } from "@/components/error-boundary";
-import { WeeklyGoalsCard } from "@/components/weekly-goals-card";
 import { getWeeklyData, type WeeklyData } from "@/lib/weekly-goals";
 import { StudyTipCard } from "@/components/study-tip-card";
-import { AffiliateEarningsWidget } from "@/components/affiliate-earnings-widget";
-import { AlmostThereBanner } from "@/components/almost-there-banner";
-import { StreakShieldCard } from "@/components/streak-shield-card";
 import { getAlmostBadges, computeMasteryBadges, getSeenBadges, markBadgeSeen, type BadgeTier, BADGE_COLORS, BADGE_EMOJI } from "@/lib/mastery-badges";
 import { getAffiliateStats } from "@/lib/affiliate";
 import { loadStudySlots, formatTime, type StudySlot } from "@/lib/study-planner";
 import { getShieldCount as _getShieldCount, earnShield } from "@/lib/progress";
 import { BadgeUnlockModal } from "@/components/badge-unlock-modal";
-import { TodayStudyWidget } from "@/components/today-study-widget";
-import { StreakProtectionBanner } from "@/components/streak-protection-banner";
 import { getTodayQuestion, getDailyChallengeState } from "@/lib/daily-challenge";
 import { getMyClassroom, getJoinedClassroom, getClassroomFeed, type ClassroomProblem } from "@/lib/classroom";
 import * as Notifications from "expo-notifications";
 import { usePremium } from "@/hooks/use-premium";
 import { FREE_LIMITS } from "@/lib/subscription";
 import { UpsellNudgeBanner } from "@/components/upsell-nudge-banner";
-import { useAppearance, type WidgetId } from "@/lib/appearance-context";
+import { useAppearance } from "@/lib/appearance-context";
 import { loadGlobalGrade, saveGlobalGrade, GRADE_LABELS, GRADE_OPTIONS } from "@/lib/grade-levels";
 
 function getAppearanceSubjectKey(subjectId: string): string {
@@ -139,12 +133,12 @@ interface TodayRowProps {
 
 function TodayRow({
   progress, weeklyData, almostBadge, bannerDismissed,
-  isPremium, isDevMode, isOnline, selectedSubject, usage, gradeLevel,
-  onShieldEarned, onSolveNow, onDismissBadge, onGoSolveBadge, onWeeklyGoalChanged,
+  isPremium, isDevMode: _isDevMode, isOnline: _isOnline, selectedSubject: _selectedSubject, usage, gradeLevel,
+  onShieldEarned, onSolveNow, onDismissBadge: _onDismissBadge, onGoSolveBadge, onWeeklyGoalChanged: _onWeeklyGoalChanged,
 }: TodayRowProps) {
   const colors = useColors();
   const router = useRouter();
-  const { widgetWidth, visibleWidgetOrder, isWidgetVisible, getSubjectAccent } = useAppearance();
+  const { widgetWidth, visibleWidgetOrder: _visibleWidgetOrder, isWidgetVisible, getSubjectAccent } = useAppearance();
   const { colorScheme } = useThemeContext();
   const streak = progress?.streak?.currentStreak ?? 0;
   const todaySolved = progress?.streak?.todaySolved ?? 0;
@@ -369,66 +363,6 @@ const trStyles = StyleSheet.create({
   progressFill: { height: 4, borderRadius: 2 },
 });
 
-// ─── Daily Challenge Card ────────────────────────────────────────────────────
-function DailyChallengeCard({ gradeLevel }: { gradeLevel?: string | null }) {
-  const colors = useColors();
-  const router = useRouter();
-  const { colorScheme } = useThemeContext();
-  const { getSubjectAccent } = useAppearance();
-  const question = getTodayQuestion(gradeLevel);
-  const [completed, setCompleted] = React.useState(false);
-  const [correct, setCorrect] = React.useState<boolean | null>(null);
-
-  React.useEffect(() => {
-    getDailyChallengeState().then((s) => {
-      setCompleted(s.completed);
-      setCorrect(s.correct);
-    });
-  }, []);
-
-  const subjectColor = getSubjectAccent(
-    getAppearanceSubjectKey(question.subject),
-    colorScheme,
-  );
-
-  return (
-    <TouchableOpacity
-      onPress={() => router.push("/daily-challenge" as any)}
-      activeOpacity={0.85}
-      style={[dcStyles.card, { backgroundColor: colors.surface, borderColor: completed ? (correct ? `${colors.success}60` : `${colors.error}40`) : `${subjectColor}40` }]}
-      accessibilityLabel="Open Daily Challenge"
-      accessibilityRole="button"
-    >
-      <View style={dcStyles.left}>
-        <Text style={dcStyles.emoji}>⚡</Text>
-        <View style={dcStyles.textBlock}>
-          <Text style={[dcStyles.title, { color: colors.foreground }]}>Daily Challenge</Text>
-          <Text style={[dcStyles.sub, { color: colors.muted }]} numberOfLines={1}>
-            {completed
-              ? correct ? "✅ Completed · +50 XP earned" : "❌ Attempted · Try again tomorrow"
-              : `${question.subjectLabel} · +${question.bonusXp} Bonus XP`}
-          </Text>
-        </View>
-      </View>
-      <View style={[dcStyles.badge, { backgroundColor: completed ? (correct ? `${colors.success}18` : `${colors.error}18`) : `${subjectColor}18` }]}>
-        <Text style={[dcStyles.badgeText, { color: completed ? (correct ? colors.success : colors.error) : subjectColor }]}>
-          {completed ? (correct ? "Done ✓" : "Done") : "Solve"}
-        </Text>
-      </View>
-    </TouchableOpacity>
-  );
-}
-
-const dcStyles = StyleSheet.create({
-  card: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderRadius: 16, borderWidth: 1.5, padding: 14, gap: 12, marginHorizontal: 16, marginTop: 20 },
-  left: { flexDirection: "row", alignItems: "center", gap: 12, flex: 1 },
-  emoji: { fontSize: 28 },
-  textBlock: { flex: 1, gap: 3 },
-  title: { fontSize: 15, fontWeight: "700" },
-  sub: { fontSize: 12 },
-  badge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
-  badgeText: { fontSize: 12, fontWeight: "700" },
-});
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 function SolveScreenContent() {

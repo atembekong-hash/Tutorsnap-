@@ -7,7 +7,7 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { SchemeColors } from "@/constants/theme";
 
-function ScanTabIcon({ color, focused }: { color: string; focused: boolean }) {
+function ScanTabIcon({ color: _color, focused: _focused }: { color: string; focused: boolean }) {
   const colors = useColors();
   return (
     <View

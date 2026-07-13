@@ -23,7 +23,6 @@ import {
 } from "react-native";
 import * as H from "@/lib/haptics";
 import { useRouter } from "expo-router";
-import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { FREE_LIMITS } from "@/lib/subscription";
 

@@ -26,20 +26,28 @@ export type ProgressData = {
 const PROGRESS_KEY = "math_progress";
 const DEFAULT_DAILY_GOAL = 3;
 
+/** Returns YYYY-MM-DD in the user's local timezone (not UTC). */
+function localDateString(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 function getTodayString(): string {
-  return new Date().toISOString().split("T")[0];
+  return localDateString(new Date());
 }
 
 function getYesterdayString(): string {
   const d = new Date();
   d.setDate(d.getDate() - 1);
-  return d.toISOString().split("T")[0];
+  return localDateString(d);
 }
 
 function _getDayString(daysAgo: number): string {
   const d = new Date();
   d.setDate(d.getDate() - daysAgo);
-  return d.toISOString().split("T")[0];
+  return localDateString(d);
 }
 
 export async function getProgress(): Promise<ProgressData> {

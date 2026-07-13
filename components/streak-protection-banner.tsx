@@ -12,7 +12,7 @@
  * Dismissible per session.
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -25,8 +25,6 @@ import * as H from "@/lib/haptics";
 import { useRouter } from "expo-router";
 import { useColors } from "@/hooks/use-colors";
 
-// Need useRef — import it at the top of the module
-import { useRef } from "react";
 
 interface StreakProtectionBannerProps {
   /** Current streak length. Banner only shows when > 0. */

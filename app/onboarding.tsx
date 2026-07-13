@@ -171,7 +171,7 @@ export default function OnboardingScreen() {
         style={{ flex: 1 }}
         contentContainerStyle={{ alignItems: "center" }}
       >
-        {SLIDES.map((slide, idx) => (
+        {SLIDES.map((slide, _idx) => (
           <View key={slide.id} style={[styles.slide, { width: SCREEN_WIDTH }]}>
             {/* Emoji illustration */}
             <View style={[styles.emojiCircle, { backgroundColor: slide.id === "trial" ? "#F59E0B18" : `${colors.primary}15` }]}>

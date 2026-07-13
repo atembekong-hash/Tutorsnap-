@@ -36,7 +36,7 @@ import {
   type BackupReminderSettings,
 } from "@/lib/notifications";
 import { SUBJECT_CATEGORIES, type SubjectCategory } from "@/lib/subjects";
-import { useFontSize, type FontSizeScale } from "@/lib/font-size-provider";
+import { useFontSize } from "@/lib/font-size-provider";
 import { SUPPORT_EMAIL, PRIVACY_URL, TERMS_URL } from "@/constants/app";
 import { GRADE_OPTIONS, GRADE_LABELS, loadGlobalGrade, saveGlobalGrade } from "@/lib/grade-levels";
 import * as FileSystem from "expo-file-system/legacy";
@@ -138,7 +138,7 @@ export default function SettingsScreen() {
   const whatsNewYRef = useRef<number>(0);
   const { colorScheme, setColorScheme } = useThemeContext();
   const isDark = colorScheme === "dark";
-  const { scale: fontScale, setScale: setFontScale } = useFontSize();
+  const { scale: _fontScale, setScale: _setFontScale } = useFontSize();
 
   const [dailyGoal, setDailyGoalState] = useState(3);
   const [todaySolved, setTodaySolved] = useState(0);
@@ -427,6 +427,7 @@ export default function SettingsScreen() {
                 "@tutorsnap/classroom_feed",
                 "@tutorsnap/classroom_leaderboard",
                 "@tutorsnap/classroom_notif_prefs",
+                "@tutorsnap/classroom_display_name",
                 "@tutorsnap/joined_classroom",
                 "@tutorsnap/problem_comments",
                 // Affiliate / referral
@@ -444,6 +445,12 @@ export default function SettingsScreen() {
                 // Data export log
                 "@tutorsnap/dataOpLog",
                 "@tutorsnap/lastExportedAt",
+                // Backup reminder
+                "@tutorsnap/backupReminderNotifId",
+                "@tutorsnap/backupReminderEnabled",
+                "@tutorsnap/backupReminderDay",
+                "@tutorsnap/backupReminderHour",
+                "@tutorsnap/backupReminderMinute",
                 // Misc
                 "@tutorsnap/firstLaunchDate",
                 "@tutorsnap/lastReviewPromptDate",
@@ -564,6 +571,7 @@ export default function SettingsScreen() {
                 "@tutorsnap/studyPlanner", "@tutorsnap/dailyChallengeState",
                 "@tutorsnap/classroom", "@tutorsnap/classroom_feed",
                 "@tutorsnap/classroom_leaderboard", "@tutorsnap/classroom_notif_prefs",
+                "@tutorsnap/classroom_display_name",
                 "@tutorsnap/joined_classroom", "@tutorsnap/problem_comments",
                 "@tutorsnap/affiliateLastActivity", "@tutorsnap/leaderboard_friends",
                 "@tutorsnap/my_invite_code", "@referral_applied",
@@ -571,6 +579,9 @@ export default function SettingsScreen() {
                 "chat_grade_level", "global_grade_level",
                 "@tutorsnap/consent", "@tutorsnap/onboardingDone",
                 "@tutorsnap/userName",
+                "@tutorsnap/backupReminderNotifId", "@tutorsnap/backupReminderEnabled",
+                "@tutorsnap/backupReminderDay", "@tutorsnap/backupReminderHour",
+                "@tutorsnap/backupReminderMinute",
                 "@tutorsnap/firstLaunchDate", "@tutorsnap/lastReviewPromptDate",
                 "@tutorsnap/lastUpdateCheckDismissed", "@tutorsnap/trialStartedAt",
                 "@tutorsnap/colorScheme",

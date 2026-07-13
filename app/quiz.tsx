@@ -313,7 +313,7 @@ export default function QuizScreen() {
   const [bonusStreak, setBonusStreak] = useState(0);
   const [showPaywallModal, setShowPaywallModal] = useState(false);
   const [quizQuestionsAnswered, setQuizQuestionsAnswered] = useState(0);
-  const { isPremium, isDevMode, checkLimit, incrementUsage: incUsage } = usePremium();
+  const { isPremium, isDevMode, checkLimit: _checkLimit, incrementUsage: incUsage } = usePremium();
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const progressAnim = useRef(new Animated.Value(1)).current;
 

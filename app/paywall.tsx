@@ -158,6 +158,8 @@ export default function PaywallScreen() {
         style={s.closeBtn}
         onPress={() => router.back()}
         hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+        accessibilityLabel="Close paywall"
+        accessibilityRole="button"
       >
         <Text style={s.closeBtnText}>✕</Text>
       </TouchableOpacity>
@@ -188,6 +190,9 @@ export default function PaywallScreen() {
                 pressed && { opacity: 0.85 },
               ]}
               onPress={() => handleSelectPlan(PRODUCT_MONTHLY)}
+              accessibilityLabel={`Monthly plan, ${monthlyPrice} billed monthly`}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: selectedPlan === PRODUCT_MONTHLY }}
             >
               <Text style={s.planLabel}>Monthly</Text>
               <Text
@@ -210,6 +215,9 @@ export default function PaywallScreen() {
                 pressed && { opacity: 0.85 },
               ]}
               onPress={() => handleSelectPlan(PRODUCT_ANNUAL)}
+              accessibilityLabel={`Annual plan, ${annualPrice}, best value, save ${DISCOUNT_PCT}%`}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: selectedPlan === PRODUCT_ANNUAL }}
             >
               {/* Recommended badge */}
               <View style={s.recommendedBadge}>
@@ -263,6 +271,8 @@ export default function PaywallScreen() {
           onPress={handleStartTrial}
           disabled={loading || !offeringsLoaded}
           activeOpacity={0.85}
+          accessibilityLabel="Start 14-day free trial"
+          accessibilityRole="button"
         >
           {loading ? (
             <ActivityIndicator color="#fff" />
@@ -280,6 +290,8 @@ export default function PaywallScreen() {
           style={s.restoreBtn}
           onPress={handleRestore}
           disabled={restoring}
+          accessibilityLabel="Restore previous purchases"
+          accessibilityRole="button"
         >
           {restoring ? (
             <ActivityIndicator size="small" color={colors.muted} />
