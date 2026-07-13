@@ -469,3 +469,8 @@
 - [x] Add right-side scroll-to-bottom floating button in AI Tutor chat
 - [x] Add voice transcript confidence toast in AI Tutor chat
 - [x] Persist last-used AI Tutor subject across sessions and new chats
+
+## Round 27: AI Tutor Input Bar + Scroll FAB + Toast Polish
+- [x] Long-press subject pill in AI Tutor input bar to clear subject (reset to General)
+- [x] Fade-in/out animation on scroll-to-top and scroll-to-bottom FABs
+- [x] Tap-to-dismiss on voice transcript toast

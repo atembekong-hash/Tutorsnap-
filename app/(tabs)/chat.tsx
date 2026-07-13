@@ -654,6 +654,8 @@ function ChatScreenContent() {
   const streamAbortRef = useRef<AbortController | null>(null);
   const streamingMsgIdRef = useRef<string | null>(null);
   const sendBtnScaleAnim = useRef(new Animated.Value(1)).current;
+  const scrollTopOpacity = useRef(new Animated.Value(0)).current;
+  const scrollBottomOpacity = useRef(new Animated.Value(0)).current;
   const [bookmarked, setBookmarked] = useState(false);
   const [copyLinkFeedback, setCopyLinkFeedback] = useState(false);
   const copyLinkFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -679,6 +681,25 @@ function ChatScreenContent() {
       Animated.timing(sendBtnScaleAnim, { toValue: 1, duration: 140, useNativeDriver: true, easing: Easing.out(Easing.back(1.5)) }),
     ]).start();
   }, [isStreaming, sendBtnScaleAnim]);
+
+  // Animate scroll FAB fade in/out
+  useEffect(() => {
+    Animated.timing(scrollTopOpacity, {
+      toValue: showScrollTop ? 1 : 0,
+      duration: 200,
+      useNativeDriver: true,
+      easing: Easing.out(Easing.quad),
+    }).start();
+  }, [showScrollTop, scrollTopOpacity]);
+
+  useEffect(() => {
+    Animated.timing(scrollBottomOpacity, {
+      toValue: showScrollBottom ? 1 : 0,
+      duration: 200,
+      useNativeDriver: true,
+      easing: Easing.out(Easing.quad),
+    }).start();
+  }, [showScrollBottom, scrollBottomOpacity]);
 
   // Typing speed → ms per character
   // Base delays per preset (ms/char)
@@ -1694,6 +1715,13 @@ function ChatScreenContent() {
           >
             <TouchableOpacity
               onPress={() => setShowSubjectPicker(true)}
+              onLongPress={() => {
+                if (selectedSubject) {
+                  handleSubjectChange(null);
+                  H.impactMedium();
+                }
+              }}
+              delayLongPress={400}
               style={[
                 chatStyles.subjectPill,
                 {
@@ -1819,25 +1847,36 @@ function ChatScreenContent() {
         </View>
       </KeyboardAvoidingView>
 
-      {/* ── Floating scroll buttons ── */}
-      {showScrollTop && (
+      {/* ── Floating scroll buttons (always rendered, opacity-animated) ── */}
+      <Animated.View
+        pointerEvents={showScrollTop ? "auto" : "none"}
+        style={[
+          chatStyles.scrollFab,
+          chatStyles.scrollFabLeft,
+          { backgroundColor: colors.surface, borderColor: colors.border, bottom: TAB_BAR_HEIGHT + 80, opacity: scrollTopOpacity },
+        ]}
+      >
         <TouchableOpacity
           accessibilityLabel="Scroll to top"
           onPress={() => {
             flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
             H.impactLight();
           }}
-          style={[
-            chatStyles.scrollFab,
-            chatStyles.scrollFabLeft,
-            { backgroundColor: colors.surface, borderColor: colors.border, bottom: TAB_BAR_HEIGHT + 80 },
-          ]}
+          style={chatStyles.scrollFabInner}
           activeOpacity={0.8}
         >
           <IconSymbol size={18} name="chevron.up" color={colors.foreground} />
         </TouchableOpacity>
-      )}
-      {showScrollBottom && (
+      </Animated.View>
+
+      <Animated.View
+        pointerEvents={showScrollBottom ? "auto" : "none"}
+        style={[
+          chatStyles.scrollFab,
+          chatStyles.scrollFabRight,
+          { backgroundColor: colors.surface, borderColor: colors.border, bottom: TAB_BAR_HEIGHT + 80, opacity: scrollBottomOpacity },
+        ]}
+      >
         <TouchableOpacity
           accessibilityLabel="Scroll to bottom"
           onPress={() => {
@@ -1845,25 +1884,25 @@ function ChatScreenContent() {
             isUserScrolledUpRef.current = false;
             H.impactLight();
           }}
-          style={[
-            chatStyles.scrollFab,
-            chatStyles.scrollFabRight,
-            { backgroundColor: colors.surface, borderColor: colors.border, bottom: TAB_BAR_HEIGHT + 80 },
-          ]}
+          style={chatStyles.scrollFabInner}
           activeOpacity={0.8}
         >
           <IconSymbol size={18} name="chevron.down" color={colors.foreground} />
         </TouchableOpacity>
-      )}
+      </Animated.View>
 
-      {/* ── Voice transcript toast ── */}
+      {/* ── Voice transcript toast (tap to dismiss) ── */}
       {transcriptToast !== null && (
-        <View
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={() => {
+            if (transcriptToastTimerRef.current) clearTimeout(transcriptToastTimerRef.current);
+            setTranscriptToast(null);
+          }}
           style={[
             chatStyles.transcriptToast,
             { backgroundColor: colors.foreground, bottom: TAB_BAR_HEIGHT + 130 },
           ]}
-          pointerEvents="none"
         >
           <IconSymbol size={14} name="mic.fill" color={colors.background} />
           <Text
@@ -1872,7 +1911,8 @@ function ChatScreenContent() {
           >
             {transcriptToast}
           </Text>
-        </View>
+          <IconSymbol size={12} name="xmark" color={colors.background} />
+        </TouchableOpacity>
       )}
 
       {/* ── Subject picker sheet ── controlled directly via SubjectPicker */}
@@ -2387,6 +2427,7 @@ const chatStyles = StyleSheet.create({
   },
   scrollFabLeft: { left: 14 },
   scrollFabRight: { right: 14 },
+  scrollFabInner: { width: 38, height: 38, alignItems: "center", justifyContent: "center" },
   transcriptToast: {
     position: "absolute",
     left: 20,
