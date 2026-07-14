@@ -552,3 +552,8 @@
 
 ## Round 43: Auto-resume on scroll inactivity
 - [x] Auto-resume streaming scroll after 3s of user scroll inactivity during stop-and-read mode
+
+## Round 44: Chat top bar redesign
+- [x] Add gear Settings button to top bar that opens a pop-up modal
+- [x] Replace History + Share buttons with a single ⋯ dropdown in top bar
+- [x] Remove subject text from status row; show subject as color dot on the chat input bar
