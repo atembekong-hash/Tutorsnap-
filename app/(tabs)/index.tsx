@@ -408,14 +408,13 @@ function SolveScreenContent() {
   const [homeGradeLevel, setHomeGradeLevel] = useState<string | null>(null);
   const [showSolveGradePicker, setShowSolveGradePicker] = useState(false);
   const [rememberGrade, setRememberGrade] = useState(false);
-  const [userName, setUserName] = useState<string | null>(null);
+  const [_userName, setUserName] = useState<string | null>(null);
   const [lastSession, setLastSession] = useState<ChatSessionSummary | null>(null);
   const [quickAskText, setQuickAskText] = useState("");
   const [continueSessionDismissed, setContinueSessionDismissed] = useState(false);
   const [sessionPreviewTooltip, setSessionPreviewTooltip] = useState(false);
   const bannerScaleAnim = useRef(new Animated.Value(1)).current;
   const quickAskInputRef = useRef<TextInput>(null);
-  const continueSessionDismissedKey = "@tutorsnap/continueSessionDismissed";
   const [undoToast, setUndoToast] = useState(false);
   const undoToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showQuickAskSubjectPicker, setShowQuickAskSubjectPicker] = useState(false);

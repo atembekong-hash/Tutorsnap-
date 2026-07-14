@@ -57,7 +57,6 @@ import { SubjectPicker } from "@/components/subject-picker";
 import {
   type SubjectId,
   getSubjectLabel,
-  getSubjectEmoji,
   getSubjectDef,
   isMathSubject,
   isScienceSubject,
@@ -83,7 +82,6 @@ import {
 import {
   TutorSettingsModal,
   useTutorSettings,
-  type TutorSettings,
 } from "@/components/tutor-settings-modal";
 import { usePremium } from "@/hooks/use-premium";
 import { FREE_LIMITS } from "@/lib/subscription";
@@ -98,7 +96,6 @@ import {
 import {
   GRADE_OPTIONS,
   GRADE_LABELS as GRADE_LABELS_LIB,
-  getGradePromptContext,
 } from "@/lib/grade-levels";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { getApiBaseUrl } from "@/constants/oauth";
@@ -559,20 +556,6 @@ const welcomeStyles = StyleSheet.create({
   chipText: { fontWeight: "500", textAlign: "center" },
 });
 
-// ─── Welcome message factory ──────────────────────────────────────────────────
-
-function makeWelcomeMessage(subject: SubjectId | null): ChatMessage {
-  const subjectDef = subject ? getSubjectDef(subject) : null;
-  return {
-    id: "welcome-" + Date.now(),
-    role: "assistant",
-    content: subjectDef
-      ? `I'm ready to help with ${subjectDef.label} ${subjectDef.emoji}! Ask me anything — I'll explain concepts, work through problems, and guide you step by step. 📚`
-      : "Hi! I'm TutorSnap, your personal academic tutor. Ask me anything — Math, Science, English, History, and more. I'll explain concepts, help with homework, and guide you step by step! 📚",
-    timestamp: Date.now(),
-  };
-}
-
 // ─── AI Bubble Context Menu (cross-platform, no ActionSheetIOS) ──────────────
 // Uses Alert on all platforms — ActionSheetIOS is iOS-only and crashes Android.
 function showAIBubbleMenu(
@@ -694,7 +677,7 @@ function ChatScreenContent() {
   const [showScrollBottom, setShowScrollBottom] = useState(false);
   const [transcriptToast, setTranscriptToast] = useState<string | null>(null);
   const transcriptToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [subjectClearedToast, setSubjectClearedToast] = useState(false);
+  const [subjectClearedToast] = useState(false);
   const subjectClearedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollTopScaleAnim = useRef(new Animated.Value(1)).current;
   const scrollBottomScaleAnim = useRef(new Animated.Value(1)).current;
@@ -1010,7 +993,7 @@ function ChatScreenContent() {
   // Streaming chat send — replaces the old tRPC chatMutation
   const sendStreamingChat = useCallback(
     async (
-      contextMessages: Array<{ role: "user" | "assistant"; content: string }>,
+      contextMessages: { role: "user" | "assistant"; content: string }[],
       subject: string | undefined,
       gradeLevel: string | undefined,
       currentSession: ChatSession,
@@ -1159,8 +1142,7 @@ function ChatScreenContent() {
           setTimeout(drainQueue, delay);
         };
 
-        // eslint-disable-next-line no-constant-condition
-        while (true) {
+        while (true) { // loop exits on stream done or abort
           const { done, value } = await reader.read();
           if (done) break;
           buffer += decoder.decode(value, { stream: true });
@@ -1580,7 +1562,7 @@ function ChatScreenContent() {
   const handleBookmark = useCallback(async () => {
     setShowShareMenu(false);
     try {
-      const { toggleBookmark, isBookmarked } = await import("@/lib/bookmarks");
+      const { toggleBookmark } = await import("@/lib/bookmarks");
       const lastUser = [...messages].reverse().find((m) => m.role === "user");
       const lastAI = [...messages].reverse().find((m) => m.role === "assistant");
       if (!lastUser) {
@@ -2533,7 +2515,7 @@ function ChatScreenContent() {
                   <IconSymbol size={18} name="square.and.arrow.up.fill" color={colors.primary} />
                 </View>
                 <View style={chatStyles.shareMenuInfo}>
-                  <Text style={[chatStyles.shareMenuLabel, { color: colors.foreground, fontSize: fs(14) }]}>{Platform.OS === "web" ? "Copy as Text" : "Share as Text"}</Text>
+                  <Text style={[chatStyles.shareMenuLabel, { color: colors.foreground, fontSize: fs(14) }]}>{Platform.OS === "web" ? (shareCopied ? "Copied!" : "Copy as Text") : "Share as Text"}</Text>
                   <Text style={[chatStyles.shareMenuDesc, { color: colors.muted, fontSize: fs(12) }]}>Send to WhatsApp, iMessage, etc.</Text>
                 </View>
                 <IconSymbol size={14} name="chevron.right" color={colors.muted} />

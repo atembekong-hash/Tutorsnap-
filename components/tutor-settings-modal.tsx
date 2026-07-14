@@ -23,7 +23,6 @@ import {
   Animated,
   Modal,
   Platform,
-  Pressable,
   ScrollView,
   Switch,
   Text,

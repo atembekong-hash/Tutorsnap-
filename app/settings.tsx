@@ -37,7 +37,7 @@ import {
 } from "@/lib/notifications";
 import { SUBJECT_CATEGORIES, type SubjectCategory } from "@/lib/subjects";
 import { useFontSize } from "@/lib/font-size-provider";
-import { SUPPORT_EMAIL, PRIVACY_URL, TERMS_URL } from "@/constants/app";
+import { SUPPORT_EMAIL } from "@/constants/app";
 import { GRADE_OPTIONS, GRADE_LABELS, loadGlobalGrade, saveGlobalGrade } from "@/lib/grade-levels";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
@@ -976,21 +976,11 @@ export default function SettingsScreen() {
     }
   };
 
-  const handlePrivacyPolicy = () => {
-    H.impactLight()
-    Linking.openURL(PRIVACY_URL).catch(() => {});
-  };
-
   const handleContactSupport = () => {
     H.impactLight()
     const subject = encodeURIComponent("TutorSnap Support Request");
     const body = encodeURIComponent(`Hi TutorSnap team,\n\nApp version: ${Constants.expoConfig?.version ?? "1.1.0"}\nPlatform: ${Platform.OS}\n\nIssue / Question:\n`);
     Linking.openURL(`mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`).catch(() => {});
-  };
-
-  const handleTerms = () => {
-    H.impactLight()
-    Linking.openURL(TERMS_URL).catch(() => {});
   };
 
   const preferredCategoryLabels = Array.from(preferredCategories)

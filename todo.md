@@ -559,14 +559,24 @@
 - [x] Remove subject text from status row; show subject as color dot on the chat input bar
 
 ## Round 46: Complete AI Tutor Settings System
-- [ ] Create TutorSettings component with 8 grouped sections
-- [ ] Section 1: Learning Profile (name, grade, subject, learning style, language)
-- [ ] Section 2: Response Style (length, tone, emojis, show working, follow-up chips)
-- [ ] Section 3: Chat Behaviour (typing animation, speed, auto-scroll, auto-resume, send-on-enter, voice)
-- [ ] Section 4: Session & History (save history, auto-title, max sessions, clear all, export)
-- [ ] Section 5: Appearance (avatar style, bubble style, font size, code theme, density)
-- [ ] Section 6: Accessibility (high contrast, reduce motion, screen reader hints)
-- [ ] Section 7: Notifications & Reminders (study reminders, session summary)
-- [ ] Section 8: Advanced (system prompt preview, model info, debug mode, reset all)
-- [ ] Wire all settings into chat.tsx with AsyncStorage persistence and live effects
-- [ ] Replace old Tutor Settings modal with new full-screen sheet
+- [x] Create TutorSettings component with 8 grouped sections
+- [x] Section 1: Learning Profile (name, grade, subject, learning style, language)
+- [x] Section 2: Response Style (length, tone, emojis, show working, follow-up chips)
+- [x] Section 3: Chat Behaviour (typing animation, speed, auto-scroll, auto-resume, send-on-enter, voice)
+- [x] Section 4: Session & History (save history, auto-title, max sessions, clear all, export)
+- [x] Section 5: Appearance (avatar style, bubble style, font size, code theme, density)
+- [x] Section 6: Accessibility (high contrast, reduce motion, screen reader hints)
+- [x] Section 7: Notifications & Reminders (study reminders, session summary)
+- [x] Section 8: Advanced (system prompt preview, model info, debug mode, reset all)
+- [x] Wire all settings into chat.tsx with AsyncStorage persistence and live effects
+- [x] Replace old Tutor Settings modal with new full-screen sheet
+
+## Round 49: Affiliate Follow-ups & Full Audit
+- [x] Redeem a friend's code — modal in Settings, one-time enforcement, 14-day trial activation
+- [x] Weekly affiliate digest notification — Monday 9 AM, wired in _layout.tsx, routes to /refer on tap
+- [x] Pending days expiry warning banner — 90-day idle threshold, shown on /refer screen
+- [x] Audit: remove unused imports (Pressable, TutorSettings type, getSubjectEmoji, getGradePromptContext, handlePrivacyPolicy, handleTerms, isBookmarked, continueSessionDismissedKey)
+- [x] Audit: fix Array<T> → T[] in sendStreamingChat signature
+- [x] Audit: remove stale eslint-disable-next-line no-constant-condition directive
+- [x] Audit: shareCopied state now renders "Copied!" feedback in share menu on web
+- [x] TypeScript: 0 errors confirmed
