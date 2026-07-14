@@ -2118,18 +2118,8 @@ function ChatScreenContent() {
             </View>
           )}
 
-          {/* Pill input card */}
-          <View
-            style={[
-              chatStyles.inputCard,
-              {
-                backgroundColor: colors.surface,
-                borderColor: colors.border,
-                shadowColor: "#000",
-              },
-            ]}
-          >
-            {/* Round 44b: Professional subject pill on input bar */}
+          {/* Round 44b: Subject pill row — sits ABOVE the input card, does not affect typing space */}
+          <View style={chatStyles.inputSubjectRow}>
             <TouchableOpacity
               onPress={() => setShowSubjectPicker(true)}
               onLongPress={() => {
@@ -2146,11 +2136,10 @@ function ChatScreenContent() {
                 chatStyles.inputSubjectPill,
                 selectedSubject
                   ? { backgroundColor: `${subjectAccent}18`, borderColor: `${subjectAccent}60` }
-                  : { backgroundColor: colors.background, borderColor: colors.border },
+                  : { backgroundColor: colors.surface, borderColor: colors.border },
               ]}
               activeOpacity={0.7}
             >
-              {/* Color swatch / book icon */}
               <View
                 style={[
                   chatStyles.inputSubjectSwatch,
@@ -2161,8 +2150,6 @@ function ChatScreenContent() {
                   <IconSymbol size={9} name="book.fill" color="#fff" />
                 )}
               </View>
-
-              {/* Label */}
               <Text
                 style={[
                   chatStyles.inputSubjectLabel,
@@ -2174,8 +2161,6 @@ function ChatScreenContent() {
                   ? `${getSubjectEmoji(selectedSubject)} ${getSubjectLabel(selectedSubject)}`
                   : "Subject"}
               </Text>
-
-              {/* Speed badge (if override set) */}
               {(() => {
                 const subjectKey = getAppearanceSubjectKey(selectedSubject);
                 const overrideStep = appearanceSettings.subjectSpeedOverrides?.[subjectKey];
@@ -2188,6 +2173,19 @@ function ChatScreenContent() {
                 );
               })()}
             </TouchableOpacity>
+          </View>
+
+          {/* Pill input card — full width, typing space unaffected */}
+          <View
+            style={[
+              chatStyles.inputCard,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+                shadowColor: "#000",
+              },
+            ]}
+          >
 
             <TextInput
               style={[
@@ -3181,6 +3179,13 @@ const chatStyles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
     letterSpacing: 0.1,
+  },
+  // Round 44b: subject pill row above the input card
+  inputSubjectRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 4,
+    paddingBottom: 4,
   },
   // Round 44b: professional subject pill on input bar
   inputSubjectPill: {
