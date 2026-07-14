@@ -479,3 +479,4 @@
 - [x] Update EXPO_PUBLIC_API_BASE_URL to production domain so APK can reach the backend
 - [x] Fix CORS middleware to always send ACAO header (native Android has no Origin header)
 - [x] Fix credentials mode to use omit on native (Bearer token auth) vs include on web (cookie auth)
+- [x] Replace global fetch with expo/fetch on native — RN built-in fetch does NOT support response.body.getReader() (ReadableStream) on Android/iOS Hermes engine

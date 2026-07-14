@@ -94,6 +94,9 @@ import {
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { getApiBaseUrl } from "@/constants/oauth";
 import * as Auth from "@/lib/_core/auth";
+// expo/fetch provides WinterCG-compliant streaming fetch on Android/iOS.
+// React Native's built-in fetch does NOT support response.body.getReader() on native.
+import { fetch as expoFetch } from "expo/fetch";
 
 function getAppearanceSubjectKey(subjectId: string | null): string {
   if (!subjectId) return "Mathematics";
@@ -858,15 +861,29 @@ function ChatScreenContent() {
         const cleanBase = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
         const url = `${cleanBase}/api/chat/stream`;
 
-        const response = await fetch(url, {
-          method: "POST",
-          headers,
-          // credentials: "include" breaks on Android native (no cookie jar for cross-origin);
-          // use "same-origin" on web, "omit" on native (auth is via Bearer token header instead)
-          credentials: Platform.OS === "web" ? "include" : "omit",
-          body: JSON.stringify({ messages: contextMessages, subject, gradeLevel }),
-          signal: controller.signal,
-        });
+        // On native (Android/iOS), React Native's built-in fetch does NOT support
+        // response.body.getReader() — use expo/fetch which provides a WinterCG-compliant
+        // streaming fetch backed by native HTTP (not XMLHttpRequest).
+        // On web, the global fetch works fine with ReadableStream.
+        // Use expo/fetch on native for proper ReadableStream support; global fetch on web
+        let response: Response;
+        if (Platform.OS === "web") {
+          response = await fetch(url, {
+            method: "POST",
+            headers,
+            credentials: "include",
+            body: JSON.stringify({ messages: contextMessages, subject, gradeLevel }),
+            signal: controller.signal,
+          });
+        } else {
+          // expoFetch: WinterCG-compliant, supports response.body.getReader() on Android/iOS
+          const expoResponse = await expoFetch(url, {
+            method: "POST",
+            headers,
+            body: JSON.stringify({ messages: contextMessages, subject, gradeLevel }),
+          });
+          response = expoResponse as unknown as Response;
+        }
 
         if (!response.ok || !response.body) {
           const errText = await response.text().catch(() => "");
