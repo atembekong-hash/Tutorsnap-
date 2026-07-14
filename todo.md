@@ -636,3 +636,9 @@
 - [x] Nickname edit shortcut on WelcomeCard — "Edit name" / "Set your name" link below subtitle, taps open TutorSettingsModal
 - [x] Typing speed live preview in TutorSettings Section 3 — animated demo sentence plays at selected speed, ↺ replay button, auto-runs on modal open and speed change
 - [x] TypeScript: 0 errors confirmed
+
+## Round 57: Chat Bar Position Fix
+- [x] Add inputRef to TextInput so it can be programmatically blurred
+- [x] Call inputRef.current?.blur() in handleSend after Keyboard.dismiss() so bar returns to bottom position after send
+- [x] Set blurOnSubmit={false} to prevent double-blur conflict on multiline input
+- [x] TypeScript: 0 errors confirmed

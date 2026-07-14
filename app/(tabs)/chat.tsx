@@ -719,6 +719,7 @@ function ChatScreenContent() {
   const showSlowTooltip = slowTooltipState !== null;
 
   const flatListRef = useRef<FlatList>(null);
+  const inputRef = useRef<import("react-native").TextInput>(null);
   const isUserScrolledUpRef = useRef(false);
   const shareCopiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Throttle streaming scroll — fire at most every 120ms with animated:true for smooth glide
@@ -1364,6 +1365,7 @@ function ChatScreenContent() {
       }
 
       Keyboard.dismiss();
+      inputRef.current?.blur();
       H.impactLight();
 
       setReplyTo(null);
@@ -2272,6 +2274,7 @@ function ChatScreenContent() {
             ]}
           >
             <TextInput
+              ref={inputRef}
               style={[
                 chatStyles.input,
                 { color: colors.foreground, fontSize: fs(15), lineHeight: fs(15) * 1.45 },
@@ -2284,7 +2287,7 @@ function ChatScreenContent() {
               maxLength={2000}
               returnKeyType={tutorSettings.sendOnEnter ? "send" : "default"}
               onSubmitEditing={() => { if (tutorSettings.sendOnEnter) handleSend(); }}
-              blurOnSubmit={!tutorSettings.sendOnEnter}
+              blurOnSubmit={false}
               editable={!isAtLimit}
             />
 
