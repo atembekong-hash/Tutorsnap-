@@ -2129,46 +2129,6 @@ function ChatScreenContent() {
               },
             ]}
           >
-            {/* Round 44: Subject color dot on input bar — replaces the book-icon pill */}
-            <TouchableOpacity
-              onPress={() => setShowSubjectPicker(true)}
-              onLongPress={() => {
-                if (selectedSubject) {
-                  handleSubjectChange(null);
-                  H.impactMedium();
-                  if (subjectClearedTimerRef.current) clearTimeout(subjectClearedTimerRef.current);
-                  setSubjectClearedToast(true);
-                  subjectClearedTimerRef.current = setTimeout(() => setSubjectClearedToast(false), 1800);
-                }
-              }}
-              delayLongPress={400}
-              style={[
-                chatStyles.inputSubjectDot,
-                {
-                  backgroundColor: selectedSubject ? `${subjectAccent}22` : colors.background,
-                  borderColor: selectedSubject ? subjectAccent : colors.border,
-                },
-              ]}
-              activeOpacity={0.7}
-            >
-              {selectedSubject ? (
-                <View style={[chatStyles.inputSubjectDotInner, { backgroundColor: subjectAccent }]} />
-              ) : (
-                <IconSymbol size={13} name="book.fill" color={colors.muted} />
-              )}
-              {(() => {
-                const subjectKey = getAppearanceSubjectKey(selectedSubject);
-                const overrideStep = appearanceSettings.subjectSpeedOverrides?.[subjectKey];
-                if (!overrideStep || overrideStep < 1) return null;
-                const SPEED_SHORT = ["", "VS", "S", "N", "F", "VF"];
-                return (
-                  <View style={[chatStyles.speedBadge, { backgroundColor: subjectAccent || colors.primary }]}>
-                    <Text style={chatStyles.speedBadgeText}>{SPEED_SHORT[overrideStep]}</Text>
-                  </View>
-                );
-              })()}
-            </TouchableOpacity>
-
             <TextInput
               style={[
                 chatStyles.input,
@@ -2608,6 +2568,29 @@ function ChatScreenContent() {
               { backgroundColor: colors.surface, borderColor: colors.border, top: 56 + insets.top },
             ]}
           >
+            {/* Subject */}
+            <TouchableOpacity
+              style={[chatStyles.moreMenuItem, { borderBottomWidth: 0.5, borderBottomColor: colors.border }]}
+              activeOpacity={0.7}
+              onPress={() => {
+                setShowMoreMenu(false);
+                setTimeout(() => setShowSubjectPicker(true), 150);
+                H.impactLight();
+              }}
+            >
+              <View style={[chatStyles.moreMenuIcon, { backgroundColor: selectedSubject ? `${subjectAccent}22` : `${colors.muted}18` }]}>
+                {selectedSubject ? (
+                  <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: subjectAccent }} />
+                ) : (
+                  <IconSymbol size={16} name="book.fill" color={colors.muted} />
+                )}
+              </View>
+              <Text style={[chatStyles.moreMenuLabel, { color: selectedSubject ? subjectAccent : colors.foreground, fontSize: fs(14) }]}>
+                {selectedSubject ? getSubjectLabel(selectedSubject) : "Set Subject"}
+              </Text>
+              <IconSymbol size={13} name="chevron.right" color={colors.muted} />
+            </TouchableOpacity>
+
             {/* History */}
             <TouchableOpacity
               style={[chatStyles.moreMenuItem, { borderBottomWidth: 0.5, borderBottomColor: colors.border }]}
