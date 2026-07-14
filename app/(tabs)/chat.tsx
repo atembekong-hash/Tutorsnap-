@@ -357,6 +357,18 @@ function MessageBubble({
     );
   }
 
+  // Error state — empty bubble with no content (the error row is rendered in FlatList)
+  if (message.error) {
+    return (
+      <View style={[bubbleStyles.aiRow, { marginBottom: rowMarginB }]}>
+        <View style={bubbleStyles.avatarCol}>
+          {isFirstInRun ? <AIAvatar size={30} /> : null}
+        </View>
+        <View style={bubbleStyles.aiContent} />
+      </View>
+    );
+  }
+
   // AI bubble — full width, no card, long-pressable
   return (
     <TouchableOpacity
@@ -987,7 +999,18 @@ function ChatScreenContent() {
         const isAbort = err instanceof Error && err.name === "AbortError";
         if (!isAbort) {
           console.error("[chat stream] error:", err);
-          // Remove the placeholder bubble on error
+          // Replace placeholder with an error bubble that has a retry button
+          const errorMsg: ChatMessage = {
+            id: msgId,
+            role: "assistant",
+            content: "",
+            timestamp: Date.now(),
+            error: true,
+            retryPayload: contextMessages,
+          };
+          setMessages((prev) => prev.map((m) => (m.id === msgId ? errorMsg : m)));
+        } else {
+          // Aborted by user — remove the placeholder
           setMessages((prev) => prev.filter((m) => m.id !== msgId));
         }
         streamingMsgIdRef.current = null;
@@ -1582,6 +1605,28 @@ function ChatScreenContent() {
                     onLongPressAI={handleLongPressAI}
                     streaming={item.id === streamingMsgIdRef.current && isStreaming}
                   />
+                )}
+                {/* Error bubble — shown when stream fails */}
+                {item.role === "assistant" && item.error && !isStreaming && (
+                  <View style={chatStyles.stoppedRow}>
+                    <Text style={[chatStyles.stoppedBadge, { color: colors.error }]}>⚠ Could not reach server</Text>
+                    <TouchableOpacity
+                      style={[chatStyles.regenerateBtn, { borderColor: colors.primary }]}
+                      onPress={() => {
+                        if (!session) return;
+                        H.impactLight();
+                        // Remove the error bubble and retry with the saved context
+                        setMessages((prev) => prev.filter((m) => m.id !== item.id));
+                        const ctx = item.retryPayload ?? messages
+                          .filter((m) => m.id !== item.id && !m.id.startsWith("welcome"))
+                          .map((m) => ({ role: m.role, content: m.content }));
+                        sendStreamingChat(ctx, selectedSubject ?? undefined, gradeLevel ?? undefined, session);
+                      }}
+                      activeOpacity={0.75}
+                    >
+                      <Text style={[chatStyles.regenerateBtnText, { color: colors.primary }]}>↺ Retry</Text>
+                    </TouchableOpacity>
+                  </View>
                 )}
                 {/* Follow-up chips — only after the last AI response */}
                 {/* Stopped badge + regenerate button */}

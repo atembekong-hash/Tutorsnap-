@@ -480,3 +480,8 @@
 - [x] Fix CORS middleware to always send ACAO header (native Android has no Origin header)
 - [x] Fix credentials mode to use omit on native (Bearer token auth) vs include on web (cookie auth)
 - [x] Replace global fetch with expo/fetch on native — RN built-in fetch does NOT support response.body.getReader() (ReadableStream) on Android/iOS Hermes engine
+
+## Round 29: Error Bubble, Retry Button, expo/fetch for Solver
+- [x] Add connection-failed error bubble in AI Tutor chat when stream errors out
+- [x] Add retry button on failed AI messages in AI Tutor chat
+- [x] Apply expo/fetch fix to Math Solver snap-to-solve streaming on native (confirmed: only chat.tsx uses streaming; all other screens use tRPC mutations)
