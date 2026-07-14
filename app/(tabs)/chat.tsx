@@ -1781,7 +1781,7 @@ function ChatScreenContent() {
             keyExtractor={(item) => item.id}
             renderItem={({ item, index }) => (
               <View>
-                {item.role === "assistant" && !item.id.startsWith("welcome") ? (
+                {item.role === "assistant" && !item.id.startsWith("welcome") && Platform.OS !== "web" ? (
                   <Swipeable
                     renderRightActions={() => (
                       <View style={[chatStyles.swipeReplyHint, { backgroundColor: `${colors.primary}18` }]}>
