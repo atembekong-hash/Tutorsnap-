@@ -820,6 +820,10 @@ function ChatScreenContent() {
 
   const bottomPadding = Platform.OS === "web" ? 12 : Math.max(insets.bottom, 8);
   const TAB_BAR_HEIGHT = 60 + bottomPadding;
+  // Chat header height (paddingVertical 10*2 + avatar 28 + border 0.5) ≈ 56px
+  // keyboardVerticalOffset = distance from screen top to top of KeyboardAvoidingView.
+  // ScreenContainer handles safe-area top, so offset = header height + status bar inset.
+  const KEYBOARD_OFFSET = Platform.OS === "ios" ? 56 + insets.top : 0;
 
   // ── Session init ────────────────────────────────────────────────────────────
 
@@ -1622,7 +1626,7 @@ function ChatScreenContent() {
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
-        keyboardVerticalOffset={TAB_BAR_HEIGHT}
+        keyboardVerticalOffset={KEYBOARD_OFFSET}
       >
         {/* ── Slim header with gradient avatar ── */}
         <View
