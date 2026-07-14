@@ -2118,8 +2118,18 @@ function ChatScreenContent() {
             </View>
           )}
 
-          {/* Round 44b: Subject pill row — sits ABOVE the input card, does not affect typing space */}
-          <View style={chatStyles.inputSubjectRow}>
+          {/* Pill input card */}
+          <View
+            style={[
+              chatStyles.inputCard,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+                shadowColor: "#000",
+              },
+            ]}
+          >
+            {/* Round 44: Subject color dot on input bar — replaces the book-icon pill */}
             <TouchableOpacity
               onPress={() => setShowSubjectPicker(true)}
               onLongPress={() => {
@@ -2133,34 +2143,19 @@ function ChatScreenContent() {
               }}
               delayLongPress={400}
               style={[
-                chatStyles.inputSubjectPill,
-                selectedSubject
-                  ? { backgroundColor: `${subjectAccent}18`, borderColor: `${subjectAccent}60` }
-                  : { backgroundColor: colors.surface, borderColor: colors.border },
+                chatStyles.inputSubjectDot,
+                {
+                  backgroundColor: selectedSubject ? `${subjectAccent}22` : colors.background,
+                  borderColor: selectedSubject ? subjectAccent : colors.border,
+                },
               ]}
               activeOpacity={0.7}
             >
-              <View
-                style={[
-                  chatStyles.inputSubjectSwatch,
-                  { backgroundColor: selectedSubject ? subjectAccent : colors.border },
-                ]}
-              >
-                {!selectedSubject && (
-                  <IconSymbol size={9} name="book.fill" color="#fff" />
-                )}
-              </View>
-              <Text
-                style={[
-                  chatStyles.inputSubjectLabel,
-                  { color: selectedSubject ? subjectAccent : colors.muted, fontSize: fs(12) },
-                ]}
-                numberOfLines={1}
-              >
-                {selectedSubject
-                  ? `${getSubjectEmoji(selectedSubject)} ${getSubjectLabel(selectedSubject)}`
-                  : "Subject"}
-              </Text>
+              {selectedSubject ? (
+                <View style={[chatStyles.inputSubjectDotInner, { backgroundColor: subjectAccent }]} />
+              ) : (
+                <IconSymbol size={13} name="book.fill" color={colors.muted} />
+              )}
               {(() => {
                 const subjectKey = getAppearanceSubjectKey(selectedSubject);
                 const overrideStep = appearanceSettings.subjectSpeedOverrides?.[subjectKey];
@@ -2173,19 +2168,6 @@ function ChatScreenContent() {
                 );
               })()}
             </TouchableOpacity>
-          </View>
-
-          {/* Pill input card — full width, typing space unaffected */}
-          <View
-            style={[
-              chatStyles.inputCard,
-              {
-                backgroundColor: colors.surface,
-                borderColor: colors.border,
-                shadowColor: "#000",
-              },
-            ]}
-          >
 
             <TextInput
               style={[
@@ -3180,36 +3162,19 @@ const chatStyles = StyleSheet.create({
     fontWeight: "600",
     letterSpacing: 0.1,
   },
-  // Round 44b: subject pill row above the input card
-  inputSubjectRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 4,
-    paddingBottom: 4,
-  },
-  // Round 44b: professional subject pill on input bar
-  inputSubjectPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 9,
-    paddingVertical: 6,
-    borderRadius: 20,
+  // Round 44: subject color dot on input bar
+  inputSubjectDot: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     borderWidth: 1.5,
-    maxWidth: 130,
-  },
-  inputSubjectSwatch: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
     alignItems: "center",
     justifyContent: "center",
-    flexShrink: 0,
   },
-  inputSubjectLabel: {
-    fontWeight: "600",
-    letterSpacing: 0.1,
-    flexShrink: 1,
+  inputSubjectDotInner: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
   },
   // Round 44: ⋯ more menu dropdown
   moreMenuDropdown: {
