@@ -557,3 +557,6 @@
 - [x] Add gear Settings button to top bar that opens a pop-up modal
 - [x] Replace History + Share buttons with a single ⋯ dropdown in top bar
 - [x] Remove subject text from status row; show subject as color dot on the chat input bar
+
+## Round 45: Tutor Settings — animation toggle
+- [x] Add on/off toggle in Tutor Settings modal to enable/disable typing animation, persisted to AsyncStorage

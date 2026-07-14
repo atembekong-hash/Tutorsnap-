@@ -39,6 +39,7 @@ import {
   Modal,
   Animated,
   Easing,
+  Switch,
 } from "react-native";
 // expo-linear-gradient is NOT imported at top level (crashes old APKs without the native view compiled in)
 import * as H from "@/lib/haptics";
@@ -660,6 +661,7 @@ function ChatScreenContent() {
   // Round 44: top-bar ⋯ dropdown and tutor settings popup
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showTutorSettings, setShowTutorSettings] = useState(false);
+  const [animationEnabled, setAnimationEnabled] = useState(true);
   const [showSubjectPicker, setShowSubjectPicker] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [showPaywallModal, setShowPaywallModal] = useState(false);
@@ -832,6 +834,9 @@ function ChatScreenContent() {
 
     async function init() {
       await migrateOldChatHistory();
+      // Load animation preference
+      const animPref = await AsyncStorage.getItem("@tutorsnap/animationEnabled");
+      if (animPref !== null) setAnimationEnabled(animPref !== "false");
 
       if (params.newSession === "1" || !params.sessionId) {
         // Subject pre-fill: use param from home screen banner, else fall back to last-used subject
@@ -1073,6 +1078,20 @@ function ChatScreenContent() {
             return;
           }
           renderLoopRunning = true;
+          if (!animationEnabled) {
+            // Animation disabled: flush entire queue instantly in one render
+            accumulated += charQueue.splice(0).join("");
+            const snap = accumulated;
+            setMessages((prev) =>
+              prev.map((m) => (m.id === msgId ? { ...m, content: snap } : m))
+            );
+            smoothScrollToEnd();
+            renderLoopRunning = false;
+            if (!isUserScrolledUpRef.current) {
+              flatListRef.current?.scrollToEnd({ animated: true });
+            }
+            return;
+          }
           // One character at a time
           const ch = charQueue.shift()!;
           accumulated += ch;
@@ -2761,6 +2780,32 @@ function ChatScreenContent() {
                 </View>
                 <IconSymbol size={13} name="chevron.right" color={colors.muted} />
               </TouchableOpacity>
+
+              {/* Typing animation toggle row */}
+              <View
+                style={[chatStyles.tutorSettingsRow, { borderBottomWidth: 0.5, borderBottomColor: colors.border }]}
+              >
+                <View style={[chatStyles.tutorSettingsRowIcon, { backgroundColor: animationEnabled ? `${colors.primary}18` : colors.background, borderColor: animationEnabled ? colors.primary : colors.border }]}>
+                  <IconSymbol size={14} name="sparkles" color={animationEnabled ? colors.primary : colors.muted} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[chatStyles.tutorSettingsRowLabel, { color: colors.foreground, fontSize: fs(14) }]}>Typing Animation</Text>
+                  <Text style={[chatStyles.tutorSettingsRowSub, { color: colors.muted, fontSize: fs(12) }]}>
+                    {animationEnabled ? "Letter-by-letter reveal" : "Instant response"}
+                  </Text>
+                </View>
+                <Switch
+                  value={animationEnabled}
+                  onValueChange={async (val) => {
+                    setAnimationEnabled(val);
+                    await AsyncStorage.setItem("@tutorsnap/animationEnabled", val ? "true" : "false");
+                    H.impactLight();
+                  }}
+                  trackColor={{ false: colors.border, true: `${colors.primary}80` }}
+                  thumbColor={animationEnabled ? colors.primary : colors.muted}
+                  ios_backgroundColor={colors.border}
+                />
+              </View>
 
               {/* New chat row */}
               <TouchableOpacity
