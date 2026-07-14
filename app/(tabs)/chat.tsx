@@ -657,9 +657,6 @@ function ChatScreenContent() {
   const [sessionLoaded, setSessionLoaded] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
-  // Round 44: top-bar dropdown (history + share) and tutor settings popup
-  const [showMoreMenu, setShowMoreMenu] = useState(false);
-  const [showTutorSettings, setShowTutorSettings] = useState(false);
   const [showSubjectPicker, setShowSubjectPicker] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [showPaywallModal, setShowPaywallModal] = useState(false);
@@ -1666,53 +1663,59 @@ function ChatScreenContent() {
                     </Text>
                   </>
                 )}
-                {/* Round 44: subject is now shown as a color dot in headerActions, not text here */}
+                {selectedSubject && (
+                  <>
+                    <Text style={[chatStyles.statusSep, { color: colors.border }]}>·</Text>
+                    <Text
+                      style={[chatStyles.statusText, { color: colors.muted, fontSize: fs(11) }]}
+                      numberOfLines={1}
+                    >
+                      {getSubjectEmoji(selectedSubject)} {getSubjectLabel(selectedSubject)}
+                    </Text>
+                  </>
+                )}
               </View>
             </View>
           </View>
 
           <View style={chatStyles.headerActions}>
-            {/* Round 44: Subject color dot — tapping opens subject picker */}
+            {/* Grade level pill */}
             <TouchableOpacity
-              onPress={() => setShowSubjectPicker(true)}
-              accessibilityLabel={selectedSubject ? `Subject: ${getSubjectLabel(selectedSubject)}` : "Pick subject"}
+              onPress={() => setShowGradePicker(true)}
+              accessibilityLabel="Set grade level"
               style={[
-                chatStyles.subjectDotBtn,
+                chatStyles.gradePill,
                 {
-                  backgroundColor: selectedSubject ? `${subjectAccent}22` : colors.surface,
-                  borderColor: selectedSubject ? subjectAccent : colors.border,
+                  backgroundColor: gradeLevel ? `${colors.primary}18` : colors.surface,
+                  borderColor: gradeLevel ? colors.primary : colors.border,
                 },
               ]}
               activeOpacity={0.7}
             >
-              {selectedSubject ? (
-                <View style={[chatStyles.subjectDotInner, { backgroundColor: subjectAccent }]} />
-              ) : (
-                <IconSymbol size={14} name="plus" color={colors.muted} />
-              )}
+              <Text style={[chatStyles.gradePillText, { color: gradeLevel ? colors.primary : colors.muted, fontSize: fs(14) }]}>
+                {gradeLevel ? GRADE_LABELS_LIB[gradeLevel] ?? gradeLevel : "Level"}
+              </Text>
             </TouchableOpacity>
-
-            {/* Round 44: ⋯ dropdown — history + share */}
             <TouchableOpacity
-              onPress={() => { setShowMoreMenu(true); H.impactLight(); }}
-              accessibilityLabel="More options"
+              onPress={() => router.push("/chat-history")}
+              accessibilityLabel="Chat history"
               style={chatStyles.headerBtn}
               activeOpacity={0.7}
             >
-              <IconSymbol size={22} name="ellipsis" color={colors.muted} />
+              <IconSymbol size={24} name="clock.fill" color={colors.muted} />
             </TouchableOpacity>
-
-            {/* Round 44: Tutor settings */}
             <TouchableOpacity
-              onPress={() => { setShowTutorSettings(true); H.impactLight(); }}
-              accessibilityLabel="Tutor settings"
+              onPress={() => setShowShareMenu(true)}
+              accessibilityLabel="Share chat"
               style={chatStyles.headerBtn}
               activeOpacity={0.7}
             >
-              <IconSymbol size={22} name="gearshape.fill" color={colors.muted} />
+              <IconSymbol
+                size={24}
+                name={shareCopied ? "checkmark.circle.fill" : "square.and.arrow.up.fill"}
+                color={shareCopied ? colors.success : colors.muted}
+              />
             </TouchableOpacity>
-
-            {/* New chat */}
             <TouchableOpacity
               onPress={handleNewChat}
               accessibilityLabel="New chat"
@@ -2599,174 +2602,6 @@ function ChatScreenContent() {
         </TouchableOpacity>
       )}
 
-      {/* Round 44: ⋯ More menu dropdown (History + Share) */}
-      {showMoreMenu && (
-        <TouchableOpacity
-          style={[StyleSheet.absoluteFillObject, { zIndex: 200 }]}
-          activeOpacity={1}
-          onPress={() => setShowMoreMenu(false)}
-        >
-          <View
-            style={[
-              chatStyles.moreMenuDropdown,
-              { backgroundColor: colors.surface, borderColor: colors.border, top: 56 + insets.top },
-            ]}
-          >
-            {/* History */}
-            <TouchableOpacity
-              style={[chatStyles.moreMenuItem, { borderBottomWidth: 0.5, borderBottomColor: colors.border }]}
-              activeOpacity={0.7}
-              onPress={() => {
-                setShowMoreMenu(false);
-                router.push("/chat-history");
-                H.impactLight();
-              }}
-            >
-              <View style={[chatStyles.moreMenuIcon, { backgroundColor: `${colors.primary}18` }]}>
-                <IconSymbol size={16} name="clock.fill" color={colors.primary} />
-              </View>
-              <Text style={[chatStyles.moreMenuLabel, { color: colors.foreground, fontSize: fs(14) }]}>Chat History</Text>
-              <IconSymbol size={13} name="chevron.right" color={colors.muted} />
-            </TouchableOpacity>
-
-            {/* Share */}
-            <TouchableOpacity
-              style={chatStyles.moreMenuItem}
-              activeOpacity={0.7}
-              onPress={() => {
-                setShowMoreMenu(false);
-                setTimeout(() => setShowShareMenu(true), 150);
-                H.impactLight();
-              }}
-            >
-              <View style={[chatStyles.moreMenuIcon, { backgroundColor: `${colors.success}18` }]}>
-                <IconSymbol size={16} name="square.and.arrow.up.fill" color={colors.success} />
-              </View>
-              <Text style={[chatStyles.moreMenuLabel, { color: colors.foreground, fontSize: fs(14) }]}>Share Chat</Text>
-              <IconSymbol size={13} name="chevron.right" color={colors.muted} />
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      )}
-
-      {/* Round 44: Tutor Settings popup modal */}
-      <Modal
-        visible={showTutorSettings}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowTutorSettings(false)}
-      >
-        <TouchableOpacity
-          style={[chatStyles.tutorSettingsOverlay]}
-          activeOpacity={1}
-          onPress={() => setShowTutorSettings(false)}
-        >
-          <TouchableOpacity activeOpacity={1}>
-            <View style={[chatStyles.tutorSettingsSheet, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              {/* Header */}
-              <View style={chatStyles.tutorSettingsHeader}>
-                <Text style={[chatStyles.tutorSettingsTitle, { color: colors.foreground, fontSize: fs(17) }]}>Tutor Settings</Text>
-                <TouchableOpacity
-                  onPress={() => setShowTutorSettings(false)}
-                  style={[chatStyles.tutorSettingsClose, { backgroundColor: colors.background, borderColor: colors.border }]}
-                  activeOpacity={0.7}
-                >
-                  <IconSymbol size={16} name="xmark" color={colors.muted} />
-                </TouchableOpacity>
-              </View>
-
-              {/* Subject picker row */}
-              <TouchableOpacity
-                style={[chatStyles.tutorSettingsRow, { borderBottomWidth: 0.5, borderBottomColor: colors.border }]}
-                activeOpacity={0.7}
-                onPress={() => {
-                  setShowTutorSettings(false);
-                  setTimeout(() => setShowSubjectPicker(true), 200);
-                  H.impactLight();
-                }}
-              >
-                <View style={[chatStyles.tutorSettingsRowIcon, { backgroundColor: selectedSubject ? `${subjectAccent}18` : colors.background, borderColor: selectedSubject ? subjectAccent : colors.border }]}>
-                  {selectedSubject ? (
-                    <View style={[{ width: 12, height: 12, borderRadius: 6, backgroundColor: subjectAccent }]} />
-                  ) : (
-                    <IconSymbol size={14} name="books.vertical.fill" color={colors.muted} />
-                  )}
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[chatStyles.tutorSettingsRowLabel, { color: colors.foreground, fontSize: fs(14) }]}>Subject</Text>
-                  <Text style={[chatStyles.tutorSettingsRowSub, { color: colors.muted, fontSize: fs(12) }]}>
-                    {selectedSubject ? `${getSubjectEmoji(selectedSubject)} ${getSubjectLabel(selectedSubject)}` : "Not set"}
-                  </Text>
-                </View>
-                <IconSymbol size={13} name="chevron.right" color={colors.muted} />
-              </TouchableOpacity>
-
-              {/* Grade level row */}
-              <TouchableOpacity
-                style={[chatStyles.tutorSettingsRow, { borderBottomWidth: 0.5, borderBottomColor: colors.border }]}
-                activeOpacity={0.7}
-                onPress={() => {
-                  setShowTutorSettings(false);
-                  setTimeout(() => setShowGradePicker(true), 200);
-                  H.impactLight();
-                }}
-              >
-                <View style={[chatStyles.tutorSettingsRowIcon, { backgroundColor: gradeLevel ? `${colors.primary}18` : colors.background, borderColor: gradeLevel ? colors.primary : colors.border }]}>
-                  <IconSymbol size={14} name="graduationcap.fill" color={gradeLevel ? colors.primary : colors.muted} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[chatStyles.tutorSettingsRowLabel, { color: colors.foreground, fontSize: fs(14) }]}>Grade Level</Text>
-                  <Text style={[chatStyles.tutorSettingsRowSub, { color: colors.muted, fontSize: fs(12) }]}>
-                    {gradeLevel ? GRADE_LABELS_LIB[gradeLevel] ?? gradeLevel : "Not set"}
-                  </Text>
-                </View>
-                <IconSymbol size={13} name="chevron.right" color={colors.muted} />
-              </TouchableOpacity>
-
-              {/* Typing speed row */}
-              <TouchableOpacity
-                style={[chatStyles.tutorSettingsRow, { borderBottomWidth: 0.5, borderBottomColor: colors.border }]}
-                activeOpacity={0.7}
-                onPress={() => {
-                  setShowTutorSettings(false);
-                  router.push("/settings");
-                  H.impactLight();
-                }}
-              >
-                <View style={[chatStyles.tutorSettingsRowIcon, { backgroundColor: colors.background, borderColor: colors.border }]}>
-                  <IconSymbol size={14} name="speedometer" color={colors.muted} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[chatStyles.tutorSettingsRowLabel, { color: colors.foreground, fontSize: fs(14) }]}>Typing Speed</Text>
-                  <Text style={[chatStyles.tutorSettingsRowSub, { color: colors.muted, fontSize: fs(12) }]}>Adjust in Appearance settings</Text>
-                </View>
-                <IconSymbol size={13} name="chevron.right" color={colors.muted} />
-              </TouchableOpacity>
-
-              {/* Clear conversation row */}
-              <TouchableOpacity
-                style={chatStyles.tutorSettingsRow}
-                activeOpacity={0.7}
-                onPress={() => {
-                  setShowTutorSettings(false);
-                  setTimeout(() => handleNewChat(), 200);
-                  H.impactMedium();
-                }}
-              >
-                <View style={[chatStyles.tutorSettingsRowIcon, { backgroundColor: `${colors.error}18`, borderColor: `${colors.error}40` }]}>
-                  <IconSymbol size={14} name="trash.fill" color={colors.error} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[chatStyles.tutorSettingsRowLabel, { color: colors.error, fontSize: fs(14) }]}>New Chat</Text>
-                  <Text style={[chatStyles.tutorSettingsRowSub, { color: colors.muted, fontSize: fs(12) }]}>Start a fresh conversation</Text>
-                </View>
-                <IconSymbol size={13} name="chevron.right" color={colors.muted} />
-              </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
-
       {/* ── Copy Link toast ── */}
       {copyLinkFeedback && (
         <View style={[chatStyles.linkToast, { backgroundColor: colors.success }]}>
@@ -3167,114 +3002,5 @@ const chatStyles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "600",
     letterSpacing: 0.1,
-  },
-  // Round 44: subject color dot in top bar
-  subjectDotBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 2,
-  },
-  subjectDotInner: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-  },
-  // Round 44: more menu dropdown
-  moreMenuDropdown: {
-    position: "absolute",
-    right: 12,
-    width: 200,
-    borderRadius: 14,
-    borderWidth: 1,
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.18,
-    shadowRadius: 10,
-    elevation: 10,
-    zIndex: 201,
-  },
-  moreMenuItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  moreMenuIcon: {
-    width: 30,
-    height: 30,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  moreMenuLabel: {
-    flex: 1,
-    fontWeight: "500",
-  },
-  // Round 44: tutor settings popup
-  tutorSettingsOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.45)",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
-  },
-  tutorSettingsSheet: {
-    width: "100%",
-    maxWidth: 360,
-    borderRadius: 20,
-    borderWidth: 1,
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.22,
-    shadowRadius: 16,
-    elevation: 16,
-  },
-  tutorSettingsHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 18,
-    paddingTop: 18,
-    paddingBottom: 12,
-  },
-  tutorSettingsTitle: {
-    fontWeight: "700",
-  },
-  tutorSettingsClose: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  tutorSettingsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingHorizontal: 18,
-    paddingVertical: 13,
-  },
-  tutorSettingsRowIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  tutorSettingsRowLabel: {
-    fontWeight: "600",
-    marginBottom: 1,
-  },
-  tutorSettingsRowSub: {
-    lineHeight: 16,
   },
 });

@@ -552,8 +552,3 @@
 
 ## Round 43: Auto-resume on scroll inactivity
 - [x] Auto-resume streaming scroll after 3s of user scroll inactivity during stop-and-read mode
-
-## Round 44: Chat top bar redesign
-- [x] Replace subject text label with subject color dot/pill in top bar
-- [x] Nest History and Share into a single dropdown menu in top bar
-- [x] Add Settings button to top bar that opens a pop-up modal
