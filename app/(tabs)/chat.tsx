@@ -2129,7 +2129,7 @@ function ChatScreenContent() {
               },
             ]}
           >
-            {/* Round 44: Subject color dot on input bar — replaces the book-icon pill */}
+            {/* Round 44b: Professional subject pill on input bar */}
             <TouchableOpacity
               onPress={() => setShowSubjectPicker(true)}
               onLongPress={() => {
@@ -2143,19 +2143,39 @@ function ChatScreenContent() {
               }}
               delayLongPress={400}
               style={[
-                chatStyles.inputSubjectDot,
-                {
-                  backgroundColor: selectedSubject ? `${subjectAccent}22` : colors.background,
-                  borderColor: selectedSubject ? subjectAccent : colors.border,
-                },
+                chatStyles.inputSubjectPill,
+                selectedSubject
+                  ? { backgroundColor: `${subjectAccent}18`, borderColor: `${subjectAccent}60` }
+                  : { backgroundColor: colors.background, borderColor: colors.border },
               ]}
               activeOpacity={0.7}
             >
-              {selectedSubject ? (
-                <View style={[chatStyles.inputSubjectDotInner, { backgroundColor: subjectAccent }]} />
-              ) : (
-                <IconSymbol size={13} name="book.fill" color={colors.muted} />
-              )}
+              {/* Color swatch / book icon */}
+              <View
+                style={[
+                  chatStyles.inputSubjectSwatch,
+                  { backgroundColor: selectedSubject ? subjectAccent : colors.border },
+                ]}
+              >
+                {!selectedSubject && (
+                  <IconSymbol size={9} name="book.fill" color="#fff" />
+                )}
+              </View>
+
+              {/* Label */}
+              <Text
+                style={[
+                  chatStyles.inputSubjectLabel,
+                  { color: selectedSubject ? subjectAccent : colors.muted, fontSize: fs(12) },
+                ]}
+                numberOfLines={1}
+              >
+                {selectedSubject
+                  ? `${getSubjectEmoji(selectedSubject)} ${getSubjectLabel(selectedSubject)}`
+                  : "Subject"}
+              </Text>
+
+              {/* Speed badge (if override set) */}
               {(() => {
                 const subjectKey = getAppearanceSubjectKey(selectedSubject);
                 const overrideStep = appearanceSettings.subjectSpeedOverrides?.[subjectKey];
@@ -3162,19 +3182,29 @@ const chatStyles = StyleSheet.create({
     fontWeight: "600",
     letterSpacing: 0.1,
   },
-  // Round 44: subject color dot on input bar
-  inputSubjectDot: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+  // Round 44b: professional subject pill on input bar
+  inputSubjectPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 9,
+    paddingVertical: 6,
+    borderRadius: 20,
     borderWidth: 1.5,
+    maxWidth: 130,
+  },
+  inputSubjectSwatch: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
     alignItems: "center",
     justifyContent: "center",
+    flexShrink: 0,
   },
-  inputSubjectDotInner: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
+  inputSubjectLabel: {
+    fontWeight: "600",
+    letterSpacing: 0.1,
+    flexShrink: 1,
   },
   // Round 44: ⋯ more menu dropdown
   moreMenuDropdown: {
