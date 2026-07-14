@@ -495,3 +495,8 @@
 - [x] Add Reconnecting state to offline banner with auto-dismiss and Back online flash
 - [x] Add haptic pulse on connectivity change (offline/online transitions)
 - [x] Add offline message queue that holds unsent messages and auto-sends on reconnect
+
+## Round 32: Cancel Queue, Pending Bubbles, Connection Quality
+- [x] Add cancel queued messages button in offline banner
+- [x] Add pending bubble previews for queued messages in chat FlatList
+- [x] Add connection quality indicator (slow/fast) in status area using response time

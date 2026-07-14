@@ -687,6 +687,11 @@ function ChatScreenContent() {
   const bannerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Offline message queue — holds messages typed while offline
   const offlineQueueRef = useRef<string[]>([]);
+  // Reactive copy of offlineQueue for rendering pending bubbles
+  const [offlineQueue, setOfflineQueue] = useState<string[]>([]);
+  // Connection quality: null = unknown, 'fast' = <600ms, 'slow' = >=600ms
+  const [connectionQuality, setConnectionQuality] = useState<"fast" | "slow" | null>(null);
+  const lastPingTimeRef = useRef<number | null>(null);
 
   const flatListRef = useRef<FlatList>(null);
   const isUserScrolledUpRef = useRef(false);
@@ -749,6 +754,7 @@ function ChatScreenContent() {
       // Drain the offline queue
       const queued = [...offlineQueueRef.current];
       offlineQueueRef.current = [];
+      setOfflineQueue([]); // clear pending bubbles
       if (queued.length > 0) {
         // Send each queued message sequentially with a small delay
         queued.forEach((text, i) => {
@@ -915,6 +921,10 @@ function ChatScreenContent() {
         const cleanBase = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
         const url = `${cleanBase}/api/chat/stream`;
 
+        // Measure time-to-first-byte for connection quality indicator
+        const pingStart = Date.now();
+        lastPingTimeRef.current = pingStart;
+
         // On native (Android/iOS), React Native's built-in fetch does NOT support
         // response.body.getReader() — use expo/fetch which provides a WinterCG-compliant
         // streaming fetch backed by native HTTP (not XMLHttpRequest).
@@ -944,6 +954,10 @@ function ChatScreenContent() {
           console.error(`[chat stream] HTTP ${response.status}:`, errText);
           throw new Error(`Stream error: ${response.status}`);
         }
+
+        // Measure time-to-first-byte and update connection quality
+        const ttfb = Date.now() - pingStart;
+        setConnectionQuality(ttfb < 600 ? "fast" : "slow");
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
@@ -1072,13 +1086,11 @@ function ChatScreenContent() {
       // If offline, queue the message and show feedback
       if (!isOnline) {
         offlineQueueRef.current.push(baseText);
+        setOfflineQueue([...offlineQueueRef.current]); // sync reactive state for pending bubbles
         setInputText("");
         Keyboard.dismiss();
-        // Show a brief toast so user knows it's queued
-        if (subjectClearedTimerRef.current) clearTimeout(subjectClearedTimerRef.current);
-        setSubjectClearedToast(false);
-        // Reuse the banner to show queued state
         setBannerState("offline");
+        H.impactLight();
         return;
       }
 
@@ -1532,6 +1544,16 @@ function ChatScreenContent() {
                 >
                   {isOnline ? "Online" : "Offline"}
                 </Text>
+                {isOnline && connectionQuality !== null && (
+                  <>
+                    <Text style={[chatStyles.statusSep, { color: colors.border }]}>·</Text>
+                    <Text
+                      style={[chatStyles.statusText, { color: connectionQuality === "fast" ? colors.success : colors.warning, fontSize: fs(11) }]}
+                    >
+                      {connectionQuality === "fast" ? "Fast" : "Slow"}
+                    </Text>
+                  </>
+                )}
                 {selectedSubject && (
                   <>
                     <Text style={[chatStyles.statusSep, { color: colors.border }]}>·</Text>
@@ -1619,9 +1641,10 @@ function ChatScreenContent() {
             : `${colors.success}30`;
           const textColor = isOffline ? colors.error : isReconnecting ? colors.warning : colors.success;
           const iconName = isOffline ? "wifi.slash" : isBackOnline ? "checkmark.circle.fill" : "arrow.clockwise";
+          const queueCount = offlineQueue.length;
           const label = isOffline
-            ? offlineQueueRef.current.length > 0
-              ? `Offline — ${offlineQueueRef.current.length} message${offlineQueueRef.current.length === 1 ? "" : "s"} queued`
+            ? queueCount > 0
+              ? `Offline — ${queueCount} message${queueCount === 1 ? "" : "s"} queued`
               : "You are offline — check your connection"
             : isReconnecting
             ? "Reconnecting…"
@@ -1633,9 +1656,22 @@ function ChatScreenContent() {
               ) : (
                 <IconSymbol size={14} name={iconName} color={textColor} />
               )}
-              <Text style={[chatStyles.offlineBannerText, { color: textColor, fontSize: fs(12) }]}>
+              <Text style={[chatStyles.offlineBannerText, { color: textColor, fontSize: fs(12), flex: 1 }]}>
                 {label}
               </Text>
+              {isOffline && queueCount > 0 && (
+                <TouchableOpacity
+                  onPress={() => {
+                    offlineQueueRef.current = [];
+                    setOfflineQueue([]);
+                    H.impactMedium();
+                  }}
+                  style={[chatStyles.cancelQueueBtn, { borderColor: textColor }]}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[chatStyles.cancelQueueText, { color: textColor, fontSize: fs(11) }]}>Cancel</Text>
+                </TouchableOpacity>
+              )}
             </View>
           );
         })()}
@@ -1802,6 +1838,20 @@ function ChatScreenContent() {
               ) : null
             }
           />
+        )}
+
+        {/* ── Pending queued message bubbles (shown while offline) ── */}
+        {offlineQueue.length > 0 && (
+          <View style={[chatStyles.pendingQueueContainer, { borderTopColor: colors.border }]}>
+            {offlineQueue.map((text, i) => (
+              <View key={i} style={[chatStyles.pendingBubble, { backgroundColor: `${colors.primary}14`, borderColor: `${colors.primary}30` }]}>
+                <IconSymbol size={12} name="clock.fill" color={colors.muted} />
+                <Text style={[chatStyles.pendingBubbleText, { color: colors.muted, fontSize: fs(13) }]} numberOfLines={2}>
+                  {text}
+                </Text>
+              </View>
+            ))}
+          </View>
         )}
 
         {/* ── Floating input bar ── */}
@@ -2602,6 +2652,11 @@ const chatStyles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   offlineBannerText: { fontWeight: "600" },
+  cancelQueueBtn: { borderWidth: 1, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3, marginLeft: 8 },
+  cancelQueueText: { fontWeight: "600" },
+  pendingQueueContainer: { borderTopWidth: 0.5, paddingHorizontal: 12, paddingVertical: 6, gap: 4 },
+  pendingBubble: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, borderWidth: 1 },
+  pendingBubbleText: { flex: 1, fontStyle: "italic" },
   linkToastText: { color: "#fff", fontSize: 13, fontWeight: "600" },
   speedBadge: { position: "absolute", top: -5, right: -5, minWidth: 16, height: 16, borderRadius: 8, alignItems: "center", justifyContent: "center", paddingHorizontal: 3 },
   speedBadgeText: { color: "#fff", fontSize: 9, fontWeight: "800", letterSpacing: 0.3 },
