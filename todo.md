@@ -519,3 +519,6 @@
 - [x] Add unmount cleanup useEffect in chat.tsx to clear all timer refs on unmount
 - [x] Add accessibilityLabel to scan screen captured image
 - [x] Add accessibilityLabel to key icon-only buttons across all screens
+
+## Round 36: New Chat Quick-Action on Home Screen
+- [x] Add New Chat quick-action shortcut card on home screen to instantly start AI Tutor session

@@ -988,6 +988,26 @@ function SolveScreenContent() {
             </View>
           )}
 
+          {/* New Chat Quick-Action Banner */}
+          <TouchableOpacity
+            accessibilityLabel="Start a new AI Tutor chat"
+            accessibilityRole="button"
+            onPress={() => router.push("/(tabs)/chat" as any)}
+            activeOpacity={0.82}
+            style={[styles.newChatBanner, { backgroundColor: colors.secondary, shadowColor: colors.secondary }]}
+          >
+            <View style={styles.newChatLeft}>
+              <View style={styles.newChatIconWrap}>
+                <IconSymbol size={22} name="bubble.left.fill" color="#FFFFFF" />
+              </View>
+              <View>
+                <Text style={styles.newChatTitle}>Ask AI Tutor</Text>
+                <Text style={styles.newChatSub}>Get instant help on any topic</Text>
+              </View>
+            </View>
+            <IconSymbol size={18} name="chevron.right" color="rgba(255,255,255,0.75)" />
+          </TouchableOpacity>
+
           {/* Feature Cards Row */}
           <View style={styles.featureRow}>
             <TouchableOpacity
@@ -1391,6 +1411,46 @@ const styles = StyleSheet.create({
   },
   featureTitle: { fontSize: 13, fontWeight: "700" },
   featureDesc: { fontSize: 11, textAlign: "center", lineHeight: 15 },
+  newChatBanner: {
+    marginHorizontal: 16,
+    marginBottom: 14,
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  newChatLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    flex: 1,
+  },
+  newChatIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  newChatTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#FFFFFF",
+    lineHeight: 20,
+  },
+  newChatSub: {
+    fontSize: 12,
+    color: "rgba(255,255,255,0.8)",
+    lineHeight: 17,
+    marginTop: 1,
+  },
   examplesSection: {
     paddingHorizontal: 16,
     marginTop: 28,
