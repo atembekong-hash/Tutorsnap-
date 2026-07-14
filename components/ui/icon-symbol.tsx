@@ -135,6 +135,11 @@ const MAPPING = {
   "arrow.clockwise.circle.fill": "refresh",
   "creditcard.fill": "credit-card",
   "gift.fill": "card-giftcard",
+  // Round 44: top bar icons
+  "ellipsis": "more-horiz",
+  "gearshape.fill": "settings",
+  "books.vertical.fill": "library-books",
+  "speedometer": "speed",
 } as unknown as IconMapping;
 
 export function IconSymbol({
