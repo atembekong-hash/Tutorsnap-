@@ -820,10 +820,11 @@ function ChatScreenContent() {
 
   const bottomPadding = Platform.OS === "web" ? 12 : Math.max(insets.bottom, 8);
   const TAB_BAR_HEIGHT = 60 + bottomPadding;
-  // Chat header height (paddingVertical 10*2 + avatar 28 + border 0.5) ≈ 56px
-  // keyboardVerticalOffset = distance from screen top to top of KeyboardAvoidingView.
-  // ScreenContainer handles safe-area top, so offset = header height + status bar inset.
-  const KEYBOARD_OFFSET = Platform.OS === "ios" ? 56 + insets.top : 0;
+  // keyboardVerticalOffset = total distance from the physical top of the screen
+  // to the top of the KeyboardAvoidingView.
+  // = status bar (insets.top) + chat header (~56px) + tab bar (~TAB_BAR_HEIGHT)
+  // Using full TAB_BAR_HEIGHT ensures the input bar clears the keyboard on all devices.
+  const KEYBOARD_OFFSET = Platform.OS === "ios" ? insets.top + 56 + TAB_BAR_HEIGHT : 0;
 
   // ── Session init ────────────────────────────────────────────────────────────
 
