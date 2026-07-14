@@ -1,6 +1,6 @@
 import { Tabs } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { View, Platform, StyleSheet, TouchableOpacity, Animated, Easing } from "react-native";
+import { View, Platform, StyleSheet, Animated, Easing } from "react-native";
 import { useRef, useEffect } from "react";
 
 import { HapticTab } from "@/components/haptic-tab";
@@ -40,16 +40,16 @@ function ChatTabIcon({ color, focused: _focused }: { color: string; focused: boo
       ]).start();
     }
     prevUnreadRef.current = unreadCount;
-  }, [unreadCount, badgeScaleAnim]);
+    // Mark as read whenever the tab icon is rendered with focus (tab is active)
+    if (unreadCount > 0 && _focused) {
+      markAsRead();
+    }
+  }, [unreadCount, _focused, badgeScaleAnim, markAsRead]);
 
+  // Use a plain View — never nest a Touchable inside a tab button (HapticTab)
+  // as it intercepts the press and breaks tab navigation
   return (
-    <TouchableOpacity
-      style={{ position: "relative" }}
-      onPress={unreadCount > 0 ? markAsRead : undefined}
-      activeOpacity={unreadCount > 0 ? 0.6 : 1}
-      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-      accessibilityLabel={unreadCount > 0 ? `AI Tutor, ${unreadCount} new session${unreadCount > 1 ? "s" : ""}` : "AI Tutor"}
-    >
+    <View style={{ position: "relative" }}>
       <IconSymbol size={24} name="bubble.left.fill" color={color} />
       {unreadCount > 0 && (
         <Animated.View style={[
@@ -61,7 +61,7 @@ function ChatTabIcon({ color, focused: _focused }: { color: string; focused: boo
           </Text>
         </Animated.View>
       )}
-    </TouchableOpacity>
+    </View>
   );
 }
 
