@@ -471,6 +471,43 @@ export function TutorSettingsModal({
   const slideAnim = useRef(new Animated.Value(0)).current;
   const [showSystemPrompt, setShowSystemPrompt] = useState(false);
 
+  // ── Typing speed live preview ────────────────────────────────────────────
+  const PREVIEW_TEXT = "The quadratic formula solves ax² + bx + c = 0 instantly.";
+  const [previewText, setPreviewText] = useState("");
+  const [previewRunning, setPreviewRunning] = useState(false);
+  const previewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const previewIndexRef = useRef(0);
+
+  const runPreview = useCallback((speed: "slow" | "normal" | "fast") => {
+    if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
+    previewIndexRef.current = 0;
+    setPreviewText("");
+    setPreviewRunning(true);
+    const delay = speed === "slow" ? 80 : speed === "fast" ? 18 : 38;
+    const tick = () => {
+      const idx = previewIndexRef.current;
+      if (idx >= PREVIEW_TEXT.length) {
+        setPreviewRunning(false);
+        return;
+      }
+      setPreviewText(PREVIEW_TEXT.slice(0, idx + 1));
+      previewIndexRef.current = idx + 1;
+      previewTimerRef.current = setTimeout(tick, delay);
+    };
+    previewTimerRef.current = setTimeout(tick, delay);
+  }, []);
+
+  // Auto-run preview when typing speed changes or modal opens
+  useEffect(() => {
+    if (visible && settings.typingAnimation) {
+      runPreview(settings.typingSpeed);
+    }
+    return () => {
+      if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, settings.typingSpeed, settings.typingAnimation]);
+
   useEffect(() => {
     if (visible) {
       Animated.spring(slideAnim, {
@@ -731,8 +768,55 @@ export function TutorSettingsModal({
               label="Typing Speed"
               value={settings.typingSpeed}
               options={TYPING_SPEED_OPTIONS}
-              onChange={(v) => onUpdate({ typingSpeed: v })}
+              onChange={(v) => {
+                onUpdate({ typingSpeed: v });
+                if (settings.typingAnimation) runPreview(v);
+              }}
             />
+            {/* Live typing speed preview */}
+            {settings.typingAnimation && (
+              <View
+                style={{
+                  marginHorizontal: 16,
+                  marginBottom: 2,
+                  paddingHorizontal: 14,
+                  paddingVertical: 10,
+                  backgroundColor: colors.background,
+                  borderRadius: 10,
+                  borderWidth: 0.5,
+                  borderColor: colors.border,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
+                <Text style={{ fontSize: 12, color: colors.muted, fontWeight: "500", minWidth: 42 }}>
+                  Preview
+                </Text>
+                <Text
+                  style={{
+                    flex: 1,
+                    fontSize: 13,
+                    color: colors.foreground,
+                    lineHeight: 18,
+                    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+                  }}
+                  numberOfLines={2}
+                >
+                  {previewText}
+                  {previewRunning ? (
+                    <Text style={{ color: colors.primary }}>|</Text>
+                  ) : null}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => runPreview(settings.typingSpeed)}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  accessibilityLabel="Replay typing speed preview"
+                >
+                  <Text style={{ fontSize: 14, color: colors.primary }}>↺</Text>
+                </TouchableOpacity>
+              </View>
+            )}
             <ToggleRow
               icon="arrow.down.to.line"
               label="Auto-scroll"

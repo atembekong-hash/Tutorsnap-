@@ -631,3 +631,8 @@
 - [x] maxSessions pruning — pinned sessions now protected from eviction (separate pinned/unpinned buckets)
 - [x] All other screens audited: onboarding, settings, home, flashcards, refer, progress, paywall — no critical defects
 - [x] Code quality: 0 unused vars, 0 TypeScript errors, 34 warnings (all non-critical exhaustive-deps + no-require-imports)
+
+## Round 56: WelcomeCard Nickname Edit + Typing Speed Live Preview
+- [x] Nickname edit shortcut on WelcomeCard — "Edit name" / "Set your name" link below subtitle, taps open TutorSettingsModal
+- [x] Typing speed live preview in TutorSettings Section 3 — animated demo sentence plays at selected speed, ↺ replay button, auto-runs on modal open and speed change
+- [x] TypeScript: 0 errors confirmed

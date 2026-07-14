@@ -476,12 +476,14 @@ function WelcomeCard({
   subject,
   nickname,
   onPrompt,
+  onEditNickname,
 }: {
   colors: ReturnType<typeof useColors>;
   fs: (n: number) => number;
   subject: SubjectId | null;
   nickname?: string;
   onPrompt: (text: string) => void;
+  onEditNickname?: () => void;
 }) {
   const prompts = getPromptsForSubject(subject);
   const subjectDef = subject ? getSubjectDef(subject) : null;
@@ -504,6 +506,18 @@ function WelcomeCard({
       <Text style={[welcomeStyles.subtitle, { color: colors.muted, fontSize: fs(14) }]}>
         {subtitle}
       </Text>
+      {onEditNickname && (
+        <TouchableOpacity
+          onPress={onEditNickname}
+          accessibilityLabel="Edit your nickname in Tutor Settings"
+          accessibilityRole="button"
+          hitSlop={{ top: 8, bottom: 8, left: 12, right: 12 }}
+        >
+          <Text style={[welcomeStyles.editLink, { color: colors.primary, fontSize: fs(12) }]}>
+            {nickname ? "Edit name" : "Set your name"}
+          </Text>
+        </TouchableOpacity>
+      )}
       <View style={welcomeStyles.grid}>
         {prompts.map((p, i) => (
           <TouchableOpacity
@@ -543,6 +557,7 @@ const welcomeStyles = StyleSheet.create({
   },
   title: { fontWeight: "700", textAlign: "center" },
   subtitle: { textAlign: "center", lineHeight: 22, maxWidth: 300 },
+  editLink: { fontWeight: "500", textDecorationLine: "underline", opacity: 0.85 },
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -1917,6 +1932,7 @@ function ChatScreenContent() {
             subject={selectedSubject}
             nickname={tutorSettings.nickname || undefined}
             onPrompt={(t) => handleSend(t)}
+            onEditNickname={() => { setShowTutorSettings(true); H.impactLight(); }}
           />
         ) : (
           <FlatList
