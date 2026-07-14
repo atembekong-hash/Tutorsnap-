@@ -669,6 +669,9 @@ function ChatScreenContent() {
   const [isStreaming, setIsStreaming] = useState(false);
   const streamAbortRef = useRef<AbortController | null>(null);
   const streamingMsgIdRef = useRef<string | null>(null);
+  // Round 42: "↓ Generating…" pill — visible when user scrolls up during streaming
+  const [generatingPillVisible, setGeneratingPillVisible] = useState(false);
+  const generatingPillAnim = useRef(new Animated.Value(0)).current; // 0=hidden, 1=shown
   const sendBtnScaleAnim = useRef(new Animated.Value(1)).current;
   const scrollTopOpacity = useRef(new Animated.Value(0)).current;
   const scrollBottomOpacity = useRef(new Animated.Value(0)).current;
@@ -724,6 +727,16 @@ function ChatScreenContent() {
       Animated.timing(sendBtnScaleAnim, { toValue: 1, duration: 140, useNativeDriver: true, easing: Easing.out(Easing.back(1.5)) }),
     ]).start();
   }, [isStreaming, sendBtnScaleAnim]);
+
+  // Round 42: animate the generating pill in/out
+  useEffect(() => {
+    Animated.timing(generatingPillAnim, {
+      toValue: generatingPillVisible ? 1 : 0,
+      duration: generatingPillVisible ? 200 : 150,
+      useNativeDriver: true,
+      easing: generatingPillVisible ? Easing.out(Easing.quad) : Easing.in(Easing.quad),
+    }).start();
+  }, [generatingPillVisible, generatingPillAnim]);
 
   // Animate scroll FAB fade in/out
   useEffect(() => {
@@ -1057,7 +1070,11 @@ function ChatScreenContent() {
             prev.map((m) => (m.id === msgId ? { ...m, content: snap } : m))
           );
           smoothScrollToEnd();
-          setTimeout(drainQueue, reqDelayMs);
+          // Round 42: stop-and-read mode — when the user has scrolled up, drain at
+          // 5× the normal speed so text doesn't race ahead while they're reading.
+          // The moment they scroll back to the bottom the delay drops back to normal.
+          const delay = isUserScrolledUpRef.current ? reqDelayMs * 5 : reqDelayMs;
+          setTimeout(drainQueue, delay);
         };
 
         // eslint-disable-next-line no-constant-condition
@@ -1114,6 +1131,8 @@ function ChatScreenContent() {
         });
         streamingMsgIdRef.current = null;
         setIsStreaming(false);
+        // Round 42: hide the generating pill when streaming ends
+        setGeneratingPillVisible(false);
         // Streaming done: if the user never scrolled away, glide to the bottom.
         // If they did scroll up to read, respect their position and don't force-jump.
         if (!isUserScrolledUpRef.current) {
@@ -1897,6 +1916,8 @@ function ChatScreenContent() {
                 clearTimeout(scrollPendingRef.current);
                 scrollPendingRef.current = null;
               }
+              // Round 42: show the generating pill if we're currently streaming
+              if (isStreaming) setGeneratingPillVisible(true);
             }}
             onMomentumScrollBegin={() => {
               // Keep auto-scroll locked during the deceleration phase too.
@@ -1932,6 +1953,8 @@ function ChatScreenContent() {
               if (distanceFromBottom < 80) {
                 isUserScrolledUpRef.current = false;
                 isHighVelocityScrollRef.current = false;
+                // Round 42: hide the generating pill once back near the bottom
+                if (generatingPillVisible) setGeneratingPillVisible(false);
               }
               // Velocity detection: pause auto-scroll during fast manual flicks.
               // During streaming we skip the timer-based re-enable so the lock
@@ -2290,6 +2313,8 @@ function ChatScreenContent() {
               clearTimeout(scrollPendingRef.current);
               scrollPendingRef.current = null;
             }
+            // Round 42: hide the generating pill on FAB tap
+            setGeneratingPillVisible(false);
             flatListRef.current?.scrollToEnd({ animated: true });
             H.impactLight();
           }}
@@ -2297,6 +2322,44 @@ function ChatScreenContent() {
           activeOpacity={1}
         >
           <IconSymbol size={18} name="chevron.down" color={colors.foreground} />
+        </TouchableOpacity>
+      </Animated.View>
+
+      {/* Round 42: "↓ Generating…" pill — appears when user scrolls up during streaming */}
+      <Animated.View
+        pointerEvents={generatingPillVisible ? "auto" : "none"}
+        style={[
+          chatStyles.generatingPill,
+          {
+            backgroundColor: colors.surface,
+            borderColor: colors.border,
+            bottom: TAB_BAR_HEIGHT + 14,
+            opacity: generatingPillAnim,
+            transform: [{
+              translateY: generatingPillAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [10, 0],
+              }),
+            }],
+          },
+        ]}
+      >
+        <TouchableOpacity
+          accessibilityLabel="Scroll to latest AI response"
+          onPress={() => {
+            isUserScrolledUpRef.current = false;
+            isHighVelocityScrollRef.current = false;
+            if (highVelocityPauseTimerRef.current) clearTimeout(highVelocityPauseTimerRef.current);
+            if (scrollPendingRef.current) { clearTimeout(scrollPendingRef.current); scrollPendingRef.current = null; }
+            setGeneratingPillVisible(false);
+            flatListRef.current?.scrollToEnd({ animated: true });
+            H.impactLight();
+          }}
+          style={chatStyles.generatingPillInner}
+          activeOpacity={0.85}
+        >
+          <IconSymbol size={13} name="chevron.down" color={colors.primary} />
+          <Text style={[chatStyles.generatingPillText, { color: colors.primary }]}>Generating…</Text>
         </TouchableOpacity>
       </Animated.View>
 
@@ -2879,4 +2942,32 @@ const chatStyles = StyleSheet.create({
     elevation: 6,
   },
   transcriptToastText: { fontSize: 13, fontWeight: "600", flex: 1, lineHeight: 18 },
+  // Round 42: generating pill
+  generatingPill: {
+    position: "absolute",
+    alignSelf: "center",
+    left: 0,
+    right: 0,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  generatingPillInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  generatingPillText: {
+    fontSize: 13,
+    fontWeight: "600",
+    letterSpacing: 0.1,
+  },
 });

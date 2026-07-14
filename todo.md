@@ -545,3 +545,7 @@
 
 ## Round 41: Chat scroll UX
 - [x] Allow user to freely scroll chat FlatList during AI streaming without auto-scroll resistance
+
+## Round 42: Streaming UX — pill + stop-and-read
+- [x] "↓ Generating…" pill shown when user scrolls up during streaming
+- [x] Stop-and-read mode: slow character drain when user is scrolled up, resume normal speed at bottom
