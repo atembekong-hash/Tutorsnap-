@@ -2129,7 +2129,8 @@ function ChatScreenContent() {
               },
             ]}
           >
-            {/* Subject compact pill — fixed width, flexShrink:0, never affects TextInput flex:1 */}
+            {/* Subject compact pill — only shown when a subject is selected */}
+            {selectedSubject ? (
             <TouchableOpacity
               onPress={() => setShowSubjectPicker(true)}
               onLongPress={() => {
@@ -2184,6 +2185,7 @@ function ChatScreenContent() {
                 );
               })()}
             </TouchableOpacity>
+            ) : null}
 
             <TextInput
               style={[
