@@ -2126,52 +2126,49 @@ function ChatScreenContent() {
                 backgroundColor: colors.surface,
                 borderColor: colors.border,
                 shadowColor: "#000",
-                flexDirection: "column",
-                alignItems: "stretch",
               },
             ]}
           >
-            {/* Subject pill row — sits at the top of the card, only shown when subject is selected */}
-            {selectedSubject ? (
-              <TouchableOpacity
-                onPress={() => setShowSubjectPicker(true)}
-                onLongPress={() => {
+            {/* Round 44: Subject color dot on input bar — replaces the book-icon pill */}
+            <TouchableOpacity
+              onPress={() => setShowSubjectPicker(true)}
+              onLongPress={() => {
+                if (selectedSubject) {
                   handleSubjectChange(null);
                   H.impactMedium();
                   if (subjectClearedTimerRef.current) clearTimeout(subjectClearedTimerRef.current);
                   setSubjectClearedToast(true);
                   subjectClearedTimerRef.current = setTimeout(() => setSubjectClearedToast(false), 1800);
-                }}
-                delayLongPress={400}
-                style={[
-                  chatStyles.inputSubjectCompact,
-                  { backgroundColor: `${subjectAccent}18`, borderColor: `${subjectAccent}55`, alignSelf: "flex-start", marginBottom: 4 },
-                ]}
-                activeOpacity={0.75}
-              >
-                <View style={[chatStyles.inputSubjectCompactDot, { backgroundColor: subjectAccent }]} />
-                <Text
-                  style={[chatStyles.inputSubjectCompactLabel, { color: subjectAccent, fontSize: fs(11) }]}
-                  numberOfLines={1}
-                >
-                  {getSubjectLabel(selectedSubject)}
-                </Text>
-                {(() => {
-                  const subjectKey = getAppearanceSubjectKey(selectedSubject);
-                  const overrideStep = appearanceSettings.subjectSpeedOverrides?.[subjectKey];
-                  if (!overrideStep || overrideStep < 1) return null;
-                  const SPEED_SHORT = ["", "VS", "S", "N", "F", "VF"];
-                  return (
-                    <View style={[chatStyles.speedBadge, { backgroundColor: subjectAccent || colors.primary }]}>
-                      <Text style={chatStyles.speedBadgeText}>{SPEED_SHORT[overrideStep]}</Text>
-                    </View>
-                  );
-                })()}
-              </TouchableOpacity>
-            ) : null}
+                }
+              }}
+              delayLongPress={400}
+              style={[
+                chatStyles.inputSubjectDot,
+                {
+                  backgroundColor: selectedSubject ? `${subjectAccent}22` : colors.background,
+                  borderColor: selectedSubject ? subjectAccent : colors.border,
+                },
+              ]}
+              activeOpacity={0.7}
+            >
+              {selectedSubject ? (
+                <View style={[chatStyles.inputSubjectDotInner, { backgroundColor: subjectAccent }]} />
+              ) : (
+                <IconSymbol size={13} name="book.fill" color={colors.muted} />
+              )}
+              {(() => {
+                const subjectKey = getAppearanceSubjectKey(selectedSubject);
+                const overrideStep = appearanceSettings.subjectSpeedOverrides?.[subjectKey];
+                if (!overrideStep || overrideStep < 1) return null;
+                const SPEED_SHORT = ["", "VS", "S", "N", "F", "VF"];
+                return (
+                  <View style={[chatStyles.speedBadge, { backgroundColor: subjectAccent || colors.primary }]}>
+                    <Text style={chatStyles.speedBadgeText}>{SPEED_SHORT[overrideStep]}</Text>
+                  </View>
+                );
+              })()}
+            </TouchableOpacity>
 
-            {/* Bottom typing row — always full width */}
-            <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8 }}>
             <TextInput
               style={[
                 chatStyles.input,
@@ -2272,7 +2269,6 @@ function ChatScreenContent() {
                 </TouchableOpacity>
               )}
             </Animated.View>
-            </View>{/* end typing row */}
           </View>
 
           {userMessageCount > 0 && (
@@ -3166,50 +3162,19 @@ const chatStyles = StyleSheet.create({
     fontWeight: "600",
     letterSpacing: 0.1,
   },
-  // Subject compact pill inside input card (fixed width, flexShrink:0)
-  inputSubjectCompact: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    borderRadius: 16,
+  // Round 44: subject color dot on input bar
+  inputSubjectDot: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     borderWidth: 1.5,
-    flexShrink: 0,
-    maxWidth: 110,
-  },
-  inputSubjectCompactDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    flexShrink: 0,
-  },
-  inputSubjectCompactLabel: {
-    fontWeight: "700",
-    letterSpacing: 0.1,
-    flexShrink: 1,
-  },
-  // Subject context banner above input card
-  subjectBanner: {
-    flexDirection: "row",
     alignItems: "center",
-    gap: 7,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
-    marginBottom: 5,
-    overflow: "hidden",
+    justifyContent: "center",
   },
-  subjectBannerStripe: {
-    width: 3,
-    height: 16,
-    borderRadius: 2,
-    flexShrink: 0,
-  },
-  subjectBannerText: {
-    flex: 1,
-    fontWeight: "600",
-    letterSpacing: 0.15,
+  inputSubjectDotInner: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
   },
   // Round 44: ⋯ more menu dropdown
   moreMenuDropdown: {
