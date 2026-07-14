@@ -585,3 +585,10 @@
 - [x] Inject TutorSettings (nickname, tone, responseLength, learningStyle, language, showWorking, useEmojis) into AI system prompt in sendStreamingChat
 - [x] Wire studyReminders + studyReminderTime toggles in TutorSettingsModal to schedule/cancel daily local notification
 - [x] Enforce maxSessions limit in chat-sessions.ts — prune oldest sessions on save
+
+## Round 51: Onboarding → TutorSettings Pre-fill
+- [x] Import TUTOR_SETTINGS_KEY and DEFAULT_TUTOR_SETTINGS into onboarding.tsx
+- [x] Extract persistOnboardingChoices() helper that writes nickname, gradeLevel, defaultSubject into TutorSettings (only if not already customised)
+- [x] Call persistOnboardingChoices() from both finishOnboarding (Skip) and finishOnboardingAndShowPaywall (Next on last slide)
+- [x] Map first selected category to a representative default subject (math→algebra, english→composition, science→biology, social→world_history)
+- [x] TypeScript: 0 errors confirmed

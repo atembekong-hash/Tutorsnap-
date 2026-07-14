@@ -16,6 +16,7 @@ import { useColors } from "@/hooks/use-colors";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { SUBJECT_CATEGORIES, type SubjectCategory } from "@/lib/subjects";
 import { GRADE_OPTIONS, saveGlobalGrade } from "@/lib/grade-levels";
+import { TUTOR_SETTINGS_KEY, DEFAULT_TUTOR_SETTINGS } from "@/components/tutor-settings-modal";
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 export const ONBOARDING_DONE_KEY = "@tutorsnap/onboardingDone";
@@ -98,10 +99,8 @@ export default function OnboardingScreen() {
     }
   };
 
-  const finishOnboardingAndShowPaywall = async () => {
-    // Mark onboarding done first so back-navigation lands on the home tab
-    H.notificationSuccess()
-    await AsyncStorage.setItem(ONBOARDING_DONE_KEY, "true");
+  /** Persist onboarding choices and pre-fill TutorSettings so the AI is personalised immediately. */
+  const persistOnboardingChoices = async () => {
     if (selectedCategories.size > 0) {
       await AsyncStorage.setItem(
         "@tutorsnap/preferredCategories",
@@ -109,7 +108,42 @@ export default function OnboardingScreen() {
       );
     }
     if (selectedGrade) await saveGlobalGrade(selectedGrade);
-    if (userName.trim()) await AsyncStorage.setItem(USER_NAME_KEY, userName.trim());
+    const name = userName.trim();
+    if (name) await AsyncStorage.setItem(USER_NAME_KEY, name);
+
+    // Pre-fill TutorSettings with onboarding values so the AI tutor is personalised
+    // from the very first message, without requiring the user to re-enter them.
+    try {
+      const raw = await AsyncStorage.getItem(TUTOR_SETTINGS_KEY);
+      const existing = raw ? { ...DEFAULT_TUTOR_SETTINGS, ...JSON.parse(raw) } : { ...DEFAULT_TUTOR_SETTINGS };
+
+      // Only overwrite if the user hasn't already customised these fields
+      const patch: Partial<typeof existing> = {};
+      if (name && !existing.nickname) patch.nickname = name;
+      if (selectedGrade && !existing.gradeLevel) patch.gradeLevel = selectedGrade;
+
+      // Map the first selected category to a representative default subject
+      if (selectedCategories.size > 0 && !existing.defaultSubject) {
+        const categoryToSubject: Record<SubjectCategory, string> = {
+          math:    "algebra",
+          english: "composition",
+          science: "biology",
+          social:  "world_history",
+        };
+        const firstCat = Array.from(selectedCategories)[0] as SubjectCategory;
+        patch.defaultSubject = categoryToSubject[firstCat] ?? "";
+      }
+
+      if (Object.keys(patch).length > 0) {
+        await AsyncStorage.setItem(TUTOR_SETTINGS_KEY, JSON.stringify({ ...existing, ...patch }));
+      }
+    } catch { /* non-critical — ignore */ }
+  };
+
+  const finishOnboardingAndShowPaywall = async () => {
+    H.notificationSuccess();
+    await AsyncStorage.setItem(ONBOARDING_DONE_KEY, "true");
+    await persistOnboardingChoices();
     // Replace to home first, then push paywall so dismissing paywall lands on home
     router.replace("/(tabs)" as any);
     // Small delay so the tab navigator is mounted before pushing the modal
@@ -119,16 +153,9 @@ export default function OnboardingScreen() {
   };
 
   const finishOnboarding = async () => {
-    H.notificationSuccess()
+    H.notificationSuccess();
     await AsyncStorage.setItem(ONBOARDING_DONE_KEY, "true");
-    if (selectedCategories.size > 0) {
-      await AsyncStorage.setItem(
-        "@tutorsnap/preferredCategories",
-        JSON.stringify(Array.from(selectedCategories))
-      );
-    }
-    if (selectedGrade) await saveGlobalGrade(selectedGrade);
-    if (userName.trim()) await AsyncStorage.setItem(USER_NAME_KEY, userName.trim());
+    await persistOnboardingChoices();
     router.replace("/(tabs)");
   };
 
