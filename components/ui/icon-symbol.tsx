@@ -160,6 +160,10 @@ const MAPPING = {
   "cpu": "memory",
   "ant": "bug-report",
   "pencil": "edit",
+  // Round 52: Language + additional tutor settings icons
+  "textformat": "translate",
+  "globe.americas.fill": "public",
+  "rectangle.grid.1x2.fill": "view-agenda",
 } as unknown as IconMapping;
 
 export function IconSymbol({

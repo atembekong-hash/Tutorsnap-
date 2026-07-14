@@ -986,14 +986,17 @@ function ChatScreenContent() {
         messageCount: msgs.length,
         updatedAt: Date.now(),
       };
-      if (updated.title === "New Chat") {
+      // Fix 5: auto-title from first user message (respects autoTitle setting)
+      if (tutorSettings.autoTitle && updated.title === "New Chat") {
         const firstUser = msgs.find((m) => m.role === "user");
         if (firstUser) updated.title = generateSessionTitle(firstUser.content);
       }
       setSession(updated);
+      // Fix 5: skip storage when saveHistory is disabled
+      if (!tutorSettings.saveHistory) return;
       await saveSession(updated, tutorSettings.maxSessions);
     },
-    [tutorSettings.maxSessions]
+    [tutorSettings.maxSessions, tutorSettings.saveHistory, tutorSettings.autoTitle]
   );
 
   // ── Chat mutation ───────────────────────────────────────────────────────────
@@ -1131,6 +1134,7 @@ function ChatScreenContent() {
         // Throttled smooth scroll — glide to bottom at most every 120ms
         const SCROLL_THROTTLE_MS = 120;
         const smoothScrollToEnd = () => {
+          if (!tutorSettings.autoScroll) return; // Fix 4: respect autoScroll setting
           if (isUserScrolledUpRef.current) return;
           // Pause during high-velocity manual flick to avoid fighting the user's scroll
           if (isHighVelocityScrollRef.current) return;
@@ -2225,8 +2229,9 @@ function ChatScreenContent() {
               onChangeText={setInputText}
               multiline
               maxLength={2000}
-              returnKeyType="send"
-              onSubmitEditing={() => handleSend()}
+              returnKeyType={tutorSettings.sendOnEnter ? "send" : "default"}
+              onSubmitEditing={() => { if (tutorSettings.sendOnEnter) handleSend(); }}
+              blurOnSubmit={!tutorSettings.sendOnEnter}
               editable={!isAtLimit}
             />
 
@@ -2512,8 +2517,10 @@ function ChatScreenContent() {
                       if (session) {
                         const updated = { ...session, gradeLevel: next };
                         setSession(updated);
-                        saveSession(updated);
+                        saveSession(updated, tutorSettings.maxSessions);
                       }
+                      // Fix 3: sync grade picker selection back to TutorSettings
+                      if (next) updateTutorSetting({ gradeLevel: next });
                       H.impactLight()
                       setShowGradePicker(false);
                     }}
@@ -2779,9 +2786,25 @@ function ChatScreenContent() {
         onClearHistory={handleClearAllHistory}
         onExportChat={() => {
           setShowTutorSettings(false);
-          setTimeout(() => setShowShareMenu(true), 250);
+          if (tutorSettings.exportFormat === "pdf" && Platform.OS !== "web") {
+            // Trigger PDF export directly
+            setTimeout(() => handleSharePDF(), 250);
+          } else {
+            // Default: open share menu for text/copy
+            setTimeout(() => setShowShareMenu(true), 250);
+          }
         }}
-        modelName="TutorSnap AI"
+        modelName="TutorSnap AI (gpt-4o-mini)"
+        systemPromptPreview={[
+          "You are TutorSnap, a friendly and expert academic tutor.",
+          selectedSubject ? `Subject: ${selectedSubject}` : null,
+          gradeLevel ? `Grade: ${gradeLevel}` : null,
+          tutorSettings.nickname ? `Student nickname: ${tutorSettings.nickname}` : null,
+          `Tone: ${tutorSettings.tone} | Length: ${tutorSettings.responseLength} | Style: ${tutorSettings.learningStyle}`,
+          tutorSettings.language !== "English" ? `Language: ${tutorSettings.language}` : null,
+          tutorSettings.showWorking ? "Show all working steps." : "Give direct answers.",
+          tutorSettings.useEmojis ? "Emojis: enabled" : "Emojis: disabled",
+        ].filter(Boolean).join("\n")}
       />
 
       {/* ── Copy Link toast ── */}

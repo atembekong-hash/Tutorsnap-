@@ -592,3 +592,17 @@
 - [x] Call persistOnboardingChoices() from both finishOnboarding (Skip) and finishOnboardingAndShowPaywall (Next on last slide)
 - [x] Map first selected category to a representative default subject (math→algebra, english→composition, science→biology, social→world_history)
 - [x] TypeScript: 0 errors confirmed
+
+## Round 52: TutorSettings Deep Scan & Fixes
+- [x] Fix 1: Add Language row to Section 1 (Learning Profile) — was in type/defaults but missing from UI
+- [x] Fix 2: Add textformat icon mapping for Language row
+- [x] Fix 3: Sync chat grade picker selection back to TutorSettings.gradeLevel on change
+- [x] Fix 3b: Pass maxSessions limit to saveSession in grade picker (was missing)
+- [x] Fix 4: Wire autoScroll setting — smoothScrollToEnd now respects tutorSettings.autoScroll
+- [x] Fix 5: Wire saveHistory setting — persistMessages skips storage when disabled
+- [x] Fix 5b: Wire autoTitle setting — session title generation now gated on tutorSettings.autoTitle
+- [x] Fix 6: Wire sendOnEnter setting — TextInput returnKeyType and onSubmitEditing now use tutorSettings.sendOnEnter
+- [x] Fix 7: Pass live systemPromptPreview to TutorSettingsModal so System Prompt overlay shows real data
+- [x] Fix 7b: Update modelName to show actual model (gpt-4o-mini)
+- [x] Fix 8: Add Export Format segment row to Section 4 (was in type/defaults but missing from UI)
+- [x] Fix 8b: Wire exportFormat in onExportChat — PDF format triggers handleSharePDF directly

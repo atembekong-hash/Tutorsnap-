@@ -644,6 +644,13 @@ export function TutorSettingsModal({
               placeholder="What should I call you?"
               onChange={(v) => onUpdate({ nickname: v })}
             />
+            <TextInputRow
+              icon="textformat"
+              label="Language"
+              value={settings.language}
+              placeholder="English"
+              onChange={(v) => onUpdate({ language: v })}
+            />
             <SegmentRow
               icon="book.fill"
               label="Learning Style"
@@ -768,6 +775,16 @@ export function TutorSettingsModal({
               value={String(settings.maxSessions)}
               options={MAX_SESSIONS_OPTIONS}
               onChange={(v) => onUpdate({ maxSessions: Number(v) as TutorSettings["maxSessions"] })}
+            />
+            <SegmentRow
+              icon="square.and.arrow.down.fill"
+              label="Export Format"
+              value={settings.exportFormat}
+              options={[
+                { label: "Text", value: "text" },
+                { label: "PDF", value: "pdf" },
+              ] as SegmentOption<"text" | "pdf">[]}
+              onChange={(v) => onUpdate({ exportFormat: v })}
             />
             <SettingsRow
               icon="square.and.arrow.up"
