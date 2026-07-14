@@ -642,3 +642,9 @@
 - [x] Call inputRef.current?.blur() in handleSend after Keyboard.dismiss() so bar returns to bottom position after send
 - [x] Set blurOnSubmit={false} to prevent double-blur conflict on multiline input
 - [x] TypeScript: 0 errors confirmed
+
+## Round 58: Input Bar UX Improvements
+- [x] Re-focus input after AI response finishes streaming (350ms delay to let scroll settle)
+- [x] Haptic on keyboard dismiss — Light impact in handleSend confirms bar returning to bottom
+- [x] Safe-area bottom padding on floating bar wrapper using insets.bottom for home-indicator devices
+- [x] TypeScript: 0 errors confirmed

@@ -1301,6 +1301,8 @@ function ChatScreenContent() {
         if (!isUserScrolledUpRef.current) {
           setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
         }
+        // Re-focus the input bar so the user can type their follow-up immediately
+        setTimeout(() => inputRef.current?.focus(), 350);
 
         // Trigger follow-up chip suggestions
         suggestFollowUpsMutation.mutate({
@@ -1366,7 +1368,7 @@ function ChatScreenContent() {
 
       Keyboard.dismiss();
       inputRef.current?.blur();
-      H.impactLight();
+      H.impactLight(); // dismiss haptic — confirms bar returning to bottom
 
       setReplyTo(null);
       setContextualChips([]);
@@ -2207,7 +2209,7 @@ function ChatScreenContent() {
         <View
           style={[
             chatStyles.floatingBarWrapper,
-            { paddingBottom: Platform.OS === "ios" ? 8 : 6 },
+            { paddingBottom: Math.max(insets.bottom > 0 ? insets.bottom - bottomPadding + 8 : 8, 6) },
           ]}
         >
           {/* Limit nudge strip */}
