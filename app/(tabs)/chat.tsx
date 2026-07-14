@@ -2625,6 +2625,43 @@ function ChatScreenContent() {
               <Text style={[chatStyles.moreMenuLabel, { color: colors.foreground, fontSize: fs(14) }]}>Share Chat</Text>
               <IconSymbol size={13} name="chevron.right" color={colors.muted} />
             </TouchableOpacity>
+
+            {/* Delete — separator + red row */}
+            <View style={{ height: 0.5, backgroundColor: colors.border, marginHorizontal: 12, marginTop: 4 }} />
+            <TouchableOpacity
+              style={[chatStyles.moreMenuItem, { marginTop: 2 }]}
+              activeOpacity={0.7}
+              onPress={() => {
+                setShowMoreMenu(false);
+                H.impactMedium();
+                setTimeout(() => {
+                  Alert.alert(
+                    "Delete Chat",
+                    "This will permanently delete the current chat and open a new one.",
+                    [
+                      { text: "Cancel", style: "cancel" },
+                      {
+                        text: "Delete",
+                        style: "destructive",
+                        onPress: () => {
+                          streamAbortRef.current?.abort();
+                          streamingMsgIdRef.current = null;
+                          setIsStreaming(false);
+                          setMessages([]);
+                          setSessionMessageCount(0);
+                          handleNewChat();
+                        },
+                      },
+                    ]
+                  );
+                }, 150);
+              }}
+            >
+              <View style={[chatStyles.moreMenuIcon, { backgroundColor: `${colors.error}18` }]}>
+                <IconSymbol size={16} name="trash.fill" color={colors.error} />
+              </View>
+              <Text style={[chatStyles.moreMenuLabel, { color: colors.error, fontSize: fs(14), fontWeight: "600" }]}>Delete Chat</Text>
+            </TouchableOpacity>
           </View>
         </TouchableOpacity>
       )}
