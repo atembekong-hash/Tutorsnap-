@@ -2118,6 +2118,35 @@ function ChatScreenContent() {
             </View>
           )}
 
+          {/* Subject context banner — only shown when a subject is selected, sits above input card */}
+          {selectedSubject ? (
+            <TouchableOpacity
+              onPress={() => setShowSubjectPicker(true)}
+              onLongPress={() => {
+                handleSubjectChange(null);
+                H.impactMedium();
+                if (subjectClearedTimerRef.current) clearTimeout(subjectClearedTimerRef.current);
+                setSubjectClearedToast(true);
+                subjectClearedTimerRef.current = setTimeout(() => setSubjectClearedToast(false), 1800);
+              }}
+              delayLongPress={400}
+              activeOpacity={0.85}
+              style={[
+                chatStyles.subjectBanner,
+                { borderLeftColor: subjectAccent, backgroundColor: `${subjectAccent}12` },
+              ]}
+            >
+              {/* Accent stripe */}
+              <View style={[chatStyles.subjectBannerStripe, { backgroundColor: subjectAccent }]} />
+              {/* Emoji + label */}
+              <Text style={[chatStyles.subjectBannerText, { color: subjectAccent, fontSize: fs(12) }]}>
+                {getSubjectEmoji(selectedSubject)}&nbsp;{getSubjectLabel(selectedSubject)}
+              </Text>
+              {/* Chevron hint */}
+              <IconSymbol size={12} name="chevron.right" color={subjectAccent} style={{ opacity: 0.7 }} />
+            </TouchableOpacity>
+          ) : null}
+
           {/* Pill input card */}
           <View
             style={[
@@ -3175,6 +3204,28 @@ const chatStyles = StyleSheet.create({
     width: 14,
     height: 14,
     borderRadius: 7,
+  },
+  // Subject context banner above input card
+  subjectBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    marginBottom: 5,
+    overflow: "hidden",
+  },
+  subjectBannerStripe: {
+    width: 3,
+    height: 16,
+    borderRadius: 2,
+    flexShrink: 0,
+  },
+  subjectBannerText: {
+    flex: 1,
+    fontWeight: "600",
+    letterSpacing: 0.15,
   },
   // Round 44: ⋯ more menu dropdown
   moreMenuDropdown: {
