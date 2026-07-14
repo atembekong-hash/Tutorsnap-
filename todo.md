@@ -522,3 +522,8 @@
 
 ## Round 36: New Chat Quick-Action on Home Screen
 - [x] Add New Chat quick-action shortcut card on home screen to instantly start AI Tutor session
+
+## Round 37: New Chat Banner Enhancements
+- [x] Subject pre-fill: pass selected subject from home screen to AI Tutor chat when tapping banner
+- [x] Continue last chat secondary link below the banner
+- [x] Scale-down press animation (0.97x) on the New Chat banner

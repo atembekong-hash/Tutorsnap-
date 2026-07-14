@@ -10,6 +10,7 @@ import { Modal ,
   KeyboardAvoidingView,
   Platform,
   Keyboard,
+  Animated,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import * as H from "@/lib/haptics";
@@ -44,6 +45,7 @@ import { FREE_LIMITS } from "@/lib/subscription";
 import { UpsellNudgeBanner } from "@/components/upsell-nudge-banner";
 import { useAppearance } from "@/lib/appearance-context";
 import { loadGlobalGrade, saveGlobalGrade, GRADE_LABELS, GRADE_OPTIONS } from "@/lib/grade-levels";
+import { listSessionSummaries, type ChatSessionSummary } from "@/lib/chat-sessions";
 
 function getAppearanceSubjectKey(subjectId: string): string {
   const def = getSubjectDef(subjectId);
@@ -405,6 +407,8 @@ function SolveScreenContent() {
   const [showSolveGradePicker, setShowSolveGradePicker] = useState(false);
   const [rememberGrade, setRememberGrade] = useState(false);
   const [userName, setUserName] = useState<string | null>(null);
+  const [lastSession, setLastSession] = useState<ChatSessionSummary | null>(null);
+  const bannerScaleAnim = useRef(new Animated.Value(1)).current;
 
   const loadProgress = async () => {
     const p = await getProgress();
@@ -457,6 +461,11 @@ function SolveScreenContent() {
       getShieldCount().then(setShieldCount);
       loadGlobalGrade().then((g: string | null) => setHomeGradeLevel(g));
       AsyncStorage.getItem("@tutorsnap/userName").then((n) => setUserName(n || null));
+      // Load most recent chat session for "Continue last chat" link
+      listSessionSummaries().then((sessions) => {
+        const sorted = sessions.sort((a, b) => b.updatedAt - a.updatedAt);
+        setLastSession(sorted[0] ?? null);
+      }).catch(() => {});
       loadProgress();
       loadWeeklyData();
       loadDueSoonHomework();
@@ -989,24 +998,56 @@ function SolveScreenContent() {
           )}
 
           {/* New Chat Quick-Action Banner */}
-          <TouchableOpacity
-            accessibilityLabel="Start a new AI Tutor chat"
-            accessibilityRole="button"
-            onPress={() => router.push("/(tabs)/chat" as any)}
-            activeOpacity={0.82}
-            style={[styles.newChatBanner, { backgroundColor: colors.secondary, shadowColor: colors.secondary }]}
-          >
-            <View style={styles.newChatLeft}>
-              <View style={styles.newChatIconWrap}>
-                <IconSymbol size={22} name="bubble.left.fill" color="#FFFFFF" />
+          <Animated.View style={{ transform: [{ scale: bannerScaleAnim }] }}>
+            <TouchableOpacity
+              accessibilityLabel="Start a new AI Tutor chat"
+              accessibilityRole="button"
+              onPressIn={() =>
+                Animated.spring(bannerScaleAnim, { toValue: 0.97, useNativeDriver: true, speed: 40, bounciness: 0 }).start()
+              }
+              onPressOut={() =>
+                Animated.spring(bannerScaleAnim, { toValue: 1, useNativeDriver: true, speed: 30, bounciness: 4 }).start()
+              }
+              onPress={() => {
+                H.impactLight();
+                const params: Record<string, string> = { newSession: "1" };
+                if (selectedSubject) params.subject = selectedSubject;
+                router.push({ pathname: "/(tabs)/chat", params } as any);
+              }}
+              activeOpacity={1}
+              style={[styles.newChatBanner, { backgroundColor: colors.secondary, shadowColor: colors.secondary }]}
+            >
+              <View style={styles.newChatLeft}>
+                <View style={styles.newChatIconWrap}>
+                  <IconSymbol size={22} name="bubble.left.fill" color="#FFFFFF" />
+                </View>
+                <View>
+                  <Text style={styles.newChatTitle}>Ask AI Tutor</Text>
+                  <Text style={styles.newChatSub}>
+                    {selectedSubject ? `Start a ${getSubjectDef(selectedSubject)?.label ?? selectedSubject} session` : "Get instant help on any topic"}
+                  </Text>
+                </View>
               </View>
-              <View>
-                <Text style={styles.newChatTitle}>Ask AI Tutor</Text>
-                <Text style={styles.newChatSub}>Get instant help on any topic</Text>
-              </View>
-            </View>
-            <IconSymbol size={18} name="chevron.right" color="rgba(255,255,255,0.75)" />
-          </TouchableOpacity>
+              <IconSymbol size={18} name="chevron.right" color="rgba(255,255,255,0.75)" />
+            </TouchableOpacity>
+            {lastSession && (
+              <TouchableOpacity
+                accessibilityLabel={`Continue last chat: ${lastSession.title}`}
+                accessibilityRole="button"
+                onPress={() => {
+                  H.impactLight();
+                  router.push({ pathname: "/(tabs)/chat", params: { sessionId: lastSession.id } } as any);
+                }}
+                style={styles.continueLastChat}
+              >
+                <IconSymbol size={13} name="clock.fill" color={colors.muted} />
+                <Text style={[styles.continueLastChatText, { color: colors.muted }]} numberOfLines={1}>
+                  Continue: {lastSession.title}
+                </Text>
+                <IconSymbol size={12} name="chevron.right" color={colors.muted} />
+              </TouchableOpacity>
+            )}
+          </Animated.View>
 
           {/* Feature Cards Row */}
           <View style={styles.featureRow}>
@@ -1450,6 +1491,21 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.8)",
     lineHeight: 17,
     marginTop: 1,
+  },
+  continueLastChat: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+    marginHorizontal: 16,
+    marginTop: -2,
+    marginBottom: 6,
+  },
+  continueLastChatText: {
+    fontSize: 12,
+    flex: 1,
+    lineHeight: 16,
   },
   examplesSection: {
     paddingHorizontal: 16,

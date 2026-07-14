@@ -646,6 +646,7 @@ function ChatScreenContent() {
     sessionId?: string;
     newSession?: string;
     seedMessage?: string;
+    subject?: string;
   }>();
   const seedSentRef = useRef(false);
 
@@ -810,13 +811,14 @@ function ChatScreenContent() {
       await migrateOldChatHistory();
 
       if (params.newSession === "1" || !params.sessionId) {
-        // Load last-used subject to pre-select for new sessions
-        const lastSubject = await AsyncStorage.getItem("chat_last_subject");
+        // Subject pre-fill: use param from home screen banner, else fall back to last-used subject
+        const subjectToUse = params.subject ||
+          (await AsyncStorage.getItem("chat_last_subject"));
         const newSession = await createSession(null);
         if (!cancelled) {
           setSession(newSession);
           setMessages([]);
-          if (lastSubject) setSelectedSubject(lastSubject as SubjectId);
+          if (subjectToUse) setSelectedSubject(subjectToUse as SubjectId);
           setSessionLoaded(true);
         }
       } else {
