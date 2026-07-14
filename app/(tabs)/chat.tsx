@@ -1672,24 +1672,6 @@ function ChatScreenContent() {
           </View>
 
           <View style={chatStyles.headerActions}>
-            {/* Grade level pill */}
-            <TouchableOpacity
-              onPress={() => setShowGradePicker(true)}
-              accessibilityLabel="Set grade level"
-              style={[
-                chatStyles.gradePill,
-                {
-                  backgroundColor: gradeLevel ? `${colors.primary}18` : colors.surface,
-                  borderColor: gradeLevel ? colors.primary : colors.border,
-                },
-              ]}
-              activeOpacity={0.7}
-            >
-              <Text style={[chatStyles.gradePillText, { color: gradeLevel ? colors.primary : colors.muted, fontSize: fs(14) }]}>
-                {gradeLevel ? GRADE_LABELS_LIB[gradeLevel] ?? gradeLevel : "Level"}
-              </Text>
-            </TouchableOpacity>
-
             {/* Round 44: ⋯ dropdown — history + share */}
             <TouchableOpacity
               onPress={() => { setShowMoreMenu(true); H.impactLight(); }}
@@ -2587,6 +2569,25 @@ function ChatScreenContent() {
               </View>
               <Text style={[chatStyles.moreMenuLabel, { color: selectedSubject ? subjectAccent : colors.foreground, fontSize: fs(14) }]}>
                 {selectedSubject ? getSubjectLabel(selectedSubject) : "Set Subject"}
+              </Text>
+              <IconSymbol size={13} name="chevron.right" color={colors.muted} />
+            </TouchableOpacity>
+
+            {/* Grade Level */}
+            <TouchableOpacity
+              style={[chatStyles.moreMenuItem, { borderBottomWidth: 0.5, borderBottomColor: colors.border }]}
+              activeOpacity={0.7}
+              onPress={() => {
+                setShowMoreMenu(false);
+                setTimeout(() => setShowGradePicker(true), 150);
+                H.impactLight();
+              }}
+            >
+              <View style={[chatStyles.moreMenuIcon, { backgroundColor: gradeLevel ? `${colors.primary}18` : `${colors.muted}18` }]}>
+                <IconSymbol size={16} name="graduationcap.fill" color={gradeLevel ? colors.primary : colors.muted} />
+              </View>
+              <Text style={[chatStyles.moreMenuLabel, { color: gradeLevel ? colors.primary : colors.foreground, fontSize: fs(14) }]}>
+                {gradeLevel ? (GRADE_LABELS_LIB[gradeLevel] ?? gradeLevel) : "Set Level"}
               </Text>
               <IconSymbol size={13} name="chevron.right" color={colors.muted} />
             </TouchableOpacity>
