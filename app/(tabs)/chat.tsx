@@ -678,6 +678,10 @@ function ChatScreenContent() {
   const [showScrollBottom, setShowScrollBottom] = useState(false);
   const [transcriptToast, setTranscriptToast] = useState<string | null>(null);
   const transcriptToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [subjectClearedToast, setSubjectClearedToast] = useState(false);
+  const subjectClearedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scrollTopScaleAnim = useRef(new Animated.Value(1)).current;
+  const scrollBottomScaleAnim = useRef(new Animated.Value(1)).current;
 
   const flatListRef = useRef<FlatList>(null);
   const isUserScrolledUpRef = useRef(false);
@@ -1545,6 +1549,16 @@ function ChatScreenContent() {
           </View>
         </View>
 
+        {/* ── Offline banner ── */}
+        {!isOnline && (
+          <View style={[chatStyles.offlineBanner, { backgroundColor: `${colors.error}18`, borderBottomColor: `${colors.error}30` }]}>
+            <IconSymbol size={14} name="wifi.slash" color={colors.error} />
+            <Text style={[chatStyles.offlineBannerText, { color: colors.error, fontSize: fs(12) }]}>
+              You are offline — check your connection
+            </Text>
+          </View>
+        )}
+
         {/* ── Message area ── */}
         {!sessionLoaded ? (
           <View style={chatStyles.loadingCenter}>
@@ -1785,6 +1799,10 @@ function ChatScreenContent() {
                 if (selectedSubject) {
                   handleSubjectChange(null);
                   H.impactMedium();
+                  // Show subject-cleared micro-toast
+                  if (subjectClearedTimerRef.current) clearTimeout(subjectClearedTimerRef.current);
+                  setSubjectClearedToast(true);
+                  subjectClearedTimerRef.current = setTimeout(() => setSubjectClearedToast(false), 1800);
                 }
               }}
               delayLongPress={400}
@@ -1913,23 +1931,29 @@ function ChatScreenContent() {
         </View>
       </KeyboardAvoidingView>
 
-      {/* ── Floating scroll buttons (always rendered, opacity-animated) ── */}
+      {/* ── Floating scroll buttons (always rendered, opacity-animated + scale press) ── */}
       <Animated.View
         pointerEvents={showScrollTop ? "auto" : "none"}
         style={[
           chatStyles.scrollFab,
           chatStyles.scrollFabLeft,
-          { backgroundColor: colors.surface, borderColor: colors.border, bottom: TAB_BAR_HEIGHT + 80, opacity: scrollTopOpacity },
+          { backgroundColor: colors.surface, borderColor: colors.border, bottom: TAB_BAR_HEIGHT + 80, opacity: scrollTopOpacity, transform: [{ scale: scrollTopScaleAnim }] },
         ]}
       >
         <TouchableOpacity
           accessibilityLabel="Scroll to top"
+          onPressIn={() => {
+            Animated.timing(scrollTopScaleAnim, { toValue: 0.88, duration: 80, useNativeDriver: true, easing: Easing.out(Easing.quad) }).start();
+          }}
+          onPressOut={() => {
+            Animated.timing(scrollTopScaleAnim, { toValue: 1, duration: 140, useNativeDriver: true, easing: Easing.out(Easing.back(1.5)) }).start();
+          }}
           onPress={() => {
             flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
             H.impactLight();
           }}
           style={chatStyles.scrollFabInner}
-          activeOpacity={0.8}
+          activeOpacity={1}
         >
           <IconSymbol size={18} name="chevron.up" color={colors.foreground} />
         </TouchableOpacity>
@@ -1940,18 +1964,24 @@ function ChatScreenContent() {
         style={[
           chatStyles.scrollFab,
           chatStyles.scrollFabRight,
-          { backgroundColor: colors.surface, borderColor: colors.border, bottom: TAB_BAR_HEIGHT + 80, opacity: scrollBottomOpacity },
+          { backgroundColor: colors.surface, borderColor: colors.border, bottom: TAB_BAR_HEIGHT + 80, opacity: scrollBottomOpacity, transform: [{ scale: scrollBottomScaleAnim }] },
         ]}
       >
         <TouchableOpacity
           accessibilityLabel="Scroll to bottom"
+          onPressIn={() => {
+            Animated.timing(scrollBottomScaleAnim, { toValue: 0.88, duration: 80, useNativeDriver: true, easing: Easing.out(Easing.quad) }).start();
+          }}
+          onPressOut={() => {
+            Animated.timing(scrollBottomScaleAnim, { toValue: 1, duration: 140, useNativeDriver: true, easing: Easing.out(Easing.back(1.5)) }).start();
+          }}
           onPress={() => {
             flatListRef.current?.scrollToEnd({ animated: true });
             isUserScrolledUpRef.current = false;
             H.impactLight();
           }}
           style={chatStyles.scrollFabInner}
-          activeOpacity={0.8}
+          activeOpacity={1}
         >
           <IconSymbol size={18} name="chevron.down" color={colors.foreground} />
         </TouchableOpacity>
@@ -2168,6 +2198,14 @@ function ChatScreenContent() {
         <View style={[chatStyles.linkToast, { backgroundColor: colors.success }]}>
           <IconSymbol size={14} name="checkmark.circle.fill" color="#fff" />
           <Text style={chatStyles.linkToastText}>Link copied!</Text>
+        </View>
+      )}
+
+      {/* ── Subject cleared toast ── */}
+      {subjectClearedToast && (
+        <View style={[chatStyles.linkToast, { backgroundColor: colors.muted }]}>
+          <IconSymbol size={14} name="xmark.circle.fill" color="#fff" />
+          <Text style={chatStyles.linkToastText}>Subject cleared</Text>
         </View>
       )}
 
@@ -2474,6 +2512,15 @@ const chatStyles = StyleSheet.create({
   shareMenuLabel: { fontWeight: "600", marginBottom: 1 },
   shareMenuDesc: { lineHeight: 16 },
   linkToast: { position: "absolute", bottom: 100, alignSelf: "center", flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20 },
+  offlineBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+  },
+  offlineBannerText: { fontWeight: "600" },
   linkToastText: { color: "#fff", fontSize: 13, fontWeight: "600" },
   speedBadge: { position: "absolute", top: -5, right: -5, minWidth: 16, height: 16, borderRadius: 8, alignItems: "center", justifyContent: "center", paddingHorizontal: 3 },
   speedBadgeText: { color: "#fff", fontSize: 9, fontWeight: "800", letterSpacing: 0.3 },

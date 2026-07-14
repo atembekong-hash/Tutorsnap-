@@ -485,3 +485,8 @@
 - [x] Add connection-failed error bubble in AI Tutor chat when stream errors out
 - [x] Add retry button on failed AI messages in AI Tutor chat
 - [x] Apply expo/fetch fix to Math Solver snap-to-solve streaming on native (confirmed: only chat.tsx uses streaming; all other screens use tRPC mutations)
+
+## Round 30: Offline Banner, Subject Toast, FAB Press Animation
+- [x] Add offline network status banner at top of AI Tutor chat
+- [x] Add subject-cleared micro-toast on long-press clear of subject pill
+- [x] Add scale-down press animation (0.88x) on scroll FABs
