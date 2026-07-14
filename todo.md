@@ -527,3 +527,8 @@
 - [x] Subject pre-fill: pass selected subject from home screen to AI Tutor chat when tapping banner
 - [x] Continue last chat secondary link below the banner
 - [x] Scale-down press animation (0.97x) on the New Chat banner
+
+## Round 38: Home Screen Banner Advanced Features
+- [x] Swipe-to-dismiss on Continue last chat link (persisted to AsyncStorage)
+- [x] Long-press session preview tooltip on Continue last chat link
+- [x] Quick Ask inline text input on the home screen banner

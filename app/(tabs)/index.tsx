@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import { Modal ,
   View,
   Text,
@@ -46,6 +46,7 @@ import { UpsellNudgeBanner } from "@/components/upsell-nudge-banner";
 import { useAppearance } from "@/lib/appearance-context";
 import { loadGlobalGrade, saveGlobalGrade, GRADE_LABELS, GRADE_OPTIONS } from "@/lib/grade-levels";
 import { listSessionSummaries, type ChatSessionSummary } from "@/lib/chat-sessions";
+import { Swipeable } from "react-native-gesture-handler";
 
 function getAppearanceSubjectKey(subjectId: string): string {
   const def = getSubjectDef(subjectId);
@@ -408,7 +409,12 @@ function SolveScreenContent() {
   const [rememberGrade, setRememberGrade] = useState(false);
   const [userName, setUserName] = useState<string | null>(null);
   const [lastSession, setLastSession] = useState<ChatSessionSummary | null>(null);
+  const [quickAskText, setQuickAskText] = useState("");
+  const [continueSessionDismissed, setContinueSessionDismissed] = useState(false);
+  const [sessionPreviewTooltip, setSessionPreviewTooltip] = useState(false);
   const bannerScaleAnim = useRef(new Animated.Value(1)).current;
+  const quickAskInputRef = useRef<TextInput>(null);
+  const continueSessionDismissedKey = "@tutorsnap/continueSessionDismissed";
 
   const loadProgress = async () => {
     const p = await getProgress();
@@ -465,6 +471,10 @@ function SolveScreenContent() {
       listSessionSummaries().then((sessions) => {
         const sorted = sessions.sort((a, b) => b.updatedAt - a.updatedAt);
         setLastSession(sorted[0] ?? null);
+      }).catch(() => {});
+      // Load continue-session dismissed state
+      AsyncStorage.getItem("@tutorsnap/continueSessionDismissed").then((v) => {
+        setContinueSessionDismissed(v === "1");
       }).catch(() => {});
       loadProgress();
       loadWeeklyData();
@@ -1009,6 +1019,7 @@ function SolveScreenContent() {
                 Animated.spring(bannerScaleAnim, { toValue: 1, useNativeDriver: true, speed: 30, bounciness: 4 }).start()
               }
               onPress={() => {
+                if (quickAskText.trim()) return; // let Quick Ask handle it
                 H.impactLight();
                 const params: Record<string, string> = { newSession: "1" };
                 if (selectedSubject) params.subject = selectedSubject;
@@ -1021,7 +1032,7 @@ function SolveScreenContent() {
                 <View style={styles.newChatIconWrap}>
                   <IconSymbol size={22} name="bubble.left.fill" color="#FFFFFF" />
                 </View>
-                <View>
+                <View style={{ flex: 1 }}>
                   <Text style={styles.newChatTitle}>Ask AI Tutor</Text>
                   <Text style={styles.newChatSub}>
                     {selectedSubject ? `Start a ${getSubjectDef(selectedSubject)?.label ?? selectedSubject} session` : "Get instant help on any topic"}
@@ -1030,22 +1041,92 @@ function SolveScreenContent() {
               </View>
               <IconSymbol size={18} name="chevron.right" color="rgba(255,255,255,0.75)" />
             </TouchableOpacity>
-            {lastSession && (
-              <TouchableOpacity
-                accessibilityLabel={`Continue last chat: ${lastSession.title}`}
-                accessibilityRole="button"
-                onPress={() => {
+
+            {/* Quick Ask inline input */}
+            <View style={[styles.quickAskRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <TextInput
+                ref={quickAskInputRef}
+                style={[styles.quickAskInput, { color: colors.foreground }]}
+                placeholder="Quick question…"
+                placeholderTextColor={colors.muted}
+                value={quickAskText}
+                onChangeText={setQuickAskText}
+                returnKeyType="send"
+                onSubmitEditing={() => {
+                  const q = quickAskText.trim();
+                  if (!q) return;
                   H.impactLight();
-                  router.push({ pathname: "/(tabs)/chat", params: { sessionId: lastSession.id } } as any);
+                  setQuickAskText("");
+                  const params: Record<string, string> = { newSession: "1", seedMessage: q };
+                  if (selectedSubject) params.subject = selectedSubject;
+                  router.push({ pathname: "/(tabs)/chat", params } as any);
                 }}
-                style={styles.continueLastChat}
+              />
+              {quickAskText.trim().length > 0 && (
+                <TouchableOpacity
+                  accessibilityLabel="Send quick question"
+                  onPress={() => {
+                    const q = quickAskText.trim();
+                    if (!q) return;
+                    H.impactLight();
+                    setQuickAskText("");
+                    const params: Record<string, string> = { newSession: "1", seedMessage: q };
+                    if (selectedSubject) params.subject = selectedSubject;
+                    router.push({ pathname: "/(tabs)/chat", params } as any);
+                  }}
+                  style={[styles.quickAskSendBtn, { backgroundColor: colors.secondary }]}
+                >
+                  <IconSymbol size={16} name="paperplane.fill" color="#FFFFFF" />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Continue last chat — swipe right to dismiss */}
+            {lastSession && !continueSessionDismissed && (
+              <Swipeable
+                renderRightActions={() => (
+                  <View style={[styles.continueSwipeDismiss, { backgroundColor: colors.error }]}>
+                    <Text style={styles.continueSwipeDismissText}>Dismiss</Text>
+                  </View>
+                )}
+                rightThreshold={60}
+                overshootRight={false}
+                friction={2}
+                onSwipeableOpen={() => {
+                  H.impactMedium();
+                  setContinueSessionDismissed(true);
+                  AsyncStorage.setItem("@tutorsnap/continueSessionDismissed", "1").catch(() => {});
+                }}
               >
-                <IconSymbol size={13} name="clock.fill" color={colors.muted} />
-                <Text style={[styles.continueLastChatText, { color: colors.muted }]} numberOfLines={1}>
-                  Continue: {lastSession.title}
-                </Text>
-                <IconSymbol size={12} name="chevron.right" color={colors.muted} />
-              </TouchableOpacity>
+                <TouchableOpacity
+                  accessibilityLabel={`Continue last chat: ${lastSession.title}`}
+                  accessibilityRole="button"
+                  onPress={() => {
+                    H.impactLight();
+                    setSessionPreviewTooltip(false);
+                    router.push({ pathname: "/(tabs)/chat", params: { sessionId: lastSession.id } } as any);
+                  }}
+                  onLongPress={() => {
+                    H.impactLight();
+                    setSessionPreviewTooltip((v) => !v);
+                  }}
+                  delayLongPress={400}
+                  style={[styles.continueLastChat, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                >
+                  <IconSymbol size={13} name="clock.fill" color={colors.muted} />
+                  <Text style={[styles.continueLastChatText, { color: colors.muted }]} numberOfLines={1}>
+                    Continue: {lastSession.title}
+                  </Text>
+                  <IconSymbol size={12} name="chevron.right" color={colors.muted} />
+                </TouchableOpacity>
+                {sessionPreviewTooltip && lastSession.preview ? (
+                  <View style={[styles.sessionPreviewTooltip, { backgroundColor: colors.foreground }]}>
+                    <Text style={[styles.sessionPreviewTooltipText, { color: colors.background }]} numberOfLines={3}>
+                      {lastSession.preview}
+                    </Text>
+                  </View>
+                ) : null}
+              </Swipeable>
             )}
           </Animated.View>
 
@@ -1496,16 +1577,68 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
-    paddingHorizontal: 16,
-    paddingVertical: 7,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     marginHorizontal: 16,
-    marginTop: -2,
+    marginTop: 4,
     marginBottom: 6,
+    borderRadius: 12,
+    borderWidth: 1,
   },
   continueLastChatText: {
     fontSize: 12,
     flex: 1,
     lineHeight: 16,
+  },
+  quickAskRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    gap: 8,
+  },
+  quickAskInput: {
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 20,
+    paddingVertical: 4,
+  },
+  quickAskSendBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  continueSwipeDismiss: {
+    justifyContent: "center",
+    alignItems: "flex-end",
+    paddingHorizontal: 20,
+    marginHorizontal: 16,
+    marginBottom: 6,
+    borderRadius: 12,
+  },
+  continueSwipeDismissText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  sessionPreviewTooltip: {
+    marginHorizontal: 16,
+    marginTop: 4,
+    marginBottom: 2,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  sessionPreviewTooltipText: {
+    fontSize: 12,
+    lineHeight: 18,
   },
   examplesSection: {
     paddingHorizontal: 16,
