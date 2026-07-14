@@ -557,3 +557,16 @@
 - [x] Add gear Settings button to top bar that opens a pop-up modal
 - [x] Replace History + Share buttons with a single ⋯ dropdown in top bar
 - [x] Remove subject text from status row; show subject as color dot on the chat input bar
+
+## Round 46: Complete AI Tutor Settings System
+- [ ] Create TutorSettings component with 8 grouped sections
+- [ ] Section 1: Learning Profile (name, grade, subject, learning style, language)
+- [ ] Section 2: Response Style (length, tone, emojis, show working, follow-up chips)
+- [ ] Section 3: Chat Behaviour (typing animation, speed, auto-scroll, auto-resume, send-on-enter, voice)
+- [ ] Section 4: Session & History (save history, auto-title, max sessions, clear all, export)
+- [ ] Section 5: Appearance (avatar style, bubble style, font size, code theme, density)
+- [ ] Section 6: Accessibility (high contrast, reduce motion, screen reader hints)
+- [ ] Section 7: Notifications & Reminders (study reminders, session summary)
+- [ ] Section 8: Advanced (system prompt preview, model info, debug mode, reset all)
+- [ ] Wire all settings into chat.tsx with AsyncStorage persistence and live effects
+- [ ] Replace old Tutor Settings modal with new full-screen sheet

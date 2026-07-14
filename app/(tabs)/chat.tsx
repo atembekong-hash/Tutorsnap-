@@ -77,14 +77,23 @@ import {
   saveSession,
   generateSessionTitle,
   migrateOldChatHistory,
+  clearAllSessions,
   type ChatSession,
 } from "@/lib/chat-sessions";
+import {
+  TutorSettingsModal,
+  useTutorSettings,
+  type TutorSettings,
+} from "@/components/tutor-settings-modal";
 import { usePremium } from "@/hooks/use-premium";
 import { FREE_LIMITS } from "@/lib/subscription";
 import { APP_URL, APP_NAME } from "@/constants/app";
 import {
   useAppearance,
   type TypingSpeed,
+  type ChatBubbleStyle,
+  type FontSizeScale,
+  type MessageDensity as AppMessageDensity,
 } from "@/lib/appearance-context";
 import {
   GRADE_OPTIONS,
@@ -721,7 +730,8 @@ function ChatScreenContent() {
   const scrollInactivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { isOnline, wasJustReconnected, wasJustDisconnected } = useNetworkStatus();
   const colorScheme = useColorScheme();
-  const { getSubjectAccent, settings: appearanceSettings } = useAppearance();
+  const { getSubjectAccent, settings: appearanceSettings, updateSetting } = useAppearance();
+  const { settings: tutorSettings, update: updateTutorSetting, reset: resetTutorSettings } = useTutorSettings();
   const subjectAccent = selectedSubject
     ? getSubjectAccent(getAppearanceSubjectKey(selectedSubject), colorScheme)
     : colors.primary;
@@ -888,6 +898,71 @@ function ChatScreenContent() {
       if (shareCopiedTimerRef.current) clearTimeout(shareCopiedTimerRef.current);
       if (scrollInactivityTimerRef.current) clearTimeout(scrollInactivityTimerRef.current);
     };
+  }, []);
+
+  // ── Bridge tutorSettings → appearance context ────────────────────────────
+  // When the user changes visual/accessibility settings in TutorSettingsModal,
+  // sync them to the global appearance context so they take effect immediately.
+  useEffect(() => {
+    // Bubble style: tutor uses "sharp" for what appearance calls "flat"
+    const mappedBubble: ChatBubbleStyle =
+      tutorSettings.bubbleStyle === "sharp" ? "flat" : (tutorSettings.bubbleStyle as ChatBubbleStyle);
+    updateSetting("chatBubbleStyle", mappedBubble);
+  }, [tutorSettings.bubbleStyle, updateSetting]);
+
+  useEffect(() => {
+    // Font size: tutor uses "small" | "medium" | "large"; appearance adds "xlarge"
+    const mappedSize: FontSizeScale = tutorSettings.chatFontSize as FontSizeScale;
+    updateSetting("fontSize", mappedSize);
+  }, [tutorSettings.chatFontSize, updateSetting]);
+
+  useEffect(() => {
+    updateSetting("messageDensity", tutorSettings.messageDensity as AppMessageDensity);
+  }, [tutorSettings.messageDensity, updateSetting]);
+
+  useEffect(() => {
+    updateSetting("typingSpeed", tutorSettings.typingSpeed as TypingSpeed);
+  }, [tutorSettings.typingSpeed, updateSetting]);
+
+  useEffect(() => {
+    updateSetting("reduceMotion", tutorSettings.reduceMotion);
+  }, [tutorSettings.reduceMotion, updateSetting]);
+
+  useEffect(() => {
+    updateSetting("highContrast", tutorSettings.highContrast);
+  }, [tutorSettings.highContrast, updateSetting]);
+
+  // ── Clear all chat history ────────────────────────────────────────────────
+  const handleClearAllHistory = useCallback(() => {
+    Alert.alert(
+      "Clear All History",
+      "All saved chat sessions will be permanently deleted. This cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete All",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await clearAllSessions();
+            } catch { /* ignore */ }
+            // Reset the current chat to a fresh session
+            streamAbortRef.current?.abort();
+            streamingMsgIdRef.current = null;
+            setIsStreaming(false);
+            setMessages([]);
+            setSessionMessageCount(0);
+            // Create a new session without calling handleNewChat (declared later)
+            const lastSubject = await AsyncStorage.getItem("chat_last_subject");
+            const newSession = await createSession(null);
+            setSession(newSession);
+            setSelectedSubject(lastSubject ? (lastSubject as SubjectId) : null);
+            setInputText("");
+            await saveSession(newSession);
+          },
+        },
+      ]
+    );
   }, []);
 
   // ── Auto-send seed message ──────────────────────────────────────────────────
@@ -1100,11 +1175,21 @@ function ChatScreenContent() {
             try {
               const parsed = JSON.parse(raw) as { token?: string };
               if (parsed.token) {
-                // Split token into individual characters for letter-by-letter effect
-                for (const ch of parsed.token) {
-                  charQueue.push(ch);
+                if (!tutorSettings.typingAnimation) {
+                  // Typing animation disabled: append the full token at once
+                  accumulated += parsed.token;
+                  const snap = accumulated;
+                  setMessages((prev) =>
+                    prev.map((m) => (m.id === msgId ? { ...m, content: snap } : m))
+                  );
+                  smoothScrollToEnd();
+                } else {
+                  // Split token into individual characters for letter-by-letter effect
+                  for (const ch of parsed.token) {
+                    charQueue.push(ch);
+                  }
+                  if (!renderLoopRunning) drainQueue();
                 }
-                if (!renderLoopRunning) drainQueue();
               }
             } catch {
               // skip malformed chunk
@@ -1869,7 +1954,7 @@ function ChatScreenContent() {
                     </TouchableOpacity>
                   </View>
                 )}
-                {isLastAIMessage(index) && !isStreaming && !item.stopped && (
+                {isLastAIMessage(index) && !isStreaming && !item.stopped && tutorSettings.followUpChips && (
                   <View style={chatStyles.followUpRow}>
                     {suggestFollowUpsMutation.isPending ? (
                       <ActivityIndicator size="small" color={colors.muted} style={{ marginLeft: 8 }} />
@@ -1969,7 +2054,7 @@ function ChatScreenContent() {
               // reset a 3s timer on every scroll event. When the timer fires (user
               // hasn't scrolled for 3s) automatically scroll back to the bottom and
               // re-engage auto-scroll so they don't miss the end of the response.
-              if (isStreaming && isUserScrolledUpRef.current) {
+              if (isStreaming && isUserScrolledUpRef.current && tutorSettings.autoResumeDelay > 0) {
                 if (scrollInactivityTimerRef.current) clearTimeout(scrollInactivityTimerRef.current);
                 scrollInactivityTimerRef.current = setTimeout(() => {
                   // Only auto-resume if still streaming and still scrolled up
@@ -1980,8 +2065,8 @@ function ChatScreenContent() {
                     flatListRef.current?.scrollToEnd({ animated: true });
                   }
                   scrollInactivityTimerRef.current = null;
-                }, 3000);
-              } else if (!isStreaming || !isUserScrolledUpRef.current) {
+                }, tutorSettings.autoResumeDelay * 1000);
+              } else if (!isStreaming || !isUserScrolledUpRef.current || tutorSettings.autoResumeDelay === 0) {
                 // Clear the timer if streaming ended or user is already at the bottom
                 if (scrollInactivityTimerRef.current) {
                   clearTimeout(scrollInactivityTimerRef.current);
@@ -2127,8 +2212,8 @@ function ChatScreenContent() {
               editable={!isAtLimit}
             />
 
-            {/* Voice input button — only shown when not streaming and input is empty */}
-            {!isStreaming && !inputText.trim() && (
+            {/* Voice input button — only shown when not streaming, input is empty, and voice input is enabled */}
+            {!isStreaming && !inputText.trim() && tutorSettings.voiceInput && (
               <VoiceButton
                 size={38}
                 onTranscript={(text) => {
@@ -2666,121 +2751,20 @@ function ChatScreenContent() {
         </TouchableOpacity>
       )}
 
-      {/* Round 44: Tutor Settings popup modal */}
-      <Modal
+      {/* Tutor Settings — full-screen page sheet */}
+      <TutorSettingsModal
         visible={showTutorSettings}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowTutorSettings(false)}
-      >
-        <TouchableOpacity
-          style={chatStyles.tutorSettingsOverlay}
-          activeOpacity={1}
-          onPress={() => setShowTutorSettings(false)}
-        >
-          <TouchableOpacity activeOpacity={1}>
-            <View style={[chatStyles.tutorSettingsSheet, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              {/* Header */}
-              <View style={chatStyles.tutorSettingsHeader}>
-                <Text style={[chatStyles.tutorSettingsTitle, { color: colors.foreground, fontSize: fs(17) }]}>Tutor Settings</Text>
-                <TouchableOpacity
-                  onPress={() => setShowTutorSettings(false)}
-                  style={[chatStyles.tutorSettingsClose, { backgroundColor: colors.background, borderColor: colors.border }]}
-                  activeOpacity={0.7}
-                >
-                  <IconSymbol size={16} name="xmark" color={colors.muted} />
-                </TouchableOpacity>
-              </View>
-
-              {/* Subject row */}
-              <TouchableOpacity
-                style={[chatStyles.tutorSettingsRow, { borderBottomWidth: 0.5, borderBottomColor: colors.border }]}
-                activeOpacity={0.7}
-                onPress={() => {
-                  setShowTutorSettings(false);
-                  setTimeout(() => setShowSubjectPicker(true), 200);
-                  H.impactLight();
-                }}
-              >
-                <View style={[chatStyles.tutorSettingsRowIcon, { backgroundColor: selectedSubject ? `${subjectAccent}18` : colors.background, borderColor: selectedSubject ? subjectAccent : colors.border }]}>
-                  {selectedSubject
-                    ? <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: subjectAccent }} />
-                    : <IconSymbol size={14} name="books.vertical.fill" color={colors.muted} />}
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[chatStyles.tutorSettingsRowLabel, { color: colors.foreground, fontSize: fs(14) }]}>Subject</Text>
-                  <Text style={[chatStyles.tutorSettingsRowSub, { color: colors.muted, fontSize: fs(12) }]}>
-                    {selectedSubject ? `${getSubjectEmoji(selectedSubject)} ${getSubjectLabel(selectedSubject)}` : "Not set"}
-                  </Text>
-                </View>
-                <IconSymbol size={13} name="chevron.right" color={colors.muted} />
-              </TouchableOpacity>
-
-              {/* Grade level row */}
-              <TouchableOpacity
-                style={[chatStyles.tutorSettingsRow, { borderBottomWidth: 0.5, borderBottomColor: colors.border }]}
-                activeOpacity={0.7}
-                onPress={() => {
-                  setShowTutorSettings(false);
-                  setTimeout(() => setShowGradePicker(true), 200);
-                  H.impactLight();
-                }}
-              >
-                <View style={[chatStyles.tutorSettingsRowIcon, { backgroundColor: gradeLevel ? `${colors.primary}18` : colors.background, borderColor: gradeLevel ? colors.primary : colors.border }]}>
-                  <IconSymbol size={14} name="graduationcap.fill" color={gradeLevel ? colors.primary : colors.muted} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[chatStyles.tutorSettingsRowLabel, { color: colors.foreground, fontSize: fs(14) }]}>Grade Level</Text>
-                  <Text style={[chatStyles.tutorSettingsRowSub, { color: colors.muted, fontSize: fs(12) }]}>
-                    {gradeLevel ? GRADE_LABELS_LIB[gradeLevel] ?? gradeLevel : "Not set"}
-                  </Text>
-                </View>
-                <IconSymbol size={13} name="chevron.right" color={colors.muted} />
-              </TouchableOpacity>
-
-              {/* Typing speed row */}
-              <TouchableOpacity
-                style={[chatStyles.tutorSettingsRow, { borderBottomWidth: 0.5, borderBottomColor: colors.border }]}
-                activeOpacity={0.7}
-                onPress={() => {
-                  setShowTutorSettings(false);
-                  router.push("/settings");
-                  H.impactLight();
-                }}
-              >
-                <View style={[chatStyles.tutorSettingsRowIcon, { backgroundColor: colors.background, borderColor: colors.border }]}>
-                  <IconSymbol size={14} name="speedometer" color={colors.muted} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[chatStyles.tutorSettingsRowLabel, { color: colors.foreground, fontSize: fs(14) }]}>Typing Speed</Text>
-                  <Text style={[chatStyles.tutorSettingsRowSub, { color: colors.muted, fontSize: fs(12) }]}>Adjust in Appearance settings</Text>
-                </View>
-                <IconSymbol size={13} name="chevron.right" color={colors.muted} />
-              </TouchableOpacity>
-
-              {/* New chat row */}
-              <TouchableOpacity
-                style={chatStyles.tutorSettingsRow}
-                activeOpacity={0.7}
-                onPress={() => {
-                  setShowTutorSettings(false);
-                  setTimeout(() => handleNewChat(), 200);
-                  H.impactMedium();
-                }}
-              >
-                <View style={[chatStyles.tutorSettingsRowIcon, { backgroundColor: `${colors.error}18`, borderColor: `${colors.error}40` }]}>
-                  <IconSymbol size={14} name="trash.fill" color={colors.error} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[chatStyles.tutorSettingsRowLabel, { color: colors.error, fontSize: fs(14) }]}>New Chat</Text>
-                  <Text style={[chatStyles.tutorSettingsRowSub, { color: colors.muted, fontSize: fs(12) }]}>Start a fresh conversation</Text>
-                </View>
-                <IconSymbol size={13} name="chevron.right" color={colors.muted} />
-              </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
+        onClose={() => setShowTutorSettings(false)}
+        settings={tutorSettings}
+        onUpdate={updateTutorSetting}
+        onReset={resetTutorSettings}
+        onClearHistory={handleClearAllHistory}
+        onExportChat={() => {
+          setShowTutorSettings(false);
+          setTimeout(() => setShowShareMenu(true), 250);
+        }}
+        modelName="TutorSnap AI"
+      />
 
       {/* ── Copy Link toast ── */}
       {copyLinkFeedback && (

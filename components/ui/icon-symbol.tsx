@@ -140,6 +140,26 @@ const MAPPING = {
   "gearshape.fill": "settings",
   "books.vertical.fill": "library-books",
   "speedometer": "speed",
+  // Round 46: Tutor Settings modal icons
+  "text.alignleft": "format-align-left",
+  "face.smiling": "sentiment-satisfied",
+  "face.smiling.inverse": "sentiment-very-satisfied",
+  "list.number": "format-list-numbered",
+  "character.cursor.ibeam": "text-fields",
+  "arrow.down.to.line": "vertical-align-bottom",
+  "clock.arrow.circlepath": "update",
+  "return": "keyboard-return",
+  "tray.full.fill": "inbox",
+  "archivebox.fill": "archive",
+  "person.crop.circle": "account-circle",
+  "rectangle.grid.1x2": "view-agenda",
+  "circle.lefthalf.filled": "contrast",
+  "waveform.path": "graphic-eq",
+  "accessibility": "accessibility",
+  "text.quote": "format-quote",
+  "cpu": "memory",
+  "ant": "bug-report",
+  "pencil": "edit",
 } as unknown as IconMapping;
 
 export function IconSymbol({
