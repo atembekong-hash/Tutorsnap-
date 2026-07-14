@@ -415,6 +415,9 @@ function SolveScreenContent() {
   const bannerScaleAnim = useRef(new Animated.Value(1)).current;
   const quickAskInputRef = useRef<TextInput>(null);
   const continueSessionDismissedKey = "@tutorsnap/continueSessionDismissed";
+  const [undoToast, setUndoToast] = useState(false);
+  const undoToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [showQuickAskSubjectPicker, setShowQuickAskSubjectPicker] = useState(false);
 
   const loadProgress = async () => {
     const p = await getProgress();
@@ -1062,6 +1065,36 @@ function SolveScreenContent() {
                   router.push({ pathname: "/(tabs)/chat", params } as any);
                 }}
               />
+              {/* Clear button — shown when there is text */}
+              {quickAskText.trim().length > 0 && (
+                <TouchableOpacity
+                  accessibilityLabel="Clear quick ask input"
+                  onPress={() => {
+                    setQuickAskText("");
+                    quickAskInputRef.current?.focus();
+                  }}
+                  style={styles.quickAskClearBtn}
+                >
+                  <Text style={[styles.quickAskClearText, { color: colors.muted }]}>✕</Text>
+                </TouchableOpacity>
+              )}
+              {/* Inline subject chip — opens subject picker */}
+              <TouchableOpacity
+                accessibilityLabel={selectedSubject ? `Subject: ${getSubjectDef(selectedSubject)?.label}` : "Select subject"}
+                onPress={() => {
+                  H.impactLight();
+                  setShowQuickAskSubjectPicker(true);
+                }}
+                style={[styles.quickAskSubjectChip, {
+                  backgroundColor: selectedSubject ? `${colors.secondary}20` : colors.background,
+                  borderColor: selectedSubject ? `${colors.secondary}60` : colors.border,
+                }]}
+              >
+                <Text style={[styles.quickAskSubjectChipText, { color: selectedSubject ? colors.secondary : colors.muted }]} numberOfLines={1}>
+                  {selectedSubject ? (getSubjectDef(selectedSubject)?.label ?? "Subject") : "Subject"}
+                </Text>
+              </TouchableOpacity>
+              {/* Send button — shown when there is text */}
               {quickAskText.trim().length > 0 && (
                 <TouchableOpacity
                   accessibilityLabel="Send quick question"
@@ -1080,6 +1113,14 @@ function SolveScreenContent() {
                 </TouchableOpacity>
               )}
             </View>
+            {/* Subject picker for Quick Ask chip */}
+            <SubjectPicker
+              value={selectedSubject}
+              onChange={handleSubjectChange}
+              showAll
+              open={showQuickAskSubjectPicker}
+              onClose={() => setShowQuickAskSubjectPicker(false)}
+            />
 
             {/* Continue last chat — swipe right to dismiss */}
             {lastSession && !continueSessionDismissed && (
@@ -1096,6 +1137,10 @@ function SolveScreenContent() {
                   H.impactMedium();
                   setContinueSessionDismissed(true);
                   AsyncStorage.setItem("@tutorsnap/continueSessionDismissed", "1").catch(() => {});
+                  // Show undo toast for 3 seconds
+                  setUndoToast(true);
+                  if (undoToastTimerRef.current) clearTimeout(undoToastTimerRef.current);
+                  undoToastTimerRef.current = setTimeout(() => setUndoToast(false), 3000);
                 }}
               >
                 <TouchableOpacity
@@ -1127,6 +1172,25 @@ function SolveScreenContent() {
                   </View>
                 ) : null}
               </Swipeable>
+            )}
+            {/* Undo toast after swipe-dismiss */}
+            {undoToast && (
+              <View style={[styles.undoToast, { backgroundColor: `${colors.foreground}12`, borderColor: `${colors.border}` }]}>
+                <Text style={[styles.undoToastText, { color: colors.muted }]}>Continue link dismissed</Text>
+                <TouchableOpacity
+                  accessibilityLabel="Restore continue last chat link"
+                  onPress={() => {
+                    H.impactLight();
+                    setContinueSessionDismissed(false);
+                    AsyncStorage.removeItem("@tutorsnap/continueSessionDismissed").catch(() => {});
+                    setUndoToast(false);
+                    if (undoToastTimerRef.current) clearTimeout(undoToastTimerRef.current);
+                  }}
+                  style={[styles.undoToastRestoreBtn, { backgroundColor: `${colors.secondary}20` }]}
+                >
+                  <Text style={[styles.undoToastRestoreText, { color: colors.secondary }]}>Restore</Text>
+                </TouchableOpacity>
+              </View>
             )}
           </Animated.View>
 
@@ -1614,6 +1678,56 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
+  },
+  quickAskClearBtn: {
+    padding: 4,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  quickAskClearText: {
+    fontSize: 14,
+    fontWeight: "600",
+    lineHeight: 18,
+  },
+  quickAskSubjectChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+    maxWidth: 90,
+  },
+  quickAskSubjectChipText: {
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.1,
+  },
+  undoToast: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginHorizontal: 16,
+    marginTop: 4,
+    marginBottom: 2,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 8,
+  },
+  undoToastText: {
+    fontSize: 13,
+    flex: 1,
+  },
+  undoToastRestoreBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  undoToastRestoreText: {
+    fontSize: 13,
+    fontWeight: "700",
   },
   continueSwipeDismiss: {
     justifyContent: "center",

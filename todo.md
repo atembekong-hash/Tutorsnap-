@@ -532,3 +532,8 @@
 - [x] Swipe-to-dismiss on Continue last chat link (persisted to AsyncStorage)
 - [x] Long-press session preview tooltip on Continue last chat link
 - [x] Quick Ask inline text input on the home screen banner
+
+## Round 39: Quick Ask UX Polish
+- [x] Clear (×) button on Quick Ask input
+- [x] Inline subject chip next to Quick Ask send button
+- [x] Undo toast after dismissing Continue last chat link
