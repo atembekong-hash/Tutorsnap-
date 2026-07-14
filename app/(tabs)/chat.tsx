@@ -713,6 +713,9 @@ function ChatScreenContent() {
   const lastScrollEventTimeRef = useRef<number>(0);
   const highVelocityPauseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isHighVelocityScrollRef = useRef(false);
+  // Round 43: auto-resume timer — fires 3s after the user's last scroll event
+  // during streaming to scroll back to the bottom and re-engage auto-scroll.
+  const scrollInactivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { isOnline, wasJustReconnected, wasJustDisconnected } = useNetworkStatus();
   const colorScheme = useColorScheme();
   const { getSubjectAccent, settings: appearanceSettings } = useAppearance();
@@ -880,6 +883,7 @@ function ChatScreenContent() {
       if (highVelocityPauseTimerRef.current) clearTimeout(highVelocityPauseTimerRef.current);
       if (scrollPendingRef.current) clearTimeout(scrollPendingRef.current);
       if (shareCopiedTimerRef.current) clearTimeout(shareCopiedTimerRef.current);
+      if (scrollInactivityTimerRef.current) clearTimeout(scrollInactivityTimerRef.current);
     };
   }, []);
 
@@ -1133,6 +1137,12 @@ function ChatScreenContent() {
         setIsStreaming(false);
         // Round 42: hide the generating pill when streaming ends
         setGeneratingPillVisible(false);
+        // Round 43: clear the inactivity timer when streaming ends so it doesn't
+        // fire after the response is already complete.
+        if (scrollInactivityTimerRef.current) {
+          clearTimeout(scrollInactivityTimerRef.current);
+          scrollInactivityTimerRef.current = null;
+        }
         // Streaming done: if the user never scrolled away, glide to the bottom.
         // If they did scroll up to read, respect their position and don't force-jump.
         if (!isUserScrolledUpRef.current) {
@@ -1978,6 +1988,29 @@ function ChatScreenContent() {
               }
               lastScrollYRef.current = contentOffset.y;
               lastScrollEventTimeRef.current = now;
+              // Round 43: auto-resume on inactivity — while streaming and scrolled up,
+              // reset a 3s timer on every scroll event. When the timer fires (user
+              // hasn't scrolled for 3s) automatically scroll back to the bottom and
+              // re-engage auto-scroll so they don't miss the end of the response.
+              if (isStreaming && isUserScrolledUpRef.current) {
+                if (scrollInactivityTimerRef.current) clearTimeout(scrollInactivityTimerRef.current);
+                scrollInactivityTimerRef.current = setTimeout(() => {
+                  // Only auto-resume if still streaming and still scrolled up
+                  if (isUserScrolledUpRef.current) {
+                    isUserScrolledUpRef.current = false;
+                    isHighVelocityScrollRef.current = false;
+                    setGeneratingPillVisible(false);
+                    flatListRef.current?.scrollToEnd({ animated: true });
+                  }
+                  scrollInactivityTimerRef.current = null;
+                }, 3000);
+              } else if (!isStreaming || !isUserScrolledUpRef.current) {
+                // Clear the timer if streaming ended or user is already at the bottom
+                if (scrollInactivityTimerRef.current) {
+                  clearTimeout(scrollInactivityTimerRef.current);
+                  scrollInactivityTimerRef.current = null;
+                }
+              }
               // Show/hide scroll buttons based on position
               setShowScrollTop(contentOffset.y > 120);
               setShowScrollBottom(distanceFromBottom > 120);

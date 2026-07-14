@@ -549,3 +549,6 @@
 ## Round 42: Streaming UX — pill + stop-and-read
 - [x] "↓ Generating…" pill shown when user scrolls up during streaming
 - [x] Stop-and-read mode: slow character drain when user is scrolled up, resume normal speed at bottom
+
+## Round 43: Auto-resume on scroll inactivity
+- [x] Auto-resume streaming scroll after 3s of user scroll inactivity during stop-and-read mode
