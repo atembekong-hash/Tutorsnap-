@@ -2158,7 +2158,7 @@ function ChatScreenContent() {
               },
             ]}
           >
-            {/* Round 44: Subject color dot on input bar — replaces the book-icon pill */}
+            {/* Subject compact pill — fixed width, flexShrink:0, never affects TextInput flex:1 */}
             <TouchableOpacity
               onPress={() => setShowSubjectPicker(true)}
               onLongPress={() => {
@@ -2172,19 +2172,35 @@ function ChatScreenContent() {
               }}
               delayLongPress={400}
               style={[
-                chatStyles.inputSubjectDot,
-                {
-                  backgroundColor: selectedSubject ? `${subjectAccent}22` : colors.background,
-                  borderColor: selectedSubject ? subjectAccent : colors.border,
-                },
+                chatStyles.inputSubjectCompact,
+                selectedSubject
+                  ? { backgroundColor: `${subjectAccent}18`, borderColor: `${subjectAccent}55` }
+                  : { backgroundColor: colors.background, borderColor: colors.border },
               ]}
-              activeOpacity={0.7}
+              activeOpacity={0.75}
             >
+              {/* Color swatch circle */}
+              <View
+                style={[
+                  chatStyles.inputSubjectCompactDot,
+                  { backgroundColor: selectedSubject ? subjectAccent : colors.muted },
+                ]}
+              />
+              {/* Label — only shown when subject is set */}
               {selectedSubject ? (
-                <View style={[chatStyles.inputSubjectDotInner, { backgroundColor: subjectAccent }]} />
+                <Text
+                  style={[
+                    chatStyles.inputSubjectCompactLabel,
+                    { color: subjectAccent, fontSize: fs(11) },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {getSubjectLabel(selectedSubject)}
+                </Text>
               ) : (
-                <IconSymbol size={13} name="book.fill" color={colors.muted} />
+                <IconSymbol size={12} name="book.fill" color={colors.muted} />
               )}
+              {/* Speed badge */}
               {(() => {
                 const subjectKey = getAppearanceSubjectKey(selectedSubject);
                 const overrideStep = appearanceSettings.subjectSpeedOverrides?.[subjectKey];
@@ -3191,19 +3207,28 @@ const chatStyles = StyleSheet.create({
     fontWeight: "600",
     letterSpacing: 0.1,
   },
-  // Round 44: subject color dot on input bar
-  inputSubjectDot: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    borderWidth: 1.5,
+  // Subject compact pill inside input card (fixed width, flexShrink:0)
+  inputSubjectCompact: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    gap: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    flexShrink: 0,
+    maxWidth: 110,
   },
-  inputSubjectDotInner: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
+  inputSubjectCompactDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    flexShrink: 0,
+  },
+  inputSubjectCompactLabel: {
+    fontWeight: "700",
+    letterSpacing: 0.1,
+    flexShrink: 1,
   },
   // Subject context banner above input card
   subjectBanner: {
