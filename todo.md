@@ -542,3 +542,6 @@
 - [x] Recent subjects row above Quick Ask input (last 2–3 used subjects as quick-tap chips)
 - [x] Quick Ask history dropdown on focus (last 3–5 queries from AsyncStorage)
 - [x] Animated slide-in/fade-out undo toast
+
+## Round 41: Chat scroll UX
+- [x] Allow user to freely scroll chat FlatList during AI streaming without auto-scroll resistance

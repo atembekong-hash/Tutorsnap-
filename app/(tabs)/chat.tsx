@@ -1114,13 +1114,17 @@ function ChatScreenContent() {
         });
         streamingMsgIdRef.current = null;
         setIsStreaming(false);
+        // Streaming done: if the user never scrolled away, glide to the bottom.
+        // If they did scroll up to read, respect their position and don't force-jump.
+        if (!isUserScrolledUpRef.current) {
+          setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+        }
 
         // Trigger follow-up chip suggestions
         suggestFollowUpsMutation.mutate({
           aiResponse: accumulated,
           subject: undefined,
         });
-        setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
       } catch (err: unknown) {
         const isAbort = err instanceof Error && err.name === "AbortError";
         if (!isAbort) {
@@ -1196,6 +1200,12 @@ function ChatScreenContent() {
       persistMessages(updatedMessages, session);
       setInputText("");
 
+      // Sending a new message is an explicit intent to be at the bottom,
+      // so reset both scroll locks so the incoming AI response auto-scrolls.
+      isUserScrolledUpRef.current = false;
+      isHighVelocityScrollRef.current = false;
+      if (highVelocityPauseTimerRef.current) clearTimeout(highVelocityPauseTimerRef.current);
+      if (scrollPendingRef.current) { clearTimeout(scrollPendingRef.current); scrollPendingRef.current = null; }
       setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
 
       const contextMessages = updatedMessages
@@ -1877,22 +1887,37 @@ function ChatScreenContent() {
             showsVerticalScrollIndicator={false}
             scrollEventThrottle={16}
             onScrollBeginDrag={() => {
+              // User started dragging — lock auto-scroll immediately.
+              // During streaming this lock stays until the user taps the
+              // scroll-to-bottom FAB or streaming ends and they are near bottom.
               isUserScrolledUpRef.current = true;
+              // Also cancel any pending throttled scroll so it doesn't fire
+              // and fight the user mid-drag.
+              if (scrollPendingRef.current) {
+                clearTimeout(scrollPendingRef.current);
+                scrollPendingRef.current = null;
+              }
             }}
             onMomentumScrollBegin={() => {
-              // Pause auto-scroll during momentum phase (deceleration after flick)
+              // Keep auto-scroll locked during the deceleration phase too.
               isHighVelocityScrollRef.current = true;
               if (highVelocityPauseTimerRef.current) clearTimeout(highVelocityPauseTimerRef.current);
             }}
             onMomentumScrollEnd={(e) => {
               const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
               const distanceFromBottom = contentSize.height - contentOffset.y - layoutMeasurement.height;
-              // Resume auto-scroll if user landed near bottom
-              if (distanceFromBottom < 40) {
+              // Only re-enable auto-scroll if the user has landed near the bottom
+              // AND we are NOT actively streaming (during streaming the user must
+              // explicitly tap the FAB to re-engage).
+              if (distanceFromBottom < 80 && !isStreaming) {
+                isUserScrolledUpRef.current = false;
+                isHighVelocityScrollRef.current = false;
+              } else if (distanceFromBottom < 80 && isStreaming) {
+                // Near bottom while streaming — re-engage so new tokens scroll into view
                 isUserScrolledUpRef.current = false;
                 isHighVelocityScrollRef.current = false;
               } else {
-                // Still scrolled up — release velocity lock after short delay
+                // Still scrolled up — release velocity lock but keep user-scroll lock
                 highVelocityPauseTimerRef.current = setTimeout(() => {
                   isHighVelocityScrollRef.current = false;
                 }, 300);
@@ -1901,24 +1926,31 @@ function ChatScreenContent() {
             onScroll={(e) => {
               const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
               const distanceFromBottom = contentSize.height - contentOffset.y - layoutMeasurement.height;
-              // If user scrolls back to within 40px of bottom, re-enable auto-scroll
-              if (distanceFromBottom < 40) {
+              // Re-enable auto-scroll only when the user has scrolled back to
+              // within 80px of the bottom (generous threshold so it's easy to
+              // re-engage without pixel-perfect precision).
+              if (distanceFromBottom < 80) {
                 isUserScrolledUpRef.current = false;
                 isHighVelocityScrollRef.current = false;
               }
-              // Velocity detection: pause auto-scroll during fast manual flicks
+              // Velocity detection: pause auto-scroll during fast manual flicks.
+              // During streaming we skip the timer-based re-enable so the lock
+              // isn't prematurely released while the user is still reading.
               const now = Date.now();
               const dt = now - lastScrollEventTimeRef.current;
               const dy = Math.abs(contentOffset.y - lastScrollYRef.current);
               if (dt > 0 && dt < 100) {
                 const velocity = dy / dt; // px/ms
                 if (velocity > 2.5) {
-                  // High velocity flick detected — pause auto-scroll for 800ms
                   isHighVelocityScrollRef.current = true;
                   if (highVelocityPauseTimerRef.current) clearTimeout(highVelocityPauseTimerRef.current);
-                  highVelocityPauseTimerRef.current = setTimeout(() => {
-                    isHighVelocityScrollRef.current = false;
-                  }, 800);
+                  if (!isStreaming) {
+                    // Outside streaming: release lock after 800ms as before
+                    highVelocityPauseTimerRef.current = setTimeout(() => {
+                      isHighVelocityScrollRef.current = false;
+                    }, 800);
+                  }
+                  // During streaming: no timer — lock stays until near-bottom or FAB tap
                 }
               }
               lastScrollYRef.current = contentOffset.y;
@@ -2249,8 +2281,16 @@ function ChatScreenContent() {
             Animated.timing(scrollBottomScaleAnim, { toValue: 1, duration: 140, useNativeDriver: true, easing: Easing.out(Easing.back(1.5)) }).start();
           }}
           onPress={() => {
-            flatListRef.current?.scrollToEnd({ animated: true });
+            // Tapping the FAB is an explicit intent to go back to the bottom,
+            // so release both scroll locks regardless of streaming state.
             isUserScrolledUpRef.current = false;
+            isHighVelocityScrollRef.current = false;
+            if (highVelocityPauseTimerRef.current) clearTimeout(highVelocityPauseTimerRef.current);
+            if (scrollPendingRef.current) {
+              clearTimeout(scrollPendingRef.current);
+              scrollPendingRef.current = null;
+            }
+            flatListRef.current?.scrollToEnd({ animated: true });
             H.impactLight();
           }}
           style={chatStyles.scrollFabInner}
