@@ -103,6 +103,7 @@ import * as Auth from "@/lib/_core/auth";
 // expo/fetch provides WinterCG-compliant streaming fetch on Android/iOS.
 // React Native's built-in fetch does NOT support response.body.getReader() on native.
 import { fetch as expoFetch } from "expo/fetch";
+import { scheduleDailyReminder, cancelDailyReminder } from "@/lib/notifications";
 
 function getAppearanceSubjectKey(subjectId: string | null): string {
   if (!subjectId) return "Mathematics";
@@ -915,6 +916,21 @@ function ChatScreenContent() {
     updateSetting("highContrast", tutorSettings.highContrast);
   }, [tutorSettings.highContrast, updateSetting]);
 
+  // ── Study reminders bridge: sync TutorSettings → daily notification ─────────
+  useEffect(() => {
+    if (!tutorSettings.studyReminders) {
+      cancelDailyReminder().catch(() => {});
+      return;
+    }
+    // Parse "HH:MM" time string
+    const parts = tutorSettings.studyReminderTime.split(":");
+    const hour = parseInt(parts[0] ?? "18", 10);
+    const minute = parseInt(parts[1] ?? "0", 10);
+    if (!isNaN(hour) && !isNaN(minute)) {
+      scheduleDailyReminder(hour, minute).catch(() => {});
+    }
+  }, [tutorSettings.studyReminders, tutorSettings.studyReminderTime]);
+
   // ── Clear all chat history ────────────────────────────────────────────────
   const handleClearAllHistory = useCallback(() => {
     Alert.alert(
@@ -975,9 +991,9 @@ function ChatScreenContent() {
         if (firstUser) updated.title = generateSessionTitle(firstUser.content);
       }
       setSession(updated);
-      await saveSession(updated);
+      await saveSession(updated, tutorSettings.maxSessions);
     },
-    []
+    [tutorSettings.maxSessions]
   );
 
   // ── Chat mutation ───────────────────────────────────────────────────────────
@@ -1039,12 +1055,32 @@ function ChatScreenContent() {
         // On web, the global fetch works fine with ReadableStream.
         // Use expo/fetch on native for proper ReadableStream support; global fetch on web
         let response: Response;
+        // Build tutor profile payload from current settings
+        const tutorProfile = {
+          nickname: tutorSettings.nickname || undefined,
+          tone: (
+            tutorSettings.tone === "friendly" ? "encouraging" :
+            tutorSettings.tone === "academic" ? "formal" :
+            tutorSettings.tone === "neutral" ? "formal" :
+            tutorSettings.tone
+          ) as "encouraging" | "formal" | "casual" | "socratic",
+          responseLength: (
+            tutorSettings.responseLength === "short" ? "brief" :
+            tutorSettings.responseLength === "balanced" ? "standard" :
+            tutorSettings.responseLength
+          ) as "brief" | "standard" | "detailed",
+          learningStyle: tutorSettings.learningStyle,
+          language: tutorSettings.language !== "English" ? tutorSettings.language : undefined,
+          showWorking: tutorSettings.showWorking,
+          useEmojis: tutorSettings.useEmojis,
+        };
+
         if (Platform.OS === "web") {
           response = await fetch(url, {
             method: "POST",
             headers,
             credentials: "include",
-            body: JSON.stringify({ messages: contextMessages, subject, gradeLevel }),
+            body: JSON.stringify({ messages: contextMessages, subject, gradeLevel, tutorProfile }),
             signal: controller.signal,
           });
         } else {
@@ -1052,7 +1088,7 @@ function ChatScreenContent() {
           const expoResponse = await expoFetch(url, {
             method: "POST",
             headers,
-            body: JSON.stringify({ messages: contextMessages, subject, gradeLevel }),
+            body: JSON.stringify({ messages: contextMessages, subject, gradeLevel, tutorProfile }),
           });
           response = expoResponse as unknown as Response;
         }
@@ -1380,8 +1416,8 @@ function ChatScreenContent() {
     setSelectedSubject(lastSubject ? (lastSubject as SubjectId) : null);
     setInputText("");
     setSessionMessageCount(0);
-    await saveSession(newSession);
-  }, []);
+    await saveSession(newSession, tutorSettings.maxSessions);
+  }, [tutorSettings.maxSessions]);
 
   // ── Build share text ────────────────────────────────────────────────────────
 

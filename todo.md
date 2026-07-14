@@ -98,7 +98,7 @@
 - [x] Add Contact Support row in Settings ABOUT section (pre-filled mailto)
 - [x] Preferred Subjects pre-select in Practice tab (SubjectPicker opens to preferred category, starred tabs)
 - [x] Study Planner screen with weekly schedule, time slots, and local notification reminders
-- [ ] Flashcard deck PDF export and sharing
+- [x] Flashcard deck PDF export and sharing
 - [x] AI chat history persistence (AsyncStorage, 50-message rolling window)
 - [x] Study Planner today-widget card on home screen
 - [x] Streak Shield/Freeze system in Progress screen
@@ -443,14 +443,14 @@
 - [x] Solve result share button
 
 ## Round 49: Affiliate follow-ups + Full Audit
-- [ ] Redeem a friend's code input in Settings
-- [ ] Weekly affiliate digest notification (Monday 9am)
-- [ ] Pending days expiry warning banner (90-day idle)
-- [ ] Full audit: TypeScript / broken imports / null safety
-- [ ] Full audit: functional — every screen, button, modal
-- [ ] Full audit: visual — spacing, alignment, font sizes
-- [ ] Full audit: accessibility — accessibilityLabel coverage
-- [ ] Full audit: state integrity — stale data, error recovery
+- [x] Redeem a friend's code input in Settings
+- [x] Weekly affiliate digest notification (Monday 9am)
+- [x] Pending days expiry warning banner (90-day idle)
+- [x] Full audit: TypeScript / broken imports / null safety
+- [x] Full audit: functional — every screen, button, modal
+- [x] Full audit: visual — spacing, alignment, font sizes
+- [x] Full audit: accessibility — accessibilityLabel coverage
+- [x] Full audit: state integrity — stale data, error recovery
 
 ## Round 50: Comprehensive Forensic Audit (10-Section)
 - [x] Phase 1: Full application discovery scan (all screens, routes, components, libs, storage keys)
@@ -580,3 +580,8 @@
 - [x] Audit: remove stale eslint-disable-next-line no-constant-condition directive
 - [x] Audit: shareCopied state now renders "Copied!" feedback in share menu on web
 - [x] TypeScript: 0 errors confirmed
+
+## Round 50: TutorSettings Deep Integration
+- [x] Inject TutorSettings (nickname, tone, responseLength, learningStyle, language, showWorking, useEmojis) into AI system prompt in sendStreamingChat
+- [x] Wire studyReminders + studyReminderTime toggles in TutorSettingsModal to schedule/cancel daily local notification
+- [x] Enforce maxSessions limit in chat-sessions.ts — prune oldest sessions on save

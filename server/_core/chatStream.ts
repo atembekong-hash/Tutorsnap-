@@ -44,13 +44,74 @@ const resolveApiUrl = () =>
     ? `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/chat/completions`
     : "https://forge.manus.im/v1/chat/completions";
 
+interface TutorProfile {
+  nickname?: string;
+  tone?: "encouraging" | "formal" | "casual" | "socratic";
+  responseLength?: "brief" | "standard" | "detailed";
+  learningStyle?: "visual" | "step-by-step" | "conceptual" | "example-heavy";
+  language?: string;
+  showWorking?: boolean;
+  useEmojis?: boolean;
+}
+
+function buildTutorProfileContext(profile?: TutorProfile): string {
+  if (!profile) return "";
+  const parts: string[] = [];
+
+  if (profile.nickname) {
+    parts.push(`Address the student as "${profile.nickname}" when appropriate.`);
+  }
+
+  const toneMap: Record<string, string> = {
+    encouraging: "Be warm, positive, and encouraging. Celebrate small wins and build confidence.",
+    formal:      "Use formal, precise academic language. Be professional and concise.",
+    casual:      "Be relaxed and conversational, like a friendly study buddy. Use informal language.",
+    socratic:    "Use the Socratic method: guide the student to discover answers through questions rather than stating them directly.",
+  };
+  if (profile.tone && toneMap[profile.tone]) parts.push(toneMap[profile.tone]);
+
+  const lengthMap: Record<string, string> = {
+    brief:    "Keep responses SHORT and to the point. Avoid unnecessary elaboration.",
+    standard: "Provide balanced responses — thorough but not overwhelming.",
+    detailed: "Provide COMPREHENSIVE, in-depth explanations. Elaborate fully on every concept.",
+  };
+  if (profile.responseLength && lengthMap[profile.responseLength]) parts.push(lengthMap[profile.responseLength]);
+
+  const styleMap: Record<string, string> = {
+    "visual":        "Use diagrams described in text, tables, and visual analogies where possible.",
+    "step-by-step":  "Always break explanations into numbered steps. Never skip steps.",
+    "conceptual":    "Focus on the underlying concept and theory before showing calculations.",
+    "example-heavy": "Lead with worked examples. Show at least 2-3 examples per concept.",
+  };
+  if (profile.learningStyle && styleMap[profile.learningStyle]) parts.push(styleMap[profile.learningStyle]);
+
+  if (profile.language && profile.language !== "English") {
+    parts.push(`Respond in ${profile.language}.`);
+  }
+
+  if (profile.showWorking === false) {
+    parts.push("Give the final answer directly without showing every intermediate working step.");
+  } else if (profile.showWorking === true) {
+    parts.push("Always show ALL working steps in full detail.");
+  }
+
+  if (profile.useEmojis === false) {
+    parts.push("Do NOT use emoji in your responses.");
+  } else if (profile.useEmojis === true) {
+    parts.push("You may use emoji sparingly to make responses friendlier.");
+  }
+
+  return parts.length > 0 ? `\n\nTUTOR PERSONALISATION:\n${parts.map((p) => `- ${p}`).join("\n")}` : "";
+}
+
 export function registerChatStreamRoute(app: Express) {
   app.post("/api/chat/stream", async (req: Request, res: Response) => {
     try {
-      const { messages, subject, gradeLevel } = req.body as {
+      const { messages, subject, gradeLevel, tutorProfile } = req.body as {
         messages: Array<{ role: "user" | "assistant"; content: string }>;
         subject?: string;
         gradeLevel?: string;
+        tutorProfile?: TutorProfile;
       };
 
       if (!messages || !Array.isArray(messages)) {
@@ -65,7 +126,8 @@ export function registerChatStreamRoute(app: Express) {
         gradeLevel && GRADE_LEVEL_DESCRIPTIONS[gradeLevel]
           ? `\nADAPT YOUR RESPONSE to this student's level: ${GRADE_LEVEL_DESCRIPTIONS[gradeLevel]}`
           : "";
-      const systemPrompt = CHAT_SYSTEM_PROMPT + subjectContext + gradeCtx;
+      const profileCtx = buildTutorProfileContext(tutorProfile);
+      const systemPrompt = CHAT_SYSTEM_PROMPT + subjectContext + gradeCtx + profileCtx;
 
       const payload = {
         model: "gpt-4o-mini",

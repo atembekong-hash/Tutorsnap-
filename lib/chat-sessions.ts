@@ -149,8 +149,14 @@ export async function createSession(subject: string | null = null): Promise<Chat
   return session;
 }
 
-/** Persist a session to storage and update the index. */
-export async function saveSession(session: ChatSession): Promise<void> {
+/** Persist a session to storage and update the index.
+ *
+ * @param session  The session to save.
+ * @param limit    Optional user-configured max sessions (from TutorSettings.maxSessions).
+ *                 When provided, sessions beyond this limit are pruned from storage.
+ *                 Pinned sessions are never pruned.
+ */
+export async function saveSession(session: ChatSession, limit?: number): Promise<void> {
   const trimmed: ChatSession = {
     ...session,
     messages: session.messages.slice(-MAX_MESSAGES_PER_SESSION),
@@ -164,7 +170,18 @@ export async function saveSession(session: ChatSession): Promise<void> {
 
   const index = await readIndex();
   const filtered = index.filter((id) => id !== session.id);
-  const newIndex = [session.id, ...filtered].slice(0, MAX_SESSIONS);
+  const effectiveLimit = limit && limit > 0 && limit < MAX_SESSIONS ? limit : MAX_SESSIONS;
+  const newIndex = [session.id, ...filtered].slice(0, effectiveLimit);
+
+  // Prune sessions that fell off the end of the index
+  const pruned = [session.id, ...filtered].slice(effectiveLimit);
+  if (pruned.length > 0) {
+    const pins = await readPins();
+    const toDelete = pruned.filter((id) => !pins.includes(id));
+    // Fire-and-forget: delete pruned session keys from storage
+    Promise.all(toDelete.map((id) => AsyncStorage.removeItem(SESSION_KEY(id)))).catch(() => {});
+  }
+
   await writeIndex(newIndex);
 }
 
