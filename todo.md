@@ -648,3 +648,8 @@
 - [x] Haptic on keyboard dismiss — Light impact in handleSend confirms bar returning to bottom
 - [x] Safe-area bottom padding on floating bar wrapper using insets.bottom for home-indicator devices
 - [x] TypeScript: 0 errors confirmed
+
+## Round 59: Chat UX Polish
+- [x] Animated three-dot typing indicator bubble (send → first token) — isWaitingForFirstToken state, cleared on first parsed.token
+- [x] Input character counter (shown within 200 chars of 2000 limit) — amber at 200 left, red at 50 left
+- [x] Swipe-down to dismiss keyboard on message FlatList — keyboardDismissMode=on-drag + keyboardShouldPersistTaps=handled

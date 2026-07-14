@@ -683,6 +683,8 @@ function ChatScreenContent() {
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [contextualChips, setContextualChips] = useState<string[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
+  // True from the moment the user sends until the first AI token arrives
+  const [isWaitingForFirstToken, setIsWaitingForFirstToken] = useState(false);
   const streamAbortRef = useRef<AbortController | null>(null);
   const streamingMsgIdRef = useRef<string | null>(null);
   // Round 42: "↓ Generating…" pill — visible when user scrolls up during streaming
@@ -1079,6 +1081,7 @@ function ChatScreenContent() {
       };
       setMessages((prev) => [...prev, placeholder]);
       setIsStreaming(true);
+      setIsWaitingForFirstToken(true); // show dots until first token
       setContextualChips([]);
 
       setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
@@ -1240,6 +1243,8 @@ function ChatScreenContent() {
             try {
               const parsed = JSON.parse(raw) as { token?: string };
               if (parsed.token) {
+                // First token arrived — hide the waiting dots
+                setIsWaitingForFirstToken(false);
                 if (!tutorSettings.typingAnimation) {
                   // Typing animation disabled: append the full token at once
                   accumulated += parsed.token;
@@ -1288,6 +1293,7 @@ function ChatScreenContent() {
         });
         streamingMsgIdRef.current = null;
         setIsStreaming(false);
+        setIsWaitingForFirstToken(false);
         // Round 42: hide the generating pill when streaming ends
         setGeneratingPillVisible(false);
         // Round 43: clear the inactivity timer when streaming ends so it doesn't
@@ -1943,6 +1949,8 @@ function ChatScreenContent() {
             ref={flatListRef}
             data={messages}
             keyExtractor={(item) => item.id}
+            keyboardDismissMode="on-drag"
+            keyboardShouldPersistTaps="handled"
             renderItem={({ item, index }) => (
               <View>
                 {item.role === "assistant" && !item.id.startsWith("welcome") && Platform.OS !== "web" ? (
@@ -2164,7 +2172,8 @@ function ChatScreenContent() {
               }
             }}
             ListFooterComponent={
-              isStreaming && (messages.length === 0 || messages[messages.length - 1]?.content === "") ? (
+              isWaitingForFirstToken ? (
+                // Three-dot typing indicator: shown from send until first AI token arrives
                 <View style={chatStyles.typingRow}>
                   <View style={chatStyles.typingAvatarCol}>
                     <AIAvatar size={30} />
@@ -2292,6 +2301,18 @@ function ChatScreenContent() {
               blurOnSubmit={false}
               editable={!isAtLimit}
             />
+
+            {/* Character counter — shown when within 200 chars of the 2000-char limit */}
+            {inputText.length >= 1800 && (
+              <Text
+                style={[
+                  chatStyles.charCounter,
+                  { color: inputText.length >= 1950 ? colors.error : colors.warning },
+                ]}
+              >
+                {2000 - inputText.length}
+              </Text>
+            )}
 
             {/* Voice input button — only shown when not streaming, input is empty, and voice input is enabled */}
             {!isStreaming && !inputText.trim() && tutorSettings.voiceInput && (
@@ -3015,6 +3036,15 @@ const chatStyles = StyleSheet.create({
     maxHeight: 120,
     paddingTop: Platform.OS === "ios" ? 6 : 4,
     paddingBottom: Platform.OS === "ios" ? 6 : 4,
+  },
+  charCounter: {
+    fontSize: 11,
+    fontWeight: "600",
+    alignSelf: "flex-end",
+    paddingBottom: 4,
+    paddingHorizontal: 4,
+    minWidth: 28,
+    textAlign: "center",
   },
   sendBtn: {
     width: 36,
