@@ -103,7 +103,7 @@ import * as Auth from "@/lib/_core/auth";
 // expo/fetch provides WinterCG-compliant streaming fetch on Android/iOS.
 // React Native's built-in fetch does NOT support response.body.getReader() on native.
 import { fetch as expoFetch } from "expo/fetch";
-import { scheduleDailyReminder, cancelDailyReminder } from "@/lib/notifications";
+import { scheduleDailyReminder, cancelDailyReminder, scheduleSessionSummaryNotification } from "@/lib/notifications";
 
 function getAppearanceSubjectKey(subjectId: string | null): string {
   if (!subjectId) return "Mathematics";
@@ -472,23 +472,26 @@ function WelcomeCard({
   colors,
   fs,
   subject,
+  nickname,
   onPrompt,
 }: {
   colors: ReturnType<typeof useColors>;
   fs: (n: number) => number;
   subject: SubjectId | null;
+  nickname?: string;
   onPrompt: (text: string) => void;
 }) {
   const prompts = getPromptsForSubject(subject);
   const subjectDef = subject ? getSubjectDef(subject) : null;
 
+  const nameGreeting = nickname ? `, ${nickname}` : "";
   const greeting = subjectDef
     ? `Ready to help with ${subjectDef.label} ${subjectDef.emoji}`
-    : "TutorSnap AI";
+    : `Hi${nameGreeting}! I'm TutorSnap ✨`;
 
   const subtitle = subjectDef
     ? `Ask me anything about ${subjectDef.label} — I'll explain concepts, work through problems, and guide you step by step.`
-    : "Ask me anything — Math, Science, English, History, and more. I'll explain concepts, help with homework, and guide you step by step.";
+    : "Ask me anything about Math, Science, English, History, and more — I'll explain concepts, help with homework, and guide you step by step.";
 
   return (
     <View style={welcomeStyles.container}>
@@ -1412,6 +1415,15 @@ function ChatScreenContent() {
     streamingMsgIdRef.current = null;
     setIsStreaming(false);
     H.impactMedium();
+    // Fire session summary notification if enabled and session has messages
+    if (tutorSettings.sessionSummary && session && messages.length > 0) {
+      const userMsgCount = messages.filter((m) => m.role === "user").length;
+      scheduleSessionSummaryNotification(
+        session.title,
+        userMsgCount,
+        session.id,
+      ).catch(() => {});
+    }
     // Restore last-used subject for new chats
     const lastSubject = await AsyncStorage.getItem("chat_last_subject");
     const newSession = await createSession(null);
@@ -1421,7 +1433,7 @@ function ChatScreenContent() {
     setInputText("");
     setSessionMessageCount(0);
     await saveSession(newSession, tutorSettings.maxSessions);
-  }, [tutorSettings.maxSessions]);
+  }, [tutorSettings.maxSessions, tutorSettings.sessionSummary, session, messages]);
 
   // ── Build share text ────────────────────────────────────────────────────────
 
@@ -1879,6 +1891,7 @@ function ChatScreenContent() {
             colors={colors}
             fs={fs}
             subject={selectedSubject}
+            nickname={tutorSettings.nickname || undefined}
             onPrompt={(t) => handleSend(t)}
           />
         ) : (

@@ -606,3 +606,9 @@
 - [x] Fix 7b: Update modelName to show actual model (gpt-4o-mini)
 - [x] Fix 8: Add Export Format segment row to Section 4 (was in type/defaults but missing from UI)
 - [x] Fix 8b: Wire exportFormat in onExportChat — PDF format triggers handleSharePDF directly
+
+## Round 53: Welcome Message Fix + Round 52 Suggestions
+- [x] Fix blank chat welcome message — merge two lines into one flowing sentence
+- [x] Personalised welcome greeting — WelcomeCard shows "Hi, {nickname}! I'm TutorSnap ✨" when nickname is set
+- [x] Session summary notification — fires when user taps New Chat and sessionSummary toggle is on
+- [x] Tutor personality preview slide — new onboarding slide 7 shows grade, subjects, tone, style, language preview

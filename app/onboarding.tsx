@@ -63,6 +63,12 @@ const SLIDES = [
     subtitle: "We'll tailor explanations and questions to your grade. Change it anytime in Settings.",
   },
   {
+    id: "tutor-preview",
+    emoji: "🤖",
+    title: "Meet Your AI Tutor",
+    subtitle: "TutorSnap adapts to you — here's how your tutor will work based on your choices.",
+  },
+  {
     id: "trial",
     emoji: "👑",
     title: "Start Free — Upgrade Anytime",
@@ -310,6 +316,57 @@ export default function OnboardingScreen() {
               </ScrollView>
             )}
 
+            {/* Tutor personality preview slide */}
+            {slide.id === "tutor-preview" && (
+              <View style={{ width: "100%", marginTop: 24, gap: 12 }}>
+                {[
+                  {
+                    emoji: "🎓",
+                    label: "Grade",
+                    value: selectedGrade
+                      ? GRADE_OPTIONS.find((g) => g.id === selectedGrade)?.label ?? selectedGrade
+                      : "Not set — you can change this anytime",
+                  },
+                  {
+                    emoji: "📚",
+                    label: "Subjects",
+                    value: selectedCategories.size > 0
+                      ? Array.from(selectedCategories).map((c) => SUBJECT_CATEGORIES[c]?.label).join(", ")
+                      : "All subjects",
+                  },
+                  {
+                    emoji: "💬",
+                    label: "Tone",
+                    value: "Friendly & encouraging",
+                  },
+                  {
+                    emoji: "🔢",
+                    label: "Style",
+                    value: "Step-by-step with full working shown",
+                  },
+                  {
+                    emoji: "🌍",
+                    label: "Language",
+                    value: "English (change in Tutor Settings)",
+                  },
+                ].map((row) => (
+                  <View
+                    key={row.label}
+                    style={[styles.previewRow, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                  >
+                    <Text style={styles.previewEmoji}>{row.emoji}</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.previewLabel, { color: colors.muted }]}>{row.label}</Text>
+                      <Text style={[styles.previewValue, { color: colors.foreground }]}>{row.value}</Text>
+                    </View>
+                  </View>
+                ))}
+                <Text style={[styles.previewHint, { color: colors.muted }]}>
+                  You can fine-tune all of this in Tutor Settings inside the chat.
+                </Text>
+              </View>
+            )}
+
             {/* Trial slide feature list */}
             {slide.id === "trial" && (
               <View style={styles.trialFeatureList}>
@@ -506,4 +563,16 @@ const styles = StyleSheet.create({
     marginTop: 14,
     fontWeight: "500",
   },
+  previewRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  previewEmoji: { fontSize: 20, width: 28, textAlign: "center" },
+  previewLabel: { fontSize: 11, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 },
+  previewValue: { fontSize: 14, fontWeight: "500", lineHeight: 20 },
+  previewHint: { fontSize: 12, textAlign: "center", lineHeight: 18, marginTop: 4 },
 });

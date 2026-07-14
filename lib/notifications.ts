@@ -232,6 +232,48 @@ export async function cancelMonthlyBackupReminder(): Promise<void> {
   }
 }
 
+// ── Session Summary Notification ─────────────────────────────────────────────
+
+/**
+ * Fire a one-time local notification summarising a completed chat session.
+ * Only fires when the sessionSummary TutorSetting is enabled.
+ */
+export async function scheduleSessionSummaryNotification(
+  sessionTitle: string,
+  messageCount: number,
+  sessionId: string,
+): Promise<void> {
+  if (Platform.OS === "web") return;
+  try {
+    const granted = await requestNotificationPermission();
+    if (!granted) return;
+
+    if (Platform.OS === "android") {
+      await Notifications.setNotificationChannelAsync("session-summary", {
+        name: "Session Summaries",
+        importance: Notifications.AndroidImportance.DEFAULT,
+      });
+    }
+
+    const title = sessionTitle && sessionTitle !== "New Chat"
+      ? `Session recap: ${sessionTitle}`
+      : "Chat session complete";
+    const body = `${messageCount} message${messageCount !== 1 ? "s" : ""} — tap to review your session.`;
+
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title,
+        body,
+        sound: false,
+        data: { screen: "chat-history", sessionId },
+      },
+      trigger: null, // fire immediately
+    });
+  } catch {
+    // non-critical — ignore
+  }
+}
+
 /** Returns true if the monthly backup reminder is currently scheduled */
 export async function isBackupReminderEnabled(): Promise<boolean> {
   try {
