@@ -820,11 +820,10 @@ function ChatScreenContent() {
 
   const bottomPadding = Platform.OS === "web" ? 12 : Math.max(insets.bottom, 8);
   const TAB_BAR_HEIGHT = 60 + bottomPadding;
-  // keyboardVerticalOffset = total distance from the physical top of the screen
-  // to the top of the KeyboardAvoidingView.
-  // = status bar (insets.top) + chat header (~56px) + tab bar (~TAB_BAR_HEIGHT)
-  // Using full TAB_BAR_HEIGHT ensures the input bar clears the keyboard on all devices.
-  const KEYBOARD_OFFSET = Platform.OS === "ios" ? insets.top + 56 + TAB_BAR_HEIGHT : 0;
+  // keyboardVerticalOffset = height of content ABOVE the KeyboardAvoidingView.
+  // ScreenContainer's SafeAreaView handles top safe area, so KAV starts right below
+  // the status bar. The header is INSIDE the KAV, so offset = insets.top only.
+  const KEYBOARD_OFFSET = Platform.OS === "ios" ? insets.top : 0;
 
   // ── Session init ────────────────────────────────────────────────────────────
 
@@ -2050,7 +2049,7 @@ function ChatScreenContent() {
         <View
           style={[
             chatStyles.floatingBarWrapper,
-            { paddingBottom: Platform.OS === "ios" ? 8 : 6 },
+            { paddingBottom: Platform.OS === "ios" ? TAB_BAR_HEIGHT + 8 : 6 },
           ]}
         >
           {/* Limit nudge strip */}
