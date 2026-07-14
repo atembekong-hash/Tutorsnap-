@@ -486,7 +486,7 @@ function WelcomeCard({
 
   const nameGreeting = nickname ? `, ${nickname}` : "";
   const greeting = subjectDef
-    ? `Ready to help with ${subjectDef.label} ${subjectDef.emoji}`
+    ? `Hi${nameGreeting}! Ready for ${subjectDef.label} ${subjectDef.emoji}`
     : `Hi${nameGreeting}! I'm TutorSnap ✨`;
 
   const subtitle = subjectDef

@@ -612,3 +612,8 @@
 - [x] Personalised welcome greeting — WelcomeCard shows "Hi, {nickname}! I'm TutorSnap ✨" when nickname is set
 - [x] Session summary notification — fires when user taps New Chat and sessionSummary toggle is on
 - [x] Tutor personality preview slide — new onboarding slide 7 shows grade, subjects, tone, style, language preview
+
+## Round 54: Grade Picker Sync + Personalised Subject Greeting
+- [x] Confirmed grade picker → TutorSettings.gradeLevel sync already in place (Round 52 Fix 3)
+- [x] Subject-aware WelcomeCard greeting now includes nickname: "Hi, Alex! Ready for Algebra 📐"
+- [x] No-subject greeting unchanged: "Hi, Alex! I'm TutorSnap ✨"
