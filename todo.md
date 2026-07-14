@@ -506,3 +506,8 @@
 - [x] Long-press on individual pending bubble to remove it from queue
 - [x] Slow-connection amber ring on send button when connection quality is slow
 - [x] Session summary badge on AI Tutor tab showing total session count
+
+## Round 34: Badge Mark-as-Read, Scroll Velocity Pause, Slow-Connection Tooltip
+- [x] Mark-as-read tap on session count badge clears it until new session is created
+- [x] Scroll velocity detector pauses auto-scroll during fast manual flicks
+- [x] Slow-connection tooltip appears briefly when amber ring first shows

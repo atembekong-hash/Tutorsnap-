@@ -692,6 +692,9 @@ function ChatScreenContent() {
   // Connection quality: null = unknown, 'fast' = <600ms, 'slow' = >=600ms
   const [connectionQuality, setConnectionQuality] = useState<"fast" | "slow" | null>(null);
   const lastPingTimeRef = useRef<number | null>(null);
+  const [showSlowTooltip, setShowSlowTooltip] = useState(false);
+  const slowTooltipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevConnectionQualityRef = useRef<"fast" | "slow" | null>(null);
 
   const flatListRef = useRef<FlatList>(null);
   const isUserScrolledUpRef = useRef(false);
@@ -699,6 +702,11 @@ function ChatScreenContent() {
   // Throttle streaming scroll — fire at most every 120ms with animated:true for smooth glide
   const lastScrollTimeRef = useRef<number>(0);
   const scrollPendingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Scroll velocity detector — pause auto-scroll during fast manual flicks
+  const lastScrollYRef = useRef<number>(0);
+  const lastScrollEventTimeRef = useRef<number>(0);
+  const highVelocityPauseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isHighVelocityScrollRef = useRef(false);
   const { isOnline, wasJustReconnected, wasJustDisconnected } = useNetworkStatus();
   const colorScheme = useColorScheme();
   const { getSubjectAccent, settings: appearanceSettings } = useAppearance();
@@ -960,7 +968,15 @@ function ChatScreenContent() {
 
         // Measure time-to-first-byte and update connection quality
         const ttfb = Date.now() - pingStart;
-        setConnectionQuality(ttfb < 600 ? "fast" : "slow");
+        const newQuality = ttfb < 600 ? "fast" : "slow";
+        setConnectionQuality(newQuality);
+        // Show tooltip when quality transitions to slow for the first time
+        if (newQuality === "slow" && prevConnectionQualityRef.current !== "slow") {
+          setShowSlowTooltip(true);
+          if (slowTooltipTimerRef.current) clearTimeout(slowTooltipTimerRef.current);
+          slowTooltipTimerRef.current = setTimeout(() => setShowSlowTooltip(false), 3000);
+        }
+        prevConnectionQualityRef.current = newQuality;
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
@@ -978,6 +994,8 @@ function ChatScreenContent() {
         const SCROLL_THROTTLE_MS = 120;
         const smoothScrollToEnd = () => {
           if (isUserScrolledUpRef.current) return;
+          // Pause during high-velocity manual flick to avoid fighting the user's scroll
+          if (isHighVelocityScrollRef.current) return;
           const now = Date.now();
           const elapsed = now - lastScrollTimeRef.current;
           if (scrollPendingRef.current) {
@@ -1843,7 +1861,25 @@ function ChatScreenContent() {
               // If user scrolls back to within 40px of bottom, re-enable auto-scroll
               if (distanceFromBottom < 40) {
                 isUserScrolledUpRef.current = false;
+                isHighVelocityScrollRef.current = false;
               }
+              // Velocity detection: pause auto-scroll during fast manual flicks
+              const now = Date.now();
+              const dt = now - lastScrollEventTimeRef.current;
+              const dy = Math.abs(contentOffset.y - lastScrollYRef.current);
+              if (dt > 0 && dt < 100) {
+                const velocity = dy / dt; // px/ms
+                if (velocity > 2.5) {
+                  // High velocity flick detected — pause auto-scroll for 800ms
+                  isHighVelocityScrollRef.current = true;
+                  if (highVelocityPauseTimerRef.current) clearTimeout(highVelocityPauseTimerRef.current);
+                  highVelocityPauseTimerRef.current = setTimeout(() => {
+                    isHighVelocityScrollRef.current = false;
+                  }, 800);
+                }
+              }
+              lastScrollYRef.current = contentOffset.y;
+              lastScrollEventTimeRef.current = now;
               // Show/hide scroll buttons based on position
               setShowScrollTop(contentOffset.y > 120);
               setShowScrollBottom(distanceFromBottom > 120);
@@ -2037,6 +2073,15 @@ function ChatScreenContent() {
                   setInputText((prev) => (prev ? `${prev} ${text}` : text));
                 }}
               />
+            )}
+
+            {/* Slow connection tooltip */}
+            {showSlowTooltip && (
+              <View style={[chatStyles.slowTooltip, { backgroundColor: colors.warning }]}>
+                <Text style={[chatStyles.slowTooltipText, { color: "#fff" }]}>
+                  Slow connection — responses may take longer
+                </Text>
+              </View>
             )}
 
             <Animated.View style={[
@@ -2706,6 +2751,8 @@ const chatStyles = StyleSheet.create({
   pendingQueueContainer: { borderTopWidth: 0.5, paddingHorizontal: 12, paddingVertical: 6, gap: 4 },
   pendingBubble: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, borderWidth: 1 },
   pendingBubbleText: { flex: 1, fontStyle: "italic" },
+  slowTooltip: { position: "absolute", bottom: 52, right: 8, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, maxWidth: 220, zIndex: 20 },
+  slowTooltipText: { fontSize: 11, fontWeight: "600", textAlign: "center" },
   linkToastText: { color: "#fff", fontSize: 13, fontWeight: "600" },
   speedBadge: { position: "absolute", top: -5, right: -5, minWidth: 16, height: 16, borderRadius: 8, alignItems: "center", justifyContent: "center", paddingHorizontal: 3 },
   speedBadgeText: { color: "#fff", fontSize: 9, fontWeight: "800", letterSpacing: 0.3 },

@@ -1,6 +1,6 @@
 import { Tabs } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { View, Platform, StyleSheet } from "react-native";
+import { View, Platform, StyleSheet, TouchableOpacity } from "react-native";
 
 import { HapticTab } from "@/components/haptic-tab";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -25,21 +25,26 @@ function ScanTabIcon({ color: _color, focused: _focused }: { color: string; focu
 
 function ChatTabIcon({ color, focused: _focused }: { color: string; focused: boolean }) {
   const colors = useColors();
-  const { sessionCount } = useChatBadge();
+  const { unreadCount, markAsRead } = useChatBadge();
   return (
-    <View style={{ position: "relative" }}>
+    <TouchableOpacity
+      style={{ position: "relative" }}
+      onPress={unreadCount > 0 ? markAsRead : undefined}
+      activeOpacity={unreadCount > 0 ? 0.6 : 1}
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+    >
       <IconSymbol size={24} name="bubble.left.fill" color={color} />
-      {sessionCount > 0 && (
+      {unreadCount > 0 && (
         <View style={[
           styles.chatBadge,
           { backgroundColor: colors.primary },
         ]}>
           <Text style={styles.chatBadgeText}>
-            {sessionCount > 99 ? "99+" : String(sessionCount)}
+            {unreadCount > 99 ? "99+" : String(unreadCount)}
           </Text>
         </View>
       )}
-    </View>
+    </TouchableOpacity>
   );
 }
 
