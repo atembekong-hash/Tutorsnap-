@@ -11,6 +11,7 @@ import { Modal ,
   Platform,
   Keyboard,
   Animated,
+  Easing,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import * as H from "@/lib/haptics";
@@ -418,6 +419,13 @@ function SolveScreenContent() {
   const [undoToast, setUndoToast] = useState(false);
   const undoToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showQuickAskSubjectPicker, setShowQuickAskSubjectPicker] = useState(false);
+  // Round 40: recent subjects row
+  const [recentSubjects, setRecentSubjects] = useState<SubjectId[]>([]);
+  // Round 40: quick ask history dropdown
+  const [quickAskHistory, setQuickAskHistory] = useState<string[]>([]);
+  const [showQuickAskHistory, setShowQuickAskHistory] = useState(false);
+  // Round 40: animated undo toast
+  const undoToastAnim = useRef(new Animated.Value(0)).current; // 0=hidden, 1=visible
 
   const loadProgress = async () => {
     const p = await getProgress();
@@ -478,6 +486,23 @@ function SolveScreenContent() {
       // Load continue-session dismissed state
       AsyncStorage.getItem("@tutorsnap/continueSessionDismissed").then((v) => {
         setContinueSessionDismissed(v === "1");
+      }).catch(() => {});
+      // Round 40: load recent subjects from chat sessions (last 3 unique non-null subjects)
+      listSessionSummaries().then((sessions) => {
+        const sorted = sessions.sort((a, b) => b.updatedAt - a.updatedAt);
+        const seen = new Set<string>();
+        const recent: SubjectId[] = [];
+        for (const s of sorted) {
+          if (s.subject && !seen.has(s.subject) && recent.length < 3) {
+            seen.add(s.subject);
+            recent.push(s.subject as SubjectId);
+          }
+        }
+        setRecentSubjects(recent);
+      }).catch(() => {});
+      // Round 40: load quick ask history (last 5 queries)
+      AsyncStorage.getItem("@tutorsnap/quickAskHistory").then((v) => {
+        setQuickAskHistory(v ? JSON.parse(v) : []);
       }).catch(() => {});
       loadProgress();
       loadWeeklyData();
@@ -600,6 +625,37 @@ function SolveScreenContent() {
     setProblem("");
     cursorPosRef.current = 0;
   };
+
+  // Round 40: persist a quick ask query to the history list (max 5, deduped)
+  const saveQuickAskToHistory = useCallback(async (query: string) => {
+    const trimmed = query.trim();
+    if (!trimmed) return;
+    try {
+      const existing = await AsyncStorage.getItem("@tutorsnap/quickAskHistory");
+      const prev: string[] = existing ? JSON.parse(existing) : [];
+      const deduped = [trimmed, ...prev.filter((q) => q !== trimmed)].slice(0, 5);
+      await AsyncStorage.setItem("@tutorsnap/quickAskHistory", JSON.stringify(deduped));
+      setQuickAskHistory(deduped);
+    } catch { /* ignore */ }
+  }, []);
+
+  // Round 40: animate undo toast in/out
+  useEffect(() => {
+    Animated.timing(undoToastAnim, {
+      toValue: undoToast ? 1 : 0,
+      duration: undoToast ? 220 : 180,
+      useNativeDriver: true,
+      easing: undoToast ? Easing.out(Easing.quad) : Easing.in(Easing.quad),
+    }).start();
+  }, [undoToast, undoToastAnim]);
+
+  // Round 40: cleanup timer refs on unmount
+  useEffect(() => {
+    return () => {
+      if (undoToastTimerRef.current) clearTimeout(undoToastTimerRef.current);
+      if (shieldToastTimerRef.current) clearTimeout(shieldToastTimerRef.current);
+    };
+  }, []);
 
   const streak = progress?.streak;
   const dailyGoalPct = streak
@@ -1045,6 +1101,35 @@ function SolveScreenContent() {
               <IconSymbol size={18} name="chevron.right" color="rgba(255,255,255,0.75)" />
             </TouchableOpacity>
 
+            {/* Round 40: Recent subjects row — shown when there are recent subjects */}
+            {recentSubjects.length > 0 && (
+              <View style={styles.recentSubjectsRow}>
+                <Text style={[styles.recentSubjectsLabel, { color: colors.muted }]}>Recent:</Text>
+                {recentSubjects.map((subId) => {
+                  const def = getSubjectDef(subId);
+                  const isActive = selectedSubject === subId;
+                  return (
+                    <TouchableOpacity
+                      key={subId}
+                      accessibilityLabel={`Select recent subject ${def?.label ?? subId}`}
+                      onPress={() => {
+                        H.impactLight();
+                        handleSubjectChange(isActive ? null : subId);
+                      }}
+                      style={[styles.recentSubjectChip, {
+                        backgroundColor: isActive ? `${colors.secondary}25` : colors.surface,
+                        borderColor: isActive ? colors.secondary : colors.border,
+                      }]}
+                    >
+                      <Text style={[styles.recentSubjectChipText, { color: isActive ? colors.secondary : colors.muted }]}>
+                        {def?.emoji ?? ""} {def?.label ?? subId}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+
             {/* Quick Ask inline input */}
             <View style={[styles.quickAskRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <TextInput
@@ -1055,10 +1140,19 @@ function SolveScreenContent() {
                 value={quickAskText}
                 onChangeText={setQuickAskText}
                 returnKeyType="send"
+                onFocus={() => {
+                  if (quickAskHistory.length > 0) setShowQuickAskHistory(true);
+                }}
+                onBlur={() => {
+                  // Slight delay so tapping a history item registers before hiding
+                  setTimeout(() => setShowQuickAskHistory(false), 150);
+                }}
                 onSubmitEditing={() => {
                   const q = quickAskText.trim();
                   if (!q) return;
                   H.impactLight();
+                  setShowQuickAskHistory(false);
+                  saveQuickAskToHistory(q);
                   setQuickAskText("");
                   const params: Record<string, string> = { newSession: "1", seedMessage: q };
                   if (selectedSubject) params.subject = selectedSubject;
@@ -1102,6 +1196,8 @@ function SolveScreenContent() {
                     const q = quickAskText.trim();
                     if (!q) return;
                     H.impactLight();
+                    setShowQuickAskHistory(false);
+                    saveQuickAskToHistory(q);
                     setQuickAskText("");
                     const params: Record<string, string> = { newSession: "1", seedMessage: q };
                     if (selectedSubject) params.subject = selectedSubject;
@@ -1113,6 +1209,29 @@ function SolveScreenContent() {
                 </TouchableOpacity>
               )}
             </View>
+
+            {/* Round 40: Quick Ask history dropdown */}
+            {showQuickAskHistory && quickAskHistory.length > 0 && (
+              <View style={[styles.quickAskHistoryDropdown, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                {quickAskHistory.map((q, i) => (
+                  <TouchableOpacity
+                    key={i}
+                    accessibilityLabel={`Reuse quick ask: ${q}`}
+                    onPress={() => {
+                      H.impactLight();
+                      setQuickAskText(q);
+                      setShowQuickAskHistory(false);
+                      quickAskInputRef.current?.focus();
+                    }}
+                    style={[styles.quickAskHistoryItem, i < quickAskHistory.length - 1 && { borderBottomWidth: 0.5, borderBottomColor: colors.border }]}
+                  >
+                    <IconSymbol size={12} name="clock.fill" color={colors.muted} />
+                    <Text style={[styles.quickAskHistoryText, { color: colors.foreground }]} numberOfLines={1}>{q}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+
             {/* Subject picker for Quick Ask chip */}
             <SubjectPicker
               value={selectedSubject}
@@ -1173,9 +1292,23 @@ function SolveScreenContent() {
                 ) : null}
               </Swipeable>
             )}
-            {/* Undo toast after swipe-dismiss */}
+            {/* Undo toast after swipe-dismiss — animated slide-in/fade-out */}
             {undoToast && (
-              <View style={[styles.undoToast, { backgroundColor: `${colors.foreground}12`, borderColor: `${colors.border}` }]}>
+              <Animated.View
+                style={[
+                  styles.undoToast,
+                  { backgroundColor: `${colors.foreground}12`, borderColor: colors.border },
+                  {
+                    opacity: undoToastAnim,
+                    transform: [{
+                      translateY: undoToastAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [-8, 0],
+                      }),
+                    }],
+                  },
+                ]}
+              >
                 <Text style={[styles.undoToastText, { color: colors.muted }]}>Continue link dismissed</Text>
                 <TouchableOpacity
                   accessibilityLabel="Restore continue last chat link"
@@ -1190,7 +1323,7 @@ function SolveScreenContent() {
                 >
                   <Text style={[styles.undoToastRestoreText, { color: colors.secondary }]}>Restore</Text>
                 </TouchableOpacity>
-              </View>
+              </Animated.View>
             )}
           </Animated.View>
 
@@ -1683,6 +1816,51 @@ const styles = StyleSheet.create({
     padding: 4,
     alignItems: "center",
     justifyContent: "center",
+  },
+  recentSubjectsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 2,
+    gap: 6,
+  },
+  recentSubjectsLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+    letterSpacing: 0.3,
+    marginRight: 2,
+  },
+  recentSubjectChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  recentSubjectChipText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  quickAskHistoryDropdown: {
+    marginHorizontal: 16,
+    marginTop: 2,
+    borderRadius: 10,
+    borderWidth: 1,
+    overflow: "hidden",
+  },
+  quickAskHistoryItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 8,
+  },
+  quickAskHistoryText: {
+    fontSize: 13,
+    flex: 1,
   },
   quickAskClearText: {
     fontSize: 14,

@@ -537,3 +537,8 @@
 - [x] Clear (×) button on Quick Ask input
 - [x] Inline subject chip next to Quick Ask send button
 - [x] Undo toast after dismissing Continue last chat link
+
+## Round 40: Quick Ask Advanced UX
+- [x] Recent subjects row above Quick Ask input (last 2–3 used subjects as quick-tap chips)
+- [x] Quick Ask history dropdown on focus (last 3–5 queries from AsyncStorage)
+- [x] Animated slide-in/fade-out undo toast
