@@ -6,6 +6,8 @@ import { HapticTab } from "@/components/haptic-tab";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { SchemeColors } from "@/constants/theme";
+import { useChatBadge } from "@/hooks/use-chat-badge";
+import { Text } from "react-native";
 
 function ScanTabIcon({ color: _color, focused: _focused }: { color: string; focused: boolean }) {
   const colors = useColors();
@@ -17,6 +19,26 @@ function ScanTabIcon({ color: _color, focused: _focused }: { color: string; focu
       ]}
     >
       <IconSymbol size={26} name="camera.fill" color="#FFFFFF" />
+    </View>
+  );
+}
+
+function ChatTabIcon({ color, focused: _focused }: { color: string; focused: boolean }) {
+  const colors = useColors();
+  const { sessionCount } = useChatBadge();
+  return (
+    <View style={{ position: "relative" }}>
+      <IconSymbol size={24} name="bubble.left.fill" color={color} />
+      {sessionCount > 0 && (
+        <View style={[
+          styles.chatBadge,
+          { backgroundColor: colors.primary },
+        ]}>
+          <Text style={styles.chatBadgeText}>
+            {sessionCount > 99 ? "99+" : String(sessionCount)}
+          </Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -88,7 +110,7 @@ export default function TabLayout() {
         name="chat"
         options={{
           title: "AI Tutor",
-          tabBarIcon: ({ color }) => <IconSymbol size={24} name="bubble.left.fill" color={color} />,
+          tabBarIcon: ({ color, focused }) => <ChatTabIcon color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen
@@ -109,6 +131,23 @@ export default function TabLayout() {
 }
 
 const styles = StyleSheet.create({
+  chatBadge: {
+    position: "absolute",
+    top: -4,
+    right: -6,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 3,
+  },
+  chatBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 9,
+    fontWeight: "800" as const,
+    letterSpacing: 0.2,
+  },
   scanIconContainer: {
     width: 54,
     height: 54,

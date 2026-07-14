@@ -500,3 +500,9 @@
 - [x] Add cancel queued messages button in offline banner
 - [x] Add pending bubble previews for queued messages in chat FlatList
 - [x] Add connection quality indicator (slow/fast) in status area using response time
+
+## Round 33: Smooth Streaming Scroll + Polish
+- [x] Fix shaky/jumpy scroll during AI streaming - make content growth buttery smooth
+- [x] Long-press on individual pending bubble to remove it from queue
+- [x] Slow-connection amber ring on send button when connection quality is slow
+- [x] Session summary badge on AI Tutor tab showing total session count

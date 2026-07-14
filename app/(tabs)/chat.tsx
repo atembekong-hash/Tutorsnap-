@@ -696,6 +696,9 @@ function ChatScreenContent() {
   const flatListRef = useRef<FlatList>(null);
   const isUserScrolledUpRef = useRef(false);
   const shareCopiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Throttle streaming scroll — fire at most every 120ms with animated:true for smooth glide
+  const lastScrollTimeRef = useRef<number>(0);
+  const scrollPendingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { isOnline, wasJustReconnected, wasJustDisconnected } = useNetworkStatus();
   const colorScheme = useColorScheme();
   const { getSubjectAccent, settings: appearanceSettings } = useAppearance();
@@ -971,22 +974,47 @@ function ChatScreenContent() {
         // Subject-aware delay for this request (Math/Science get +15ms)
         const reqDelayMs = getTypingDelayMs(subject);
 
+        // Throttled smooth scroll — glide to bottom at most every 120ms
+        const SCROLL_THROTTLE_MS = 120;
+        const smoothScrollToEnd = () => {
+          if (isUserScrolledUpRef.current) return;
+          const now = Date.now();
+          const elapsed = now - lastScrollTimeRef.current;
+          if (scrollPendingRef.current) {
+            clearTimeout(scrollPendingRef.current);
+            scrollPendingRef.current = null;
+          }
+          if (elapsed >= SCROLL_THROTTLE_MS) {
+            lastScrollTimeRef.current = now;
+            flatListRef.current?.scrollToEnd({ animated: true });
+          } else {
+            // Schedule a trailing scroll so the last characters always land at bottom
+            scrollPendingRef.current = setTimeout(() => {
+              lastScrollTimeRef.current = Date.now();
+              flatListRef.current?.scrollToEnd({ animated: true });
+              scrollPendingRef.current = null;
+            }, SCROLL_THROTTLE_MS - elapsed);
+          }
+        };
+
         const drainQueue = () => {
           if (charQueue.length === 0) {
             renderLoopRunning = false;
+            // Final scroll to ensure we land exactly at the bottom
+            if (!isUserScrolledUpRef.current) {
+              flatListRef.current?.scrollToEnd({ animated: true });
+            }
             return;
           }
           renderLoopRunning = true;
-          // One character at a time, 30ms between each
+          // One character at a time
           const ch = charQueue.shift()!;
           accumulated += ch;
           const snap = accumulated;
           setMessages((prev) =>
             prev.map((m) => (m.id === msgId ? { ...m, content: snap } : m))
           );
-          if (!isUserScrolledUpRef.current) {
-            flatListRef.current?.scrollToEnd({ animated: false });
-          }
+          smoothScrollToEnd();
           setTimeout(drainQueue, reqDelayMs);
         };
 
@@ -1821,8 +1849,10 @@ function ChatScreenContent() {
               setShowScrollBottom(distanceFromBottom > 120);
             }}
             onContentSizeChange={() => {
-              if (!isUserScrolledUpRef.current) {
-                flatListRef.current?.scrollToEnd({ animated: false });
+              // Only auto-scroll on content size change when NOT streaming
+              // (during streaming, smoothScrollToEnd handles it with throttled animated scroll)
+              if (!isUserScrolledUpRef.current && !isStreaming) {
+                flatListRef.current?.scrollToEnd({ animated: true });
               }
             }}
             ListFooterComponent={
@@ -1844,12 +1874,25 @@ function ChatScreenContent() {
         {offlineQueue.length > 0 && (
           <View style={[chatStyles.pendingQueueContainer, { borderTopColor: colors.border }]}>
             {offlineQueue.map((text, i) => (
-              <View key={i} style={[chatStyles.pendingBubble, { backgroundColor: `${colors.primary}14`, borderColor: `${colors.primary}30` }]}>
+              <TouchableOpacity
+                key={i}
+                activeOpacity={0.7}
+                delayLongPress={400}
+                onLongPress={() => {
+                  const next = [...offlineQueueRef.current];
+                  next.splice(i, 1);
+                  offlineQueueRef.current = next;
+                  setOfflineQueue([...next]);
+                  H.impactMedium();
+                }}
+                style={[chatStyles.pendingBubble, { backgroundColor: `${colors.primary}14`, borderColor: `${colors.primary}30` }]}
+              >
                 <IconSymbol size={12} name="clock.fill" color={colors.muted} />
                 <Text style={[chatStyles.pendingBubbleText, { color: colors.muted, fontSize: fs(13) }]} numberOfLines={2}>
                   {text}
                 </Text>
-              </View>
+                <Text style={{ color: colors.muted, fontSize: fs(10), opacity: 0.6 }}>Hold to remove</Text>
+              </TouchableOpacity>
             ))}
           </View>
         )}
@@ -1996,7 +2039,13 @@ function ChatScreenContent() {
               />
             )}
 
-            <Animated.View style={{ transform: [{ scale: sendBtnScaleAnim }] }}>
+            <Animated.View style={[
+              { transform: [{ scale: sendBtnScaleAnim }] },
+              // Amber ring when connection is slow
+              connectionQuality === "slow" && isOnline && !isStreaming
+                ? { borderRadius: 24, borderWidth: 2, borderColor: colors.warning, padding: 1 }
+                : null,
+            ]}>
               {isStreaming ? (
                 <TouchableOpacity
                   accessibilityLabel="Stop generating"
