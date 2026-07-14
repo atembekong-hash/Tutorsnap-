@@ -511,3 +511,11 @@
 - [x] Mark-as-read tap on session count badge clears it until new session is created
 - [x] Scroll velocity detector pauses auto-scroll during fast manual flicks
 - [x] Slow-connection tooltip appears briefly when amber ring first shows
+
+## Round 35: Reconnecting Spinner, Momentum Pause, Badge Pulse + Full Audit Fixes
+- [x] Reconnecting spinner in slow-connection tooltip that upgrades to green "Fast connection restored"
+- [x] Scroll momentum detector pauses auto-scroll during deceleration phase after flick ends
+- [x] Badge pulse animation when session count badge first increments
+- [x] Add unmount cleanup useEffect in chat.tsx to clear all timer refs on unmount
+- [x] Add accessibilityLabel to scan screen captured image
+- [x] Add accessibilityLabel to key icon-only buttons across all screens

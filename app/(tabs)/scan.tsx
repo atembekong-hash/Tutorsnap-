@@ -296,7 +296,7 @@ function ScanScreenContent() {
         </View>
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
           <View style={[styles.imagePreview, { borderColor: colors.border }]}>
-            <Image source={{ uri: selectedImage }} style={styles.previewImage} resizeMode="contain" />
+            <Image source={{ uri: selectedImage }} style={styles.previewImage} resizeMode="contain" accessibilityLabel="Captured problem image" />
             <TouchableOpacity
               onPress={handleRetake}
               style={[styles.clearOverlay, { backgroundColor: `${colors.error}E0` }]}

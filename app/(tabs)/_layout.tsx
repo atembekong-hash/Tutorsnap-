@@ -1,6 +1,7 @@
 import { Tabs } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { View, Platform, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Platform, StyleSheet, TouchableOpacity, Animated, Easing } from "react-native";
+import { useRef, useEffect } from "react";
 
 import { HapticTab } from "@/components/haptic-tab";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -26,23 +27,39 @@ function ScanTabIcon({ color: _color, focused: _focused }: { color: string; focu
 function ChatTabIcon({ color, focused: _focused }: { color: string; focused: boolean }) {
   const colors = useColors();
   const { unreadCount, markAsRead } = useChatBadge();
+  const badgeScaleAnim = useRef(new Animated.Value(1)).current;
+  const prevUnreadRef = useRef(unreadCount);
+
+  useEffect(() => {
+    if (unreadCount > prevUnreadRef.current) {
+      // Pulse: scale 0.8 → 1.15 → 1.0 when badge increments
+      Animated.sequence([
+        Animated.timing(badgeScaleAnim, { toValue: 0.8, duration: 60, useNativeDriver: true, easing: Easing.out(Easing.quad) }),
+        Animated.timing(badgeScaleAnim, { toValue: 1.15, duration: 160, useNativeDriver: true, easing: Easing.out(Easing.back(2)) }),
+        Animated.timing(badgeScaleAnim, { toValue: 1.0, duration: 120, useNativeDriver: true, easing: Easing.out(Easing.quad) }),
+      ]).start();
+    }
+    prevUnreadRef.current = unreadCount;
+  }, [unreadCount, badgeScaleAnim]);
+
   return (
     <TouchableOpacity
       style={{ position: "relative" }}
       onPress={unreadCount > 0 ? markAsRead : undefined}
       activeOpacity={unreadCount > 0 ? 0.6 : 1}
       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      accessibilityLabel={unreadCount > 0 ? `AI Tutor, ${unreadCount} new session${unreadCount > 1 ? "s" : ""}` : "AI Tutor"}
     >
       <IconSymbol size={24} name="bubble.left.fill" color={color} />
       {unreadCount > 0 && (
-        <View style={[
+        <Animated.View style={[
           styles.chatBadge,
-          { backgroundColor: colors.primary },
+          { backgroundColor: colors.primary, transform: [{ scale: badgeScaleAnim }] },
         ]}>
           <Text style={styles.chatBadgeText}>
             {unreadCount > 99 ? "99+" : String(unreadCount)}
           </Text>
-        </View>
+        </Animated.View>
       )}
     </TouchableOpacity>
   );

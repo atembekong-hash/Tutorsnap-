@@ -692,9 +692,11 @@ function ChatScreenContent() {
   // Connection quality: null = unknown, 'fast' = <600ms, 'slow' = >=600ms
   const [connectionQuality, setConnectionQuality] = useState<"fast" | "slow" | null>(null);
   const lastPingTimeRef = useRef<number | null>(null);
-  const [showSlowTooltip, setShowSlowTooltip] = useState(false);
+  const [slowTooltipState, setSlowTooltipState] = useState<"slow" | "fast-restored" | null>(null);
   const slowTooltipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevConnectionQualityRef = useRef<"fast" | "slow" | null>(null);
+  // Keep backward compat alias
+  const showSlowTooltip = slowTooltipState !== null;
 
   const flatListRef = useRef<FlatList>(null);
   const isUserScrolledUpRef = useRef(false);
@@ -851,6 +853,21 @@ function ChatScreenContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ── Global unmount cleanup — clear all timer refs ────────────────────────
+  useEffect(() => {
+    return () => {
+      streamAbortRef.current?.abort();
+      if (bannerTimerRef.current) clearTimeout(bannerTimerRef.current);
+      if (copyLinkFeedbackTimerRef.current) clearTimeout(copyLinkFeedbackTimerRef.current);
+      if (transcriptToastTimerRef.current) clearTimeout(transcriptToastTimerRef.current);
+      if (subjectClearedTimerRef.current) clearTimeout(subjectClearedTimerRef.current);
+      if (slowTooltipTimerRef.current) clearTimeout(slowTooltipTimerRef.current);
+      if (highVelocityPauseTimerRef.current) clearTimeout(highVelocityPauseTimerRef.current);
+      if (scrollPendingRef.current) clearTimeout(scrollPendingRef.current);
+      if (shareCopiedTimerRef.current) clearTimeout(shareCopiedTimerRef.current);
+    };
+  }, []);
+
   // ── Auto-send seed message ──────────────────────────────────────────────────
 
   useEffect(() => {
@@ -970,11 +987,16 @@ function ChatScreenContent() {
         const ttfb = Date.now() - pingStart;
         const newQuality = ttfb < 600 ? "fast" : "slow";
         setConnectionQuality(newQuality);
-        // Show tooltip when quality transitions to slow for the first time
+        // Show tooltip when quality transitions
+        if (slowTooltipTimerRef.current) clearTimeout(slowTooltipTimerRef.current);
         if (newQuality === "slow" && prevConnectionQualityRef.current !== "slow") {
-          setShowSlowTooltip(true);
-          if (slowTooltipTimerRef.current) clearTimeout(slowTooltipTimerRef.current);
-          slowTooltipTimerRef.current = setTimeout(() => setShowSlowTooltip(false), 3000);
+          // Slow transition: show slow tooltip for 3s
+          setSlowTooltipState("slow");
+          slowTooltipTimerRef.current = setTimeout(() => setSlowTooltipState(null), 3000);
+        } else if (newQuality === "fast" && prevConnectionQualityRef.current === "slow") {
+          // Fast restored: show "Fast connection restored" for 2s
+          setSlowTooltipState("fast-restored");
+          slowTooltipTimerRef.current = setTimeout(() => setSlowTooltipState(null), 2000);
         }
         prevConnectionQualityRef.current = newQuality;
 
@@ -1855,6 +1877,25 @@ function ChatScreenContent() {
             onScrollBeginDrag={() => {
               isUserScrolledUpRef.current = true;
             }}
+            onMomentumScrollBegin={() => {
+              // Pause auto-scroll during momentum phase (deceleration after flick)
+              isHighVelocityScrollRef.current = true;
+              if (highVelocityPauseTimerRef.current) clearTimeout(highVelocityPauseTimerRef.current);
+            }}
+            onMomentumScrollEnd={(e) => {
+              const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+              const distanceFromBottom = contentSize.height - contentOffset.y - layoutMeasurement.height;
+              // Resume auto-scroll if user landed near bottom
+              if (distanceFromBottom < 40) {
+                isUserScrolledUpRef.current = false;
+                isHighVelocityScrollRef.current = false;
+              } else {
+                // Still scrolled up — release velocity lock after short delay
+                highVelocityPauseTimerRef.current = setTimeout(() => {
+                  isHighVelocityScrollRef.current = false;
+                }, 300);
+              }
+            }}
             onScroll={(e) => {
               const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
               const distanceFromBottom = contentSize.height - contentOffset.y - layoutMeasurement.height;
@@ -2075,11 +2116,16 @@ function ChatScreenContent() {
               />
             )}
 
-            {/* Slow connection tooltip */}
+            {/* Connection quality tooltip */}
             {showSlowTooltip && (
-              <View style={[chatStyles.slowTooltip, { backgroundColor: colors.warning }]}>
+              <View style={[
+                chatStyles.slowTooltip,
+                { backgroundColor: slowTooltipState === "fast-restored" ? colors.success : colors.warning },
+              ]}>
                 <Text style={[chatStyles.slowTooltipText, { color: "#fff" }]}>
-                  Slow connection — responses may take longer
+                  {slowTooltipState === "fast-restored"
+                    ? "⚡ Fast connection restored"
+                    : "🚢 Slow connection — responses may take longer"}
                 </Text>
               </View>
             )}
