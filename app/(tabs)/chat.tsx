@@ -2126,67 +2126,52 @@ function ChatScreenContent() {
                 backgroundColor: colors.surface,
                 borderColor: colors.border,
                 shadowColor: "#000",
+                flexDirection: "column",
+                alignItems: "stretch",
               },
             ]}
           >
-            {/* Subject compact pill — only shown when a subject is selected */}
+            {/* Subject pill row — sits at the top of the card, only shown when subject is selected */}
             {selectedSubject ? (
-            <TouchableOpacity
-              onPress={() => setShowSubjectPicker(true)}
-              onLongPress={() => {
-                if (selectedSubject) {
+              <TouchableOpacity
+                onPress={() => setShowSubjectPicker(true)}
+                onLongPress={() => {
                   handleSubjectChange(null);
                   H.impactMedium();
                   if (subjectClearedTimerRef.current) clearTimeout(subjectClearedTimerRef.current);
                   setSubjectClearedToast(true);
                   subjectClearedTimerRef.current = setTimeout(() => setSubjectClearedToast(false), 1800);
-                }
-              }}
-              delayLongPress={400}
-              style={[
-                chatStyles.inputSubjectCompact,
-                selectedSubject
-                  ? { backgroundColor: `${subjectAccent}18`, borderColor: `${subjectAccent}55` }
-                  : { backgroundColor: colors.background, borderColor: colors.border },
-              ]}
-              activeOpacity={0.75}
-            >
-              {/* Color swatch circle */}
-              <View
+                }}
+                delayLongPress={400}
                 style={[
-                  chatStyles.inputSubjectCompactDot,
-                  { backgroundColor: selectedSubject ? subjectAccent : colors.muted },
+                  chatStyles.inputSubjectCompact,
+                  { backgroundColor: `${subjectAccent}18`, borderColor: `${subjectAccent}55`, alignSelf: "flex-start", marginBottom: 4 },
                 ]}
-              />
-              {/* Label — only shown when subject is set */}
-              {selectedSubject ? (
+                activeOpacity={0.75}
+              >
+                <View style={[chatStyles.inputSubjectCompactDot, { backgroundColor: subjectAccent }]} />
                 <Text
-                  style={[
-                    chatStyles.inputSubjectCompactLabel,
-                    { color: subjectAccent, fontSize: fs(11) },
-                  ]}
+                  style={[chatStyles.inputSubjectCompactLabel, { color: subjectAccent, fontSize: fs(11) }]}
                   numberOfLines={1}
                 >
                   {getSubjectLabel(selectedSubject)}
                 </Text>
-              ) : (
-                <IconSymbol size={12} name="book.fill" color={colors.muted} />
-              )}
-              {/* Speed badge */}
-              {(() => {
-                const subjectKey = getAppearanceSubjectKey(selectedSubject);
-                const overrideStep = appearanceSettings.subjectSpeedOverrides?.[subjectKey];
-                if (!overrideStep || overrideStep < 1) return null;
-                const SPEED_SHORT = ["", "VS", "S", "N", "F", "VF"];
-                return (
-                  <View style={[chatStyles.speedBadge, { backgroundColor: subjectAccent || colors.primary }]}>
-                    <Text style={chatStyles.speedBadgeText}>{SPEED_SHORT[overrideStep]}</Text>
-                  </View>
-                );
-              })()}
-            </TouchableOpacity>
+                {(() => {
+                  const subjectKey = getAppearanceSubjectKey(selectedSubject);
+                  const overrideStep = appearanceSettings.subjectSpeedOverrides?.[subjectKey];
+                  if (!overrideStep || overrideStep < 1) return null;
+                  const SPEED_SHORT = ["", "VS", "S", "N", "F", "VF"];
+                  return (
+                    <View style={[chatStyles.speedBadge, { backgroundColor: subjectAccent || colors.primary }]}>
+                      <Text style={chatStyles.speedBadgeText}>{SPEED_SHORT[overrideStep]}</Text>
+                    </View>
+                  );
+                })()}
+              </TouchableOpacity>
             ) : null}
 
+            {/* Bottom typing row — always full width */}
+            <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 8 }}>
             <TextInput
               style={[
                 chatStyles.input,
@@ -2287,6 +2272,7 @@ function ChatScreenContent() {
                 </TouchableOpacity>
               )}
             </Animated.View>
+            </View>{/* end typing row */}
           </View>
 
           {userMessageCount > 0 && (
