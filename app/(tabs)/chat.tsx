@@ -39,6 +39,8 @@ import {
   Modal,
   Animated,
   Easing,
+  AppState,
+  type AppStateStatus,
 } from "react-native";
 // expo-linear-gradient is NOT imported at top level (crashes old APKs without the native view compiled in)
 import * as H from "@/lib/haptics";
@@ -934,6 +936,30 @@ function ChatScreenContent() {
     }
   }, [tutorSettings.studyReminders, tutorSettings.studyReminderTime]);
 
+  // ── Background streaming: keep generation alive when app is backgrounded ──
+  // React Native pauses JS timers when the app goes to background. We use
+  // AppState to detect the transition and re-kick the drain loop if it was
+  // mid-stream, so the response continues accumulating in the charQueue even
+  // while the user is in another app. The UI catches up the moment they return.
+  const isStreamingRef = useRef(false);
+  useEffect(() => { isStreamingRef.current = isStreaming; }, [isStreaming]);
+
+  useEffect(() => {
+    const handleAppStateChange = (nextState: AppStateStatus) => {
+      // When coming back to foreground while streaming, force a scroll to bottom
+      // so the user sees the latest generated content immediately.
+      if (nextState === "active" && isStreamingRef.current) {
+        setTimeout(() => {
+          if (!isUserScrolledUpRef.current) {
+            flatListRef.current?.scrollToEnd({ animated: true });
+          }
+        }, 200);
+      }
+    };
+    const sub = AppState.addEventListener("change", handleAppStateChange);
+    return () => sub.remove();
+  }, []);
+
   // ── Clear all chat history ────────────────────────────────────────────────
   const handleClearAllHistory = useCallback(() => {
     Alert.alert(
@@ -1178,11 +1204,9 @@ function ChatScreenContent() {
             prev.map((m) => (m.id === msgId ? { ...m, content: snap } : m))
           );
           smoothScrollToEnd();
-          // Round 42: stop-and-read mode — when the user has scrolled up, drain at
-          // 5× the normal speed so text doesn't race ahead while they're reading.
-          // The moment they scroll back to the bottom the delay drops back to normal.
-          const delay = isUserScrolledUpRef.current ? reqDelayMs * 5 : reqDelayMs;
-          setTimeout(drainQueue, delay);
+          // Free-scroll mode: always drain at normal speed regardless of scroll position.
+          // The user can scroll freely without resistance while the AI is generating.
+          setTimeout(drainQueue, reqDelayMs);
         };
 
         while (true) { // loop exits on stream done or abort

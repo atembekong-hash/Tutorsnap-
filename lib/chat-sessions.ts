@@ -171,15 +171,26 @@ export async function saveSession(session: ChatSession, limit?: number): Promise
   const index = await readIndex();
   const filtered = index.filter((id) => id !== session.id);
   const effectiveLimit = limit && limit > 0 && limit < MAX_SESSIONS ? limit : MAX_SESSIONS;
-  const newIndex = [session.id, ...filtered].slice(0, effectiveLimit);
+  const pins = await readPins();
 
-  // Prune sessions that fell off the end of the index
-  const pruned = [session.id, ...filtered].slice(effectiveLimit);
+  // Build the candidate list: current session first, then the rest
+  const candidates = [session.id, ...filtered];
+
+  // Separate pinned from unpinned so pins are never evicted
+  const pinned = candidates.filter((id) => pins.includes(id));
+  const unpinned = candidates.filter((id) => !pins.includes(id));
+
+  // Trim only unpinned sessions to fit within the limit (reserve slots for pinned)
+  const unpinnedLimit = Math.max(0, effectiveLimit - pinned.length);
+  const keptUnpinned = unpinned.slice(0, unpinnedLimit);
+  const pruned = unpinned.slice(unpinnedLimit);
+
+  // Rebuild index: pinned always first, then kept unpinned
+  const newIndex = [...pinned, ...keptUnpinned];
+
+  // Fire-and-forget: delete pruned (non-pinned) session keys from storage
   if (pruned.length > 0) {
-    const pins = await readPins();
-    const toDelete = pruned.filter((id) => !pins.includes(id));
-    // Fire-and-forget: delete pruned session keys from storage
-    Promise.all(toDelete.map((id) => AsyncStorage.removeItem(SESSION_KEY(id)))).catch(() => {});
+    Promise.all(pruned.map((id) => AsyncStorage.removeItem(SESSION_KEY(id)))).catch(() => {});
   }
 
   await writeIndex(newIndex);

@@ -164,6 +164,8 @@ const MAPPING = {
   "textformat": "translate",
   "globe.americas.fill": "public",
   "rectangle.grid.1x2.fill": "view-agenda",
+  // Round 55: TutorSettings Section 1 new fields
+  "book.closed.fill": "book",
 } as unknown as IconMapping;
 
 export function IconSymbol({

@@ -145,6 +145,9 @@ export default function RootLayout() {
         router.push({ pathname: "/settings", params: { scrollTo: "whats_new" } } as any);
       } else if (data?.screen === "settings") {
         router.push("/settings" as any);
+      } else if (data?.screen === "chat-history" || data?.type === "session_summary") {
+        // Tapped a session summary notification — open the chat sessions list
+        router.push("/(tabs)/chat" as any);
       }
     });
     return () => sub.remove();

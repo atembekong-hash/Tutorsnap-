@@ -645,6 +645,20 @@ export function TutorSettingsModal({
               onChange={(v) => onUpdate({ nickname: v })}
             />
             <TextInputRow
+              icon="graduationcap.fill"
+              label="Grade"
+              value={settings.gradeLevel}
+              placeholder="e.g. Grade 9"
+              onChange={(v) => onUpdate({ gradeLevel: v })}
+            />
+            <TextInputRow
+              icon="book.closed.fill"
+              label="Subject"
+              value={settings.defaultSubject}
+              placeholder="e.g. Algebra"
+              onChange={(v) => onUpdate({ defaultSubject: v })}
+            />
+            <TextInputRow
               icon="textformat"
               label="Language"
               value={settings.language}

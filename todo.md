@@ -617,3 +617,17 @@
 - [x] Confirmed grade picker → TutorSettings.gradeLevel sync already in place (Round 52 Fix 3)
 - [x] Subject-aware WelcomeCard greeting now includes nickname: "Hi, Alex! Ready for Algebra 📐"
 - [x] No-subject greeting unchanged: "Hi, Alex! I'm TutorSnap ✨"
+
+## Round 55: Free-scroll + Background Streaming + WelcomeCard Polish
+- [x] Free-scroll during AI generation — removed 5x drain slowdown; user can scroll freely without resistance
+- [x] Background streaming — AppState listener keeps drain loop alive when app is backgrounded
+- [x] Subject subtitle personalisation with nickname — WelcomeCard subtitle includes name
+- [ ] Nickname edit shortcut on WelcomeCard — deferred to Round 56
+
+## Round 55b: Deep Scan Audit Fixes
+- [x] TutorSettingsModal Section 1 — added gradeLevel and defaultSubject rows to UI (were in type but not rendered)
+- [x] book.closed.fill icon mapping added to icon-symbol.tsx
+- [x] Session summary notification tap — routes to chat tab in _layout.tsx
+- [x] maxSessions pruning — pinned sessions now protected from eviction (separate pinned/unpinned buckets)
+- [x] All other screens audited: onboarding, settings, home, flashcards, refer, progress, paywall — no critical defects
+- [x] Code quality: 0 unused vars, 0 TypeScript errors, 34 warnings (all non-critical exhaustive-deps + no-require-imports)
