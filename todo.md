@@ -490,3 +490,8 @@
 - [x] Add offline network status banner at top of AI Tutor chat
 - [x] Add subject-cleared micro-toast on long-press clear of subject pill
 - [x] Add scale-down press animation (0.88x) on scroll FABs
+
+## Round 31: Reconnecting Banner, Haptic on Connectivity, Offline Message Queue
+- [x] Add Reconnecting state to offline banner with auto-dismiss and Back online flash
+- [x] Add haptic pulse on connectivity change (offline/online transitions)
+- [x] Add offline message queue that holds unsent messages and auto-sends on reconnect

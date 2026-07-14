@@ -682,11 +682,16 @@ function ChatScreenContent() {
   const subjectClearedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollTopScaleAnim = useRef(new Animated.Value(1)).current;
   const scrollBottomScaleAnim = useRef(new Animated.Value(1)).current;
+  // Connectivity banner states
+  const [bannerState, setBannerState] = useState<"offline" | "reconnecting" | "back-online" | "hidden">("hidden");
+  const bannerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Offline message queue — holds messages typed while offline
+  const offlineQueueRef = useRef<string[]>([]);
 
   const flatListRef = useRef<FlatList>(null);
   const isUserScrolledUpRef = useRef(false);
   const shareCopiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const { isOnline } = useNetworkStatus();
+  const { isOnline, wasJustReconnected, wasJustDisconnected } = useNetworkStatus();
   const colorScheme = useColorScheme();
   const { getSubjectAccent, settings: appearanceSettings } = useAppearance();
   const subjectAccent = selectedSubject
@@ -719,6 +724,39 @@ function ChatScreenContent() {
       easing: Easing.out(Easing.quad),
     }).start();
   }, [showScrollBottom, scrollBottomOpacity]);
+
+  // Connectivity banner + haptic + offline queue
+  useEffect(() => {
+    if (wasJustDisconnected) {
+      // Went offline
+      if (bannerTimerRef.current) clearTimeout(bannerTimerRef.current);
+      setBannerState("offline");
+      if (Platform.OS !== "web") H.notificationError();
+    }
+  }, [wasJustDisconnected]);
+
+  useEffect(() => {
+    if (wasJustReconnected) {
+      // Went back online
+      if (bannerTimerRef.current) clearTimeout(bannerTimerRef.current);
+      setBannerState("reconnecting");
+      if (Platform.OS !== "web") H.notificationSuccess();
+      // After 1s show "Back online" then hide
+      bannerTimerRef.current = setTimeout(() => {
+        setBannerState("back-online");
+        bannerTimerRef.current = setTimeout(() => setBannerState("hidden"), 1500);
+      }, 1000);
+      // Drain the offline queue
+      const queued = [...offlineQueueRef.current];
+      offlineQueueRef.current = [];
+      if (queued.length > 0) {
+        // Send each queued message sequentially with a small delay
+        queued.forEach((text, i) => {
+          setTimeout(() => handleSend(text), i * 600);
+        });
+      }
+    }
+  }, [wasJustReconnected]);
 
   // Typing speed → ms per character
   // Base delays per preset (ms/char)
@@ -1029,7 +1067,20 @@ function ChatScreenContent() {
   const handleSend = useCallback(
     async (text?: string) => {
       const baseText = (text || inputText).trim();
-      if (!baseText || !isOnline || !session) return;
+      if (!baseText || !session) return;
+
+      // If offline, queue the message and show feedback
+      if (!isOnline) {
+        offlineQueueRef.current.push(baseText);
+        setInputText("");
+        Keyboard.dismiss();
+        // Show a brief toast so user knows it's queued
+        if (subjectClearedTimerRef.current) clearTimeout(subjectClearedTimerRef.current);
+        setSubjectClearedToast(false);
+        // Reuse the banner to show queued state
+        setBannerState("offline");
+        return;
+      }
 
       // Prepend reply-to quote if active
       const messageText = replyTo
@@ -1549,15 +1600,45 @@ function ChatScreenContent() {
           </View>
         </View>
 
-        {/* ── Offline banner ── */}
-        {!isOnline && (
-          <View style={[chatStyles.offlineBanner, { backgroundColor: `${colors.error}18`, borderBottomColor: `${colors.error}30` }]}>
-            <IconSymbol size={14} name="wifi.slash" color={colors.error} />
-            <Text style={[chatStyles.offlineBannerText, { color: colors.error, fontSize: fs(12) }]}>
-              You are offline — check your connection
-            </Text>
-          </View>
-        )}
+        {/* ── Connectivity banner (offline / reconnecting / back-online) ── */}
+        {(bannerState !== "hidden" || !isOnline) && (() => {
+          const effectiveState = !isOnline && bannerState === "hidden" ? "offline" : bannerState;
+          if (effectiveState === "hidden") return null;
+          const isOffline = effectiveState === "offline";
+          const isReconnecting = effectiveState === "reconnecting";
+          const isBackOnline = effectiveState === "back-online";
+          const bgColor = isOffline
+            ? `${colors.error}18`
+            : isReconnecting
+            ? `${colors.warning}18`
+            : `${colors.success}18`;
+          const borderColor = isOffline
+            ? `${colors.error}30`
+            : isReconnecting
+            ? `${colors.warning}30`
+            : `${colors.success}30`;
+          const textColor = isOffline ? colors.error : isReconnecting ? colors.warning : colors.success;
+          const iconName = isOffline ? "wifi.slash" : isBackOnline ? "checkmark.circle.fill" : "arrow.clockwise";
+          const label = isOffline
+            ? offlineQueueRef.current.length > 0
+              ? `Offline — ${offlineQueueRef.current.length} message${offlineQueueRef.current.length === 1 ? "" : "s"} queued`
+              : "You are offline — check your connection"
+            : isReconnecting
+            ? "Reconnecting…"
+            : "Back online!";
+          return (
+            <View style={[chatStyles.offlineBanner, { backgroundColor: bgColor, borderBottomColor: borderColor }]}>
+              {isReconnecting ? (
+                <ActivityIndicator size={14} color={textColor} />
+              ) : (
+                <IconSymbol size={14} name={iconName} color={textColor} />
+              )}
+              <Text style={[chatStyles.offlineBannerText, { color: textColor, fontSize: fs(12) }]}>
+                {label}
+              </Text>
+            </View>
+          );
+        })()}
 
         {/* ── Message area ── */}
         {!sessionLoaded ? (
