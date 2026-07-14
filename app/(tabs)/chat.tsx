@@ -1694,7 +1694,7 @@ function ChatScreenContent() {
 
             {/* New chat */}
             <TouchableOpacity
-              onPress={handleNewChat}
+              onPress={() => { H.impactLight(); handleNewChat(); }}
               accessibilityLabel="New chat"
               style={[
                 chatStyles.headerBtn,
@@ -2854,6 +2854,7 @@ const chatStyles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderBottomWidth: 0.5,
+    zIndex: 10,
   },
   headerLeft: {
     flexDirection: "row",
