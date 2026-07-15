@@ -156,6 +156,16 @@ export default function SolutionScreen() {
   const [bookmarked, setBookmarked] = useState(false);
   const [copyFeedback, setCopyFeedback] = useState(false);
   const copyFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [copyProblemFeedback, setCopyProblemFeedback] = useState(false);
+  const copyProblemTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [copyStepsFeedback, setCopyStepsFeedback] = useState(false);
+  const copyStepsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [copyConceptFeedback, setCopyConceptFeedback] = useState(false);
+  const copyConceptTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [copyTipsFeedback, setCopyTipsFeedback] = useState(false);
+  const copyTipsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [copyAltFeedback, setCopyAltFeedback] = useState(false);
+  const copyAltTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [shareLoading, setShareLoading] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [copyLinkFeedback, setCopyLinkFeedback] = useState(false);
@@ -171,6 +181,11 @@ export default function SolutionScreen() {
       if (copyFeedbackTimerRef.current) clearTimeout(copyFeedbackTimerRef.current);
       if (copyLinkFeedbackTimerRef.current) clearTimeout(copyLinkFeedbackTimerRef.current);
       if (copiedProblemIdTimerRef.current) clearTimeout(copiedProblemIdTimerRef.current);
+      if (copyProblemTimerRef.current) clearTimeout(copyProblemTimerRef.current);
+      if (copyStepsTimerRef.current) clearTimeout(copyStepsTimerRef.current);
+      if (copyConceptTimerRef.current) clearTimeout(copyConceptTimerRef.current);
+      if (copyTipsTimerRef.current) clearTimeout(copyTipsTimerRef.current);
+      if (copyAltTimerRef.current) clearTimeout(copyAltTimerRef.current);
     };
   }, []);
   const generateSimilarMutation = trpc.math.generateSimilar.useMutation();
@@ -718,7 +733,25 @@ export default function SolutionScreen() {
 
         {/* Problem */}
         <View style={[styles.problemCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[styles.problemLabel, { color: colors.muted }]}>PROBLEM</Text>
+          <View style={[styles.sectionHeader, { justifyContent: "space-between", marginBottom: 8 }]}>
+            <Text style={[styles.problemLabel, { color: colors.muted }]}>PROBLEM</Text>
+            <TouchableOpacity
+              accessibilityLabel="Copy problem"
+              onPress={async () => {
+                try {
+                  await Clipboard.setStringAsync(solution!.problem);
+                  setCopyProblemFeedback(true);
+                  H.impactLight();
+                  if (copyProblemTimerRef.current) clearTimeout(copyProblemTimerRef.current);
+                  copyProblemTimerRef.current = setTimeout(() => setCopyProblemFeedback(false), 1500);
+                } catch { /* ignore */ }
+              }}
+              style={[styles.copyBtn, { backgroundColor: copyProblemFeedback ? `${colors.success}20` : "transparent" }]}
+            >
+              <IconSymbol size={14} name={copyProblemFeedback ? "checkmark.circle.fill" : "doc.on.doc"} color={copyProblemFeedback ? colors.success : colors.muted} />
+              <Text style={[styles.copyText, { color: copyProblemFeedback ? colors.success : colors.muted }]}>{copyProblemFeedback ? "Copied!" : "Copy"}</Text>
+            </TouchableOpacity>
+          </View>
           <Text style={[styles.problemText, { color: colors.foreground, fontSize: fs(16), lineHeight: fs(16) * 1.5 }]}>{solution.problem}</Text>
         </View>
 
@@ -742,11 +775,30 @@ export default function SolutionScreen() {
 
         {/* Steps */}
         <View style={styles.stepsSection}>
-          <View style={styles.sectionHeader}>
-            <IconSymbol size={16} name="list.bullet" color={colors.primary} />
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-              Step-by-Step Solution
-            </Text>
+          <View style={[styles.sectionHeader, { justifyContent: "space-between" }]}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
+              <IconSymbol size={16} name="list.bullet" color={colors.primary} />
+              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+                Step-by-Step Solution
+              </Text>
+            </View>
+            <TouchableOpacity
+              accessibilityLabel="Copy all steps"
+              onPress={async () => {
+                try {
+                  const stepsText = solution!.steps?.map((s, i) => `Step ${i + 1}: ${s.title}\n${s.expression ? s.expression + "\n" : ""}${s.explanation}`).join("\n\n") ?? "";
+                  await Clipboard.setStringAsync(stepsText);
+                  setCopyStepsFeedback(true);
+                  H.impactLight();
+                  if (copyStepsTimerRef.current) clearTimeout(copyStepsTimerRef.current);
+                  copyStepsTimerRef.current = setTimeout(() => setCopyStepsFeedback(false), 1500);
+                } catch { /* ignore */ }
+              }}
+              style={[styles.copyBtn, { backgroundColor: copyStepsFeedback ? `${colors.success}20` : "transparent" }]}
+            >
+              <IconSymbol size={14} name={copyStepsFeedback ? "checkmark.circle.fill" : "doc.on.doc"} color={copyStepsFeedback ? colors.success : colors.muted} />
+              <Text style={[styles.copyText, { color: copyStepsFeedback ? colors.success : colors.muted }]}>{copyStepsFeedback ? "Copied!" : "Copy All"}</Text>
+            </TouchableOpacity>
           </View>
           {solution.steps?.map((step, index) => (
             <StepCard key={index} step={step} colors={colors} fs={fs} delay={index * 120} />
@@ -756,9 +808,27 @@ export default function SolutionScreen() {
         {/* Concept Explanation */}
         {solution.conceptExplained && (
           <View style={[styles.conceptCard, { backgroundColor: `${colors.secondary}10`, borderColor: `${colors.secondary}30` }]}>
-            <View style={styles.sectionHeader}>
-              <IconSymbol size={16} name="brain.head.profile" color={colors.secondary} />
-              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Key Concept</Text>
+            <View style={[styles.sectionHeader, { justifyContent: "space-between" }]}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
+                <IconSymbol size={16} name="brain.head.profile" color={colors.secondary} />
+                <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Key Concept</Text>
+              </View>
+              <TouchableOpacity
+                accessibilityLabel="Copy key concept"
+                onPress={async () => {
+                  try {
+                    await Clipboard.setStringAsync(solution!.conceptExplained!);
+                    setCopyConceptFeedback(true);
+                    H.impactLight();
+                    if (copyConceptTimerRef.current) clearTimeout(copyConceptTimerRef.current);
+                    copyConceptTimerRef.current = setTimeout(() => setCopyConceptFeedback(false), 1500);
+                  } catch { /* ignore */ }
+                }}
+                style={[styles.copyBtn, { backgroundColor: copyConceptFeedback ? `${colors.success}20` : "transparent" }]}
+              >
+                <IconSymbol size={14} name={copyConceptFeedback ? "checkmark.circle.fill" : "doc.on.doc"} color={copyConceptFeedback ? colors.success : colors.muted} />
+                <Text style={[styles.copyText, { color: copyConceptFeedback ? colors.success : colors.muted }]}>{copyConceptFeedback ? "Copied!" : "Copy"}</Text>
+              </TouchableOpacity>
             </View>
             <Text style={[styles.conceptText, { color: colors.foreground, fontSize: fs(14), lineHeight: fs(14) * 1.57 }]}>{solution.conceptExplained}</Text>
           </View>
@@ -767,9 +837,28 @@ export default function SolutionScreen() {
         {/* Tips */}
         {solution.tips && solution.tips.length > 0 && (
           <View style={[styles.tipsCard, { backgroundColor: `${colors.warning}10`, borderColor: `${colors.warning}30` }]}>
-            <View style={styles.sectionHeader}>
-              <IconSymbol size={16} name="lightbulb.fill" color={colors.warning} />
-              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Pro Tips</Text>
+            <View style={[styles.sectionHeader, { justifyContent: "space-between" }]}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
+                <IconSymbol size={16} name="lightbulb.fill" color={colors.warning} />
+                <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Pro Tips</Text>
+              </View>
+              <TouchableOpacity
+                accessibilityLabel="Copy pro tips"
+                onPress={async () => {
+                  try {
+                    const tipsText = solution!.tips!.map((t, i) => `${i + 1}. ${t}`).join("\n");
+                    await Clipboard.setStringAsync(tipsText);
+                    setCopyTipsFeedback(true);
+                    H.impactLight();
+                    if (copyTipsTimerRef.current) clearTimeout(copyTipsTimerRef.current);
+                    copyTipsTimerRef.current = setTimeout(() => setCopyTipsFeedback(false), 1500);
+                  } catch { /* ignore */ }
+                }}
+                style={[styles.copyBtn, { backgroundColor: copyTipsFeedback ? `${colors.success}20` : "transparent" }]}
+              >
+                <IconSymbol size={14} name={copyTipsFeedback ? "checkmark.circle.fill" : "doc.on.doc"} color={copyTipsFeedback ? colors.success : colors.muted} />
+                <Text style={[styles.copyText, { color: copyTipsFeedback ? colors.success : colors.muted }]}>{copyTipsFeedback ? "Copied!" : "Copy"}</Text>
+              </TouchableOpacity>
             </View>
             {solution.tips.map((tip, index) => (
               <View key={index} style={styles.tipRow}>
@@ -978,9 +1067,27 @@ export default function SolutionScreen() {
         {/* Alternative explanation card */}
         {showAltExplanation && altExplanation && (
           <View style={[styles.altExplanationCard, { backgroundColor: `${colors.success}08`, borderColor: `${colors.success}30` }]}>
-            <View style={styles.sectionHeader}>
-              <IconSymbol size={16} name="lightbulb.fill" color={colors.success} />
-              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Alternative Explanation</Text>
+            <View style={[styles.sectionHeader, { justifyContent: "space-between" }]}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
+                <IconSymbol size={16} name="lightbulb.fill" color={colors.success} />
+                <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Alternative Explanation</Text>
+              </View>
+              <TouchableOpacity
+                accessibilityLabel="Copy alternative explanation"
+                onPress={async () => {
+                  try {
+                    await Clipboard.setStringAsync(altExplanation!);
+                    setCopyAltFeedback(true);
+                    H.impactLight();
+                    if (copyAltTimerRef.current) clearTimeout(copyAltTimerRef.current);
+                    copyAltTimerRef.current = setTimeout(() => setCopyAltFeedback(false), 1500);
+                  } catch { /* ignore */ }
+                }}
+                style={[styles.copyBtn, { backgroundColor: copyAltFeedback ? `${colors.success}20` : "transparent" }]}
+              >
+                <IconSymbol size={14} name={copyAltFeedback ? "checkmark.circle.fill" : "doc.on.doc"} color={copyAltFeedback ? colors.success : colors.muted} />
+                <Text style={[styles.copyText, { color: copyAltFeedback ? colors.success : colors.muted }]}>{copyAltFeedback ? "Copied!" : "Copy"}</Text>
+              </TouchableOpacity>
             </View>
             <AIResponseErrorBoundary fallbackText={altExplanation} fontSize={fs(14)} color={colors.foreground}>
               <AIResponseRenderer
