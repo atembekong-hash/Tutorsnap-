@@ -816,7 +816,7 @@ function ChatScreenContent() {
 
   // Typing speed → ms per character
   // Base delays per preset (ms/char)
-  const TYPING_SPEED_MS: Record<TypingSpeed, number> = { slow: 40, normal: 20, fast: 8 };
+  const TYPING_SPEED_MS: Record<TypingSpeed, number> = { slow: 40, normal: 20, fast: 8, very_fast: 2 };
   // Global multiplier step delays: 1=60ms, 2=40ms, 3=20ms, 4=10ms, 5=3ms
   const MULTIPLIER_DELAYS = [60, 40, 20, 10, 3];
   const multiplierMs = MULTIPLIER_DELAYS[(appearanceSettings.typingSpeedMultiplier ?? 3) - 1];

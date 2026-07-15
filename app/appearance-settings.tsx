@@ -928,8 +928,8 @@ export default function AppearanceSettingsScreen() {
           </Row>
           <Row>
             <SegmentedControl<TypingSpeed>
-              options={["slow", "normal", "fast"]}
-              labels={{ slow: "Slow", normal: "Normal", fast: "Fast" }}
+              options={["slow", "normal", "fast", "very_fast"]}
+              labels={{ slow: "Slow", normal: "Normal", fast: "Fast", very_fast: "Instant" }}
               value={settings.typingSpeed}
               onChange={(v) => updateSetting("typingSpeed", v)}
             />

@@ -65,7 +65,7 @@ export interface TutorSettings {
 
   // 3. Chat Behaviour
   typingAnimation: boolean;
-  typingSpeed: "slow" | "normal" | "fast";
+  typingSpeed: "slow" | "normal" | "fast" | "very_fast";
   autoScroll: boolean;
   autoResumeDelay: AutoResumeDelay;
   sendOnEnter: boolean;
@@ -478,12 +478,12 @@ export function TutorSettingsModal({
   const previewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const previewIndexRef = useRef(0);
 
-  const runPreview = useCallback((speed: "slow" | "normal" | "fast") => {
+  const runPreview = useCallback((speed: "slow" | "normal" | "fast" | "very_fast") => {
     if (previewTimerRef.current) clearTimeout(previewTimerRef.current);
     previewIndexRef.current = 0;
     setPreviewText("");
     setPreviewRunning(true);
-    const delay = speed === "slow" ? 80 : speed === "fast" ? 18 : 38;
+    const delay = speed === "slow" ? 80 : speed === "very_fast" ? 4 : speed === "fast" ? 18 : 38;
     const tick = () => {
       const idx = previewIndexRef.current;
       if (idx >= PREVIEW_TEXT.length) {
@@ -573,10 +573,11 @@ export function TutorSettingsModal({
     { label: "Encouraging", value: "encouraging" },
   ];
 
-  const TYPING_SPEED_OPTIONS: SegmentOption<"slow" | "normal" | "fast">[] = [
+  const TYPING_SPEED_OPTIONS: SegmentOption<"slow" | "normal" | "fast" | "very_fast">[] = [
     { label: "Slow", value: "slow" },
     { label: "Normal", value: "normal" },
     { label: "Fast", value: "fast" },
+    { label: "Instant", value: "very_fast" },
   ];
 
   const AUTO_RESUME_OPTIONS: SegmentOption<string>[] = [
@@ -773,50 +774,56 @@ export function TutorSettingsModal({
                 if (settings.typingAnimation) runPreview(v);
               }}
             />
-            {/* Live typing speed preview */}
-            {settings.typingAnimation && (
-              <View
-                style={{
-                  marginHorizontal: 16,
-                  marginBottom: 2,
-                  paddingHorizontal: 14,
-                  paddingVertical: 10,
-                  backgroundColor: colors.background,
-                  borderRadius: 10,
-                  borderWidth: 0.5,
-                  borderColor: colors.border,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 8,
-                }}
-              >
-                <Text style={{ fontSize: 12, color: colors.muted, fontWeight: "500", minWidth: 42 }}>
-                  Preview
+            {/* Live typing speed preview — always visible */}
+            <View
+              style={{
+                marginHorizontal: 16,
+                marginBottom: 8,
+                paddingHorizontal: 14,
+                paddingVertical: 10,
+                backgroundColor: colors.background,
+                borderRadius: 10,
+                borderWidth: 0.5,
+                borderColor: colors.border,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
+              <Text style={{ fontSize: 12, color: colors.muted, fontWeight: "500", minWidth: 42 }}>
+                Preview
+              </Text>
+              {settings.typingAnimation ? (
+                <>
+                  <Text
+                    style={{
+                      flex: 1,
+                      fontSize: 13,
+                      color: colors.foreground,
+                      lineHeight: 18,
+                      fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+                    }}
+                    numberOfLines={2}
+                  >
+                    {previewText}
+                    {previewRunning ? (
+                      <Text style={{ color: colors.primary }}>|</Text>
+                    ) : null}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => runPreview(settings.typingSpeed)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    accessibilityLabel="Replay typing speed preview"
+                  >
+                    <Text style={{ fontSize: 14, color: colors.primary }}>↺</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <Text style={{ flex: 1, fontSize: 13, color: colors.muted, fontStyle: "italic" }}>
+                  Responses appear instantly (animation off)
                 </Text>
-                <Text
-                  style={{
-                    flex: 1,
-                    fontSize: 13,
-                    color: colors.foreground,
-                    lineHeight: 18,
-                    fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
-                  }}
-                  numberOfLines={2}
-                >
-                  {previewText}
-                  {previewRunning ? (
-                    <Text style={{ color: colors.primary }}>|</Text>
-                  ) : null}
-                </Text>
-                <TouchableOpacity
-                  onPress={() => runPreview(settings.typingSpeed)}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  accessibilityLabel="Replay typing speed preview"
-                >
-                  <Text style={{ fontSize: 14, color: colors.primary }}>↺</Text>
-                </TouchableOpacity>
-              </View>
-            )}
+              )}
+            </View>
             <ToggleRow
               icon="arrow.down.to.line"
               label="Auto-scroll"

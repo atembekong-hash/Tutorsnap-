@@ -29,7 +29,7 @@ export type WidgetSize = "compact" | "normal" | "large";
 export type ChatBubbleStyle = "rounded" | "flat" | "minimal";
 export type MessageDensity = "compact" | "comfortable" | "spacious";
 export type StepStyle = "cards" | "list" | "minimal";
-export type TypingSpeed = "slow" | "normal" | "fast";
+export type TypingSpeed = "slow" | "normal" | "fast" | "very_fast";
 
 export type WidgetId =
   | "streak"

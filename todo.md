@@ -653,3 +653,11 @@
 - [x] Animated three-dot typing indicator bubble (send → first token) — isWaitingForFirstToken state, cleared on first parsed.token
 - [x] Input character counter (shown within 200 chars of 2000 limit) — amber at 200 left, red at 50 left
 - [x] Swipe-down to dismiss keyboard on message FlatList — keyboardDismissMode=on-drag + keyboardShouldPersistTaps=handled
+
+## Round 60: Typing Speed Fix
+- [x] Added "Instant" (very_fast) option to Typing Speed in TutorSettings Section 3
+- [x] Live preview always visible — shows "Responses appear instantly" when animation is off
+- [x] very_fast added to TypingSpeed type in appearance-context.tsx (2ms/char)
+- [x] TYPING_SPEED_MS updated in chat.tsx to include very_fast: 2ms
+- [x] Appearance Settings screen updated to show Instant option
+- [x] TypeScript: 0 errors confirmed
