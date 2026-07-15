@@ -44,13 +44,12 @@ import * as Sharing from "expo-sharing";
 import * as DocumentPicker from "expo-document-picker";
 import * as MailComposer from "expo-mail-composer";
 import * as Print from "expo-print";
-import { getSubscriptionStatus,
+import {
+  getSubscriptionStatus,
   restorePurchases,
   openManageSubscriptions,
   type SubscriptionStatus,
 } from "@/lib/subscription";
-import { TutorSettingsModal } from "@/components/tutor-settings-modal";
-import { useTutorSettings } from "@/components/tutor-settings-modal";
 
 const GOAL_OPTIONS = [1, 2, 3, 5, 7, 10];
 const HOUR_OPTIONS = Array.from({ length: 18 }, (_, i) => i + 6);
@@ -190,8 +189,6 @@ export default function SettingsScreen() {
   const [showRedeemModal, setShowRedeemModal] = useState(false);
   const [redeemCode, setRedeemCode] = useState("");
   const [redeemLoading, setRedeemLoading] = useState(false);
-  const [showTutorSettings, setShowTutorSettings] = useState(false);
-  const { settings: tutorSettings, update: updateTutorSetting, reset: resetTutorSettings } = useTutorSettings();
 
   const handleToggleBackupReminder = async (value: boolean) => {
     if (value) {
@@ -1270,15 +1267,6 @@ export default function SettingsScreen() {
         {ms("Classroom", "Share problems") && (
           <SettingsRow icon="person.2.fill" label="Classroom" subtitle="Share problems with your class or join one" colors={colors} onPress={() => router.push("/(tabs)/classroom" as any)} />
         )}
-        {ms("AI Tutor Settings", "Personality, style") && (
-          <SettingsRow
-            icon="waveform"
-            label="AI Tutor Settings"
-            subtitle="Personality, response style, chat behaviour & accessibility"
-            colors={colors}
-            onPress={() => { setShowTutorSettings(true); H.impactLight(); }}
-          />
-        )}
 
         {/* ── SUBSCRIPTION & REFERRALS ──────────────────────────────── */}
         {(ms("TutorSnap Premium") || ms("View Premium Plans") || ms("Restore Purchases") || ms("Manage Subscription") || ms("Affiliate & Referrals") || ms("Redeem")) && <SectionHeader title="SUBSCRIPTION & REFERRALS" colors={colors} />}
@@ -2104,17 +2092,6 @@ export default function SettingsScreen() {
           </View>
         </View>
       </Modal>
-
-      {/* AI Tutor System Settings Modal */}
-      <TutorSettingsModal
-        visible={showTutorSettings}
-        onClose={() => setShowTutorSettings(false)}
-        settings={tutorSettings}
-        onUpdate={(patch) => updateTutorSetting(patch)}
-        onReset={() => resetTutorSettings()}
-        onClearHistory={() => {}}
-        onExportChat={() => {}}
-      />
 
     </ScreenContainer>
   );
