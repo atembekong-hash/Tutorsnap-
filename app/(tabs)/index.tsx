@@ -909,7 +909,7 @@ function SolveScreenContent() {
               <View style={{ position: "relative" }}>
                 <TextInput
                   ref={inputRef}
-                  style={[styles.input, { color: colors.foreground, paddingBottom: 48 }]}
+                  style={[styles.input, { color: colors.foreground, paddingBottom: 36 }]}
                   placeholder={getSubjectPlaceholder(selectedSubject)}
                   placeholderTextColor={colors.muted}
                   multiline
@@ -1526,11 +1526,11 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   input: {
-    padding: 20,
-    fontSize: 17,
-    minHeight: 200,
+    padding: 16,
+    fontSize: 16,
+    minHeight: 150,
     textAlignVertical: "top",
-    lineHeight: 26,
+    lineHeight: 24,
   },
   inputActions: {
     flexDirection: "row",
