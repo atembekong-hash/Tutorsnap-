@@ -906,21 +906,31 @@ function SolveScreenContent() {
                 },
               ]}
             >
-              <TextInput
-                ref={inputRef}
-                style={[styles.input, { color: colors.foreground }]}
-                placeholder={getSubjectPlaceholder(selectedSubject)}
-                placeholderTextColor={colors.muted}
-                multiline
-                value={problem}
-                onChangeText={setProblem}
-                returnKeyType="done"
-                onSubmitEditing={handleSolve}
-                onSelectionChange={(e) => {
-                  cursorPosRef.current = e.nativeEvent.selection.end;
-                }}
-                onFocus={() => setShowMathKeyboard(false)}
-              />
+              <View style={{ position: "relative" }}>
+                <TextInput
+                  ref={inputRef}
+                  style={[styles.input, { color: colors.foreground, paddingBottom: 48 }]}
+                  placeholder={getSubjectPlaceholder(selectedSubject)}
+                  placeholderTextColor={colors.muted}
+                  multiline
+                  value={problem}
+                  onChangeText={setProblem}
+                  returnKeyType="done"
+                  onSubmitEditing={handleSolve}
+                  onSelectionChange={(e) => {
+                    cursorPosRef.current = e.nativeEvent.selection.end;
+                  }}
+                  onFocus={() => setShowMathKeyboard(false)}
+                />
+                {Platform.OS !== "web" && (
+                  <View style={styles.inputMicWrapper} pointerEvents="box-none">
+                    <VoiceButton
+                      size={40}
+                      onTranscript={(text) => { setProblem((prev) => prev ? `${prev} ${text}` : text); }}
+                    />
+                  </View>
+                )}
+              </View>
               <View
                 style={[
                   styles.inputActions,
@@ -2101,5 +2111,12 @@ const styles = StyleSheet.create({
   exampleNumberText: {
     fontSize: 12,
     fontWeight: "700",
+  },
+
+  // Mic button overlaid inside input card bottom-right
+  inputMicWrapper: {
+    position: "absolute",
+    bottom: 10,
+    right: 12,
   },
 });
