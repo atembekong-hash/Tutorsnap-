@@ -17,6 +17,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import * as H from "@/lib/haptics";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
+import * as FileSystem from "expo-file-system/legacy";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
@@ -90,20 +91,36 @@ function StepCard({ step, colors, fs, delay = 0 }: { step: SolutionStep; colors:
           {step.expression && (
             // Expression box: render LaTeX/math expressions via pipeline
             <View style={[styles.expressionBox, { backgroundColor: `${colors.primary}10`, borderColor: `${colors.primary}30` }]}>
-              <AIResponseErrorBoundary
-                fallbackText={step.expression}
-                fontSize={fs(16)}
-                color={colors.primary}
-              >
-                <AIResponseRenderer
-                  markdown={step.expression}
+              <View style={{ flex: 1 }}>
+                <AIResponseErrorBoundary
+                  fallbackText={step.expression}
                   fontSize={fs(16)}
                   color={colors.primary}
-                  codeBackground={`${colors.primary}10`}
-                  flavor="github"
-                  stripPreamble={false}
-                />
-              </AIResponseErrorBoundary>
+                >
+                  <AIResponseRenderer
+                    markdown={step.expression}
+                    fontSize={fs(16)}
+                    color={colors.primary}
+                    codeBackground={`${colors.primary}10`}
+                    flavor="github"
+                    stripPreamble={false}
+                  />
+                </AIResponseErrorBoundary>
+              </View>
+              <TouchableOpacity
+                accessibilityLabel="Copy expression"
+                onPress={async (e) => {
+                  e.stopPropagation?.();
+                  try {
+                    await Clipboard.setStringAsync(step.expression!);
+                    H.impactLight();
+                  } catch { /* ignore */ }
+                }}
+                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                style={[styles.copyBtn, { backgroundColor: `${colors.primary}15`, alignSelf: "flex-start", marginLeft: 8 }]}
+              >
+                <IconSymbol size={13} name="doc.on.doc" color={colors.primary} />
+              </TouchableOpacity>
             </View>
           )}
           {/* Step explanation: full Markdown + LaTeX rendering */}
@@ -237,6 +254,8 @@ export default function SolutionScreen() {
   const copiedProblemIdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [copiedHintId, setCopiedHintId] = useState<string | null>(null);
   const copiedHintIdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [markdownPreviewText, setMarkdownPreviewText] = useState<string | null>(null);
+  const markdownPreviewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Cleanup all feedback timers on unmount
   useEffect(() => {
     return () => {
@@ -249,6 +268,7 @@ export default function SolutionScreen() {
       if (copyTipsTimerRef.current) clearTimeout(copyTipsTimerRef.current);
       if (copyAltTimerRef.current) clearTimeout(copyAltTimerRef.current);
       if (copiedHintIdTimerRef.current) clearTimeout(copiedHintIdTimerRef.current);
+      if (markdownPreviewTimerRef.current) clearTimeout(markdownPreviewTimerRef.current);
     };
   }, []);
   const generateSimilarMutation = trpc.math.generateSimilar.useMutation();
@@ -662,7 +682,12 @@ export default function SolutionScreen() {
                 ].filter(Boolean).join("\n\n");
                 try {
                   await Clipboard.setStringAsync(md);
-                  Alert.alert("Copied!", "Markdown copied — paste into Notion, Obsidian or Google Docs.");
+                  // Show a 2-second preview toast with the first non-empty line
+                  const previewLine = md.split("\n").find(l => l.trim().length > 0) ?? "";
+                  const preview = previewLine.length > 60 ? previewLine.substring(0, 57) + "..." : previewLine;
+                  setMarkdownPreviewText(preview);
+                  if (markdownPreviewTimerRef.current) clearTimeout(markdownPreviewTimerRef.current);
+                  markdownPreviewTimerRef.current = setTimeout(() => setMarkdownPreviewText(null), 2500);
                 } catch { /* ignore */ }
               }}
               style={[styles.shareMenuItem, { borderBottomWidth: 0.5, borderBottomColor: colors.border }]}
@@ -713,6 +738,50 @@ export default function SolutionScreen() {
               </View>
               <IconSymbol size={16} name="chevron.right" color={colors.muted} />
             </TouchableOpacity>
+            {/* Save to Files */}
+            {Platform.OS !== "web" && (
+              <TouchableOpacity
+                accessibilityLabel="Save to Files"
+                onPress={async () => {
+                  if (!solution) return;
+                  setShowShareMenu(false);
+                  H.impactLight();
+                  try {
+                    // Build plain-text file content
+                    const stepsText = solution.steps?.map((s, i) => `Step ${i + 1}: ${s.title}\n${s.expression ? s.expression + "\n" : ""}${s.explanation}`).join("\n\n") ?? "";
+                    const fileContent = [
+                      `PROBLEM:\n${solution.problem}`,
+                      `ANSWER:\n${solution.answer}`,
+                      stepsText ? `STEP-BY-STEP SOLUTION:\n${stepsText}` : "",
+                      solution.conceptExplained ? `KEY CONCEPT:\n${solution.conceptExplained}` : "",
+                      solution.tips && solution.tips.length > 0 ? `PRO TIPS:\n${solution.tips.map((t, i) => `${i + 1}. ${t}`).join("\n")}` : "",
+                    ].filter(Boolean).join("\n\n");
+                    const safeName = solution.problem.replace(/[^a-zA-Z0-9 ]/g, "").substring(0, 40).trim() || "solution";
+                    const fileUri = `${FileSystem.cacheDirectory}${safeName}.txt`;
+                    await FileSystem.writeAsStringAsync(fileUri, fileContent, { encoding: FileSystem.EncodingType.UTF8 });
+                    const canShare = await Sharing.isAvailableAsync();
+                    if (canShare) {
+                      await Sharing.shareAsync(fileUri, { mimeType: "text/plain", dialogTitle: "Save solution to Files" });
+                    } else {
+                      Alert.alert("Not available", "File sharing is not available on this device.");
+                    }
+                  } catch (err) {
+                    Alert.alert("Error", "Could not save file. Please try again.");
+                  }
+                }}
+                style={[styles.shareMenuItem, { borderBottomWidth: 0.5, borderBottomColor: colors.border }]}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.shareMenuIcon, { backgroundColor: `${colors.primary}15` }]}>
+                  <IconSymbol size={18} name="folder.fill" color={colors.primary} />
+                </View>
+                <View style={styles.shareMenuInfo}>
+                  <Text style={[styles.shareMenuLabel, { color: colors.foreground }]}>Save to Files</Text>
+                  <Text style={[styles.shareMenuDesc, { color: colors.muted }]}>Save as .txt to Files app or Google Drive</Text>
+                </View>
+                <IconSymbol size={16} name="chevron.right" color={colors.muted} />
+              </TouchableOpacity>
+            )}
             <TouchableOpacity
               accessibilityLabel="Share"
               onPress={handleShareText}
@@ -843,6 +912,16 @@ export default function SolutionScreen() {
         <View style={[styles.linkToast, { backgroundColor: colors.success }]}>
           <IconSymbol size={15} name="checkmark.circle.fill" color="#FFFFFF" />
           <Text style={styles.linkToastText}>Link copied to clipboard!</Text>
+        </View>
+      )}
+      {/* Markdown preview toast */}
+      {markdownPreviewText && (
+        <View style={[styles.linkToast, { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.success }]}>
+          <IconSymbol size={15} name="checkmark.circle.fill" color={colors.success} />
+          <View style={{ flex: 1, marginLeft: 6 }}>
+            <Text style={[styles.linkToastText, { color: colors.success, fontSize: 11, fontWeight: "700" }]}>Markdown copied!</Text>
+            <Text style={[styles.linkToastText, { color: colors.muted, fontSize: 10, fontWeight: "400", marginTop: 1 }]} numberOfLines={1}>{markdownPreviewText}</Text>
+          </View>
         </View>
       )}
       {/* Header */}
@@ -1415,6 +1494,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     marginBottom: 10,
+    flexDirection: "row",
     alignItems: "center",
   },
   expressionText: { fontSize: 16, fontWeight: "700", fontFamily: Platform.OS === "ios" ? "Courier New" : "monospace" },
