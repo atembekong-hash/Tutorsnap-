@@ -66,6 +66,7 @@ export interface TutorSettings {
   // 3. Chat Behaviour
   typingAnimation: boolean;
   typingSpeed: "slow" | "normal" | "fast" | "very_fast";
+  stemTypingSpeed: "same" | "slow" | "normal" | "fast" | "very_fast"; // override for Math/Science
   autoScroll: boolean;
   autoResumeDelay: AutoResumeDelay;
   sendOnEnter: boolean;
@@ -113,6 +114,7 @@ export const DEFAULT_TUTOR_SETTINGS: TutorSettings = {
 
   typingAnimation: true,
   typingSpeed: "slow",
+  stemTypingSpeed: "same",
   autoScroll: true,
   autoResumeDelay: 3,
   sendOnEnter: false,
@@ -580,6 +582,14 @@ export function TutorSettingsModal({
     { label: "Instant", value: "very_fast" },
   ];
 
+  const STEM_SPEED_OPTIONS: SegmentOption<"same" | "slow" | "normal" | "fast" | "very_fast">[] = [
+    { label: "Same", value: "same" },
+    { label: "Slow", value: "slow" },
+    { label: "Normal", value: "normal" },
+    { label: "Fast", value: "fast" },
+    { label: "Instant", value: "very_fast" },
+  ];
+
   const AUTO_RESUME_OPTIONS: SegmentOption<string>[] = [
     { label: "2s", value: "2" },
     { label: "3s", value: "3" },
@@ -847,6 +857,13 @@ export function TutorSettingsModal({
                 onChange={(v) => onUpdate({ sendOnEnter: v })}
               />
             )}
+            <SegmentRow
+              icon="function"
+              label="STEM Speed Override"
+              value={settings.stemTypingSpeed}
+              options={STEM_SPEED_OPTIONS}
+              onChange={(v) => onUpdate({ stemTypingSpeed: v })}
+            />
             <ToggleRow
               icon="mic.fill"
               label="Voice Input"

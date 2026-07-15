@@ -661,3 +661,11 @@
 - [x] TYPING_SPEED_MS updated in chat.tsx to include very_fast: 2ms
 - [x] Appearance Settings screen updated to show Instant option
 - [x] TypeScript: 0 errors confirmed
+
+## Round 61: Per-Subject STEM Typing Speed Override
+- [x] Added stemTypingSpeed field to TutorSettings type ("same" | "slow" | "normal" | "fast" | "very_fast")
+- [x] Default: "same" (inherits global typing speed)
+- [x] Added STEM Speed Override SegmentRow to TutorSettings Section 3 (Chat Behaviour)
+- [x] Wired into getTypingDelayMs in chat.tsx — checked after Appearance Settings override, before auto-slow fallback
+- [x] Applies to Math and Science subjects only (isMathSubject / isScienceSubject)
+- [x] TypeScript: 0 errors confirmed
