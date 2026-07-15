@@ -425,6 +425,8 @@ function SolveScreenContent() {
   const [showQuickAskHistory, setShowQuickAskHistory] = useState(false);
   // Round 40: animated undo toast
   const undoToastAnim = useRef(new Animated.Value(0)).current; // 0=hidden, 1=visible
+  // Recent solves mini-history
+  const [recentSolves, setRecentSolves] = useState<HistoryItem[]>([]);
 
   const loadProgress = async () => {
     const p = await getProgress();
@@ -506,6 +508,11 @@ function SolveScreenContent() {
       loadProgress();
       loadWeeklyData();
       loadDueSoonHomework();
+      // Load recent solves for mini-history widget
+      AsyncStorage.getItem("math_history").then((v) => {
+        const history: HistoryItem[] = v ? JSON.parse(v) : [];
+        setRecentSolves(history.slice(0, 3));
+      }).catch(() => {});
       // Load pending notification count for bell badge
       if (Platform.OS !== "web") {
         Notifications.getAllScheduledNotificationsAsync()
@@ -574,6 +581,11 @@ function SolveScreenContent() {
         // ignore badge check errors
       }
 
+      // Refresh recent solves widget
+      AsyncStorage.getItem("math_history").then((v) => {
+        const h: HistoryItem[] = v ? JSON.parse(v) : [];
+        setRecentSolves(h.slice(0, 3));
+      }).catch(() => {});
       router.push({
         pathname: "/solution",
         params: { data: JSON.stringify(data) },
@@ -677,7 +689,10 @@ function SolveScreenContent() {
           {/* Header — Row 1: app name + action icons */}
           <View style={styles.header}>
             <View style={styles.headerRow1}>
-              <Text style={[styles.greeting, { color: colors.muted }]}>TutorSnap</Text>
+              <View>
+                <Text style={[styles.greeting, { color: colors.muted }]}>TutorSnap</Text>
+                <Text style={[styles.title, { color: colors.foreground }]}>Solve any problem</Text>
+              </View>
               <View style={styles.headerIcons}>
                 <TouchableOpacity
                   accessibilityLabel="View history"
@@ -867,13 +882,21 @@ function SolveScreenContent() {
             onWeeklyGoalChanged={() => loadWeeklyData()}
           />
 
-          {/* Study Tip of the Day — keep as full-width card below the row */}
+          {/* Study Tip of the Day */}
           {isOnline && selectedSubject && (
             <StudyTipCard subject={selectedSubject} gradeLevel={homeGradeLevel} />
           )}
 
-          {/* Input */}
-          <View style={styles.inputSection}>
+          {/* ─────────────────────────────────────────────────────────────────── */}
+          {/* SECTION 1: SOLVE A PROBLEM                                         */}
+          {/* ─────────────────────────────────────────────────────────────────── */}
+          <View style={styles.sectionBlock}>
+            <View style={styles.sectionLabelRow}>
+              <View style={[styles.sectionLabelDot, { backgroundColor: colors.primary }]} />
+              <Text style={[styles.sectionLabelText, { color: colors.muted }]}>SOLVE A PROBLEM</Text>
+            </View>
+
+            {/* Input Card */}
             <View
               style={[
                 styles.inputCard,
@@ -906,15 +929,10 @@ function SolveScreenContent() {
               >
                 <Text style={[styles.charCount, { color: colors.muted }]}>{problem.length} / 5000</Text>
                 <View style={styles.inputActionBtns}>
-                  {/* Math Keyboard Toggle — only shown for math subjects */}
-                  {/* Cheat Sheet Button — shown when a subject with a sheet is selected */}
                   {selectedSubject && hasCheatSheet(selectedSubject) && (
                     <TouchableOpacity
                       accessibilityLabel="Toggle show cheat sheet"
-                      onPress={() => {
-                        H.impactLight()
-                        setShowCheatSheet(true);
-                      }}
+                      onPress={() => { H.impactLight(); setShowCheatSheet(true); }}
                       style={[styles.keyboardToggleBtn, { backgroundColor: "transparent", borderColor: colors.border }]}
                     >
                       <Text style={[styles.keyboardToggleText, { color: colors.muted }]}>📋 Formulas</Text>
@@ -923,11 +941,7 @@ function SolveScreenContent() {
                   {isMathSubject(selectedSubject) && (
                     <TouchableOpacity
                       accessibilityLabel="Toggle show math keyboard"
-                      onPress={() => {
-                        Keyboard.dismiss();
-                        setShowMathKeyboard((v) => !v);
-                        H.impactLight();
-                      }}
+                      onPress={() => { Keyboard.dismiss(); setShowMathKeyboard((v) => !v); H.impactLight(); }}
                       style={[
                         styles.keyboardToggleBtn,
                         {
@@ -936,216 +950,139 @@ function SolveScreenContent() {
                         },
                       ]}
                     >
-                      <Text style={[styles.keyboardToggleText, { color: showMathKeyboard ? colors.primary : colors.muted }]}>
-                        ∑ Math
-                      </Text>
+                      <Text style={[styles.keyboardToggleText, { color: showMathKeyboard ? colors.primary : colors.muted }]}>∑ Math</Text>
                     </TouchableOpacity>
                   )}
-                  {/* mic moved to solve row below */}
                   {problem.length > 0 && (
-                    <TouchableOpacity onPress={() => setProblem("")} style={styles.clearBtn}
-                      accessibilityLabel="Toggle problem">
+                    <TouchableOpacity onPress={() => setProblem("")} style={styles.clearBtn} accessibilityLabel="Clear problem">
                       <IconSymbol size={18} name="xmark.circle.fill" color={colors.muted} />
                     </TouchableOpacity>
                   )}
                 </View>
               </View>
             </View>
-          </View>
 
-          {/* Grade Level Selector Pill */}
-          <View style={styles.gradeSelectorRow}>
-            <TouchableOpacity
-              onPress={() => { H.impactLight(); setShowSolveGradePicker(true); }}
-              style={[
-                styles.gradeSelectorPill,
-                {
-                  backgroundColor: homeGradeLevel ? `${colors.primary}15` : colors.surface,
-                  borderColor: homeGradeLevel ? colors.primary : colors.border,
-                },
-              ]}
-              accessibilityLabel={homeGradeLevel ? `Grade level: ${GRADE_LABELS[homeGradeLevel]}. Tap to change.` : "Set grade level"}
-              accessibilityRole="button"
-              activeOpacity={0.75}
-            >
-              <IconSymbol size={13} name="graduationcap.fill" color={homeGradeLevel ? colors.primary : colors.muted} />
-              <Text style={[styles.gradeSelectorText, { color: homeGradeLevel ? colors.primary : colors.muted }]}>
-                {homeGradeLevel ? GRADE_LABELS[homeGradeLevel] : "Any level"}
-              </Text>
-              <IconSymbol size={11} name="chevron.right" color={homeGradeLevel ? colors.primary : colors.muted} />
-            </TouchableOpacity>
-          </View>
-
-          {/* Offline warning above solve button */}
-          {!isOnline && (
-            <View
-              style={[
-                styles.offlineWarning,
-                { backgroundColor: `${colors.warning}15`, borderColor: `${colors.warning}40` },
-              ]}
-            >
-              <Text style={{ fontSize: 14 }}>📡</Text>
-              <Text style={[styles.offlineWarningText, { color: colors.warning }]}>
-                No internet — AI features unavailable
-              </Text>
+            {/* Controls row: grade pill (left) + offline warning (right) */}
+            <View style={styles.controlsRow}>
+              <TouchableOpacity
+                onPress={() => { H.impactLight(); setShowSolveGradePicker(true); }}
+                style={[
+                  styles.gradeSelectorPill,
+                  {
+                    backgroundColor: homeGradeLevel ? `${colors.primary}15` : colors.surface,
+                    borderColor: homeGradeLevel ? colors.primary : colors.border,
+                  },
+                ]}
+                accessibilityLabel={homeGradeLevel ? `Grade level: ${GRADE_LABELS[homeGradeLevel]}. Tap to change.` : "Set grade level"}
+                accessibilityRole="button"
+                activeOpacity={0.75}
+              >
+                <IconSymbol size={13} name="graduationcap.fill" color={homeGradeLevel ? colors.primary : colors.muted} />
+                <Text style={[styles.gradeSelectorText, { color: homeGradeLevel ? colors.primary : colors.muted }]}>
+                  {homeGradeLevel ? GRADE_LABELS[homeGradeLevel] : "Any level"}
+                </Text>
+                <IconSymbol size={11} name="chevron.right" color={homeGradeLevel ? colors.primary : colors.muted} />
+              </TouchableOpacity>
+              {!isOnline && (
+                <View style={[styles.offlinePill, { backgroundColor: `${colors.warning}15`, borderColor: `${colors.warning}40` }]}>
+                  <Text style={{ fontSize: 12 }}>📡</Text>
+                  <Text style={[styles.offlinePillText, { color: colors.warning }]}>Offline</Text>
+                </View>
+              )}
             </View>
-          )}
 
-          {/* Solve Row: subject picker (left) + mic + solve button (right) */}
-          <View style={styles.solveRow}>
-            {/* Subject picker — bottom-left, single tap opens picker */}
-            <SubjectPicker
-              value={selectedSubject}
-              onChange={handleSubjectChange}
-              showAll
-            />
-            {/* Mic button */}
-            {Platform.OS !== "web" && (
-              <VoiceButton
-                size={50}
-                onTranscript={(text) => {
-                  setProblem((prev) => prev ? `${prev} ${text}` : text);
+            {/* Solve Row: subject picker + mic + solve button */}
+            <View style={styles.solveRow}>
+              <SubjectPicker value={selectedSubject} onChange={handleSubjectChange} showAll />
+              {Platform.OS !== "web" && (
+                <VoiceButton
+                  size={48}
+                  onTranscript={(text) => { setProblem((prev) => prev ? `${prev} ${text}` : text); }}
+                />
+              )}
+              <TouchableOpacity
+                accessibilityLabel="Solve problem"
+                onPress={handleSolve}
+                disabled={!problem.trim() || solveMutation.isPending || !isOnline}
+                style={[styles.solveBtn, { opacity: !problem.trim() || solveMutation.isPending || !isOnline ? 0.6 : 1 }]}
+                activeOpacity={0.85}
+              >
+                <View style={[styles.solveBtnInner, { backgroundColor: isOnline ? colors.primary : colors.muted }]}>
+                  {solveMutation.isPending ? (
+                    <><ActivityIndicator color="#FFFFFF" size="small" /><Text style={styles.solveBtnText}>Solving...</Text></>
+                  ) : !isOnline ? (
+                    <><IconSymbol size={20} name="wifi.slash" color="#FFFFFF" /><Text style={styles.solveBtnText}>No Internet</Text></>
+                  ) : (
+                    <><IconSymbol size={20} name="wand.and.stars" color="#FFFFFF" /><Text style={styles.solveBtnText}>Solve with AI</Text></>
+                  )}
+                </View>
+              </TouchableOpacity>
+            </View>
+
+            {/* Error state */}
+            {solveMutation.isError && (
+              <View style={[styles.errorBox, { backgroundColor: `${colors.error}15`, borderColor: `${colors.error}30` }]}>
+                <IconSymbol size={16} name="exclamationmark.triangle.fill" color={colors.error} />
+                <Text style={[styles.errorBoxText, { color: colors.error }]}>
+                  Failed to solve. Please check your connection and try again.
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* ─────────────────────────────────────────────────────────────────── */}
+          {/* SECTION 2: AI TUTOR                                                */}
+          {/* ─────────────────────────────────────────────────────────────────── */}
+          <View style={styles.sectionBlock}>
+            <View style={styles.sectionLabelRow}>
+              <View style={[styles.sectionLabelDot, { backgroundColor: colors.secondary }]} />
+              <Text style={[styles.sectionLabelText, { color: colors.muted }]}>AI TUTOR</Text>
+            </View>
+
+            {/* Ask AI Tutor — primary CTA */}
+            <Animated.View style={{ transform: [{ scale: bannerScaleAnim }] }}>
+              <TouchableOpacity
+                accessibilityLabel="Start a new AI Tutor chat"
+                accessibilityRole="button"
+                onPressIn={() => Animated.spring(bannerScaleAnim, { toValue: 0.97, useNativeDriver: true, speed: 40, bounciness: 0 }).start()}
+                onPressOut={() => Animated.spring(bannerScaleAnim, { toValue: 1, useNativeDriver: true, speed: 30, bounciness: 4 }).start()}
+                onPress={() => {
+                  if (quickAskText.trim()) return;
+                  H.impactLight();
+                  const params: Record<string, string> = { newSession: "1" };
+                  if (selectedSubject) params.subject = selectedSubject;
+                  router.push({ pathname: "/(tabs)/chat", params } as any);
                 }}
-              />
-            )}
-            {/* Solve Button */}
-            <TouchableOpacity
-              accessibilityLabel="Solve problem"
-              onPress={handleSolve}
-              disabled={!problem.trim() || solveMutation.isPending || !isOnline}
-              style={[
-                styles.solveBtn,
-                { flex: 1, opacity: !problem.trim() || solveMutation.isPending || !isOnline ? 0.6 : 1 },
-              ]}
-              activeOpacity={0.85}
-            >
-              <View style={[styles.solveBtnInner, { backgroundColor: isOnline ? colors.primary : colors.muted }]}>
-                {solveMutation.isPending ? (
-                  <>
-                    <ActivityIndicator color="#FFFFFF" size="small" />
-                    <Text style={styles.solveBtnText}>Solving...</Text>
-                  </>
-                ) : !isOnline ? (
-                  <>
-                    <IconSymbol size={20} name="wifi.slash" color="#FFFFFF" />
-                    <Text style={styles.solveBtnText}>No Internet</Text>
-                  </>
-                ) : (
-                  <>
-                    <IconSymbol size={20} name="wand.and.stars" color="#FFFFFF" />
-                    <Text style={styles.solveBtnText}>Solve with AI</Text>
-                  </>
-                )}
-              </View>
-            </TouchableOpacity>
-          </View>
-
-          {/* Upsell nudge banner — shown after first solve, hidden for premium/dev */}
-          <UpsellNudgeBanner
-            solvesUsed={usage.solves}
-            isPremium={isPremium}
-            isDevMode={isDevMode}
-          />
-
-          {solveMutation.isError && (
-            <View
-              style={{
-                marginHorizontal: 16,
-                marginTop: 12,
-                padding: 12,
-                borderRadius: 12,
-                backgroundColor: `${colors.error}20`,
-                borderWidth: 1,
-                borderColor: `${colors.error}40`,
-              }}
-            >
-              <Text style={{ color: colors.error, fontSize: 14, textAlign: "center" }}>
-                Failed to solve. Please check your connection and try again.
-              </Text>
-            </View>
-          )}
-
-          {/* New Chat Quick-Action Banner */}
-          <Animated.View style={{ transform: [{ scale: bannerScaleAnim }] }}>
-            <TouchableOpacity
-              accessibilityLabel="Start a new AI Tutor chat"
-              accessibilityRole="button"
-              onPressIn={() =>
-                Animated.spring(bannerScaleAnim, { toValue: 0.97, useNativeDriver: true, speed: 40, bounciness: 0 }).start()
-              }
-              onPressOut={() =>
-                Animated.spring(bannerScaleAnim, { toValue: 1, useNativeDriver: true, speed: 30, bounciness: 4 }).start()
-              }
-              onPress={() => {
-                if (quickAskText.trim()) return; // let Quick Ask handle it
-                H.impactLight();
-                const params: Record<string, string> = { newSession: "1" };
-                if (selectedSubject) params.subject = selectedSubject;
-                router.push({ pathname: "/(tabs)/chat", params } as any);
-              }}
-              activeOpacity={1}
-              style={[styles.newChatBanner, { backgroundColor: colors.secondary, shadowColor: colors.secondary }]}
-            >
-              <View style={styles.newChatLeft}>
-                <View style={styles.newChatIconWrap}>
-                  <IconSymbol size={22} name="bubble.left.fill" color="#FFFFFF" />
+                activeOpacity={1}
+                style={[styles.newChatBanner, { backgroundColor: colors.secondary, shadowColor: colors.secondary }]}
+              >
+                <View style={styles.newChatLeft}>
+                  <View style={styles.newChatIconWrap}>
+                    <IconSymbol size={22} name="bubble.left.fill" color="#FFFFFF" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.newChatTitle}>Ask AI Tutor</Text>
+                    <Text style={styles.newChatSub}>
+                      {selectedSubject ? `Start a ${getSubjectDef(selectedSubject)?.label ?? selectedSubject} session` : "Get instant help on any topic"}
+                    </Text>
+                  </View>
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.newChatTitle}>Ask AI Tutor</Text>
-                  <Text style={styles.newChatSub}>
-                    {selectedSubject ? `Start a ${getSubjectDef(selectedSubject)?.label ?? selectedSubject} session` : "Get instant help on any topic"}
-                  </Text>
-                </View>
-              </View>
-              <IconSymbol size={18} name="chevron.right" color="rgba(255,255,255,0.75)" />
-            </TouchableOpacity>
-
-            {/* Round 40: Recent subjects row — shown when there are recent subjects */}
-            {recentSubjects.length > 0 && (
-              <View style={styles.recentSubjectsRow}>
-                <Text style={[styles.recentSubjectsLabel, { color: colors.muted }]}>Recent:</Text>
-                {recentSubjects.map((subId) => {
-                  const def = getSubjectDef(subId);
-                  const isActive = selectedSubject === subId;
-                  return (
-                    <TouchableOpacity
-                      key={subId}
-                      accessibilityLabel={`Select recent subject ${def?.label ?? subId}`}
-                      onPress={() => {
-                        H.impactLight();
-                        handleSubjectChange(isActive ? null : subId);
-                      }}
-                      style={[styles.recentSubjectChip, {
-                        backgroundColor: isActive ? `${colors.secondary}25` : colors.surface,
-                        borderColor: isActive ? colors.secondary : colors.border,
-                      }]}
-                    >
-                      <Text style={[styles.recentSubjectChipText, { color: isActive ? colors.secondary : colors.muted }]}>
-                        {def?.emoji ?? ""} {def?.label ?? subId}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            )}
+                <IconSymbol size={18} name="chevron.right" color="rgba(255,255,255,0.75)" />
+              </TouchableOpacity>
+            </Animated.View>
 
             {/* Quick Ask inline input */}
             <View style={[styles.quickAskRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <TextInput
                 ref={quickAskInputRef}
                 style={[styles.quickAskInput, { color: colors.foreground }]}
-                placeholder="Quick question…"
+                placeholder="Quick question to AI Tutor..."
                 placeholderTextColor={colors.muted}
                 value={quickAskText}
                 onChangeText={setQuickAskText}
                 returnKeyType="send"
-                onFocus={() => {
-                  if (quickAskHistory.length > 0) setShowQuickAskHistory(true);
-                }}
-                onBlur={() => {
-                  // Slight delay so tapping a history item registers before hiding
-                  setTimeout(() => setShowQuickAskHistory(false), 150);
-                }}
+                onFocus={() => { if (quickAskHistory.length > 0) setShowQuickAskHistory(true); }}
+                onBlur={() => { setTimeout(() => setShowQuickAskHistory(false), 150); }}
                 onSubmitEditing={() => {
                   const q = quickAskText.trim();
                   if (!q) return;
@@ -1158,26 +1095,18 @@ function SolveScreenContent() {
                   router.push({ pathname: "/(tabs)/chat", params } as any);
                 }}
               />
-              {/* Clear button — shown when there is text */}
               {quickAskText.trim().length > 0 && (
                 <TouchableOpacity
                   accessibilityLabel="Clear quick ask input"
-                  onPress={() => {
-                    setQuickAskText("");
-                    quickAskInputRef.current?.focus();
-                  }}
+                  onPress={() => { setQuickAskText(""); quickAskInputRef.current?.focus(); }}
                   style={styles.quickAskClearBtn}
                 >
                   <Text style={[styles.quickAskClearText, { color: colors.muted }]}>✕</Text>
                 </TouchableOpacity>
               )}
-              {/* Inline subject chip — opens subject picker */}
               <TouchableOpacity
                 accessibilityLabel={selectedSubject ? `Subject: ${getSubjectDef(selectedSubject)?.label}` : "Select subject"}
-                onPress={() => {
-                  H.impactLight();
-                  setShowQuickAskSubjectPicker(true);
-                }}
+                onPress={() => { H.impactLight(); setShowQuickAskSubjectPicker(true); }}
                 style={[styles.quickAskSubjectChip, {
                   backgroundColor: selectedSubject ? `${colors.secondary}20` : colors.background,
                   borderColor: selectedSubject ? `${colors.secondary}60` : colors.border,
@@ -1187,7 +1116,6 @@ function SolveScreenContent() {
                   {selectedSubject ? (getSubjectDef(selectedSubject)?.label ?? "Subject") : "Subject"}
                 </Text>
               </TouchableOpacity>
-              {/* Send button — shown when there is text */}
               {quickAskText.trim().length > 0 && (
                 <TouchableOpacity
                   accessibilityLabel="Send quick question"
@@ -1209,19 +1137,14 @@ function SolveScreenContent() {
               )}
             </View>
 
-            {/* Round 40: Quick Ask history dropdown */}
+            {/* Quick Ask history dropdown */}
             {showQuickAskHistory && quickAskHistory.length > 0 && (
               <View style={[styles.quickAskHistoryDropdown, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 {quickAskHistory.map((q, i) => (
                   <TouchableOpacity
                     key={i}
                     accessibilityLabel={`Reuse quick ask: ${q}`}
-                    onPress={() => {
-                      H.impactLight();
-                      setQuickAskText(q);
-                      setShowQuickAskHistory(false);
-                      quickAskInputRef.current?.focus();
-                    }}
+                    onPress={() => { H.impactLight(); setQuickAskText(q); setShowQuickAskHistory(false); quickAskInputRef.current?.focus(); }}
                     style={[styles.quickAskHistoryItem, i < quickAskHistory.length - 1 && { borderBottomWidth: 0.5, borderBottomColor: colors.border }]}
                   >
                     <IconSymbol size={12} name="clock.fill" color={colors.muted} />
@@ -1232,15 +1155,35 @@ function SolveScreenContent() {
             )}
 
             {/* Subject picker for Quick Ask chip */}
-            <SubjectPicker
-              value={selectedSubject}
-              onChange={handleSubjectChange}
-              showAll
-              open={showQuickAskSubjectPicker}
-              onClose={() => setShowQuickAskSubjectPicker(false)}
-            />
+            <SubjectPicker value={selectedSubject} onChange={handleSubjectChange} showAll open={showQuickAskSubjectPicker} onClose={() => setShowQuickAskSubjectPicker(false)} />
 
-            {/* Continue last chat — swipe right to dismiss */}
+            {/* Recent subjects row */}
+            {recentSubjects.length > 0 && (
+              <View style={styles.recentSubjectsRow}>
+                <Text style={[styles.recentSubjectsLabel, { color: colors.muted }]}>Recent:</Text>
+                {recentSubjects.map((subId) => {
+                  const def = getSubjectDef(subId);
+                  const isActive = selectedSubject === subId;
+                  return (
+                    <TouchableOpacity
+                      key={subId}
+                      accessibilityLabel={`Select recent subject ${def?.label ?? subId}`}
+                      onPress={() => { H.impactLight(); handleSubjectChange(isActive ? null : subId); }}
+                      style={[styles.recentSubjectChip, {
+                        backgroundColor: isActive ? `${colors.secondary}25` : colors.surface,
+                        borderColor: isActive ? colors.secondary : colors.border,
+                      }]}
+                    >
+                      <Text style={[styles.recentSubjectChipText, { color: isActive ? colors.secondary : colors.muted }]}>
+                        {def?.emoji ?? ""} {def?.label ?? subId}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+
+            {/* Continue last chat */}
             {lastSession && !continueSessionDismissed && (
               <Swipeable
                 renderRightActions={() => (
@@ -1255,7 +1198,6 @@ function SolveScreenContent() {
                   H.impactMedium();
                   setContinueSessionDismissed(true);
                   AsyncStorage.setItem("@tutorsnap/continueSessionDismissed", "1").catch(() => {});
-                  // Show undo toast for 3 seconds
                   setUndoToast(true);
                   if (undoToastTimerRef.current) clearTimeout(undoToastTimerRef.current);
                   undoToastTimerRef.current = setTimeout(() => setUndoToast(false), 3000);
@@ -1264,142 +1206,190 @@ function SolveScreenContent() {
                 <TouchableOpacity
                   accessibilityLabel={`Continue last chat: ${lastSession.title}`}
                   accessibilityRole="button"
-                  onPress={() => {
-                    H.impactLight();
-                    setSessionPreviewTooltip(false);
-                    router.push({ pathname: "/(tabs)/chat", params: { sessionId: lastSession.id } } as any);
-                  }}
-                  onLongPress={() => {
-                    H.impactLight();
-                    setSessionPreviewTooltip((v) => !v);
-                  }}
+                  onPress={() => { H.impactLight(); setSessionPreviewTooltip(false); router.push({ pathname: "/(tabs)/chat", params: { sessionId: lastSession.id } } as any); }}
+                  onLongPress={() => { H.impactLight(); setSessionPreviewTooltip((v) => !v); }}
                   delayLongPress={400}
                   style={[styles.continueLastChat, { backgroundColor: colors.surface, borderColor: colors.border }]}
                 >
                   <IconSymbol size={13} name="clock.fill" color={colors.muted} />
-                  <Text style={[styles.continueLastChatText, { color: colors.muted }]} numberOfLines={1}>
-                    Continue: {lastSession.title}
-                  </Text>
+                  <Text style={[styles.continueLastChatText, { color: colors.muted }]} numberOfLines={1}>Continue: {lastSession.title}</Text>
                   <IconSymbol size={12} name="chevron.right" color={colors.muted} />
                 </TouchableOpacity>
                 {sessionPreviewTooltip && lastSession.preview ? (
                   <View style={[styles.sessionPreviewTooltip, { backgroundColor: colors.foreground }]}>
-                    <Text style={[styles.sessionPreviewTooltipText, { color: colors.background }]} numberOfLines={3}>
-                      {lastSession.preview}
-                    </Text>
+                    <Text style={[styles.sessionPreviewTooltipText, { color: colors.background }]} numberOfLines={3}>{lastSession.preview}</Text>
                   </View>
                 ) : null}
               </Swipeable>
             )}
-            {/* Undo toast after swipe-dismiss — animated slide-in/fade-out */}
             {undoToast && (
               <Animated.View
                 style={[
                   styles.undoToast,
                   { backgroundColor: `${colors.foreground}12`, borderColor: colors.border },
-                  {
-                    opacity: undoToastAnim,
-                    transform: [{
-                      translateY: undoToastAnim.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [-8, 0],
-                      }),
-                    }],
-                  },
+                  { opacity: undoToastAnim, transform: [{ translateY: undoToastAnim.interpolate({ inputRange: [0, 1], outputRange: [-8, 0] }) }] },
                 ]}
               >
                 <Text style={[styles.undoToastText, { color: colors.muted }]}>Continue link dismissed</Text>
                 <TouchableOpacity
                   accessibilityLabel="Restore continue last chat link"
-                  onPress={() => {
-                    H.impactLight();
-                    setContinueSessionDismissed(false);
-                    AsyncStorage.removeItem("@tutorsnap/continueSessionDismissed").catch(() => {});
-                    setUndoToast(false);
-                    if (undoToastTimerRef.current) clearTimeout(undoToastTimerRef.current);
-                  }}
+                  onPress={() => { H.impactLight(); setContinueSessionDismissed(false); AsyncStorage.removeItem("@tutorsnap/continueSessionDismissed").catch(() => {}); setUndoToast(false); if (undoToastTimerRef.current) clearTimeout(undoToastTimerRef.current); }}
                   style={[styles.undoToastRestoreBtn, { backgroundColor: `${colors.secondary}20` }]}
                 >
                   <Text style={[styles.undoToastRestoreText, { color: colors.secondary }]}>Restore</Text>
                 </TouchableOpacity>
               </Animated.View>
             )}
-          </Animated.View>
-
-          {/* Feature Cards Row */}
-          <View style={styles.featureRow}>
-            <TouchableOpacity
-              onPress={() => router.push("/(tabs)/scan" as any)}
-              style={[styles.featureCard, { backgroundColor: `${colors.primary}12`, borderColor: `${colors.primary}25` }]}
-              activeOpacity={0.8}
-            >
-              <View style={[styles.featureIcon, { backgroundColor: colors.primary }]}>
-                <IconSymbol size={20} name="camera.fill" color="#FFFFFF" />
-              </View>
-              <Text style={[styles.featureTitle, { color: colors.foreground }]}>Scan</Text>
-              <Text style={[styles.featureDesc, { color: colors.muted }]}>Photo to solution</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              accessibilityLabel="Go to practice"
-              onPress={() => router.push("/(tabs)/practice" as any)}
-              style={[styles.featureCard, { backgroundColor: `${colors.secondary}12`, borderColor: `${colors.secondary}25` }]}
-              activeOpacity={0.8}
-            >
-              <View style={[styles.featureIcon, { backgroundColor: colors.secondary }]}>
-                <IconSymbol size={20} name="pencil.and.list.clipboard" color="#FFFFFF" />
-              </View>
-              <Text style={[styles.featureTitle, { color: colors.foreground }]}>Practice</Text>
-              <Text style={[styles.featureDesc, { color: colors.muted }]}>Generated problems</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              accessibilityLabel="View progress"
-              onPress={() => router.push("/progress" as any)}
-              style={[styles.featureCard, { backgroundColor: `${colors.success}12`, borderColor: `${colors.success}25` }]}
-              activeOpacity={0.8}
-            >
-              <View style={[styles.featureIcon, { backgroundColor: colors.success }]}>
-                <IconSymbol size={20} name="chart.bar.fill" color="#FFFFFF" />
-              </View>
-              <Text style={[styles.featureTitle, { color: colors.foreground }]}>Progress</Text>
-              <Text style={[styles.featureDesc, { color: colors.muted }]}>Stats & streaks</Text>
-            </TouchableOpacity>
           </View>
 
-          {/* Example Problems */}
-          <View style={styles.examplesSection}>
-            <View style={styles.sectionHeader}>
-              <IconSymbol size={16} name="lightbulb.fill" color={colors.warning} />
-              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Try an Example</Text>
+          {/* ─────────────────────────────────────────────────────────────────── */}
+          {/* SECTION 3: EXPLORE FEATURES                                        */}
+          {/* ─────────────────────────────────────────────────────────────────── */}
+          <View style={styles.sectionBlock}>
+            <View style={styles.sectionLabelRow}>
+              <View style={[styles.sectionLabelDot, { backgroundColor: colors.success }]} />
+              <Text style={[styles.sectionLabelText, { color: colors.muted }]}>EXPLORE</Text>
+            </View>
+            <View style={styles.featureRow}>
+              <TouchableOpacity
+                onPress={() => router.push("/(tabs)/scan" as any)}
+                style={[styles.featureCard, { backgroundColor: `${colors.primary}12`, borderColor: `${colors.primary}25` }]}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.featureIcon, { backgroundColor: colors.primary }]}>
+                  <IconSymbol size={20} name="camera.fill" color="#FFFFFF" />
+                </View>
+                <Text style={[styles.featureTitle, { color: colors.foreground }]} numberOfLines={1}>Scan</Text>
+                <Text style={[styles.featureDesc, { color: colors.muted }]} numberOfLines={2}>Photo to solution</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                accessibilityLabel="Go to practice"
+                onPress={() => router.push("/(tabs)/practice" as any)}
+                style={[styles.featureCard, { backgroundColor: `${colors.secondary}12`, borderColor: `${colors.secondary}25` }]}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.featureIcon, { backgroundColor: colors.secondary }]}>
+                  <IconSymbol size={20} name="pencil.and.list.clipboard" color="#FFFFFF" />
+                </View>
+                <Text style={[styles.featureTitle, { color: colors.foreground }]} numberOfLines={1}>Practice</Text>
+                <Text style={[styles.featureDesc, { color: colors.muted }]} numberOfLines={2}>Generated problems</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                accessibilityLabel="View progress"
+                onPress={() => router.push("/progress" as any)}
+                style={[styles.featureCard, { backgroundColor: `${colors.success}12`, borderColor: `${colors.success}25` }]}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.featureIcon, { backgroundColor: colors.success }]}>
+                  <IconSymbol size={20} name="chart.bar.fill" color="#FFFFFF" />
+                </View>
+                <Text style={[styles.featureTitle, { color: colors.foreground }]} numberOfLines={1}>Progress</Text>
+                <Text style={[styles.featureDesc, { color: colors.muted }]} numberOfLines={2}>Stats & streaks</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* ─────────────────────────────────────────────────────────────────── */}
+          {/* SECTION 4: RECENT SOLVES + TIPS + UPSELL (before examples)         */}
+          {/* ─────────────────────────────────────────────────────────────────── */}
+
+          {/* Recent Solves mini-history — only shown when there are solves */}
+          {recentSolves.length > 0 && (
+            <View style={styles.sectionBlock}>
+              <View style={styles.sectionLabelRow}>
+                <View style={[styles.sectionLabelDot, { backgroundColor: colors.warning }]} />
+                <Text style={[styles.sectionLabelText, { color: colors.muted }]}>RECENT SOLVES</Text>
+                <TouchableOpacity
+                  onPress={() => router.push("/(tabs)/history" as any)}
+                  style={styles.sectionLabelAction}
+                  accessibilityLabel="View all history"
+                >
+                  <Text style={[styles.sectionLabelActionText, { color: colors.primary }]}>See all</Text>
+                  <IconSymbol size={11} name="chevron.right" color={colors.primary} />
+                </TouchableOpacity>
+              </View>
+              {recentSolves.map((item) => {
+                const subjectColor = (() => { try { return getSubjectDef(item.subject).color; } catch { return colors.primary; } })();
+                const subjectLabel = (() => { try { return getSubjectDef(item.subject).label; } catch { return item.subject; } })();
+                const now = Date.now();
+                const diff = now - item.solvedAt;
+                const minutes = Math.floor(diff / 60000);
+                const hours = Math.floor(diff / 3600000);
+                const days = Math.floor(diff / 86400000);
+                const timeAgo = minutes < 1 ? "Just now" : minutes < 60 ? `${minutes}m ago` : hours < 24 ? `${hours}h ago` : days < 7 ? `${days}d ago` : new Date(item.solvedAt).toLocaleDateString();
+                return (
+                  <TouchableOpacity
+                    key={item.id}
+                    onPress={() => router.push({ pathname: "/solution", params: { data: JSON.stringify(item) } } as any)}
+                    style={[styles.recentSolveCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                    activeOpacity={0.75}
+                  >
+                    <View style={[styles.recentSolveAccent, { backgroundColor: subjectColor }]} />
+                    <View style={styles.recentSolveContent}>
+                      <View style={styles.recentSolveBadgeRow}>
+                        <View style={[styles.recentSolveBadge, { backgroundColor: `${subjectColor}20` }]}>
+                          <Text style={[styles.recentSolveBadgeText, { color: subjectColor }]}>{subjectLabel}</Text>
+                        </View>
+                        <Text style={[styles.recentSolveTime, { color: colors.muted }]}>{timeAgo}</Text>
+                      </View>
+                      <Text style={[styles.recentSolveProblem, { color: colors.foreground }]} numberOfLines={2}>{item.problem}</Text>
+                      <View style={styles.recentSolveAnswerRow}>
+                        <IconSymbol size={12} name="checkmark.circle.fill" color={colors.success} />
+                        <Text style={[styles.recentSolveAnswer, { color: colors.success }]} numberOfLines={1}>{item.answer}</Text>
+                      </View>
+                    </View>
+                    <IconSymbol size={16} name="chevron.right" color={colors.muted} />
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
+
+          {/* How to Use — 3-tip strip */}
+          <View style={[styles.tipsStrip, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            {[
+              { emoji: "⌨️", title: "Type or Speak", desc: "Enter your problem or use voice" },
+              { emoji: "📚", title: "Pick a Subject", desc: "Get subject-specific solutions" },
+              { emoji: "📋", title: "Step-by-Step", desc: "Full explanations, not just answers" },
+            ].map((tip, i) => (
+              <View key={i} style={[styles.tipItem, i < 2 && { borderRightWidth: 1, borderRightColor: colors.border }]}>
+                <Text style={styles.tipEmoji}>{tip.emoji}</Text>
+                <Text style={[styles.tipTitle, { color: colors.foreground }]}>{tip.title}</Text>
+                <Text style={[styles.tipDesc, { color: colors.muted }]}>{tip.desc}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Upsell nudge banner */}
+          <UpsellNudgeBanner
+            solvesUsed={usage.solves}
+            isPremium={isPremium}
+            isDevMode={isDevMode}
+          />
+
+          {/* ─────────────────────────────────────────────────────────────────── */}
+          {/* SECTION 5: TRY AN EXAMPLE                                          */}
+          {/* ─────────────────────────────────────────────────────────────────── */}
+          <View style={styles.sectionBlock}>
+            <View style={styles.sectionLabelRow}>
+              <View style={[styles.sectionLabelDot, { backgroundColor: colors.warning }]} />
+              <Text style={[styles.sectionLabelText, { color: colors.muted }]}>
+                {selectedSubject ? `${(getSubjectDef(selectedSubject)?.label ?? "Subject").toUpperCase()} EXAMPLES` : "TRY AN EXAMPLE"}
+              </Text>
             </View>
             {(selectedSubject && SUBJECT_EXAMPLES[selectedSubject] ? SUBJECT_EXAMPLES[selectedSubject] : DEFAULT_EXAMPLES).map((example, index) => (
               <TouchableOpacity
                 key={index}
                 onPress={() => handleExample(example)}
-                style={[
-                  styles.exampleCard,
-                  { backgroundColor: colors.surface, borderColor: colors.border },
-                ]}
+                style={[styles.exampleCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
                 activeOpacity={0.7}
               >
-                <View
-                  style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: 8,
-                    backgroundColor: `${colors.primary}20`,
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Text style={{ fontSize: 12, fontWeight: "700", color: colors.primary }}>
-                    {index + 1}
-                  </Text>
+                <View style={[styles.exampleNumber, { backgroundColor: `${colors.primary}20` }]}>
+                  <Text style={[styles.exampleNumberText, { color: colors.primary }]}>{index + 1}</Text>
                 </View>
-                <Text style={[styles.exampleText, { color: colors.foreground }]}>
-                  {example}
-                </Text>
+                <Text style={[styles.exampleText, { color: colors.foreground }]}>{example}</Text>
                 <IconSymbol size={16} name="chevron.right" color={colors.muted} />
               </TouchableOpacity>
             ))}
@@ -2087,5 +2077,171 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 10,
     backgroundColor: "#FFFFFF",
+  },
+
+  // ── Elite Redesign: Section structure ────────────────────────────────────
+  sectionBlock: {
+    paddingHorizontal: 16,
+    marginBottom: 8,
+  },
+  sectionLabelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 10,
+    marginTop: 8,
+  },
+  sectionLabelDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  sectionLabelText: {
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 1.2,
+    flex: 1,
+  },
+  sectionLabelAction: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+  },
+  sectionLabelActionText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+
+  // ── Controls row (grade pill + offline pill) ──────────────────────────────
+  controlsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 10,
+    marginTop: 6,
+  },
+  offlinePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  offlinePillText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+
+  // ── Error box ─────────────────────────────────────────────────────────────
+  errorBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginTop: 10,
+  },
+  errorBoxText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+
+  // ── Recent Solves widget ──────────────────────────────────────────────────
+  recentSolveCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 8,
+    overflow: "hidden",
+  },
+  recentSolveAccent: {
+    width: 4,
+    alignSelf: "stretch",
+  },
+  recentSolveContent: {
+    flex: 1,
+    padding: 12,
+    gap: 5,
+  },
+  recentSolveBadgeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  recentSolveBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  recentSolveBadgeText: {
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 0.4,
+  },
+  recentSolveTime: {
+    fontSize: 11,
+  },
+  recentSolveProblem: {
+    fontSize: 14,
+    fontWeight: "500",
+    lineHeight: 20,
+  },
+  recentSolveAnswerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+  recentSolveAnswer: {
+    fontSize: 12,
+    fontWeight: "600",
+    flex: 1,
+  },
+
+  // ── How to Use tips strip ─────────────────────────────────────────────────
+  tipsStrip: {
+    flexDirection: "row",
+    marginHorizontal: 16,
+    marginBottom: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    overflow: "hidden",
+  },
+  tipItem: {
+    flex: 1,
+    alignItems: "center",
+    padding: 12,
+    gap: 4,
+  },
+  tipEmoji: {
+    fontSize: 20,
+    marginBottom: 2,
+  },
+  tipTitle: {
+    fontSize: 12,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  tipDesc: {
+    fontSize: 10,
+    textAlign: "center",
+    lineHeight: 14,
+  },
+
+  // ── Example card refinements ──────────────────────────────────────────────
+  exampleNumber: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  exampleNumberText: {
+    fontSize: 12,
+    fontWeight: "700",
   },
 });
