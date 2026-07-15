@@ -130,43 +130,81 @@ function StepCard({ step, colors, fs, delay = 0 }: { step: SolutionStep; colors:
 
 function WorkedExampleCopyButton({
   problem,
+  solution: workedSolution,
+  title,
   colors,
   fs,
 }: {
   problem: string;
+  solution?: string;
+  title?: string;
   colors: ReturnType<typeof useColors>;
   fs: (n: number) => number;
 }) {
-  const [copied, setCopied] = useState(false);
-  const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [copiedProblem, setCopiedProblem] = useState(false);
+  const [copiedSolution, setCopiedSolution] = useState(false);
+  const problemTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const solutionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   return (
-    <TouchableOpacity
-      accessibilityLabel="Copy example problem to clipboard"
-      accessibilityRole="button"
-      onPress={async () => {
-        try {
-          await Clipboard.setStringAsync(problem);
-          setCopied(true);
-          H.impactLight();
-          if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
-          copiedTimerRef.current = setTimeout(() => setCopied(false), 2000);
-        } catch { /* ignore */ }
-      }}
-      style={[
-        styles.copyBtn,
-        { backgroundColor: copied ? `${colors.success}20` : `${colors.success}15` },
-      ]}
-      activeOpacity={0.75}
-    >
-      <IconSymbol
-        size={14}
-        name={copied ? "checkmark.circle.fill" : "doc.on.doc"}
-        color={copied ? colors.success : colors.success}
-      />
-      <Text style={[styles.copyText, { color: colors.success, fontSize: fs(12) }]}>
-        {copied ? "Copied!" : "Copy Problem"}
-      </Text>
-    </TouchableOpacity>
+    <View style={{ flexDirection: "row", gap: 6 }}>
+      <TouchableOpacity
+        accessibilityLabel="Copy example problem to clipboard"
+        accessibilityRole="button"
+        onPress={async () => {
+          try {
+            await Clipboard.setStringAsync(problem);
+            setCopiedProblem(true);
+            H.impactLight();
+            if (problemTimerRef.current) clearTimeout(problemTimerRef.current);
+            problemTimerRef.current = setTimeout(() => setCopiedProblem(false), 2000);
+          } catch { /* ignore */ }
+        }}
+        style={[
+          styles.copyBtn,
+          { backgroundColor: copiedProblem ? `${colors.success}20` : `${colors.success}15` },
+        ]}
+        activeOpacity={0.75}
+      >
+        <IconSymbol
+          size={14}
+          name={copiedProblem ? "checkmark.circle.fill" : "doc.on.doc"}
+          color={colors.success}
+        />
+        <Text style={[styles.copyText, { color: colors.success, fontSize: fs(12) }]}>
+          {copiedProblem ? "Copied!" : "Problem"}
+        </Text>
+      </TouchableOpacity>
+      {workedSolution && (
+        <TouchableOpacity
+          accessibilityLabel="Copy full worked solution to clipboard"
+          accessibilityRole="button"
+          onPress={async () => {
+            try {
+              const fullText = `${title ? title + "\n" : ""}PROBLEM:\n${problem}\n\nSOLUTION:\n${workedSolution}`;
+              await Clipboard.setStringAsync(fullText);
+              setCopiedSolution(true);
+              H.impactLight();
+              if (solutionTimerRef.current) clearTimeout(solutionTimerRef.current);
+              solutionTimerRef.current = setTimeout(() => setCopiedSolution(false), 2000);
+            } catch { /* ignore */ }
+          }}
+          style={[
+            styles.copyBtn,
+            { backgroundColor: copiedSolution ? `${colors.success}20` : `${colors.success}15` },
+          ]}
+          activeOpacity={0.75}
+        >
+          <IconSymbol
+            size={14}
+            name={copiedSolution ? "checkmark.circle.fill" : "doc.on.doc"}
+            color={colors.success}
+          />
+          <Text style={[styles.copyText, { color: colors.success, fontSize: fs(12) }]}>
+            {copiedSolution ? "Copied!" : "Solution"}
+          </Text>
+        </TouchableOpacity>
+      )}
+    </View>
   );
 }
 
@@ -607,6 +645,74 @@ export default function SolutionScreen() {
               </View>
               <IconSymbol size={16} name="chevron.right" color={colors.muted} />
             </TouchableOpacity>
+            {/* Copy as Markdown */}
+            <TouchableOpacity
+              accessibilityLabel="Copy as Markdown"
+              onPress={async () => {
+                if (!solution) return;
+                setShowShareMenu(false);
+                H.impactLight();
+                const stepsText = solution.steps?.map((s, i) => `### Step ${i + 1}: ${s.title}\n${s.expression ? `\`${s.expression}\`\n` : ""}${s.explanation}`).join("\n\n") ?? "";
+                const md = [
+                  `## Problem\n\n${solution.problem}`,
+                  `## Answer\n\n**${solution.answer}**`,
+                  stepsText ? `## Step-by-Step Solution\n\n${stepsText}` : "",
+                  solution.conceptExplained ? `## Key Concept\n\n${solution.conceptExplained}` : "",
+                  solution.tips && solution.tips.length > 0 ? `## Pro Tips\n\n${solution.tips.map((t, i) => `${i + 1}. ${t}`).join("\n")}` : "",
+                ].filter(Boolean).join("\n\n");
+                try {
+                  await Clipboard.setStringAsync(md);
+                  Alert.alert("Copied!", "Markdown copied — paste into Notion, Obsidian or Google Docs.");
+                } catch { /* ignore */ }
+              }}
+              style={[styles.shareMenuItem, { borderBottomWidth: 0.5, borderBottomColor: colors.border }]}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.shareMenuIcon, { backgroundColor: `${colors.success}15` }]}>
+                <IconSymbol size={18} name="chevron.left.forwardslash.chevron.right" color={colors.success} />
+              </View>
+              <View style={styles.shareMenuInfo}>
+                <Text style={[styles.shareMenuLabel, { color: colors.foreground }]}>Copy as Markdown</Text>
+                <Text style={[styles.shareMenuDesc, { color: colors.muted }]}>Paste into Notion, Obsidian or Google Docs</Text>
+              </View>
+              <IconSymbol size={16} name="chevron.right" color={colors.muted} />
+            </TouchableOpacity>
+            {/* Share to Notes */}
+            <TouchableOpacity
+              accessibilityLabel="Share to Notes"
+              onPress={async () => {
+                if (!solution) return;
+                setShowShareMenu(false);
+                H.impactLight();
+                const stepsText = solution.steps?.map((s, i) => `Step ${i + 1}: ${s.title}\n${s.expression ? s.expression + "\n" : ""}${s.explanation}`).join("\n\n") ?? "";
+                const noteText = [
+                  `PROBLEM:\n${solution.problem}`,
+                  `ANSWER:\n${solution.answer}`,
+                  stepsText ? `STEP-BY-STEP:\n${stepsText}` : "",
+                  solution.conceptExplained ? `KEY CONCEPT:\n${solution.conceptExplained}` : "",
+                  solution.tips && solution.tips.length > 0 ? `PRO TIPS:\n${solution.tips.map((t, i) => `${i + 1}. ${t}`).join("\n")}` : "",
+                ].filter(Boolean).join("\n\n");
+                try {
+                  if (Platform.OS !== "web") {
+                    await Share.share({ message: noteText, title: `Solution: ${solution.problem.substring(0, 60)}` });
+                  } else {
+                    await Clipboard.setStringAsync(noteText);
+                    Alert.alert("Copied!", "Solution text copied — paste into your notes app.");
+                  }
+                } catch { /* user cancelled */ }
+              }}
+              style={[styles.shareMenuItem, { borderBottomWidth: 0.5, borderBottomColor: colors.border }]}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.shareMenuIcon, { backgroundColor: `${colors.warning}15` }]}>
+                <IconSymbol size={18} name="pencil.and.list.clipboard" color={colors.warning} />
+              </View>
+              <View style={styles.shareMenuInfo}>
+                <Text style={[styles.shareMenuLabel, { color: colors.foreground }]}>Save to Notes</Text>
+                <Text style={[styles.shareMenuDesc, { color: colors.muted }]}>Send to Apple Notes, Keep, or any notes app</Text>
+              </View>
+              <IconSymbol size={16} name="chevron.right" color={colors.muted} />
+            </TouchableOpacity>
             <TouchableOpacity
               accessibilityLabel="Share"
               onPress={handleShareText}
@@ -937,6 +1043,8 @@ export default function SolutionScreen() {
               </View>
               <WorkedExampleCopyButton
                 problem={solution.workedExample.problem}
+                solution={solution.workedExample.solution}
+                title={solution.workedExample.title}
                 colors={colors}
                 fs={fs}
               />
