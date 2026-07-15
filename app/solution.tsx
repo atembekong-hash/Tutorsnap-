@@ -32,6 +32,8 @@ import { loadGlobalGrade, GRADE_LABELS } from "@/lib/grade-levels";
 
 function StepCard({ step, colors, fs, delay = 0 }: { step: SolutionStep; colors: any; fs: (n: number) => number; delay?: number }) {
   const [expanded, setExpanded] = useState(true);
+  const [copied, setCopied] = useState(false);
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(24)).current;
 
@@ -40,7 +42,19 @@ function StepCard({ step, colors, fs, delay = 0 }: { step: SolutionStep; colors:
       Animated.timing(fadeAnim, { toValue: 1, duration: 350, delay, useNativeDriver: true }),
       Animated.timing(slideAnim, { toValue: 0, duration: 350, delay, useNativeDriver: true }),
     ]).start();
+    return () => { if (copyTimerRef.current) clearTimeout(copyTimerRef.current); };
   }, []);
+
+  const handleCopyStep = async (e: any) => {
+    e.stopPropagation?.();
+    try {
+      const text = `Step ${step.stepNumber}: ${step.title}\n${step.expression ? step.expression + "\n" : ""}${step.explanation}`;
+      await Clipboard.setStringAsync(text);
+      setCopied(true);
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+      copyTimerRef.current = setTimeout(() => setCopied(false), 1500);
+    } catch { /* ignore */ }
+  };
 
   return (
     <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
@@ -57,6 +71,14 @@ function StepCard({ step, colors, fs, delay = 0 }: { step: SolutionStep; colors:
         <Text style={[styles.stepTitle, { color: colors.foreground, fontSize: fs(14) }]} numberOfLines={expanded ? undefined : 1}>
           {step.title}
         </Text>
+        <TouchableOpacity
+          accessibilityLabel={`Copy step ${step.stepNumber}`}
+          onPress={handleCopyStep}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          style={[styles.copyBtn, { backgroundColor: copied ? `${colors.success}20` : "transparent", marginRight: 2 }]}
+        >
+          <IconSymbol size={13} name={copied ? "checkmark.circle.fill" : "doc.on.doc"} color={copied ? colors.success : colors.muted} />
+        </TouchableOpacity>
         <IconSymbol
           size={18}
           name={expanded ? "chevron.up" : "chevron.down"}
@@ -175,6 +197,8 @@ export default function SolutionScreen() {
   const [expandedHint, setExpandedHint] = useState<string | null>(null);
   const [copiedProblemId, setCopiedProblemId] = useState<string | null>(null);
   const copiedProblemIdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [copiedHintId, setCopiedHintId] = useState<string | null>(null);
+  const copiedHintIdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Cleanup all feedback timers on unmount
   useEffect(() => {
     return () => {
@@ -186,6 +210,7 @@ export default function SolutionScreen() {
       if (copyConceptTimerRef.current) clearTimeout(copyConceptTimerRef.current);
       if (copyTipsTimerRef.current) clearTimeout(copyTipsTimerRef.current);
       if (copyAltTimerRef.current) clearTimeout(copyAltTimerRef.current);
+      if (copiedHintIdTimerRef.current) clearTimeout(copiedHintIdTimerRef.current);
     };
   }, []);
   const generateSimilarMutation = trpc.math.generateSimilar.useMutation();
@@ -551,6 +576,37 @@ export default function SolutionScreen() {
         >
           <View style={[styles.shareMenu, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Text style={[styles.shareMenuTitle, { color: colors.muted }]}>Share Solution</Text>
+            <TouchableOpacity
+              accessibilityLabel="Copy full solution"
+              onPress={async () => {
+                if (!solution) return;
+                setShowShareMenu(false);
+                H.impactLight();
+                const stepsText = solution.steps?.map((s, i) => `Step ${i + 1}: ${s.title}\n${s.expression ? s.expression + "\n" : ""}${s.explanation}`).join("\n\n") ?? "";
+                const parts = [
+                  `PROBLEM:\n${solution.problem}`,
+                  `ANSWER:\n${solution.answer}`,
+                  stepsText ? `STEP-BY-STEP SOLUTION:\n${stepsText}` : "",
+                  solution.conceptExplained ? `KEY CONCEPT:\n${solution.conceptExplained}` : "",
+                  solution.tips && solution.tips.length > 0 ? `PRO TIPS:\n${solution.tips.map((t, i) => `${i + 1}. ${t}`).join("\n")}` : "",
+                ].filter(Boolean).join("\n\n");
+                try {
+                  await Clipboard.setStringAsync(parts);
+                  Alert.alert("Copied!", "Full solution copied to clipboard.");
+                } catch { /* ignore */ }
+              }}
+              style={[styles.shareMenuItem, { borderBottomWidth: 0.5, borderBottomColor: colors.border }]}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.shareMenuIcon, { backgroundColor: `${colors.primary}20` }]}>
+                <IconSymbol size={18} name="doc.on.doc" color={colors.primary} />
+              </View>
+              <View style={styles.shareMenuInfo}>
+                <Text style={[styles.shareMenuLabel, { color: colors.foreground }]}>Copy Full Solution</Text>
+                <Text style={[styles.shareMenuDesc, { color: colors.muted }]}>Problem, answer, steps, concept and tips</Text>
+              </View>
+              <IconSymbol size={16} name="chevron.right" color={colors.muted} />
+            </TouchableOpacity>
             <TouchableOpacity
               accessibilityLabel="Share"
               onPress={handleShareText}
@@ -1011,7 +1067,25 @@ export default function SolutionScreen() {
                   </TouchableOpacity>
                   {expandedHint === p.id && (
                     <View style={[styles.hintExpanded, { backgroundColor: `${colors.warning}08`, borderColor: `${colors.warning}25` }]}>
-                      <Text style={[styles.hintText, { color: colors.foreground, fontSize: fs(13) }]}>{p.hint}</Text>
+                      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                        <Text style={[styles.hintText, { color: colors.foreground, fontSize: fs(13), flex: 1 }]}>{p.hint}</Text>
+                        <TouchableOpacity
+                          accessibilityLabel="Copy hint"
+                          onPress={async () => {
+                            try {
+                              await Clipboard.setStringAsync(p.hint);
+                              setCopiedHintId(p.id);
+                              H.impactLight();
+                              if (copiedHintIdTimerRef.current) clearTimeout(copiedHintIdTimerRef.current);
+                              copiedHintIdTimerRef.current = setTimeout(() => setCopiedHintId(null), 1500);
+                            } catch { /* ignore */ }
+                          }}
+                          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                          style={[styles.copyBtn, { backgroundColor: copiedHintId === p.id ? `${colors.success}20` : "transparent", marginTop: 2 }]}
+                        >
+                          <IconSymbol size={13} name={copiedHintId === p.id ? "checkmark.circle.fill" : "doc.on.doc"} color={copiedHintId === p.id ? colors.success : colors.muted} />
+                        </TouchableOpacity>
+                      </View>
                     </View>
                   )}
                 </View>
