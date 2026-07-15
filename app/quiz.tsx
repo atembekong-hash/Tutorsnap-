@@ -25,7 +25,9 @@ import { usePremium } from "@/hooks/use-premium";
 import { FREE_LIMITS } from "@/lib/subscription";
 import { QuizNudgeBanner } from "@/components/quiz-nudge-banner";
 import { maybeRequestReview } from "@/lib/review-prompt";
-import { loadGlobalGrade } from "@/lib/grade-levels";
+import { loadGlobalGrade, GRADE_LABELS } from "@/lib/grade-levels";
+import AsyncStorageLib from "@react-native-async-storage/async-storage";
+import PaywallScreen from "./paywall";
 
 function getAppearanceSubjectKey(subjectId: string): string {
   const def = getSubjectDef(subjectId);
@@ -142,11 +144,12 @@ function ScoreSummary({
   const mins = Math.floor(timeTaken / 60);
   const secs = timeTaken % 60;
   const subjectLabel = getSubjectLabel(subject);
-  const { GRADE_LABELS } = require("@/lib/grade-levels") as { GRADE_LABELS: Record<string, string> };
-  const AsyncStorageLib = require("@react-native-async-storage/async-storage").default;
+  // GRADE_LABELS and AsyncStorageLib imported at module level
   const [userName, setUserName] = React.useState<string | null>(null);
   React.useEffect(() => {
-    AsyncStorageLib.getItem("@tutorsnap/userName").then((n: string | null) => setUserName(n || null));
+    AsyncStorageLib.getItem("@tutorsnap/userName")
+      .then((n: string | null) => setUserName(n || null))
+      .catch(() => { /* non-critical */ });
   }, []);
 
   const [copied, setCopied] = React.useState(false);
@@ -291,7 +294,7 @@ export default function QuizScreen() {
   // Fall back to global grade if not passed via route
   useEffect(() => {
     if (!params.gradeLevel) {
-      loadGlobalGrade().then((g: string | null) => { if (g) setGradeLevel(g); });
+      loadGlobalGrade().then((g: string | null) => { if (g) setGradeLevel(g); }).catch(() => { /* non-critical */ });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -630,7 +633,7 @@ export default function QuizScreen() {
           >
             <Text style={{ fontSize: 16, color: colors.muted }}>✕</Text>
           </TouchableOpacity>
-          {React.createElement(require("./paywall").default)}
+          <PaywallScreen />
         </View>
       </Modal>
     </ScreenContainer>

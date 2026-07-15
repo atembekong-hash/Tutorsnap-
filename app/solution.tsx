@@ -11,6 +11,7 @@ import {
   Platform,
   ActivityIndicator,
   Animated,
+  Linking,
 } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -747,6 +748,40 @@ export default function SolutionScreen() {
               </View>
               <IconSymbol size={16} name="chevron.right" color={colors.muted} />
             </TouchableOpacity>
+            {/* Share via WhatsApp */}
+            {Platform.OS !== "web" && (
+              <TouchableOpacity
+                accessibilityLabel="Share via WhatsApp"
+                onPress={async () => {
+                  if (!solution) return;
+                  setShowShareMenu(false);
+                  H.impactLight();
+                  try {
+                    const stepsText = solution.steps?.map((s, i) => `Step ${i + 1}: ${s.title}\n${s.expression ? s.expression + "\n" : ""}${s.explanation}`).join("\n\n") ?? "";
+                    const msg = encodeURIComponent(`*${solution.problem}*\n\n*Answer:* ${solution.answer}${stepsText ? "\n\n" + stepsText : ""}\n\n_Solved with TutorSnap_`);
+                    const waUrl = `whatsapp://send?text=${msg}`;
+                    const supported = await Linking.canOpenURL(waUrl);
+                    if (supported) {
+                      await Linking.openURL(waUrl);
+                    } else {
+                      // Fallback to system share
+                      await Share.share({ message: decodeURIComponent(msg) });
+                    }
+                  } catch { /* user cancelled */ }
+                }}
+                style={[styles.shareMenuItem, { borderBottomWidth: 0.5, borderBottomColor: colors.border }]}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.shareMenuIcon, { backgroundColor: "#25D36615" }]}>
+                  <Text style={{ fontSize: 18 }}>💬</Text>
+                </View>
+                <View style={styles.shareMenuInfo}>
+                  <Text style={[styles.shareMenuLabel, { color: colors.foreground }]}>Share via WhatsApp</Text>
+                  <Text style={[styles.shareMenuDesc, { color: colors.muted }]}>Send solution directly to a WhatsApp chat</Text>
+                </View>
+                <IconSymbol size={16} name="chevron.right" color={colors.muted} />
+              </TouchableOpacity>
+            )}
             {/* Save to Files */}
             {Platform.OS !== "web" && (
               <TouchableOpacity
@@ -973,7 +1008,7 @@ export default function SolutionScreen() {
           <IconSymbol size={15} name="checkmark.circle.fill" color={colors.success} />
           <View style={{ flex: 1, marginLeft: 6 }}>
             <Text style={[styles.linkToastText, { color: colors.success, fontSize: 11, fontWeight: "700" }]}>Markdown copied!</Text>
-            <Text style={[styles.linkToastText, { color: colors.muted, fontSize: 10, fontWeight: "400", marginTop: 1 }]} numberOfLines={1}>{markdownPreviewText}</Text>
+            <Text style={[styles.linkToastText, { color: colors.muted, fontSize: 10, fontWeight: "400", marginTop: 1 }]} numberOfLines={2} ellipsizeMode="tail">{markdownPreviewText}</Text>
           </View>
         </View>
       )}
@@ -1540,7 +1575,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   stepNumberText: { fontSize: 13, fontWeight: "800" },
-  stepTitle: { flex: 1, fontSize: 14, fontWeight: "600" },
+  stepTitle: { flex: 1, flexShrink: 1, fontSize: 14, fontWeight: "600" },
   stepBody: { paddingHorizontal: 14, paddingBottom: 14 },
   expressionBox: {
     padding: 12,

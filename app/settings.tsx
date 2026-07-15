@@ -1004,7 +1004,7 @@ export default function SettingsScreen() {
           <IconSymbol size={22} name="arrow.left" color={colors.foreground} />
         </TouchableOpacity>
         <Text style={[styles.navTitle, { color: colors.foreground }]}>Settings</Text>
-        <View style={{ width: 30 }} />
+        <View style={{ minWidth: 30 }} />
       </View>
 
       <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 48 }}>
