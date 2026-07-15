@@ -464,26 +464,6 @@ function PracticeScreenContent() {
                   <Text style={[pStyles.showMoreText, { color: colors.primary }]}>Show all {sheet.sections[0].items.length} formulas</Text>
                 </TouchableOpacity>
               )}
-              {cheatSheetExpanded && (
-                <TouchableOpacity
-                  onPress={async () => {
-                    const allFormulas = (sheet.sections[0]?.items ?? [])
-                      .map((item) => `${item.label}: ${item.formula}${item.note ? ` (${item.note})` : ""}`)
-                      .join("\n");
-                    await Clipboard.setStringAsync(`${sheet.title} Formulas:\n${allFormulas}`);
-                    setCopiedFormula("__all__");
-                    setTimeout(() => setCopiedFormula(null), 2000);
-                    H.notificationSuccess();
-                  }}
-                  style={[pStyles.copyAllBtn, { borderTopColor: colors.border, backgroundColor: `${colors.primary}10` }]}
-                  activeOpacity={0.75}
-                >
-                  <IconSymbol size={15} name={copiedFormula === "__all__" ? "checkmark.circle.fill" : "doc.on.doc.fill"} color={copiedFormula === "__all__" ? colors.success : colors.primary} />
-                  <Text style={[pStyles.copyAllText, { color: copiedFormula === "__all__" ? colors.success : colors.primary }]}>
-                    {copiedFormula === "__all__" ? "All formulas copied!" : `Copy all ${sheet.sections[0]?.items.length ?? 0} formulas`}
-                  </Text>
-                </TouchableOpacity>
-              )}
             </View>
           );
         })()}
@@ -1006,6 +986,4 @@ const pStyles = StyleSheet.create({
   formulaCopyBtn: { padding: 4 },
   showMoreBtn: { paddingTop: 10, alignItems: "center" },
   showMoreText: { fontSize: 13, fontWeight: "600" },
-  copyAllBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 10, paddingVertical: 10, borderTopWidth: 1, borderRadius: 8 },
-  copyAllText: { fontSize: 13, fontWeight: "600" },
 });
