@@ -1,24 +1,41 @@
 /**
- * Validates that the RevenueCat API key environment variables are set and
- * have the expected format (non-empty strings starting with a known prefix).
+ * Validates the subscription module configuration.
  *
- * This test does NOT make a network call — it only checks the env vars are
- * present so the SDK will initialise correctly on device.
+ * Since react-native-purchases was removed due to native architecture conflicts,
+ * the subscription system now uses local AsyncStorage-based management.
+ * RevenueCat API keys are optional — when not set, the app runs in local mode.
+ *
+ * These tests validate that the subscription module source file exists and
+ * does not import react-native-purchases.
  */
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "fs";
+import { join } from "path";
 
-describe("RevenueCat environment variables", () => {
-  it("EXPO_PUBLIC_RC_API_KEY_IOS is set and non-empty", () => {
-    const key = process.env.EXPO_PUBLIC_RC_API_KEY_IOS;
-    expect(key).toBeTruthy();
-    expect(typeof key).toBe("string");
-    expect((key as string).length).toBeGreaterThan(10);
+describe("Subscription module configuration", () => {
+  const subscriptionSource = readFileSync(
+    join(__dirname, "..", "lib", "subscription.ts"),
+    "utf-8"
+  );
+
+  it("does not import react-native-purchases (removed for APK stability)", () => {
+    // Ensure no runtime import of the removed package
+    expect(subscriptionSource).not.toMatch(/import.*from.*['"]react-native-purchases['"]/);
+    expect(subscriptionSource).not.toMatch(/require\(['"]react-native-purchases['"]\)/);
+    expect(subscriptionSource).not.toMatch(/await import\(['"]react-native-purchases['"]\)/);
   });
 
-  it("EXPO_PUBLIC_RC_API_KEY_ANDROID is set and non-empty", () => {
-    const key = process.env.EXPO_PUBLIC_RC_API_KEY_ANDROID;
-    expect(key).toBeTruthy();
-    expect(typeof key).toBe("string");
-    expect((key as string).length).toBeGreaterThan(10);
+  it("exports required subscription constants and functions", () => {
+    // Check that the source defines the expected exports
+    expect(subscriptionSource).toContain('export const PRODUCT_MONTHLY');
+    expect(subscriptionSource).toContain('export const PRODUCT_ANNUAL');
+    expect(subscriptionSource).toContain('export const PRICE_MONTHLY');
+    expect(subscriptionSource).toContain('export const PRICE_ANNUAL');
+    expect(subscriptionSource).toContain('export const FREE_LIMITS');
+    expect(subscriptionSource).toContain('export async function initRevenueCat');
+    expect(subscriptionSource).toContain('export async function getSubscriptionStatus');
+    expect(subscriptionSource).toContain('export async function purchaseProduct');
+    expect(subscriptionSource).toContain('export async function restorePurchases');
+    expect(subscriptionSource).toContain('export async function getOfferings');
   });
 });

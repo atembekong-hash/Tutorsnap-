@@ -669,3 +669,18 @@
 - [x] Wired into getTypingDelayMs in chat.tsx — checked after Appearance Settings override, before auto-slow fallback
 - [x] Applies to Math and Science subjects only (isMathSubject / isScienceSubject)
 - [x] TypeScript: 0 errors confirmed
+
+## APK Crash Fix (Round 62)
+- [x] Remove react-native-purchases@10.4.2 (AGP 8.13.2 conflict + Kotlin 1.8.22 vs 2.0.21 mismatch)
+- [x] Remove react-native-webview@14.0.1 (new arch codegenConfig conflict with old arch disabled)
+- [x] Remove katex package (only used with WebView)
+- [x] Restore newArchEnabled: true (all remaining native modules support new arch)
+- [x] Fix expo-file-system version to ~19.0.23 (matches SDK 54)
+- [x] Rewrite lib/subscription.ts as pure local subscription management (AsyncStorage-based)
+- [x] Rewrite components/math-renderer.tsx as pure JS Unicode-based math rendering
+- [x] Update tests/revenuecat-env.test.ts to validate new subscription module
+- [x] Verify all native modules have codegenConfig (new arch compatible)
+- [x] Verify all expo plugins in app.config.ts have packages installed
+- [x] Verify TypeScript: 0 errors
+- [x] Verify dev server: running, bundled without errors
+- [x] Verify all tests pass (10 passed, 1 skipped)
