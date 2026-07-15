@@ -1506,11 +1506,11 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   input: {
-    padding: 16,
-    fontSize: 16,
-    minHeight: 100,
+    padding: 20,
+    fontSize: 17,
+    minHeight: 200,
     textAlignVertical: "top",
-    lineHeight: 24,
+    lineHeight: 26,
   },
   inputActions: {
     flexDirection: "row",
