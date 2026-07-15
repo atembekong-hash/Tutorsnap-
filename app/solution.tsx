@@ -35,8 +35,6 @@ function StepCard({ step, colors, fs, delay = 0 }: { step: SolutionStep; colors:
   const [expanded, setExpanded] = useState(true);
   const [copied, setCopied] = useState(false);
   const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [copiedExpr, setCopiedExpr] = useState(false);
-  const copiedExprTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(24)).current;
 
@@ -45,10 +43,7 @@ function StepCard({ step, colors, fs, delay = 0 }: { step: SolutionStep; colors:
       Animated.timing(fadeAnim, { toValue: 1, duration: 350, delay, useNativeDriver: true }),
       Animated.timing(slideAnim, { toValue: 0, duration: 350, delay, useNativeDriver: true }),
     ]).start();
-    return () => {
-      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
-      if (copiedExprTimerRef.current) clearTimeout(copiedExprTimerRef.current);
-    };
+    return () => { if (copyTimerRef.current) clearTimeout(copyTimerRef.current); };
   }, []);
 
   const handleCopyStep = async (e: any) => {
@@ -119,16 +114,12 @@ function StepCard({ step, colors, fs, delay = 0 }: { step: SolutionStep; colors:
                   try {
                     await Clipboard.setStringAsync(step.expression!);
                     H.impactLight();
-                    setCopiedExpr(true);
-                    if (copiedExprTimerRef.current) clearTimeout(copiedExprTimerRef.current);
-                    copiedExprTimerRef.current = setTimeout(() => setCopiedExpr(false), 1800);
                   } catch { /* ignore */ }
                 }}
                 hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                style={[styles.copyBtn, { backgroundColor: copiedExpr ? `${colors.success}20` : `${colors.primary}15`, alignSelf: "flex-start", marginLeft: 8, flexDirection: "row", alignItems: "center", gap: 3 }]}
+                style={[styles.copyBtn, { backgroundColor: `${colors.primary}15`, alignSelf: "flex-start", marginLeft: 8 }]}
               >
-                <IconSymbol size={13} name={copiedExpr ? "checkmark.circle.fill" : "doc.on.doc"} color={copiedExpr ? colors.success : colors.primary} />
-                {copiedExpr && <Text style={{ fontSize: 10, fontWeight: "700", color: colors.success }}>Copied!</Text>}
+                <IconSymbol size={13} name="doc.on.doc" color={colors.primary} />
               </TouchableOpacity>
             </View>
           )}
@@ -787,50 +778,6 @@ export default function SolutionScreen() {
                 <View style={styles.shareMenuInfo}>
                   <Text style={[styles.shareMenuLabel, { color: colors.foreground }]}>Save to Files</Text>
                   <Text style={[styles.shareMenuDesc, { color: colors.muted }]}>Save as .txt to Files app or Google Drive</Text>
-                </View>
-                <IconSymbol size={16} name="chevron.right" color={colors.muted} />
-              </TouchableOpacity>
-            )}
-            {/* Save PDF to Files */}
-            {Platform.OS !== "web" && (
-              <TouchableOpacity
-                accessibilityLabel="Save PDF to Files"
-                onPress={async () => {
-                  if (!solution) return;
-                  setShowShareMenu(false);
-                  setShareLoading(true);
-                  H.impactLight();
-                  try {
-                    const html = buildShareHtml();
-                    const { uri } = await Print.printToFileAsync({ html, base64: false });
-                    // Move to a named file in cache
-                    const safeName = solution.problem.replace(/[^a-zA-Z0-9 ]/g, "").substring(0, 40).trim() || "solution";
-                    const destUri = `${FileSystem.cacheDirectory}${safeName}.pdf`;
-                    await FileSystem.copyAsync({ from: uri, to: destUri });
-                    const canShare = await Sharing.isAvailableAsync();
-                    if (canShare) {
-                      await Sharing.shareAsync(destUri, { mimeType: "application/pdf", dialogTitle: "Save PDF to Files" });
-                    } else {
-                      Alert.alert("Not available", "PDF sharing is not available on this device.");
-                    }
-                  } catch {
-                    Alert.alert("Error", "Could not generate PDF. Please try again.");
-                  } finally {
-                    setShareLoading(false);
-                  }
-                }}
-                style={[styles.shareMenuItem, { borderBottomWidth: 0.5, borderBottomColor: colors.border }]}
-                activeOpacity={0.7}
-                disabled={shareLoading}
-              >
-                <View style={[styles.shareMenuIcon, { backgroundColor: `${colors.error}15` }]}>
-                  {shareLoading
-                    ? <ActivityIndicator size="small" color={colors.error} />
-                    : <IconSymbol size={18} name="doc.richtext" color={colors.error} />}
-                </View>
-                <View style={styles.shareMenuInfo}>
-                  <Text style={[styles.shareMenuLabel, { color: colors.foreground }]}>Save PDF to Files</Text>
-                  <Text style={[styles.shareMenuDesc, { color: colors.muted }]}>One-tap save to Files app or Google Drive</Text>
                 </View>
                 <IconSymbol size={16} name="chevron.right" color={colors.muted} />
               </TouchableOpacity>

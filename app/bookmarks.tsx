@@ -1,8 +1,4 @@
 import React, { useState, useCallback, useMemo } from "react";
-import * as Print from "expo-print";
-import * as Sharing from "expo-sharing";
-import * as FileSystem from "expo-file-system/legacy";
-import * as Clipboard from "expo-clipboard";
 import {
   View,
   Text,
@@ -13,7 +9,6 @@ import {
   Platform,
   TextInput,
   ScrollView,
-  ActivityIndicator,
 } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import Swipeable from "react-native-gesture-handler/Swipeable";
@@ -22,7 +17,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { getBookmarks, removeBookmark } from "@/lib/bookmarks";
-import type { HistoryItem, SolutionStep } from "@/shared/types";
+import type { HistoryItem } from "@/shared/types";
 import { getSubjectColor, getSubjectLabel, getSubjectEmoji } from "@/lib/subjects";
 import { GRADE_LABELS } from "@/lib/grade-levels";
 
@@ -43,8 +38,6 @@ export default function BookmarksScreen() {
   const [activeSubject, setActiveSubject] = useState<string>("all");
   const [sortKey, setSortKey] = useState<SortKey>("newest");
   const [showSortMenu, setShowSortMenu] = useState(false);
-  const [exportLoading, setExportLoading] = useState(false);
-  const [showExportMenu, setShowExportMenu] = useState(false);
 
   const loadBookmarks = async () => {
     try {
@@ -232,65 +225,6 @@ export default function BookmarksScreen() {
 
   const currentSortLabel = SORT_OPTIONS.find((o) => o.key === sortKey)?.label ?? "Sort";
 
-  const buildBulkMarkdown = (items: HistoryItem[]) => {
-    return items.map((item, idx) => {
-      const stepsText = item.steps?.map((s: SolutionStep, i: number) => `### Step ${i + 1}: ${s.title}\n${s.expression ? `\`${s.expression}\`\n` : ""}${s.explanation}`).join("\n\n") ?? "";
-      return [
-        `## ${idx + 1}. ${item.problem}`,
-        `**Answer:** ${item.answer}`,
-        stepsText ? `### Steps\n\n${stepsText}` : "",
-        item.conceptExplained ? `### Key Concept\n\n${item.conceptExplained}` : "",
-        item.tips && item.tips.length > 0 ? `### Pro Tips\n\n${item.tips.map((t: string, i: number) => `${i + 1}. ${t}`).join("\n")}` : "",
-      ].filter(Boolean).join("\n\n");
-    }).join("\n\n---\n\n");
-  };
-
-  const buildBulkHtml = (items: HistoryItem[]) => {
-    const solutionsHtml = items.map((item, idx) => {
-      const stepsHtml = item.steps?.map((s: SolutionStep) => `<div style="background:#f8f9fa;border-radius:10px;padding:12px;margin-bottom:8px;border-left:3px solid #4F46E5"><strong style="color:#4F46E5">Step ${s.stepNumber}: ${s.title}</strong>${s.expression ? `<div style="font-family:monospace;background:#4F46E510;padding:8px;border-radius:6px;margin:6px 0;color:#4F46E5">${s.expression}</div>` : ""}<p style="color:#333;margin:4px 0 0">${s.explanation}</p></div>`).join("") ?? "";
-      return `<div style="border:1px solid #e5e7eb;border-radius:14px;padding:18px;margin-bottom:20px"><div style="font-size:11px;color:#888;margin-bottom:4px">#${idx + 1} - ${getSubjectLabel(item.subject as any)}</div><h3 style="margin:0 0 10px;color:#1a1a1a;font-size:15px">${item.problem}</h3><div style="background:#4F46E510;border-radius:8px;padding:10px;margin-bottom:12px"><strong style="color:#4F46E5">Answer: </strong><span style="color:#1a1a1a">${item.answer}</span></div>${stepsHtml}</div>`;
-    }).join("");
-    return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;margin:0;padding:24px;color:#1a1a1a;background:#fff}h1{color:#4F46E5;font-size:22px;margin-bottom:4px}p.sub{color:#888;font-size:13px;margin:0 0 24px}</style></head><body><h1>My Bookmarked Solutions</h1><p class="sub">${items.length} solution${items.length !== 1 ? "s" : ""} exported from TutorSnap</p>${solutionsHtml}</body></html>`;
-  };
-
-  const handleExportMarkdown = async () => {
-    setShowExportMenu(false);
-    if (bookmarks.length === 0) { Alert.alert("No bookmarks", "Save some solutions first."); return; }
-    setExportLoading(true);
-    H.impactLight();
-    try {
-      const md = `# My Bookmarked Solutions\n\n${bookmarks.length} solution${bookmarks.length !== 1 ? "s" : ""} exported from TutorSnap\n\n---\n\n${buildBulkMarkdown(bookmarks)}`;
-      if (Platform.OS !== "web") {
-        const fileUri = `${FileSystem.cacheDirectory}bookmarks.md`;
-        await FileSystem.writeAsStringAsync(fileUri, md, { encoding: FileSystem.EncodingType.UTF8 });
-        const canShare = await Sharing.isAvailableAsync();
-        if (canShare) { await Sharing.shareAsync(fileUri, { mimeType: "text/markdown", dialogTitle: "Export Bookmarks as Markdown" }); }
-        else { Alert.alert("Not available", "Sharing is not available on this device."); }
-      } else {
-        await Clipboard.setStringAsync(md);
-        Alert.alert("Copied!", "All bookmarks copied as Markdown.");
-      }
-    } catch { Alert.alert("Error", "Could not export bookmarks."); }
-    finally { setExportLoading(false); }
-  };
-
-  const handleExportPdf = async () => {
-    setShowExportMenu(false);
-    if (bookmarks.length === 0) { Alert.alert("No bookmarks", "Save some solutions first."); return; }
-    setExportLoading(true);
-    H.impactLight();
-    try {
-      const html = buildBulkHtml(bookmarks);
-      const { uri } = await Print.printToFileAsync({ html, base64: false });
-      const destUri = `${FileSystem.cacheDirectory}bookmarks.pdf`;
-      await FileSystem.copyAsync({ from: uri, to: destUri });
-      const canShare = await Sharing.isAvailableAsync();
-      if (canShare) { await Sharing.shareAsync(destUri, { mimeType: "application/pdf", dialogTitle: "Export Bookmarks as PDF" }); }
-      else { Alert.alert("Not available", "Sharing is not available on this device."); }
-    } catch { Alert.alert("Error", "Could not generate PDF."); }
-    finally { setExportLoading(false); }
-  };
-
   return (
     <ScreenContainer>
       {/* Header */}
@@ -304,65 +238,15 @@ export default function BookmarksScreen() {
             {bookmarks.length} saved solution{bookmarks.length !== 1 ? "s" : ""}
           </Text>
         </View>
-        <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
-          <TouchableOpacity
-            accessibilityLabel="Export bookmarks"
-            onPress={() => { H.impactLight(); setShowExportMenu(true); }}
-            style={[styles.flashcardBtn, { backgroundColor: `${colors.success}15`, borderColor: `${colors.success}30` }]}
-            activeOpacity={0.7}
-            disabled={exportLoading}
-          >
-            {exportLoading
-              ? <ActivityIndicator size="small" color={colors.success} />
-              : <IconSymbol size={18} name="square.and.arrow.up" color={colors.success} />}
-          </TouchableOpacity>
-          <TouchableOpacity
-            accessibilityLabel="View flashcards"
-            onPress={() => router.push("/flashcards" as any)}
-            style={[styles.flashcardBtn, { backgroundColor: `${colors.primary}15`, borderColor: `${colors.primary}30` }]}
-            activeOpacity={0.7}
-          >
-            <Text style={{ fontSize: 16 }}>🃏</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-      {/* Export Menu Modal */}
-      {showExportMenu && (
         <TouchableOpacity
-          style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 99 }}
-          activeOpacity={1}
-          onPress={() => setShowExportMenu(false)}
+          accessibilityLabel="View flashcards"
+          onPress={() => router.push("/flashcards" as any)}
+          style={[styles.flashcardBtn, { backgroundColor: `${colors.primary}15`, borderColor: `${colors.primary}30` }]}
+          activeOpacity={0.7}
         >
-          <View style={[{ position: "absolute", top: 72, right: 16, backgroundColor: colors.surface, borderRadius: 14, borderWidth: 1, borderColor: colors.border, shadowColor: "#000", shadowOpacity: 0.12, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 8, minWidth: 220, zIndex: 100, overflow: "hidden" }]}>
-            <TouchableOpacity
-              onPress={handleExportMarkdown}
-              style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 14, borderBottomWidth: 0.5, borderBottomColor: colors.border }}
-              activeOpacity={0.7}
-            >
-              <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: `${colors.primary}15`, alignItems: "center", justifyContent: "center" }}>
-                <IconSymbol size={16} name="doc.text" color={colors.primary} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>Export as Markdown</Text>
-                <Text style={{ fontSize: 12, color: colors.muted }}>For Notion, Obsidian, Google Docs</Text>
-              </View>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={handleExportPdf}
-              style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 14 }}
-              activeOpacity={0.7}
-            >
-              <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: `${colors.error}15`, alignItems: "center", justifyContent: "center" }}>
-                <IconSymbol size={16} name="doc.richtext" color={colors.error} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>Export as PDF</Text>
-                <Text style={{ fontSize: 12, color: colors.muted }}>Save to Files app or Google Drive</Text>
-              </View>
-            </TouchableOpacity>
-          </View>
+          <Text style={{ fontSize: 16 }}>🃏</Text>
         </TouchableOpacity>
-      )}
+      </View>
 
       {bookmarks.length === 0 ? (
         <View style={styles.emptyState}>
