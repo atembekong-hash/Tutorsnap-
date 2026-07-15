@@ -81,22 +81,17 @@ export default function PaywallScreen() {
   // Load offerings on mount
   useEffect(() => {
     (async () => {
-      try {
-        const [pkgs, status] = await Promise.all([
-          getOfferings(),
-          getSubscriptionStatus(),
-        ]);
-        setIsDevMode(status.isDevMode);
-        const map: Record<string, OfferingInfo> = {};
-        for (const pkg of pkgs) {
-          map[pkg.productId] = pkg;
-        }
-        setOfferings(map);
-      } catch {
-        // Offerings load failure is non-critical; show empty state with fallback prices
-      } finally {
-        setOfferingsLoaded(true);
+      const [pkgs, status] = await Promise.all([
+        getOfferings(),
+        getSubscriptionStatus(),
+      ]);
+      setIsDevMode(status.isDevMode);
+      const map: Record<string, OfferingInfo> = {};
+      for (const pkg of pkgs) {
+        map[pkg.productId] = pkg;
       }
+      setOfferings(map);
+      setOfferingsLoaded(true);
     })();
   }, []);
 
