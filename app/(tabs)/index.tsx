@@ -353,22 +353,22 @@ function TodayRow({
 }
 
 const trStyles = StyleSheet.create({
-  container: { marginTop: 16 },
+  container: { marginTop: 8 },
   row: { paddingHorizontal: 16, gap: 10, paddingBottom: 4 },
   card: {
     width: 130, // overridden at runtime via widgetWidth from AppearanceContext
-    borderRadius: 16,
+    borderRadius: 12,
     borderWidth: 1.5,
-    padding: 14,
-    gap: 4,
+    padding: 8,   // was 14 — reduced ~50%
+    gap: 2,       // was 4
   },
-  cardEmoji: { fontSize: 24 },
-  cardTitle: { fontSize: 13, fontWeight: "700", marginTop: 4 },
-  cardSub: { fontSize: 11, lineHeight: 15 },
-  cardBadge: { marginTop: 6, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 4, alignSelf: "flex-start" },
-  cardBadgeText: { fontSize: 11, fontWeight: "700" },
-  progressBar: { height: 4, borderRadius: 2, marginTop: 6, overflow: "hidden" },
-  progressFill: { height: 4, borderRadius: 2 },
+  cardEmoji: { fontSize: 16 },           // was 24
+  cardTitle: { fontSize: 11, fontWeight: "700", marginTop: 2 }, // was 13, marginTop 4
+  cardSub: { fontSize: 10, lineHeight: 13 },                    // was 11, lineHeight 15
+  cardBadge: { marginTop: 3, borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2, alignSelf: "flex-start" }, // was marginTop 6, paddingVertical 4
+  cardBadgeText: { fontSize: 10, fontWeight: "700" },           // was 11
+  progressBar: { height: 3, borderRadius: 2, marginTop: 3, overflow: "hidden" }, // was height 4, marginTop 6
+  progressFill: { height: 3, borderRadius: 2 },                 // was 4
 });
 
 
