@@ -7,7 +7,7 @@
  *
  * Features:
  * - Full Markdown rendering (CommonMark + GitHub Flavored Markdown)
- * - LaTeX math rendering (inline $...$ and block $$...$$) — rendered as styled text
+ * - LaTeX math rendering (inline $...$ and block $$...$$) via KaTeX WebView
  * - Theme-aware styling (light/dark mode)
  * - Graceful fallback for malformed content
  * - Passes through the centralized sanitization pipeline automatically
@@ -21,6 +21,7 @@
 import React, { useMemo, useCallback } from 'react';
 import { View, Text, StyleSheet, Linking } from 'react-native';
 import Markdown from 'react-native-markdown-display';
+import { MathRenderer } from '@/components/math-renderer';
 import { processAIResponse } from '@/lib/ai-response-pipeline';
 import { useColors } from '@/hooks/use-colors';
 
@@ -49,6 +50,45 @@ export interface AIResponseRendererProps {
    * Default: true for complete responses, false for streaming chunks.
    */
   stripPreamble?: boolean;
+}
+
+// Segment types for splitting content into markdown and math parts
+type Segment =
+  | { type: 'markdown'; content: string }
+  | { type: 'math-block'; latex: string }
+  | { type: 'math-inline'; latex: string };
+
+/**
+ * Split a markdown string into alternating markdown and math segments.
+ * Block math ($$...$$) and inline math ($...$) are extracted as separate segments.
+ */
+function splitIntoSegments(text: string): Segment[] {
+  const segments: Segment[] = [];
+  // Match $$...$$ (block) first, then $...$ (inline)
+  const mathPattern = /(\$\$[\s\S]*?\$\$|\$[^\n$]+?\$)/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = mathPattern.exec(text)) !== null) {
+    const before = text.slice(lastIndex, match.index);
+    if (before) {
+      segments.push({ type: 'markdown', content: before });
+    }
+    const raw = match[0];
+    if (raw.startsWith('$$')) {
+      segments.push({ type: 'math-block', latex: raw.slice(2, -2).trim() });
+    } else {
+      segments.push({ type: 'math-inline', latex: raw.slice(1, -1).trim() });
+    }
+    lastIndex = match.index + raw.length;
+  }
+
+  const remaining = text.slice(lastIndex);
+  if (remaining) {
+    segments.push({ type: 'markdown', content: remaining });
+  }
+
+  return segments.length > 0 ? segments : [{ type: 'markdown', content: text }];
 }
 
 /**
@@ -266,6 +306,15 @@ export function AIResponseRenderer({
     [markdown, stripPreamble],
   );
 
+  // Split content into markdown and math segments
+  const segments = useMemo(() => splitIntoSegments(cleanMarkdown), [cleanMarkdown]);
+
+  // Check if there are any math segments
+  const hasMath = useMemo(
+    () => segments.some((s) => s.type === 'math-block' || s.type === 'math-inline'),
+    [segments],
+  );
+
   // Build theme-aware markdown styles
   const markdownStyles = useMemo(
     () => buildMarkdownStyles(colors, fontSize, textColor, codeBackground),
@@ -288,28 +337,73 @@ export function AIResponseRenderer({
     return null;
   }
 
-  try {
-    return (
-      <View style={[styles.container, containerStyle]}>
-        <Markdown
-          style={markdownStyles}
-          onLinkPress={handleLinkPress}
-        >
-          {cleanMarkdown}
-        </Markdown>
-      </View>
-    );
-  } catch {
-    return (
-      <View style={[styles.container, containerStyle]}>
-        <FallbackRenderer
-          text={cleanMarkdown}
-          fontSize={fontSize}
-          color={textColor}
-        />
-      </View>
-    );
+  // If no math, render as plain markdown for performance
+  if (!hasMath) {
+    try {
+      return (
+        <View style={[styles.container, containerStyle]}>
+          <Markdown style={markdownStyles} onLinkPress={handleLinkPress}>
+            {cleanMarkdown}
+          </Markdown>
+        </View>
+      );
+    } catch {
+      return (
+        <View style={[styles.container, containerStyle]}>
+          <FallbackRenderer text={cleanMarkdown} fontSize={fontSize} color={textColor} />
+        </View>
+      );
+    }
   }
+
+  // Render segments: markdown parts via Markdown, math via MathRenderer
+  return (
+    <View style={[styles.container, containerStyle]}>
+      {segments.map((segment, index) => {
+        if (segment.type === 'math-block') {
+          return (
+            <MathRenderer
+              key={index}
+              latex={segment.latex}
+              display
+              fontSize={fontSize}
+              color={textColor}
+            />
+          );
+        }
+        if (segment.type === 'math-inline') {
+          return (
+            <View key={index} style={styles.inlineMathWrapper}>
+              <MathRenderer
+                latex={segment.latex}
+                display={false}
+                fontSize={fontSize - 1}
+                color={textColor}
+              />
+            </View>
+          );
+        }
+        // markdown segment
+        if (!segment.content.trim()) return null;
+        try {
+          return (
+            <Markdown key={index} style={markdownStyles} onLinkPress={handleLinkPress}>
+              {segment.content}
+            </Markdown>
+          );
+        } catch {
+          return (
+            <FallbackRenderer
+              key={index}
+              text={segment.content}
+              fontSize={fontSize}
+              color={textColor}
+            />
+          );
+        }
+      })}
+    </View>
+  );
 }
 
 /**
@@ -348,5 +442,9 @@ export class AIResponseErrorBoundary extends React.Component<
 const styles = StyleSheet.create({
   container: {
     flex: 0,
+  },
+  inlineMathWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 });
