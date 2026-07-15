@@ -7,8 +7,7 @@
  *
  * Features:
  * - Full Markdown rendering (CommonMark + GitHub Flavored Markdown)
- * - LaTeX math rendering (inline $...$ and block $$...$$) via KaTeX
- * - Streaming support with fade-in animation
+ * - LaTeX math rendering (inline $...$ and block $$...$$) via KaTeX WebView
  * - Theme-aware styling (light/dark mode)
  * - Graceful fallback for malformed content
  * - Passes through the centralized sanitization pipeline automatically
@@ -21,8 +20,8 @@
 
 import React, { useMemo, useCallback } from 'react';
 import { View, Text, StyleSheet, Linking } from 'react-native';
-import { EnrichedMarkdownText } from 'react-native-enriched-markdown';
-import type { MarkdownStyle } from 'react-native-enriched-markdown';
+import Markdown from 'react-native-markdown-display';
+import { MathRenderer } from '@/components/math-renderer';
 import { processAIResponse } from '@/lib/ai-response-pipeline';
 import { useColors } from '@/hooks/use-colors';
 
@@ -53,96 +52,151 @@ export interface AIResponseRendererProps {
   stripPreamble?: boolean;
 }
 
+// Segment types for splitting content into markdown and math parts
+type Segment =
+  | { type: 'markdown'; content: string }
+  | { type: 'math-block'; latex: string }
+  | { type: 'math-inline'; latex: string };
+
 /**
- * Build the MarkdownStyle object from the current theme colors and font size.
+ * Split a markdown string into alternating markdown and math segments.
+ * Block math ($$...$$) and inline math ($...$) are extracted as separate segments.
  */
-function buildMarkdownStyle(
+function splitIntoSegments(text: string): Segment[] {
+  const segments: Segment[] = [];
+  // Match $$...$$ (block) first, then $...$ (inline)
+  const mathPattern = /(\$\$[\s\S]*?\$\$|\$[^\n$]+?\$)/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = mathPattern.exec(text)) !== null) {
+    const before = text.slice(lastIndex, match.index);
+    if (before) {
+      segments.push({ type: 'markdown', content: before });
+    }
+    const raw = match[0];
+    if (raw.startsWith('$$')) {
+      segments.push({ type: 'math-block', latex: raw.slice(2, -2).trim() });
+    } else {
+      segments.push({ type: 'math-inline', latex: raw.slice(1, -1).trim() });
+    }
+    lastIndex = match.index + raw.length;
+  }
+
+  const remaining = text.slice(lastIndex);
+  if (remaining) {
+    segments.push({ type: 'markdown', content: remaining });
+  }
+
+  return segments.length > 0 ? segments : [{ type: 'markdown', content: text }];
+}
+
+/**
+ * Build the markdown styles object from the current theme colors and font size.
+ */
+function buildMarkdownStyles(
   colors: ReturnType<typeof useColors>,
   fontSize: number,
-): MarkdownStyle {
-  const fg = colors.foreground;
-  const muted = colors.muted;
+  textColor: string,
+  codeBackground?: string,
+) {
   const primary = colors.primary;
-  const surface = colors.surface;
+  const surface = codeBackground ?? colors.surface;
   const border = colors.border;
+  const muted = colors.muted;
   const lh = fontSize * 1.55;
 
   return {
+    body: {
+      fontSize,
+      color: textColor,
+      lineHeight: lh,
+    },
     paragraph: {
       fontSize,
-      color: fg,
+      color: textColor,
       lineHeight: lh,
       marginBottom: 8,
+      marginTop: 0,
     },
-    h1: {
+    heading1: {
       fontSize: fontSize * 1.6,
-      fontWeight: '800',
-      color: fg,
+      fontWeight: '800' as const,
+      color: textColor,
       marginTop: 16,
       marginBottom: 8,
       lineHeight: fontSize * 1.6 * 1.3,
     },
-    h2: {
+    heading2: {
       fontSize: fontSize * 1.35,
-      fontWeight: '700',
-      color: fg,
+      fontWeight: '700' as const,
+      color: textColor,
       marginTop: 14,
       marginBottom: 6,
       lineHeight: fontSize * 1.35 * 1.3,
     },
-    h3: {
+    heading3: {
       fontSize: fontSize * 1.15,
-      fontWeight: '700',
-      color: fg,
+      fontWeight: '700' as const,
+      color: textColor,
       marginTop: 12,
       marginBottom: 4,
       lineHeight: fontSize * 1.15 * 1.3,
     },
-    h4: {
+    heading4: {
       fontSize: fontSize * 1.05,
-      fontWeight: '600',
-      color: fg,
+      fontWeight: '600' as const,
+      color: textColor,
       marginTop: 10,
       marginBottom: 4,
-      lineHeight: fontSize * 1.05 * 1.3,
     },
-    h5: {
+    heading5: {
       fontSize,
-      fontWeight: '600',
-      color: fg,
+      fontWeight: '600' as const,
+      color: textColor,
       marginTop: 8,
       marginBottom: 2,
-      lineHeight: lh,
     },
-    h6: {
+    heading6: {
       fontSize: fontSize * 0.9,
-      fontWeight: '600',
+      fontWeight: '600' as const,
       color: muted,
       marginTop: 8,
       marginBottom: 2,
-      lineHeight: fontSize * 0.9 * 1.4,
     },
     blockquote: {
       fontSize,
       color: muted,
       lineHeight: lh,
-      borderColor: primary,
-      borderWidth: 3,
+      borderLeftColor: primary,
+      borderLeftWidth: 3,
       backgroundColor: `${primary}10`,
+      paddingLeft: 12,
       marginTop: 8,
       marginBottom: 8,
     },
-    list: {
-      fontSize,
-      color: fg,
-      lineHeight: lh,
-      bulletColor: primary,
-      markerColor: primary,
+    bullet_list: {
       marginBottom: 4,
     },
-    codeBlock: {
+    ordered_list: {
+      marginBottom: 4,
+    },
+    list_item: {
+      fontSize,
+      color: textColor,
+      lineHeight: lh,
+    },
+    bullet_list_icon: {
+      color: primary,
+      fontSize,
+    },
+    ordered_list_icon: {
+      color: primary,
+      fontSize,
+    },
+    fence: {
       fontSize: fontSize * 0.88,
-      color: fg,
+      color: textColor,
       backgroundColor: surface,
       borderColor: border,
       borderRadius: 8,
@@ -151,56 +205,58 @@ function buildMarkdownStyle(
       marginTop: 8,
       marginBottom: 8,
     },
-    code: {
+    code_inline: {
       fontSize: fontSize * 0.88,
       color: primary,
       backgroundColor: `${primary}12`,
+      borderRadius: 4,
+      paddingHorizontal: 4,
     },
     link: {
       color: primary,
-      underline: true,
+      textDecorationLine: 'underline' as const,
     },
     strong: {
-      fontWeight: 'bold',
-      color: fg,
+      fontWeight: 'bold' as const,
+      color: textColor,
     },
     em: {
-      fontStyle: 'italic',
-      color: fg,
+      fontStyle: 'italic' as const,
+      color: textColor,
     },
-    strikethrough: {},
-    thematicBreak: {
+    s: {
+      textDecorationLine: 'line-through' as const,
+    },
+    hr: {
       marginTop: 12,
       marginBottom: 12,
+      borderColor: border,
     },
     table: {
       fontSize,
-      color: fg,
+      color: textColor,
       marginTop: 8,
       marginBottom: 8,
-    },
-    taskList: {
-      // TaskListStyle only supports checkbox-specific props
-      checkedColor: primary,
       borderColor: border,
-      checkmarkColor: '#FFFFFF',
     },
-    math: {
-      // Block math ($$...$$)
-      fontSize: fontSize * 1.05,
-      color: fg,
-      marginTop: 12,
-      marginBottom: 12,
+    th: {
+      fontWeight: '700' as const,
+      backgroundColor: surface,
+      padding: 6,
+      borderColor: border,
     },
-    inlineMath: {
-      // Inline math ($...$) — InlineMathStyle only supports color
-      color: fg,
+    td: {
+      padding: 6,
+      borderColor: border,
+    },
+    tr: {
+      borderColor: border,
     },
   };
 }
 
 /**
- * Fallback renderer for when EnrichedMarkdownText fails or is unavailable.
+ * Fallback renderer for when Markdown rendering fails or is unavailable.
  * Renders plain text with basic formatting stripped.
  */
 function FallbackRenderer({
@@ -212,7 +268,6 @@ function FallbackRenderer({
   fontSize: number;
   color: string;
 }) {
-  // Strip remaining Markdown/LaTeX syntax for plain text fallback
   const plain = text
     .replace(/#{1,6}\s+/g, '')
     .replace(/\*\*([^*]+)\*\*/g, '$1')
@@ -251,48 +306,29 @@ export function AIResponseRenderer({
     [markdown, stripPreamble],
   );
 
-  // Build theme-aware MarkdownStyle
-  const markdownStyle = useMemo(
-    () => buildMarkdownStyle(colors, fontSize),
-    [colors, fontSize],
+  // Split content into markdown and math segments
+  const segments = useMemo(() => splitIntoSegments(cleanMarkdown), [cleanMarkdown]);
+
+  // Check if there are any math segments
+  const hasMath = useMemo(
+    () => segments.some((s) => s.type === 'math-block' || s.type === 'math-inline'),
+    [segments],
   );
 
-  // Override text color if provided
-  const finalStyle = useMemo((): MarkdownStyle => {
-    if (color && color !== colors.foreground) {
-      return {
-        ...markdownStyle,
-        paragraph: { ...markdownStyle.paragraph, color },
-        h1: { ...markdownStyle.h1, color },
-        h2: { ...markdownStyle.h2, color },
-        h3: { ...markdownStyle.h3, color },
-        h4: { ...markdownStyle.h4, color },
-        h5: { ...markdownStyle.h5, color },
-        h6: { ...markdownStyle.h6, color },
-        list: { ...markdownStyle.list, color },
-        strong: { ...markdownStyle.strong, color },
-        em: { ...markdownStyle.em, color },
-        math: { ...markdownStyle.math, color },
-        inlineMath: { color },
-      };
-    }
-    if (codeBackground) {
-      return {
-        ...markdownStyle,
-        codeBlock: { ...markdownStyle.codeBlock, backgroundColor: codeBackground },
-      };
-    }
-    return markdownStyle;
-  }, [markdownStyle, color, codeBackground, colors.foreground]);
+  // Build theme-aware markdown styles
+  const markdownStyles = useMemo(
+    () => buildMarkdownStyles(colors, fontSize, textColor, codeBackground),
+    [colors, fontSize, textColor, codeBackground],
+  );
 
   const handleLinkPress = useCallback(
-    (event: { url: string }) => {
-      const url = event.url;
+    (url: string) => {
       if (onLinkPress) {
         onLinkPress(url);
       } else {
         Linking.openURL(url).catch(() => {});
       }
+      return true;
     },
     [onLinkPress],
   );
@@ -301,32 +337,73 @@ export function AIResponseRenderer({
     return null;
   }
 
-  // Graceful fallback: if EnrichedMarkdownText is unavailable (e.g. Expo Go),
-  // catch the error and render plain text.
-  try {
-    return (
-      <View style={[styles.container, containerStyle]}>
-        <EnrichedMarkdownText
-          markdown={cleanMarkdown}
-          markdownStyle={finalStyle}
-          flavor={flavor}
-          streamingAnimation={streaming}
-          md4cFlags={{ latexMath: true }}
-          onLinkPress={handleLinkPress}
-        />
-      </View>
-    );
-  } catch {
-    return (
-      <View style={[styles.container, containerStyle]}>
-        <FallbackRenderer
-          text={cleanMarkdown}
-          fontSize={fontSize}
-          color={textColor}
-        />
-      </View>
-    );
+  // If no math, render as plain markdown for performance
+  if (!hasMath) {
+    try {
+      return (
+        <View style={[styles.container, containerStyle]}>
+          <Markdown style={markdownStyles} onLinkPress={handleLinkPress}>
+            {cleanMarkdown}
+          </Markdown>
+        </View>
+      );
+    } catch {
+      return (
+        <View style={[styles.container, containerStyle]}>
+          <FallbackRenderer text={cleanMarkdown} fontSize={fontSize} color={textColor} />
+        </View>
+      );
+    }
   }
+
+  // Render segments: markdown parts via Markdown, math via MathRenderer
+  return (
+    <View style={[styles.container, containerStyle]}>
+      {segments.map((segment, index) => {
+        if (segment.type === 'math-block') {
+          return (
+            <MathRenderer
+              key={index}
+              latex={segment.latex}
+              display
+              fontSize={fontSize}
+              color={textColor}
+            />
+          );
+        }
+        if (segment.type === 'math-inline') {
+          return (
+            <View key={index} style={styles.inlineMathWrapper}>
+              <MathRenderer
+                latex={segment.latex}
+                display={false}
+                fontSize={fontSize - 1}
+                color={textColor}
+              />
+            </View>
+          );
+        }
+        // markdown segment
+        if (!segment.content.trim()) return null;
+        try {
+          return (
+            <Markdown key={index} style={markdownStyles} onLinkPress={handleLinkPress}>
+              {segment.content}
+            </Markdown>
+          );
+        } catch {
+          return (
+            <FallbackRenderer
+              key={index}
+              text={segment.content}
+              fontSize={fontSize}
+              color={textColor}
+            />
+          );
+        }
+      })}
+    </View>
+  );
 }
 
 /**
@@ -365,5 +442,9 @@ export class AIResponseErrorBoundary extends React.Component<
 const styles = StyleSheet.create({
   container: {
     flex: 0,
+  },
+  inlineMathWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 });

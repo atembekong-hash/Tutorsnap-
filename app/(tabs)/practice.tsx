@@ -19,6 +19,10 @@ import type { PracticeQuestion, Difficulty } from "@/shared/types";
 import { SubjectPicker } from "@/components/subject-picker";
 import { type SubjectId, getSubjectColor, getSubjectLabel , type SubjectCategory } from "@/lib/subjects";
 import { loadQuizStats, getAdaptiveDifficultySuggestion, type QuizStats, type DifficultyUpSuggestion } from "@/lib/quiz-history";
+import { getProgress, type ProgressData } from "@/lib/progress";
+import { getWeeklyData, type WeeklyData } from "@/lib/weekly-goals";
+import { getCheatSheet, hasCheatSheet } from "@/lib/cheat-sheets";
+import * as Clipboard from "expo-clipboard";
 import { useNetworkStatus } from "@/hooks/use-network-status";
 import { getSubjectDifficulty, setSubjectDifficulty } from "@/lib/subject-difficulty";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -118,11 +122,17 @@ function PracticeScreenContent() {
   const [quizStats, setQuizStats] = useState<QuizStats | null>(null);
   const [diffSuggestion, setDiffSuggestion] = useState<DifficultyUpSuggestion | null>(null);
   const [suggestionDismissed, setSuggestionDismissed] = useState(false);
+  const [progressData, setProgressData] = useState<ProgressData | null>(null);
+  const [weeklyData, setWeeklyData] = useState<WeeklyData | null>(null);
+  const [cheatSheetExpanded, setCheatSheetExpanded] = useState(false);
+  const [copiedFormula, setCopiedFormula] = useState<string | null>(null);
   const { isOnline } = useNetworkStatus();
 
   useFocusEffect(
     useCallback(() => {
       loadQuizStats().then(setQuizStats);
+      getProgress().then(setProgressData);
+      getWeeklyData().then(setWeeklyData);
       setSuggestionDismissed(false);
     }, [])
   );
@@ -302,6 +312,181 @@ function PracticeScreenContent() {
             <Text style={styles.startQuizBtnText}>Start {quizCount}-Question Quiz</Text>
           </TouchableOpacity>
         </View>
+
+        {/* ── Progress Snapshot Widget ── */}
+        {progressData && (
+          <View style={[pStyles.widgetCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={pStyles.widgetHeader}>
+              <View style={pStyles.widgetTitleRow}>
+                <Text style={{ fontSize: 16 }}>🔥</Text>
+                <Text style={[pStyles.widgetTitle, { color: colors.foreground }]}>Your Progress</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => router.push("/progress" as any)}
+                style={[pStyles.widgetLink, { borderColor: colors.primary }]}
+                activeOpacity={0.7}
+              >
+                <Text style={[pStyles.widgetLinkText, { color: colors.primary }]}>Full Stats</Text>
+                <IconSymbol size={12} name="chevron.right" color={colors.primary} />
+              </TouchableOpacity>
+            </View>
+            <View style={pStyles.progressStatRow}>
+              <View style={pStyles.progressStat}>
+                <Text style={[pStyles.progressStatValue, { color: colors.primary }]}>{progressData.streak.currentStreak}</Text>
+                <Text style={[pStyles.progressStatLabel, { color: colors.muted }]}>Day Streak</Text>
+              </View>
+              <View style={[pStyles.progressStatDivider, { backgroundColor: colors.border }]} />
+              <View style={pStyles.progressStat}>
+                <Text style={[pStyles.progressStatValue, { color: colors.success }]}>{progressData.streak.totalSolved}</Text>
+                <Text style={[pStyles.progressStatLabel, { color: colors.muted }]}>Total Solved</Text>
+              </View>
+              <View style={[pStyles.progressStatDivider, { backgroundColor: colors.border }]} />
+              <View style={pStyles.progressStat}>
+                <Text style={[pStyles.progressStatValue, { color: colors.warning }]}>{progressData.streak.todaySolved}/{progressData.streak.dailyGoal}</Text>
+                <Text style={[pStyles.progressStatLabel, { color: colors.muted }]}>Today's Goal</Text>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* ── Weekly Activity Bar Chart Widget ── */}
+        {weeklyData && (
+          <View style={[pStyles.widgetCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={pStyles.widgetHeader}>
+              <View style={pStyles.widgetTitleRow}>
+                <Text style={{ fontSize: 16 }}>📅</Text>
+                <Text style={[pStyles.widgetTitle, { color: colors.foreground }]}>This Week</Text>
+              </View>
+              <Text style={[pStyles.weeklyGoalBadge, { color: colors.muted }]}>
+                {weeklyData.quizzesThisWeek}/{weeklyData.weeklyGoal} quizzes
+              </Text>
+            </View>
+            <View style={pStyles.weeklyBarRow}>
+              {weeklyData.days.map((day, i) => {
+                const maxQ = Math.max(...weeklyData.days.map((d) => d.quizzes), 1);
+                const fillPct = day.quizzes / maxQ;
+                return (
+                  <View key={i} style={pStyles.weeklyBarCol}>
+                    <View style={pStyles.weeklyBarTrack}>
+                      <View
+                        style={[
+                          pStyles.weeklyBarFill,
+                          {
+                            height: `${Math.max(fillPct * 100, day.quizzes > 0 ? 12 : 0)}%`,
+                            backgroundColor: day.isToday ? colors.primary : day.quizzes > 0 ? `${colors.primary}60` : colors.border,
+                          },
+                        ]}
+                      />
+                    </View>
+                    <Text style={[pStyles.weeklyBarLabel, { color: day.isToday ? colors.primary : colors.muted, fontWeight: day.isToday ? "700" : "400" }]}>
+                      {day.label.slice(0, 1)}
+                    </Text>
+                    {day.quizzes > 0 && (
+                      <Text style={[pStyles.weeklyBarCount, { color: colors.primary }]}>{day.quizzes}</Text>
+                    )}
+                  </View>
+                );
+              })}
+            </View>
+            {/* Weekly goal progress bar */}
+            <View style={pStyles.weeklyGoalBar}>
+              <View style={[pStyles.weeklyGoalTrack, { backgroundColor: colors.border }]}>
+                <View style={[pStyles.weeklyGoalFill, { width: `${Math.min(weeklyData.goalPct, 100)}%`, backgroundColor: weeklyData.goalPct >= 100 ? colors.success : colors.primary }]} />
+              </View>
+              <Text style={[pStyles.weeklyGoalPct, { color: weeklyData.goalPct >= 100 ? colors.success : colors.muted }]}>
+                {weeklyData.goalPct >= 100 ? "Goal reached!" : `${Math.round(weeklyData.goalPct)}% of weekly goal`}
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* ── Quick Links Row ── */}
+        <View style={pStyles.quickLinksRow}>
+          {[
+            { icon: "clock.fill" as const, label: "Quiz History", route: "/quiz-history" },
+            { icon: "bookmark.fill" as const, label: "Bookmarks", route: "/bookmarks" },
+            { icon: "rectangle.stack.fill" as const, label: "Flashcards", route: "/flashcards" },
+            { icon: "chart.xyaxis.line" as const, label: "Progress", route: "/progress" },
+          ].map((item) => (
+            <TouchableOpacity
+              key={item.route}
+              onPress={() => router.push(item.route as any)}
+              style={[pStyles.quickLinkCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+              activeOpacity={0.75}
+            >
+              <IconSymbol size={22} name={item.icon} color={colors.primary} />
+              <Text style={[pStyles.quickLinkLabel, { color: colors.foreground }]}>{item.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* ── Subject Cheat Sheet Widget ── */}
+        {hasCheatSheet(selectedSubject) && (() => {
+          const sheet = getCheatSheet(selectedSubject);
+          if (!sheet) return null;
+          const preview = sheet.sections[0]?.items.slice(0, 3) ?? [];
+          return (
+            <View style={[pStyles.widgetCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <TouchableOpacity
+                onPress={() => { setCheatSheetExpanded((v) => !v); H.impactLight(); }}
+                style={pStyles.widgetHeader}
+                activeOpacity={0.8}
+              >
+                <View style={pStyles.widgetTitleRow}>
+                  <Text style={{ fontSize: 16 }}>📐</Text>
+                  <Text style={[pStyles.widgetTitle, { color: colors.foreground }]}>{sheet.title} Cheat Sheet</Text>
+                </View>
+                <IconSymbol size={16} name={cheatSheetExpanded ? "chevron.up" : "chevron.down"} color={colors.muted} />
+              </TouchableOpacity>
+              {(cheatSheetExpanded ? sheet.sections[0]?.items ?? [] : preview).map((item, i) => (
+                <View key={i} style={[pStyles.formulaRow, { borderTopColor: colors.border }]}>
+                  <View style={pStyles.formulaInfo}>
+                    <Text style={[pStyles.formulaLabel, { color: colors.foreground }]}>{item.label}</Text>
+                    <Text style={[pStyles.formulaValue, { color: colors.primary }]}>{item.formula}</Text>
+                    {item.note && <Text style={[pStyles.formulaNote, { color: colors.muted }]}>{item.note}</Text>}
+                  </View>
+                  <TouchableOpacity
+                    onPress={async () => {
+                      await Clipboard.setStringAsync(item.formula);
+                      setCopiedFormula(item.formula);
+                      setTimeout(() => setCopiedFormula(null), 1800);
+                      H.impactLight();
+                    }}
+                    style={pStyles.formulaCopyBtn}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <IconSymbol size={14} name={copiedFormula === item.formula ? "checkmark.circle.fill" : "doc.on.doc.fill"} color={copiedFormula === item.formula ? colors.success : colors.muted} />
+                  </TouchableOpacity>
+                </View>
+              ))}
+              {!cheatSheetExpanded && sheet.sections[0] && sheet.sections[0].items.length > 3 && (
+                <TouchableOpacity onPress={() => setCheatSheetExpanded(true)} style={pStyles.showMoreBtn} activeOpacity={0.7}>
+                  <Text style={[pStyles.showMoreText, { color: colors.primary }]}>Show all {sheet.sections[0].items.length} formulas</Text>
+                </TouchableOpacity>
+              )}
+              {cheatSheetExpanded && (
+                <TouchableOpacity
+                  onPress={async () => {
+                    const allFormulas = (sheet.sections[0]?.items ?? [])
+                      .map((item) => `${item.label}: ${item.formula}${item.note ? ` (${item.note})` : ""}`)
+                      .join("\n");
+                    await Clipboard.setStringAsync(`${sheet.title} Formulas:\n${allFormulas}`);
+                    setCopiedFormula("__all__");
+                    setTimeout(() => setCopiedFormula(null), 2000);
+                    H.notificationSuccess();
+                  }}
+                  style={[pStyles.copyAllBtn, { borderTopColor: colors.border, backgroundColor: `${colors.primary}10` }]}
+                  activeOpacity={0.75}
+                >
+                  <IconSymbol size={15} name={copiedFormula === "__all__" ? "checkmark.circle.fill" : "doc.on.doc.fill"} color={copiedFormula === "__all__" ? colors.success : colors.primary} />
+                  <Text style={[pStyles.copyAllText, { color: copiedFormula === "__all__" ? colors.success : colors.primary }]}>
+                    {copiedFormula === "__all__" ? "All formulas copied!" : `Copy all ${sheet.sections[0]?.items.length ?? 0} formulas`}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          );
+        })()}
 
         {/* Quiz Stats Card */}
         {quizStats && quizStats.totalQuizzes > 0 && (
@@ -747,4 +932,80 @@ const styles = StyleSheet.create({
   },
   gradeCellLabel: { fontSize: 13, fontWeight: "700", textAlign: "center" },
   gradeCellSub: { fontSize: 10, textAlign: "center" },
+});
+
+const pStyles = StyleSheet.create({
+  widgetCard: {
+    marginHorizontal: 16,
+    marginTop: 24,
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 16,
+  },
+  widgetHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 14,
+  },
+  widgetTitleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  widgetTitle: { fontSize: 15, fontWeight: "700" },
+  widgetLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  widgetLinkText: { fontSize: 12, fontWeight: "600" },
+  progressStatRow: { flexDirection: "row", alignItems: "center" },
+  progressStat: { flex: 1, alignItems: "center", gap: 4 },
+  progressStatDivider: { width: 1, height: 36 },
+  progressStatValue: { fontSize: 24, fontWeight: "800" },
+  progressStatLabel: { fontSize: 12, textAlign: "center" },
+  weeklyGoalBadge: { fontSize: 12, fontWeight: "600" },
+  weeklyBarRow: { flexDirection: "row", alignItems: "flex-end", gap: 6, height: 60, marginBottom: 12 },
+  weeklyBarCol: { flex: 1, alignItems: "center", gap: 4 },
+  weeklyBarTrack: { flex: 1, width: "100%", justifyContent: "flex-end", borderRadius: 4, overflow: "hidden" },
+  weeklyBarFill: { width: "100%", borderRadius: 4, minHeight: 0 },
+  weeklyBarLabel: { fontSize: 11 },
+  weeklyBarCount: { fontSize: 10, fontWeight: "700" },
+  weeklyGoalBar: { gap: 6 },
+  weeklyGoalTrack: { height: 6, borderRadius: 3, overflow: "hidden" },
+  weeklyGoalFill: { height: "100%", borderRadius: 3 },
+  weeklyGoalPct: { fontSize: 12, fontWeight: "600" },
+  quickLinksRow: {
+    marginHorizontal: 16,
+    marginTop: 24,
+    flexDirection: "row",
+    gap: 10,
+  },
+  quickLinkCard: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    gap: 6,
+  },
+  quickLinkLabel: { fontSize: 11, fontWeight: "600", textAlign: "center" },
+  formulaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    gap: 8,
+  },
+  formulaInfo: { flex: 1 },
+  formulaLabel: { fontSize: 13, fontWeight: "600", marginBottom: 2 },
+  formulaValue: { fontSize: 14, fontWeight: "700", fontFamily: Platform.OS === "ios" ? "Courier" : "monospace" },
+  formulaNote: { fontSize: 11, marginTop: 2 },
+  formulaCopyBtn: { padding: 4 },
+  showMoreBtn: { paddingTop: 10, alignItems: "center" },
+  showMoreText: { fontSize: 13, fontWeight: "600" },
+  copyAllBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 10, paddingVertical: 10, borderTopWidth: 1, borderRadius: 8 },
+  copyAllText: { fontSize: 13, fontWeight: "600" },
 });

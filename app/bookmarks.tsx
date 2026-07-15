@@ -1,4 +1,8 @@
 import React, { useState, useCallback, useMemo } from "react";
+import * as Print from "expo-print";
+import * as Sharing from "expo-sharing";
+import * as FileSystem from "expo-file-system/legacy";
+import * as Clipboard from "expo-clipboard";
 import {
   View,
   Text,
@@ -9,6 +13,7 @@ import {
   Platform,
   TextInput,
   ScrollView,
+  ActivityIndicator,
 } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import Swipeable from "react-native-gesture-handler/Swipeable";
@@ -17,7 +22,17 @@ import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { getBookmarks, removeBookmark } from "@/lib/bookmarks";
-import type { HistoryItem } from "@/shared/types";
+import {
+  getFolders,
+  createFolder,
+  deleteFolder,
+  renameFolder,
+  addToFolder,
+  removeFromFolder,
+  getFolderItems,
+  type BookmarkFolder,
+} from "@/lib/bookmark-folders";
+import type { HistoryItem, SolutionStep } from "@/shared/types";
 import { getSubjectColor, getSubjectLabel, getSubjectEmoji } from "@/lib/subjects";
 import { GRADE_LABELS } from "@/lib/grade-levels";
 
@@ -38,6 +53,15 @@ export default function BookmarksScreen() {
   const [activeSubject, setActiveSubject] = useState<string>("all");
   const [sortKey, setSortKey] = useState<SortKey>("newest");
   const [showSortMenu, setShowSortMenu] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  // Folder state
+  const [folders, setFolders] = useState<BookmarkFolder[]>([]);
+  const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
+  const [folderItems, setFolderItems] = useState<string[]>([]);
+  const [showFolderModal, setShowFolderModal] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [showAddToFolderMenu, setShowAddToFolderMenu] = useState<string | null>(null); // bookmarkId
 
   const loadBookmarks = async () => {
     try {
@@ -48,9 +72,54 @@ export default function BookmarksScreen() {
     }
   };
 
+  const loadFolders = async () => {
+    try {
+      const f = await getFolders();
+      setFolders(f);
+    } catch {
+      // Non-critical — folder load failure shows empty folder list
+    }
+  };
+
+  const handleCreateFolder = async () => {
+    if (!newFolderName.trim()) return;
+    await createFolder(newFolderName.trim());
+    setNewFolderName("");
+    setShowFolderModal(false);
+    await loadFolders();
+    H.notificationSuccess();
+  };
+
+  const handleDeleteFolder = (folder: BookmarkFolder) => {
+    Alert.alert("Delete Folder", `Delete "${folder.name}"? Bookmarks inside will not be deleted.`, [
+      { text: "Cancel", style: "cancel" },
+      { text: "Delete", style: "destructive", onPress: async () => {
+        await deleteFolder(folder.id);
+        if (activeFolderId === folder.id) { setActiveFolderId(null); setFolderItems([]); }
+        await loadFolders();
+      }},
+    ]);
+  };
+
+  const handleAddToFolder = async (folderId: string, bookmarkId: string) => {
+    await addToFolder(folderId, bookmarkId);
+    setShowAddToFolderMenu(null);
+    await loadFolders();
+    H.notificationSuccess();
+  };
+
+  const handleRemoveFromFolder = async (bookmarkId: string) => {
+    if (!activeFolderId) return;
+    await removeFromFolder(activeFolderId, bookmarkId);
+    const items = await getFolderItems(activeFolderId);
+    setFolderItems(items);
+    await loadFolders();
+  };
+
   useFocusEffect(
     useCallback(() => {
       loadBookmarks();
+      loadFolders();
     }, [])
   );
 
@@ -66,12 +135,13 @@ export default function BookmarksScreen() {
     const q = search.toLowerCase().trim();
     let result = bookmarks.filter((item) => {
       const matchesSubject = activeSubject === "all" || item.subject === activeSubject;
-      if (!q) return matchesSubject;
+      const matchesFolder = !activeFolderId || folderItems.includes(item.id);
+      if (!q) return matchesSubject && matchesFolder;
       const matchesSearch =
         item.problem.toLowerCase().includes(q) ||
         item.answer.toLowerCase().includes(q) ||
         getSubjectLabel(item.subject).toLowerCase().includes(q);
-      return matchesSubject && matchesSearch;
+      return matchesSubject && matchesFolder && matchesSearch;
     });
 
     switch (sortKey) {
@@ -88,7 +158,7 @@ export default function BookmarksScreen() {
         result = [...result].sort((a, b) => (b.solvedAt ?? 0) - (a.solvedAt ?? 0));
     }
     return result;
-  }, [bookmarks, search, activeSubject, sortKey]);
+  }, [bookmarks, search, activeSubject, sortKey, activeFolderId, folderItems]);
 
   const handleDelete = (id: string) => {
     Alert.alert("Remove Bookmark", "Remove this problem from bookmarks?", [
@@ -215,15 +285,132 @@ export default function BookmarksScreen() {
             >
               <Text style={[styles.practiceSimilarText, { color: subjectColor }]}>Practice Similar</Text>
             </TouchableOpacity>
+            {activeFolderId ? (
+              <TouchableOpacity
+                accessibilityLabel="Remove from folder"
+                onPress={(e) => { e.stopPropagation(); handleRemoveFromFolder(item.id); }}
+                style={[styles.practiceSimilarBtn, { backgroundColor: "#EF444415", borderColor: "#EF444440" }]}
+                activeOpacity={0.75}
+              >
+                <Text style={[styles.practiceSimilarText, { color: "#EF4444" }]}>Remove</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                accessibilityLabel="Add to folder"
+                onPress={(e) => { e.stopPropagation(); H.impactLight(); setShowAddToFolderMenu(item.id); }}
+                style={[styles.practiceSimilarBtn, { backgroundColor: `${colors.primary}10`, borderColor: `${colors.primary}30` }]}
+                activeOpacity={0.75}
+              >
+                <IconSymbol size={12} name="folder.badge.plus" color={colors.primary} />
+              </TouchableOpacity>
+            )}
             <IconSymbol size={14} name="chevron.right" color={colors.muted} />
           </View>
         </View>
       </TouchableOpacity>
+      {/* Add to Folder menu */}
+      {showAddToFolderMenu === item.id && (
+        <TouchableOpacity
+          style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 300 }}
+          activeOpacity={1}
+          onPress={() => setShowAddToFolderMenu(null)}
+        >
+          <View style={{ position: "absolute", bottom: 8, right: 8, backgroundColor: colors.surface, borderRadius: 12, borderWidth: 1, borderColor: colors.border, minWidth: 180, overflow: "hidden", elevation: 8, shadowColor: "#000", shadowOpacity: 0.12, shadowRadius: 10 }}>
+            <Text style={{ fontSize: 12, fontWeight: "600", color: colors.muted, padding: 10, paddingBottom: 4 }}>ADD TO FOLDER</Text>
+            {folders.length === 0 ? (
+              <TouchableOpacity onPress={() => { setShowAddToFolderMenu(null); setShowFolderModal(true); }} style={{ padding: 12 }} activeOpacity={0.7}>
+                <Text style={{ fontSize: 14, color: colors.primary }}>+ Create a folder first</Text>
+              </TouchableOpacity>
+            ) : folders.map((folder) => {
+              const fc = folder.color ?? colors.primary;
+              return (
+                <TouchableOpacity key={folder.id} onPress={() => handleAddToFolder(folder.id, item.id)} style={{ flexDirection: "row", alignItems: "center", gap: 8, padding: 12, borderTopWidth: 0.5, borderTopColor: colors.border }} activeOpacity={0.7}>
+                  <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: fc }} />
+                  <Text style={{ fontSize: 14 }}>{folder.emoji}</Text>
+                  <Text style={{ fontSize: 14, color: colors.foreground }}>{folder.name}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </TouchableOpacity>
+      )}
       </Swipeable>
     );
   };
 
   const currentSortLabel = SORT_OPTIONS.find((o) => o.key === sortKey)?.label ?? "Sort";
+
+  const buildBulkMarkdown = (items: HistoryItem[]) => {
+    return items.map((item, idx) => {
+      const stepsText = item.steps?.map((s: SolutionStep, i: number) => `### Step ${i + 1}: ${s.title}\n${s.expression ? `\`${s.expression}\`\n` : ""}${s.explanation}`).join("\n\n") ?? "";
+      return [
+        `## ${idx + 1}. ${item.problem}`,
+        `**Answer:** ${item.answer}`,
+        stepsText ? `### Steps\n\n${stepsText}` : "",
+        item.conceptExplained ? `### Key Concept\n\n${item.conceptExplained}` : "",
+        item.tips && item.tips.length > 0 ? `### Pro Tips\n\n${item.tips.map((t: string, i: number) => `${i + 1}. ${t}`).join("\n")}` : "",
+      ].filter(Boolean).join("\n\n");
+    }).join("\n\n---\n\n");
+  };
+
+  const buildBulkHtml = (items: HistoryItem[]) => {
+    const solutionsHtml = items.map((item, idx) => {
+      const stepsHtml = item.steps?.map((s: SolutionStep) => `<div style="background:#f8f9fa;border-radius:10px;padding:12px;margin-bottom:8px;border-left:3px solid #4F46E5"><strong style="color:#4F46E5">Step ${s.stepNumber}: ${s.title}</strong>${s.expression ? `<div style="font-family:monospace;background:#4F46E510;padding:8px;border-radius:6px;margin:6px 0;color:#4F46E5">${s.expression}</div>` : ""}<p style="color:#333;margin:4px 0 0">${s.explanation}</p></div>`).join("") ?? "";
+      return `<div style="border:1px solid #e5e7eb;border-radius:14px;padding:18px;margin-bottom:20px"><div style="font-size:11px;color:#888;margin-bottom:4px">#${idx + 1} - ${getSubjectLabel(item.subject as any)}</div><h3 style="margin:0 0 10px;color:#1a1a1a;font-size:15px">${item.problem}</h3><div style="background:#4F46E510;border-radius:8px;padding:10px;margin-bottom:12px"><strong style="color:#4F46E5">Answer: </strong><span style="color:#1a1a1a">${item.answer}</span></div>${stepsHtml}</div>`;
+    }).join("");
+    return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;margin:0;padding:24px;color:#1a1a1a;background:#fff}h1{color:#4F46E5;font-size:22px;margin-bottom:4px}p.sub{color:#888;font-size:13px;margin:0 0 24px}</style></head><body><h1>My Bookmarked Solutions</h1><p class="sub">${items.length} solution${items.length !== 1 ? "s" : ""} exported from TutorSnap</p>${solutionsHtml}</body></html>`;
+  };
+
+  const handleExportMarkdown = async () => {
+    setShowExportMenu(false);
+    const exportList = filtered.length > 0 ? filtered : bookmarks;
+    if (exportList.length === 0) { Alert.alert("No bookmarks", "Save some solutions first."); return; }
+    const isFiltered = filtered.length !== bookmarks.length;
+    const activeFolder = activeFolderId ? folders.find((f) => f.id === activeFolderId) : null;
+    const folderSlug = activeFolder ? activeFolder.name.replace(/[^a-zA-Z0-9]/g, "-").toLowerCase() : null;
+    const fileName = folderSlug ? `TutorSnap-${folderSlug}.md` : "TutorSnap-Bookmarks.md";
+    const dialogTitle = activeFolder ? `Export "${activeFolder.name}" folder (${exportList.length} solutions)` : isFiltered ? `Export ${exportList.length} filtered bookmarks` : "Export Bookmarks as Markdown";
+    setExportLoading(true);
+    H.impactLight();
+    try {
+      const title = activeFolder ? `My "${activeFolder.name}" Bookmarks (${exportList.length} solutions)` : isFiltered ? `My Bookmarks (${getSubjectLabel(activeSubject as any)} - ${exportList.length} solutions)` : `My Bookmarked Solutions (${exportList.length} solutions)`;
+      const md = `# ${title}\nExported from TutorSnap\n\n---\n\n${buildBulkMarkdown(exportList)}`;
+      if (Platform.OS !== "web") {
+        const fileUri = `${FileSystem.cacheDirectory}${fileName}`;
+        await FileSystem.writeAsStringAsync(fileUri, md, { encoding: FileSystem.EncodingType.UTF8 });
+        const canShare = await Sharing.isAvailableAsync();
+        if (canShare) { await Sharing.shareAsync(fileUri, { mimeType: "text/markdown", dialogTitle }); }
+        else { Alert.alert("Not available", "Sharing is not available on this device."); }
+      } else {
+        await Clipboard.setStringAsync(md);
+        Alert.alert("Copied!", `${exportList.length} bookmark${exportList.length !== 1 ? "s" : ""} copied as Markdown.`);
+      }
+    } catch { Alert.alert("Error", "Could not export bookmarks."); }
+    finally { setExportLoading(false); }
+  };
+
+  const handleExportPdf = async () => {
+    setShowExportMenu(false);
+    const exportList = filtered.length > 0 ? filtered : bookmarks;
+    if (exportList.length === 0) { Alert.alert("No bookmarks", "Save some solutions first."); return; }
+    const isFiltered = filtered.length !== bookmarks.length;
+    const activeFolder = activeFolderId ? folders.find((f) => f.id === activeFolderId) : null;
+    const folderSlug = activeFolder ? activeFolder.name.replace(/[^a-zA-Z0-9]/g, "-").toLowerCase() : null;
+    const fileName = folderSlug ? `TutorSnap-${folderSlug}.pdf` : "TutorSnap-Bookmarks.pdf";
+    const dialogTitle = activeFolder ? `Export "${activeFolder.name}" folder (${exportList.length} solutions)` : isFiltered ? `Export ${exportList.length} filtered bookmarks` : "Export Bookmarks as PDF";
+    setExportLoading(true);
+    H.impactLight();
+    try {
+      const html = buildBulkHtml(exportList);
+      const { uri } = await Print.printToFileAsync({ html, base64: false });
+      const destUri = `${FileSystem.cacheDirectory}${fileName}`;
+      await FileSystem.copyAsync({ from: uri, to: destUri });
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) { await Sharing.shareAsync(destUri, { mimeType: "application/pdf", dialogTitle }); }
+      else { Alert.alert("Not available", "Sharing is not available on this device."); }
+    } catch { Alert.alert("Error", "Could not generate PDF."); }
+    finally { setExportLoading(false); }
+  };
 
   return (
     <ScreenContainer>
@@ -238,15 +425,65 @@ export default function BookmarksScreen() {
             {bookmarks.length} saved solution{bookmarks.length !== 1 ? "s" : ""}
           </Text>
         </View>
-        <TouchableOpacity
-          accessibilityLabel="View flashcards"
-          onPress={() => router.push("/flashcards" as any)}
-          style={[styles.flashcardBtn, { backgroundColor: `${colors.primary}15`, borderColor: `${colors.primary}30` }]}
-          activeOpacity={0.7}
-        >
-          <Text style={{ fontSize: 16 }}>🃏</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
+          <TouchableOpacity
+            accessibilityLabel="Export bookmarks"
+            onPress={() => { H.impactLight(); setShowExportMenu(true); }}
+            style={[styles.flashcardBtn, { backgroundColor: `${colors.success}15`, borderColor: `${colors.success}30` }]}
+            activeOpacity={0.7}
+            disabled={exportLoading}
+          >
+            {exportLoading
+              ? <ActivityIndicator size="small" color={colors.success} />
+              : <IconSymbol size={18} name="square.and.arrow.up" color={colors.success} />}
+          </TouchableOpacity>
+          <TouchableOpacity
+            accessibilityLabel="View flashcards"
+            onPress={() => router.push("/flashcards" as any)}
+            style={[styles.flashcardBtn, { backgroundColor: `${colors.primary}15`, borderColor: `${colors.primary}30` }]}
+            activeOpacity={0.7}
+          >
+            <Text style={{ fontSize: 16 }}>🃏</Text>
+          </TouchableOpacity>
+        </View>
       </View>
+      {/* Export Menu Modal */}
+      {showExportMenu && (
+        <TouchableOpacity
+          style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 99 }}
+          activeOpacity={1}
+          onPress={() => setShowExportMenu(false)}
+        >
+          <View style={[{ position: "absolute", top: 72, right: 16, backgroundColor: colors.surface, borderRadius: 14, borderWidth: 1, borderColor: colors.border, shadowColor: "#000", shadowOpacity: 0.12, shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 8, minWidth: 220, zIndex: 100, overflow: "hidden" }]}>
+            <TouchableOpacity
+              onPress={handleExportMarkdown}
+              style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 14, borderBottomWidth: 0.5, borderBottomColor: colors.border }}
+              activeOpacity={0.7}
+            >
+              <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: `${colors.primary}15`, alignItems: "center", justifyContent: "center" }}>
+                <IconSymbol size={16} name="doc.text" color={colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>Export as Markdown</Text>
+                <Text style={{ fontSize: 12, color: colors.muted }}>For Notion, Obsidian, Google Docs</Text>
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleExportPdf}
+              style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 14 }}
+              activeOpacity={0.7}
+            >
+              <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: `${colors.error}15`, alignItems: "center", justifyContent: "center" }}>
+                <IconSymbol size={16} name="doc.richtext" color={colors.error} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 14, fontWeight: "600", color: colors.foreground }}>Export as PDF</Text>
+                <Text style={{ fontSize: 12, color: colors.muted }}>Save to Files app or Google Drive</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      )}
 
       {bookmarks.length === 0 ? (
         <View style={styles.emptyState}>
@@ -286,6 +523,91 @@ export default function BookmarksScreen() {
             )}
           </View>
 
+          {/* Folders Row */}
+          {folders.length > 0 && (
+            <View style={{ paddingHorizontal: 16, marginBottom: 4 }}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 4 }}>
+                <TouchableOpacity
+                  onPress={() => { setActiveFolderId(null); setFolderItems([]); H.impactLight(); }}
+                  style={[{ flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1.5, borderColor: activeFolderId === null ? colors.primary : colors.border, backgroundColor: activeFolderId === null ? `${colors.primary}15` : colors.surface }]}
+                  activeOpacity={0.7}
+                >
+                  <Text style={{ fontSize: 13, fontWeight: "600", color: activeFolderId === null ? colors.primary : colors.foreground }}>All</Text>
+                </TouchableOpacity>
+                {folders.map((folder) => {
+                  const isActive = activeFolderId === folder.id;
+                  const folderColor = folder.color ?? colors.primary;
+                  return (
+                    <TouchableOpacity
+                      key={folder.id}
+                      onPress={async () => {
+                        H.impactLight();
+                        if (isActive) { setActiveFolderId(null); setFolderItems([]); }
+                        else { setActiveFolderId(folder.id); const items = await getFolderItems(folder.id); setFolderItems(items); }
+                      }}
+                      onLongPress={() => handleDeleteFolder(folder)}
+                      style={[{ flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1.5, borderColor: isActive ? folderColor : colors.border, backgroundColor: isActive ? `${folderColor}20` : colors.surface }]}
+                      activeOpacity={0.7}
+                    >
+                      {/* Colour dot */}
+                      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: folderColor }} />
+                      <Text style={{ fontSize: 13 }}>{folder.emoji}</Text>
+                      <Text style={{ fontSize: 13, fontWeight: "600", color: isActive ? folderColor : colors.foreground }}>{folder.name}</Text>
+                      <Text style={{ fontSize: 11, color: isActive ? folderColor : colors.muted }}>({folder.itemCount ?? 0})</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+                <TouchableOpacity
+                  onPress={() => setShowFolderModal(true)}
+                  style={[{ flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface }]}
+                  activeOpacity={0.7}
+                >
+                  <IconSymbol size={13} name="plus" color={colors.muted} />
+                  <Text style={{ fontSize: 13, color: colors.muted }}>New Folder</Text>
+                </TouchableOpacity>
+              </ScrollView>
+            </View>
+          )}
+          {folders.length === 0 && (
+            <TouchableOpacity
+              onPress={() => setShowFolderModal(true)}
+              style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 16, paddingBottom: 4 }}
+              activeOpacity={0.7}
+            >
+              <IconSymbol size={14} name="folder.badge.plus" color={colors.muted} />
+              <Text style={{ fontSize: 13, color: colors.muted }}>Create a folder to organise bookmarks</Text>
+            </TouchableOpacity>
+          )}
+          {/* Create Folder Modal */}
+          {showFolderModal && (
+            <TouchableOpacity
+              style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 200, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "center", alignItems: "center" }}
+              activeOpacity={1}
+              onPress={() => setShowFolderModal(false)}
+            >
+              <TouchableOpacity activeOpacity={1} onPress={() => {}} style={{ backgroundColor: colors.surface, borderRadius: 18, padding: 24, width: "90%", maxWidth: 360, gap: 16 }}>
+                <Text style={{ fontSize: 17, fontWeight: "700", color: colors.foreground }}>New Folder</Text>
+                <TextInput
+                  value={newFolderName}
+                  onChangeText={setNewFolderName}
+                  placeholder="Folder name (e.g. Exam Prep)"
+                  placeholderTextColor={colors.muted}
+                  style={{ backgroundColor: colors.background, borderRadius: 10, padding: 12, fontSize: 15, color: colors.foreground, borderWidth: 1, borderColor: colors.border }}
+                  autoFocus
+                  returnKeyType="done"
+                  onSubmitEditing={handleCreateFolder}
+                />
+                <View style={{ flexDirection: "row", gap: 10 }}>
+                  <TouchableOpacity onPress={() => setShowFolderModal(false)} style={{ flex: 1, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: colors.border, alignItems: "center" }} activeOpacity={0.7}>
+                    <Text style={{ fontSize: 15, color: colors.muted }}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={handleCreateFolder} style={{ flex: 1, padding: 12, borderRadius: 10, backgroundColor: colors.primary, alignItems: "center" }} activeOpacity={0.7}>
+                    <Text style={{ fontSize: 15, fontWeight: "600", color: "#fff" }}>Create</Text>
+                  </TouchableOpacity>
+                </View>
+              </TouchableOpacity>
+            </TouchableOpacity>
+          )}
           {/* Subject Filter Chips + Sort */}
           <View style={styles.filterRow}>
             <ScrollView
@@ -483,12 +805,17 @@ const styles = StyleSheet.create({
   sortMenu: {
     position: "absolute",
     right: 12,
-    top: 140,
+    top: 100,
     zIndex: 100,
     borderRadius: 12,
     borderWidth: 1,
     overflow: "hidden",
-    minWidth: 140,
+    minWidth: 160,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 8,
   },
   sortMenuItem: {
     flexDirection: "row",
