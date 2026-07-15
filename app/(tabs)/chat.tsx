@@ -1313,8 +1313,8 @@ function ChatScreenContent() {
         if (!isUserScrolledUpRef.current) {
           setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
         }
-        // Re-focus the input bar so the user can type their follow-up immediately
-        setTimeout(() => inputRef.current?.focus(), 350);
+        // Do NOT auto-focus here — doing so re-opens the keyboard which pushes the
+        // input bar back up. The user taps the input when they are ready to type.
 
         // Trigger follow-up chip suggestions
         suggestFollowUpsMutation.mutate({
