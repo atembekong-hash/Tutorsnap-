@@ -972,62 +972,59 @@ function SolveScreenContent() {
               </View>
             </View>
 
-            {/* Controls row: grade pill (left) + offline warning (right) */}
-            <View style={styles.controlsRow}>
+            {/* Unified action row: Any level | All Subjects | Solve with AI */}
+            <View style={styles.unifiedActionRow}>
+
+              {/* Pill 1: Grade level */}
               <TouchableOpacity
                 onPress={() => { H.impactLight(); setShowSolveGradePicker(true); }}
-                style={[
-                  styles.gradeSelectorPill,
-                  {
-                    backgroundColor: homeGradeLevel ? `${colors.primary}15` : colors.surface,
-                    borderColor: homeGradeLevel ? colors.primary : colors.border,
-                  },
-                ]}
-                accessibilityLabel={homeGradeLevel ? `Grade level: ${GRADE_LABELS[homeGradeLevel]}. Tap to change.` : "Set grade level"}
-                accessibilityRole="button"
+                style={[styles.actionPill, {
+                  backgroundColor: homeGradeLevel ? `${colors.primary}15` : colors.surface,
+                  borderColor: homeGradeLevel ? colors.primary : colors.border,
+                }]}
+                accessibilityLabel={homeGradeLevel ? `Grade level: ${GRADE_LABELS[homeGradeLevel]}` : "Set grade level"}
                 activeOpacity={0.75}
               >
                 <IconSymbol size={13} name="graduationcap.fill" color={homeGradeLevel ? colors.primary : colors.muted} />
-                <Text style={[styles.gradeSelectorText, { color: homeGradeLevel ? colors.primary : colors.muted }]}>
+                <Text style={[styles.actionPillText, { color: homeGradeLevel ? colors.primary : colors.muted }]} numberOfLines={1}>
                   {homeGradeLevel ? GRADE_LABELS[homeGradeLevel] : "Any level"}
                 </Text>
-                <IconSymbol size={11} name="chevron.right" color={homeGradeLevel ? colors.primary : colors.muted} />
+                <Text style={[styles.actionPillChevron, { color: homeGradeLevel ? colors.primary : colors.muted }]}>▾</Text>
               </TouchableOpacity>
-              {!isOnline && (
-                <View style={[styles.offlinePill, { backgroundColor: `${colors.warning}15`, borderColor: `${colors.warning}40` }]}>
-                  <Text style={{ fontSize: 12 }}>📡</Text>
-                  <Text style={[styles.offlinePillText, { color: colors.warning }]}>Offline</Text>
-                </View>
-              )}
-            </View>
 
-            {/* Solve Row: subject picker + mic + solve button */}
-            <View style={styles.solveRow}>
+              {/* Pill 2: Subject picker */}
               <SubjectPicker value={selectedSubject} onChange={handleSubjectChange} showAll />
-              {Platform.OS !== "web" && (
-                <VoiceButton
-                  size={48}
-                  onTranscript={(text) => { setProblem((prev) => prev ? `${prev} ${text}` : text); }}
-                />
-              )}
+
+              {/* Pill 3: Solve with AI */}
               <TouchableOpacity
                 accessibilityLabel="Solve problem"
                 onPress={handleSolve}
                 disabled={!problem.trim() || solveMutation.isPending || !isOnline}
-                style={[styles.solveBtn, { opacity: !problem.trim() || solveMutation.isPending || !isOnline ? 0.6 : 1 }]}
                 activeOpacity={0.85}
+                style={[styles.actionPill, styles.actionPillSolve, {
+                  backgroundColor: isOnline ? colors.primary : colors.muted,
+                  borderColor: isOnline ? colors.primary : colors.muted,
+                  opacity: !problem.trim() || solveMutation.isPending || !isOnline ? 0.6 : 1,
+                }]}
               >
-                <View style={[styles.solveBtnInner, { backgroundColor: isOnline ? colors.primary : colors.muted }]}>
-                  {solveMutation.isPending ? (
-                    <><ActivityIndicator color="#FFFFFF" size="small" /><Text style={styles.solveBtnText}>Solving...</Text></>
-                  ) : !isOnline ? (
-                    <><IconSymbol size={20} name="wifi.slash" color="#FFFFFF" /><Text style={styles.solveBtnText}>No Internet</Text></>
-                  ) : (
-                    <><IconSymbol size={20} name="wand.and.stars" color="#FFFFFF" /><Text style={styles.solveBtnText}>Solve with AI</Text></>
-                  )}
-                </View>
+                {solveMutation.isPending ? (
+                  <><ActivityIndicator color="#FFFFFF" size="small" /><Text style={styles.actionPillSolveText}>Solving...</Text></>
+                ) : !isOnline ? (
+                  <><IconSymbol size={14} name="wifi.slash" color="#FFFFFF" /><Text style={styles.actionPillSolveText}>Offline</Text></>
+                ) : (
+                  <><IconSymbol size={14} name="wand.and.stars" color="#FFFFFF" /><Text style={styles.actionPillSolveText}>Solve with AI</Text></>
+                )}
               </TouchableOpacity>
+
             </View>
+
+            {/* Offline warning strip */}
+            {!isOnline && (
+              <View style={[styles.offlinePill, { backgroundColor: `${colors.warning}15`, borderColor: `${colors.warning}40`, marginTop: 6 }]}>
+                <Text style={{ fontSize: 12 }}>📡</Text>
+                <Text style={[styles.offlinePillText, { color: colors.warning }]}>No internet connection</Text>
+              </View>
+            )}
 
             {/* Error state */}
             {solveMutation.isError && (
@@ -2118,5 +2115,44 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 10,
     right: 12,
+  },
+
+  // ── Unified 3-pill action row ─────────────────────────────────────────────
+  unifiedActionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    marginTop: 12,
+    gap: 8,
+  },
+  actionPill: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 11,
+    paddingHorizontal: 10,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    gap: 5,
+  },
+  actionPillText: {
+    fontSize: 13,
+    fontWeight: "600",
+    flexShrink: 1,
+  },
+  actionPillChevron: {
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  actionPillSolve: {
+    // Override: solid filled pill for the primary CTA
+    borderWidth: 0,
+  },
+  actionPillSolveText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#FFFFFF",
+    flexShrink: 1,
   },
 });
