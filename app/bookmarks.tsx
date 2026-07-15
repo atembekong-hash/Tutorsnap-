@@ -321,12 +321,16 @@ export default function BookmarksScreen() {
               <TouchableOpacity onPress={() => { setShowAddToFolderMenu(null); setShowFolderModal(true); }} style={{ padding: 12 }} activeOpacity={0.7}>
                 <Text style={{ fontSize: 14, color: colors.primary }}>+ Create a folder first</Text>
               </TouchableOpacity>
-            ) : folders.map((folder) => (
-              <TouchableOpacity key={folder.id} onPress={() => handleAddToFolder(folder.id, item.id)} style={{ flexDirection: "row", alignItems: "center", gap: 8, padding: 12, borderTopWidth: 0.5, borderTopColor: colors.border }} activeOpacity={0.7}>
-                <Text style={{ fontSize: 14 }}>{folder.emoji}</Text>
-                <Text style={{ fontSize: 14, color: colors.foreground }}>{folder.name}</Text>
-              </TouchableOpacity>
-            ))}
+            ) : folders.map((folder) => {
+              const fc = folder.color ?? colors.primary;
+              return (
+                <TouchableOpacity key={folder.id} onPress={() => handleAddToFolder(folder.id, item.id)} style={{ flexDirection: "row", alignItems: "center", gap: 8, padding: 12, borderTopWidth: 0.5, borderTopColor: colors.border }} activeOpacity={0.7}>
+                  <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: fc }} />
+                  <Text style={{ fontSize: 14 }}>{folder.emoji}</Text>
+                  <Text style={{ fontSize: 14, color: colors.foreground }}>{folder.name}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </TouchableOpacity>
       )}
@@ -362,16 +366,20 @@ export default function BookmarksScreen() {
     const exportList = filtered.length > 0 ? filtered : bookmarks;
     if (exportList.length === 0) { Alert.alert("No bookmarks", "Save some solutions first."); return; }
     const isFiltered = filtered.length !== bookmarks.length;
+    const activeFolder = activeFolderId ? folders.find((f) => f.id === activeFolderId) : null;
+    const folderSlug = activeFolder ? activeFolder.name.replace(/[^a-zA-Z0-9]/g, "-").toLowerCase() : null;
+    const fileName = folderSlug ? `TutorSnap-${folderSlug}.md` : "TutorSnap-Bookmarks.md";
+    const dialogTitle = activeFolder ? `Export "${activeFolder.name}" folder (${exportList.length} solutions)` : isFiltered ? `Export ${exportList.length} filtered bookmarks` : "Export Bookmarks as Markdown";
     setExportLoading(true);
     H.impactLight();
     try {
-      const title = isFiltered ? `My Bookmarks (${getSubjectLabel(activeSubject as any)} - ${exportList.length} solutions)` : `My Bookmarked Solutions (${exportList.length} solutions)`;
+      const title = activeFolder ? `My "${activeFolder.name}" Bookmarks (${exportList.length} solutions)` : isFiltered ? `My Bookmarks (${getSubjectLabel(activeSubject as any)} - ${exportList.length} solutions)` : `My Bookmarked Solutions (${exportList.length} solutions)`;
       const md = `# ${title}\nExported from TutorSnap\n\n---\n\n${buildBulkMarkdown(exportList)}`;
       if (Platform.OS !== "web") {
-        const fileUri = `${FileSystem.cacheDirectory}bookmarks.md`;
+        const fileUri = `${FileSystem.cacheDirectory}${fileName}`;
         await FileSystem.writeAsStringAsync(fileUri, md, { encoding: FileSystem.EncodingType.UTF8 });
         const canShare = await Sharing.isAvailableAsync();
-        if (canShare) { await Sharing.shareAsync(fileUri, { mimeType: "text/markdown", dialogTitle: isFiltered ? `Export ${exportList.length} filtered bookmarks` : "Export Bookmarks as Markdown" }); }
+        if (canShare) { await Sharing.shareAsync(fileUri, { mimeType: "text/markdown", dialogTitle }); }
         else { Alert.alert("Not available", "Sharing is not available on this device."); }
       } else {
         await Clipboard.setStringAsync(md);
@@ -386,15 +394,19 @@ export default function BookmarksScreen() {
     const exportList = filtered.length > 0 ? filtered : bookmarks;
     if (exportList.length === 0) { Alert.alert("No bookmarks", "Save some solutions first."); return; }
     const isFiltered = filtered.length !== bookmarks.length;
+    const activeFolder = activeFolderId ? folders.find((f) => f.id === activeFolderId) : null;
+    const folderSlug = activeFolder ? activeFolder.name.replace(/[^a-zA-Z0-9]/g, "-").toLowerCase() : null;
+    const fileName = folderSlug ? `TutorSnap-${folderSlug}.pdf` : "TutorSnap-Bookmarks.pdf";
+    const dialogTitle = activeFolder ? `Export "${activeFolder.name}" folder (${exportList.length} solutions)` : isFiltered ? `Export ${exportList.length} filtered bookmarks` : "Export Bookmarks as PDF";
     setExportLoading(true);
     H.impactLight();
     try {
       const html = buildBulkHtml(exportList);
       const { uri } = await Print.printToFileAsync({ html, base64: false });
-      const destUri = `${FileSystem.cacheDirectory}bookmarks.pdf`;
+      const destUri = `${FileSystem.cacheDirectory}${fileName}`;
       await FileSystem.copyAsync({ from: uri, to: destUri });
       const canShare = await Sharing.isAvailableAsync();
-      if (canShare) { await Sharing.shareAsync(destUri, { mimeType: "application/pdf", dialogTitle: isFiltered ? `Export ${exportList.length} filtered bookmarks` : "Export Bookmarks as PDF" }); }
+      if (canShare) { await Sharing.shareAsync(destUri, { mimeType: "application/pdf", dialogTitle }); }
       else { Alert.alert("Not available", "Sharing is not available on this device."); }
     } catch { Alert.alert("Error", "Could not generate PDF."); }
     finally { setExportLoading(false); }
@@ -522,23 +534,29 @@ export default function BookmarksScreen() {
                 >
                   <Text style={{ fontSize: 13, fontWeight: "600", color: activeFolderId === null ? colors.primary : colors.foreground }}>All</Text>
                 </TouchableOpacity>
-                {folders.map((folder) => (
-                  <TouchableOpacity
-                    key={folder.id}
-                    onPress={async () => {
-                      H.impactLight();
-                      if (activeFolderId === folder.id) { setActiveFolderId(null); setFolderItems([]); }
-                      else { setActiveFolderId(folder.id); const items = await getFolderItems(folder.id); setFolderItems(items); }
-                    }}
-                    onLongPress={() => handleDeleteFolder(folder)}
-                    style={[{ flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1.5, borderColor: activeFolderId === folder.id ? colors.primary : colors.border, backgroundColor: activeFolderId === folder.id ? `${colors.primary}15` : colors.surface }]}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={{ fontSize: 13 }}>{folder.emoji}</Text>
-                    <Text style={{ fontSize: 13, fontWeight: "600", color: activeFolderId === folder.id ? colors.primary : colors.foreground }}>{folder.name}</Text>
-                    <Text style={{ fontSize: 11, color: colors.muted }}>({folder.itemCount ?? 0})</Text>
-                  </TouchableOpacity>
-                ))}
+                {folders.map((folder) => {
+                  const isActive = activeFolderId === folder.id;
+                  const folderColor = folder.color ?? colors.primary;
+                  return (
+                    <TouchableOpacity
+                      key={folder.id}
+                      onPress={async () => {
+                        H.impactLight();
+                        if (isActive) { setActiveFolderId(null); setFolderItems([]); }
+                        else { setActiveFolderId(folder.id); const items = await getFolderItems(folder.id); setFolderItems(items); }
+                      }}
+                      onLongPress={() => handleDeleteFolder(folder)}
+                      style={[{ flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1.5, borderColor: isActive ? folderColor : colors.border, backgroundColor: isActive ? `${folderColor}20` : colors.surface }]}
+                      activeOpacity={0.7}
+                    >
+                      {/* Colour dot */}
+                      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: folderColor }} />
+                      <Text style={{ fontSize: 13 }}>{folder.emoji}</Text>
+                      <Text style={{ fontSize: 13, fontWeight: "600", color: isActive ? folderColor : colors.foreground }}>{folder.name}</Text>
+                      <Text style={{ fontSize: 11, color: isActive ? folderColor : colors.muted }}>({folder.itemCount ?? 0})</Text>
+                    </TouchableOpacity>
+                  );
+                })}
                 <TouchableOpacity
                   onPress={() => setShowFolderModal(true)}
                   style={[{ flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface }]}
