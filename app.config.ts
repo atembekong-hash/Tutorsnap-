@@ -113,7 +113,6 @@ const config: ExpoConfig = {
   },
   plugins: [
     "expo-router",
-    ["react-native-enriched-markdown", { enableMath: true }],
     "expo-font",
     "expo-secure-store",
     "expo-system-ui",
