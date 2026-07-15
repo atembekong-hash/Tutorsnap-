@@ -112,7 +112,7 @@ export const DEFAULT_TUTOR_SETTINGS: TutorSettings = {
   followUpChips: true,
 
   typingAnimation: true,
-  typingSpeed: "normal",
+  typingSpeed: "slow",
   autoScroll: true,
   autoResumeDelay: 3,
   sendOnEnter: false,
