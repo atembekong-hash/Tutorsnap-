@@ -992,8 +992,21 @@ function SolveScreenContent() {
                 <Text style={[styles.actionPillChevron, { color: homeGradeLevel ? colors.primary : colors.muted }]}>▾</Text>
               </TouchableOpacity>
 
-              {/* Pill 2: Subject picker */}
-              <SubjectPicker value={selectedSubject} onChange={handleSubjectChange} showAll />
+              {/* Pill 2: Subject picker — forced to same flex:1 size as the other pills */}
+              <SubjectPicker
+                value={selectedSubject}
+                onChange={handleSubjectChange}
+                showAll
+                triggerStyle={{
+                  flex: 1,
+                  alignSelf: "stretch",
+                  paddingVertical: 11,
+                  paddingHorizontal: 10,
+                  borderRadius: 14,
+                  borderWidth: 1.5,
+                  justifyContent: "center",
+                }}
+              />
 
               {/* Pill 3: Solve with AI */}
               <TouchableOpacity

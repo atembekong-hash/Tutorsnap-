@@ -44,6 +44,8 @@ interface SubjectPickerProps {
   open?: boolean;
   /** Called when the modal requests to close (backdrop tap, back button) */
   onClose?: () => void;
+  /** Optional style override for the trigger pill (e.g. to force flex:1 in a row) */
+  triggerStyle?: object;
 }
 
 const CATEGORIES: SubjectCategory[] = ["math", "english", "science", "social"];
@@ -53,6 +55,7 @@ export function SubjectPicker({
   onChange,
   showAll = true,
   preferredCategories = [],
+  triggerStyle,
   open: controlledOpen,
   onClose,
 }: SubjectPickerProps) {
@@ -60,6 +63,8 @@ export function SubjectPicker({
   const [internalOpen, setInternalOpen] = useState(false);
   const isControlled = controlledOpen !== undefined;
   const open = isControlled ? controlledOpen : internalOpen;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const triggerStyleProp = (triggerStyle as any) ?? {};
 
   // Default to first preferred category if set, otherwise "math"
   const defaultCategory: SubjectCategory = (
@@ -99,6 +104,7 @@ export function SubjectPicker({
           style={[
             styles.trigger,
             { borderColor: buttonColor, backgroundColor: buttonColor + "18" },
+            triggerStyleProp,
           ]}
           onPress={() => {
             H.impactLight()
