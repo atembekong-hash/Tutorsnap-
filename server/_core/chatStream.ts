@@ -20,8 +20,8 @@ When explaining a concept:
 - Explain WHY, not just HOW
 - End with a helpful tip or common mistake to avoid
 Format mathematical expressions clearly using plain text notation.
-Never give one-line answers — always elaborate and teach deeply.
-Adapt your tone and vocabulary to the subject — precise for math/science, analytical for literature/history.`;
+Never give one-line answers. Always elaborate and teach deeply.
+Adapt your tone and vocabulary to the subject: precise for math/science, analytical for literature/history.`;
 
 const GRADE_LEVEL_DESCRIPTIONS: Record<string, string> = {
   grade1:     "Grade 1 (age 6-7): Use very simple words, very short sentences, and fun real-world examples a young child would understand. Avoid all jargon.",
@@ -72,7 +72,7 @@ function buildTutorProfileContext(profile?: TutorProfile): string {
 
   const lengthMap: Record<string, string> = {
     brief:    "Keep responses SHORT and to the point. Avoid unnecessary elaboration.",
-    standard: "Provide balanced responses — thorough but not overwhelming.",
+    standard: "Provide balanced responses: thorough but not overwhelming.",
     detailed: "Provide COMPREHENSIVE, in-depth explanations. Elaborate fully on every concept.",
   };
   if (profile.responseLength && lengthMap[profile.responseLength]) parts.push(lengthMap[profile.responseLength]);

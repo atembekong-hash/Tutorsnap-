@@ -137,8 +137,8 @@ function normalizeSpacing(text: string): string {
     // Fix broken quotation marks (smart quotes to straight)
     .replace(/[\u2018\u2019]/g, "'")
     .replace(/[\u201C\u201D]/g, '"')
-    // Fix em-dash artifacts
-    .replace(/\s*\u2014\s*/g, ' — ')
+    // Remove em-dash and en-dash artifacts
+    .replace(/[\u2013\u2014]/g, '-')
     // Normalize ellipsis
     .replace(/\.{3,}/g, '…')
     // Remove duplicate punctuation (!! → !, ?? → ?)

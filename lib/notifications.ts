@@ -89,7 +89,7 @@ export async function scheduleDailyReminder(hour: number, minute: number): Promi
   }
 
   const messages = [
-    { title: "Time to study! 📚", body: "Keep your streak alive — solve a problem today." },
+    { title: "Time to study! 📚", body: "Keep your streak alive - solve a problem today." },
     { title: "Your streak is waiting 🔥", body: "Don't break the chain! Open TutorSnap and solve something." },
     { title: "Daily goal check-in 🎯", body: "Have you hit your daily goal yet? Let's go!" },
     { title: "Study reminder 🎓", body: "A few minutes of practice makes a big difference." },
@@ -195,7 +195,7 @@ export async function scheduleMonthlyBackupReminder(
     const id = await Notifications.scheduleNotificationAsync({
       content: {
         title: "Back up your TutorSnap data 💾",
-        body: "It's been a month — export your progress to keep it safe.",
+        body: "It's been a month - export your progress to keep it safe.",
         sound: true,
       },
       trigger: {
@@ -258,7 +258,7 @@ export async function scheduleSessionSummaryNotification(
     const title = sessionTitle && sessionTitle !== "New Chat"
       ? `Session recap: ${sessionTitle}`
       : "Chat session complete";
-    const body = `${messageCount} message${messageCount !== 1 ? "s" : ""} — tap to review your session.`;
+    const body = `${messageCount} message${messageCount !== 1 ? "s" : ""} - tap to review your session.`;
 
     await Notifications.scheduleNotificationAsync({
       content: {

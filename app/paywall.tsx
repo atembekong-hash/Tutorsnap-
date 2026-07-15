@@ -175,7 +175,7 @@ export default function PaywallScreen() {
           </View>
           <Text style={s.heroTitle}>Unlock TutorSnap{"\n"}Premium</Text>
           <Text style={s.heroSubtitle}>
-            Solve unlimited problems, ace every quiz, and get personalised AI tutoring — free for 14 days.
+            Solve unlimited problems, ace every quiz, and get personalised AI tutoring - free for 14 days.
           </Text>
         </View>
 
@@ -249,7 +249,7 @@ export default function PaywallScreen() {
         {isDevMode && (
           <View style={s.devNotice}>
             <Text style={s.devNoticeText}>
-              🛠 Dev mode — RevenueCat API key not configured. Purchases are simulated.
+              🛠 Dev mode - RevenueCat API key not configured. Purchases are simulated.
             </Text>
           </View>
         )}

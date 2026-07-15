@@ -577,7 +577,7 @@ export default function ChatHistoryScreen() {
     });
 
     const lines: string[] = [
-      `📚 TutorSnap Chat — ${session.title}`,
+      `📚 TutorSnap Chat - ${session.title}`,
       `Subject: ${subjectLabel} · ${dateStr}`,
       `Messages: ${session.messageCount}`,
       "",

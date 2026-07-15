@@ -58,10 +58,10 @@ const MINUTE_OPTIONS = [0, 15, 30, 45];
 const CATEGORIES = Object.entries(SUBJECT_CATEGORIES) as [SubjectCategory, { label: string; emoji: string; color: string }][];
 
 const WHATS_NEW: { title: string; desc: string }[] = [
-  { title: "Quiz History Detail", desc: "Tap any past quiz to see a full per-question breakdown — correct answer, your answer, and an explanation for every wrong response." },
+  { title: "Quiz History Detail", desc: "Tap any past quiz to see a full per-question breakdown: correct answer, your answer, and an explanation for every wrong response." },
   { title: "Classroom Overhaul", desc: "Feed search, sort & subject filter, homework due-date reminders, completion tracking, comment threads with replies, and bookmark buttons on every card." },
   { title: "Challenge History", desc: "Every challenge attempt is saved. Review past results with time, outcome, and problem text in the Leaderboard and Progress screens." },
-  { title: "Deeper AI Solutions", desc: "Solve page now handles any difficulty — calculus, differential equations, abstract algebra — with 6-10 detailed steps, worked examples, and concept explanations." },
+  { title: "Deeper AI Solutions", desc: "Solve page now handles any difficulty (calculus, differential equations, abstract algebra) with 6-10 detailed steps, worked examples, and concept explanations." },
   { title: "Subject Accuracy Chart", desc: "Progress screen now shows a colour-coded bar chart of your average accuracy per subject so you can see exactly where to focus." },
 ];
 
@@ -602,7 +602,7 @@ export default function SettingsScreen() {
                 if (canMail) {
                   await MailComposer.composeAsync({
                     recipients: [SUPPORT_EMAIL],
-                    subject: "TutorSnap — Data Deletion Confirmation",
+                    subject: "TutorSnap - Data Deletion Confirmation",
                     body:
                       `Hi TutorSnap Team,\n\nI have just deleted my account and all local data from the TutorSnap app on this device.\n\nPlease confirm that any server-side data associated with my account has also been removed in accordance with your Privacy Policy.\n\nDate: ${new Date().toISOString()}\n\nThank you.`,
                   });
@@ -837,27 +837,27 @@ export default function SettingsScreen() {
             <td style="padding:6px 10px;border:1px solid #e5e7eb">${subj}</td>
             <td style="padding:6px 10px;border:1px solid #e5e7eb;text-align:center">${data.solved}</td>
             <td style="padding:6px 10px;border:1px solid #e5e7eb;text-align:center">${data.quizzes}</td>
-            <td style="padding:6px 10px;border:1px solid #e5e7eb;text-align:center">${avgQ !== null ? avgQ + "%" : "—"}</td>
+            <td style="padding:6px 10px;border:1px solid #e5e7eb;text-align:center">${avgQ !== null ? avgQ + "%" : "-"}</td>
           </tr>`;
         }).join("");
 
       const historyRows = history.slice(0, 50).map((h: any, i: number) =>
         `<tr style="background:${i % 2 === 0 ? "#f9f9f9" : "#fff"}">
           <td style="padding:6px 10px;border:1px solid #e5e7eb">${i + 1}</td>
-          <td style="padding:6px 10px;border:1px solid #e5e7eb">${h.subject ?? "—"}</td>
+          <td style="padding:6px 10px;border:1px solid #e5e7eb">${h.subject ?? "-"}</td>
           <td style="padding:6px 10px;border:1px solid #e5e7eb;max-width:300px;word-break:break-word">${(h.question ?? "").slice(0, 120)}${(h.question ?? "").length > 120 ? "…" : ""}</td>
-          <td style="padding:6px 10px;border:1px solid #e5e7eb">${h.timestamp ? new Date(h.timestamp).toLocaleDateString() : "—"}</td>
+          <td style="padding:6px 10px;border:1px solid #e5e7eb">${h.timestamp ? new Date(h.timestamp).toLocaleDateString() : "-"}</td>
         </tr>`
       ).join("");
 
       const quizRows = quizHistory.slice(0, 30).map((q: any, i: number) =>
         `<tr style="background:${i % 2 === 0 ? "#f9f9f9" : "#fff"}">
           <td style="padding:6px 10px;border:1px solid #e5e7eb">${i + 1}</td>
-          <td style="padding:6px 10px;border:1px solid #e5e7eb">${q.subject ?? "—"}</td>
+          <td style="padding:6px 10px;border:1px solid #e5e7eb">${q.subject ?? "-"}</td>
           <td style="padding:6px 10px;border:1px solid #e5e7eb">${q.score ?? 0}%</td>
           <td style="padding:6px 10px;border:1px solid #e5e7eb">${q.correctAnswers ?? 0}/${q.totalQuestions ?? 0}</td>
-          <td style="padding:6px 10px;border:1px solid #e5e7eb">${q.gradeLevel ? (GRADE_LABELS[q.gradeLevel as keyof typeof GRADE_LABELS] ?? q.gradeLevel) : "—"}</td>
-          <td style="padding:6px 10px;border:1px solid #e5e7eb">${q.completedAt ? new Date(q.completedAt).toLocaleDateString() : "—"}</td>
+          <td style="padding:6px 10px;border:1px solid #e5e7eb">${q.gradeLevel ? (GRADE_LABELS[q.gradeLevel as keyof typeof GRADE_LABELS] ?? q.gradeLevel) : "-"}</td>
+          <td style="padding:6px 10px;border:1px solid #e5e7eb">${q.completedAt ? new Date(q.completedAt).toLocaleDateString() : "-"}</td>
         </tr>`
       ).join("");
 
@@ -1054,7 +1054,7 @@ export default function SettingsScreen() {
           <SettingsRow
             icon="person.crop.circle.fill"
             label="Your Name"
-            subtitle={userName || "Not set — tap to add your name"}
+            subtitle={userName || "Not set - tap to add your name"}
             colors={colors}
             onPress={() => {
               setNameInput(userName || "");
@@ -1062,11 +1062,11 @@ export default function SettingsScreen() {
             }}
           />
         )}
-        {ms("Default Grade Level", "Not set — all screens will ask per session") && (
+        {ms("Default Grade Level", "Not set - all screens will ask per session") && (
           <SettingsRow
             icon="graduationcap.fill"
             label="Default Grade Level"
-            subtitle={gradeLevel ? GRADE_LABELS[gradeLevel] : "Not set — all screens will ask per session"}
+            subtitle={gradeLevel ? GRADE_LABELS[gradeLevel] : "Not set - all screens will ask per session"}
             colors={colors}
             onPress={() => setShowGradePicker(true)}
           />
@@ -1279,12 +1279,12 @@ export default function SettingsScreen() {
               <Text style={[styles.rowLabel, { color: colors.foreground }]}>TutorSnap Premium</Text>
               <Text style={[styles.rowSubtitle, { color: colors.muted }]}>
                 {subStatus.isDevMode
-                  ? "Dev mode — all features unlocked"
+                  ? "Dev mode - all features unlocked"
                   : subStatus.activeProductId
-                  ? `Active — ${subStatus.activeProductId === "tutorsnap_annual" ? "Annual plan" : "Monthly plan"}`
+                  ? `Active - ${subStatus.activeProductId === "tutorsnap_annual" ? "Annual plan" : "Monthly plan"}`
                   : subStatus.isTrialActive
-                  ? `Free trial — ${subStatus.trialDaysRemaining} day${subStatus.trialDaysRemaining !== 1 ? "s" : ""} remaining`
-                  : "Free tier — upgrade to unlock all features"}
+                  ? `Free trial - ${subStatus.trialDaysRemaining} day${subStatus.trialDaysRemaining !== 1 ? "s" : ""} remaining`
+                  : "Free tier - upgrade to unlock all features"}
               </Text>
             </View>
             {(subStatus.isPremium || subStatus.isTrialActive) && (
@@ -1304,7 +1304,7 @@ export default function SettingsScreen() {
           <SettingsRow icon="creditcard.fill" label="Manage Subscription" subtitle="Change or cancel your plan in the App Store" colors={colors} onPress={handleManageSubscription} />
         )}
         {ms("Affiliate & Referrals", "Earn free days") && (
-          <SettingsRow icon="paperplane.fill" label="Affiliate & Referrals" subtitle="Earn free days — 5 ways to earn, tier rewards" colors={colors} onPress={() => router.push("/refer" as any)} />
+          <SettingsRow icon="paperplane.fill" label="Affiliate & Referrals" subtitle="Earn free days - 5 ways to earn, tier rewards" colors={colors} onPress={() => router.push("/refer" as any)} />
         )}
         {ms("Redeem a Friend's Code", "referral code") && (
           <SettingsRow icon="gift.fill" label="Redeem a Friend's Code" subtitle="Enter a referral code to activate your free trial" colors={colors} onPress={() => setShowRedeemModal(true)} />
@@ -1457,7 +1457,7 @@ export default function SettingsScreen() {
           <SettingsRow
             icon="info.circle"
             label="About TutorSnap"
-          subtitle={`Version ${Constants.expoConfig?.version ?? "1.1.0"} — AI-powered academic tutor`}
+          subtitle={`Version ${Constants.expoConfig?.version ?? "1.1.0"} - AI-powered academic tutor`}
           colors={colors}
           onPress={() => setShowAbout(true)}
           />
@@ -1709,7 +1709,7 @@ export default function SettingsScreen() {
               </View>
             </View>
             <Text style={[styles.aboutDesc, { color: colors.muted }]}>
-              TutorSnap is your AI-powered academic tutor for every subject — from Algebra and Calculus to World History and Creative Writing. Snap a photo of any problem, type a question, or speak your query to get instant step-by-step solutions.
+              TutorSnap is your AI-powered academic tutor for every subject, from Algebra and Calculus to World History and Creative Writing. Snap a photo of any problem, type a question, or speak your query to get instant step-by-step solutions.
             </Text>
             <View style={[styles.aboutDivider, { backgroundColor: colors.border }]} />
             <View style={styles.aboutRow}>

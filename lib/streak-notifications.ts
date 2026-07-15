@@ -2,11 +2,11 @@
  * lib/streak-notifications.ts
  *
  * Manages two notification types:
- *  1. Streak Alert — fires at 8 PM if the student hasn't hit their daily goal yet.
+ *  1. Streak Alert - fires at 8 PM if the student hasn't hit their daily goal yet.
  *     Cancelled automatically when the goal is met for the day.
  *     Gated by the "streakAlerts" Notification Center toggle.
  *
- *  2. Weekly Progress Report — fires every Sunday at 9 AM with a summary of
+ *  2. Weekly Progress Report - fires every Sunday at 9 AM with a summary of
  *     the week's solved count, accuracy, and current streak.
  *     Gated by the "weeklyReport" Notification Center toggle.
  *
@@ -115,7 +115,7 @@ export async function syncStreakAlert(): Promise<void> {
 }
 
 /**
- * Cancel the streak alert immediately — call this when the student meets
+ * Cancel the streak alert immediately - call this when the student meets
  * their daily goal.
  */
 export async function cancelStreakAlert(): Promise<void> {

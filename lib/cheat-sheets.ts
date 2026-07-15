@@ -399,7 +399,7 @@ const CHEAT_SHEETS: Record<string, CheatSheet> = {
           { label: "Cell Theory", formula: "All life = cells; cells from cells; cell = basic unit" },
           { label: "Prokaryote", formula: "No nucleus, no membrane-bound organelles" },
           { label: "Eukaryote", formula: "Has nucleus + membrane-bound organelles" },
-          { label: "ATP", formula: "Adenosine triphosphate — energy currency of the cell" },
+          { label: "ATP", formula: "Adenosine triphosphate - energy currency of the cell" },
           { label: "Mitosis phases", formula: "PMAT: Prophase → Metaphase → Anaphase → Telophase" },
           { label: "Meiosis", formula: "2 divisions → 4 haploid gametes" },
         ],
@@ -442,9 +442,9 @@ const CHEAT_SHEETS: Record<string, CheatSheet> = {
       {
         heading: "Functional Groups",
         items: [
-          { label: "Alkane", formula: "CₙH₂ₙ₊₂ — single bonds only" },
-          { label: "Alkene", formula: "CₙH₂ₙ — one C=C double bond" },
-          { label: "Alkyne", formula: "CₙH₂ₙ₋₂ — one C≡C triple bond" },
+          { label: "Alkane", formula: "CₙH₂ₙ₊₂ - single bonds only" },
+          { label: "Alkene", formula: "CₙH₂ₙ - one C=C double bond" },
+          { label: "Alkyne", formula: "CₙH₂ₙ₋₂ - one C≡C triple bond" },
           { label: "Alcohol", formula: "R–OH" },
           { label: "Aldehyde", formula: "R–CHO" },
           { label: "Ketone", formula: "R–CO–R'" },

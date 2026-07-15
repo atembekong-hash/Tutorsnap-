@@ -105,7 +105,7 @@ export function buildShareText(
   return (
     `${streakEmoji} ${myName} has a ${myStreak}-day streak on TutorSnap!\n` +
     `📚 ${totalSolved} problems solved\n\n` +
-    `Challenge me — download TutorSnap and enter my code: ${inviteCode}\n` +
+    `Challenge me - download TutorSnap and enter my code: ${inviteCode}\n` +
     `https://tutorsnap.app`
   );
 }

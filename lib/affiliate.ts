@@ -94,9 +94,9 @@ export const TIER_META: Record<RewardTier, {
 };
 
 export const MILESTONE_BONUSES: { at: number; bonus: number; label: string }[] = [
-  { at: 5,  bonus: 30,  label: "5 referrals milestone — 1 month bonus!" },
-  { at: 10, bonus: 60,  label: "10 referrals milestone — Champion unlocked! 2 month bonus!" },
-  { at: 25, bonus: 120, label: "25 referrals milestone — Legend unlocked! 4 month bonus!" },
+  { at: 5,  bonus: 30,  label: "5 referrals milestone - 1 month bonus!" },
+  { at: 10, bonus: 60,  label: "10 referrals milestone - Champion unlocked! 2 month bonus!" },
+  { at: 25, bonus: 120, label: "25 referrals milestone - Legend unlocked! 4 month bonus!" },
 ];
 
 // ─── Code ─────────────────────────────────────────────────────────────────────
@@ -297,7 +297,7 @@ export async function getEarningOptions(stats: AffiliateStats): Promise<EarningO
       id: "referral",
       emoji: "🎁",
       title: "Invite a Friend",
-      subtitle: "Share your code — they get 7 bonus days, you get days based on your tier",
+      subtitle: "Share your code - they get 7 bonus days, you get days based on your tier",
       reward: `+${TIER_META[getTier(stats.totalReferrals)].daysPerReferral} days per referral`,
       // Updated to revised generous tier
       available: true,
@@ -307,7 +307,7 @@ export async function getEarningOptions(stats: AffiliateStats): Promise<EarningO
       id: "social_share",
       emoji: "📣",
       title: "Share on Social Media",
-      subtitle: "Post about TutorSnap on any platform — Instagram, TikTok, X, WhatsApp…",
+      subtitle: "Post about TutorSnap on any platform - Instagram, TikTok, X, WhatsApp…",
       reward: "+3 days (once per 24 h)",
       available: shareAvailable,
       availableNote: shareAvailable ? undefined : `Available in ${hoursLeft}h`,
@@ -337,7 +337,7 @@ export async function getEarningOptions(stats: AffiliateStats): Promise<EarningO
       id: "classroom_invite",
       emoji: "🏫",
       title: "Invite a Teacher",
-      subtitle: "Share your classroom invite link — when a teacher creates a classroom, you earn big",
+      subtitle: "Share your classroom invite link - when a teacher creates a classroom, you earn big",
       reward: "+30 days per teacher",
       available: true,
       action: "classroom",
@@ -364,8 +364,8 @@ export async function scheduleWeeklyAffiliateDigest(): Promise<void> {
     if (stats.pendingDays === 0 && stats.totalReferrals === 0) return; // nothing to report yet
 
     const body = stats.pendingDays > 0
-      ? `You have ${stats.pendingDays} pending days — tap to redeem! ${stats.totalReferrals} friend${stats.totalReferrals !== 1 ? "s" : ""} referred so far.`
-      : `You've referred ${stats.totalReferrals} friend${stats.totalReferrals !== 1 ? "s" : ""} — keep sharing to earn more free days!`;
+      ? `You have ${stats.pendingDays} pending days - tap to redeem! ${stats.totalReferrals} friend${stats.totalReferrals !== 1 ? "s" : ""} referred so far.`
+      : `You've referred ${stats.totalReferrals} friend${stats.totalReferrals !== 1 ? "s" : ""} - keep sharing to earn more free days!`;
 
     await Notifications.scheduleNotificationAsync({
       identifier: WEEKLY_DIGEST_ID,

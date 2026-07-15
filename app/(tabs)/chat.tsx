@@ -494,8 +494,8 @@ function WelcomeCard({
     : `Hi${nameGreeting}! I'm TutorSnap ✨`;
 
   const subtitle = subjectDef
-    ? `Ask me anything about ${subjectDef.label} — I'll explain concepts, work through problems, and guide you step by step.`
-    : "Ask me anything about Math, Science, English, History, and more — I'll explain concepts, help with homework, and guide you step by step.";
+    ? `Ask me anything about ${subjectDef.label}. I'll explain concepts, work through problems, and guide you step by step.`
+    : "Ask me anything about Math, Science, English, History, and more. I'll explain concepts, help with homework, and guide you step by step.";
 
   return (
     <View style={welcomeStyles.container}>
@@ -1247,11 +1247,13 @@ function ChatScreenContent() {
             try {
               const parsed = JSON.parse(raw) as { token?: string };
               if (parsed.token) {
-                // First token arrived — hide the waiting dots
+                // First token arrived - hide the waiting dots
                 setIsWaitingForFirstToken(false);
+                // Strip em-dash and en-dash from every incoming token
+                const cleanToken = parsed.token.replace(/[\u2013\u2014]/g, '-');
                 if (!tutorSettings.typingAnimation) {
                   // Typing animation disabled: append the full token at once
-                  accumulated += parsed.token;
+                  accumulated += cleanToken;
                   const snap = accumulated;
                   setMessages((prev) =>
                     prev.map((m) => (m.id === msgId ? { ...m, content: snap } : m))
@@ -1259,7 +1261,7 @@ function ChatScreenContent() {
                   smoothScrollToEnd();
                 } else {
                   // Split token into individual characters for letter-by-letter effect
-                  for (const ch of parsed.token) {
+                  for (const ch of cleanToken) {
                     charQueue.push(ch);
                   }
                   if (!renderLoopRunning) drainQueue();
@@ -1497,7 +1499,7 @@ function ChatScreenContent() {
       month: "long", day: "numeric", year: "numeric",
     });
     const lines: string[] = [
-      `📚 TutorSnap Chat — ${session.title}`,
+      `📚 TutorSnap Chat - ${session.title}`,
       `Subject: ${subjectLabel} · ${dateStr}`,
       "",
     ];
@@ -1902,8 +1904,8 @@ function ChatScreenContent() {
           const queueCount = offlineQueue.length;
           const label = isOffline
             ? queueCount > 0
-              ? `Offline — ${queueCount} message${queueCount === 1 ? "" : "s"} queued`
-              : "You are offline — check your connection"
+              ? `Offline - ${queueCount} message${queueCount === 1 ? "" : "s"} queued`
+              : "You are offline - check your connection"
             : isReconnecting
             ? "Reconnecting…"
             : "Back online!";
@@ -2245,7 +2247,7 @@ function ChatScreenContent() {
                 ]}
               >
                 {isAtLimit
-                  ? "Message limit reached — Upgrade for unlimited chat"
+                  ? "Message limit reached - Upgrade for unlimited chat"
                   : `${messagesLeft} message${messagesLeft === 1 ? "" : "s"} left · Upgrade`}
               </Text>
               <IconSymbol
@@ -2341,7 +2343,7 @@ function ChatScreenContent() {
                 <Text style={[chatStyles.slowTooltipText, { color: "#fff" }]}>
                   {slowTooltipState === "fast-restored"
                     ? "⚡ Fast connection restored"
-                    : "🚢 Slow connection — responses may take longer"}
+                    : "🚢 Slow connection - responses may take longer"}
                 </Text>
               </View>
             )}

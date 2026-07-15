@@ -218,7 +218,7 @@ export const PRESET_THEMES: PresetTheme[] = [
   {
     id: "midnight",
     label: "Midnight",
-    description: "Deep dark background with cool indigo accent — perfect for late-night study.",
+    description: "Deep dark background with cool indigo accent - perfect for late-night study.",
     emoji: "🌙",
     swatches: ["#4F46E5", "#1E1B4B", "#0F0E1A"],
     swatchesDark: ["#6366F1", "#1E1B4B", "#0F0E1A"],
@@ -240,7 +240,7 @@ export const PRESET_THEMES: PresetTheme[] = [
   {
     id: "pastel",
     label: "Pastel",
-    description: "Soft rose accent with gentle spacing — calm and easy on the eyes.",
+    description: "Soft rose accent with gentle spacing - calm and easy on the eyes.",
     emoji: "🌸",
     swatches: ["#E11D48", "#FFF1F2", "#FFFFFF"],
     swatchesDark: ["#FB7185", "#2D1018", "#151718"],
@@ -284,7 +284,7 @@ export const PRESET_THEMES: PresetTheme[] = [
   {
     id: "ocean",
     label: "Ocean",
-    description: "Cool teal waves with spacious layout — refreshing and clear.",
+    description: "Cool teal waves with spacious layout - refreshing and clear.",
     emoji: "🌊",
     swatches: ["#0D9488", "#F0FDFA", "#FFFFFF"],
     swatchesDark: ["#14B8A6", "#042F2E", "#0A1A1A"],
@@ -306,7 +306,7 @@ export const PRESET_THEMES: PresetTheme[] = [
   {
     id: "sunset",
     label: "Sunset",
-    description: "Warm amber hues with bold labels — energetic and motivating.",
+    description: "Warm amber hues with bold labels - energetic and motivating.",
     emoji: "🌅",
     swatches: ["#D97706", "#FFFBEB", "#FFFFFF"],
     swatchesDark: ["#FBBF24", "#2D1A00", "#1A0F00"],

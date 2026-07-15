@@ -34,7 +34,7 @@ const SLIDES = [
     emoji: "🎓",
     title: "Welcome to TutorSnap",
     subtitle:
-      "Your AI-powered academic tutor for every subject — from Algebra to World History.",
+      "Your AI-powered academic tutor for every subject, from Algebra to World History.",
   },
   {
     id: "solve",
@@ -66,12 +66,12 @@ const SLIDES = [
     id: "tutor-preview",
     emoji: "🤖",
     title: "Meet Your AI Tutor",
-    subtitle: "TutorSnap adapts to you — here's how your tutor will work based on your choices.",
+    subtitle: "TutorSnap adapts to you. Here's how your tutor will work based on your choices.",
   },
   {
     id: "trial",
     emoji: "👑",
-    title: "Start Free — Upgrade Anytime",
+    title: "Start Free, Upgrade Anytime",
     subtitle:
       "Enjoy 2 free solves a day. Unlock unlimited solves, quizzes, and AI chat with a 14-day free trial.",
   },
@@ -325,7 +325,7 @@ export default function OnboardingScreen() {
                     label: "Grade",
                     value: selectedGrade
                       ? GRADE_OPTIONS.find((g) => g.id === selectedGrade)?.label ?? selectedGrade
-                      : "Not set — you can change this anytime",
+                      : "Not set - you can change this anytime",
                   },
                   {
                     emoji: "📚",

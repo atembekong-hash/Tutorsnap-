@@ -1038,7 +1038,7 @@ export function TutorSettingsModal({
               <SettingsRow
                 icon="timer"
                 label="Last Response"
-                sub={`${lastResponseMs}ms · ${tokenCount ?? "—"} tokens`}
+                sub={`${lastResponseMs}ms · ${tokenCount ?? "-"} tokens`}
               />
             )}
             <ToggleRow
