@@ -97,7 +97,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: "Solve",
-          tabBarIcon: ({ color }) => <IconSymbol size={24} name="sum" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol size={30} name="sum" color={color} />,
         }}
       />
       <Tabs.Screen
