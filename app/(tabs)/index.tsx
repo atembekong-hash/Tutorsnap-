@@ -1435,9 +1435,9 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   title: {
-    fontSize: 22,
-    fontWeight: "800",
-    letterSpacing: -0.3,
+    fontSize: 16,
+    fontWeight: "700",
+    letterSpacing: -0.1,
   },
   streakBadge: {
     flexDirection: "row",
