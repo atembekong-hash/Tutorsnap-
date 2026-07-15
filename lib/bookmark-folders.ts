@@ -7,23 +7,9 @@ export type BookmarkFolder = {
   id: string;
   name: string;
   emoji: string;
-  color: string; // hex colour tag
   createdAt: number;
   itemCount?: number;
 };
-
-export const FOLDER_COLORS = [
-  "#6366F1", // indigo
-  "#EC4899", // pink
-  "#F59E0B", // amber
-  "#10B981", // emerald
-  "#3B82F6", // blue
-  "#EF4444", // red
-  "#8B5CF6", // violet
-  "#14B8A6", // teal
-  "#F97316", // orange
-  "#84CC16", // lime
-];
 
 export async function getFolders(): Promise<BookmarkFolder[]> {
   try {
@@ -33,15 +19,12 @@ export async function getFolders(): Promise<BookmarkFolder[]> {
   return [];
 }
 
-export async function createFolder(name: string, emoji = "📁", color?: string): Promise<BookmarkFolder> {
+export async function createFolder(name: string, emoji = "📁"): Promise<BookmarkFolder> {
   const folders = await getFolders();
-  // Auto-assign a colour cycling through FOLDER_COLORS
-  const autoColor = FOLDER_COLORS[folders.length % FOLDER_COLORS.length];
   const newFolder: BookmarkFolder = {
     id: `folder-${Date.now()}`,
     name: name.trim(),
     emoji,
-    color: color ?? autoColor,
     createdAt: Date.now(),
     itemCount: 0,
   };
@@ -50,13 +33,12 @@ export async function createFolder(name: string, emoji = "📁", color?: string)
   return newFolder;
 }
 
-export async function renameFolder(id: string, name: string, emoji?: string, color?: string): Promise<void> {
+export async function renameFolder(id: string, name: string, emoji?: string): Promise<void> {
   const folders = await getFolders();
   const idx = folders.findIndex((f) => f.id === id);
   if (idx >= 0) {
     folders[idx].name = name.trim();
     if (emoji) folders[idx].emoji = emoji;
-    if (color) folders[idx].color = color;
     await AsyncStorage.setItem(FOLDERS_KEY, JSON.stringify(folders));
   }
 }

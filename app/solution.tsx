@@ -764,11 +764,8 @@ export default function SolutionScreen() {
                     if (supported) {
                       await Linking.openURL(waUrl);
                     } else {
-                      // WhatsApp not installed — fall back to system share sheet
-                      await Share.share({
-                        message: decodeURIComponent(msg),
-                        title: solution.problem,
-                      });
+                      // Fallback to system share
+                      await Share.share({ message: decodeURIComponent(msg) });
                     }
                   } catch { /* user cancelled */ }
                 }}
@@ -780,7 +777,7 @@ export default function SolutionScreen() {
                 </View>
                 <View style={styles.shareMenuInfo}>
                   <Text style={[styles.shareMenuLabel, { color: colors.foreground }]}>Share via WhatsApp</Text>
-                  <Text style={[styles.shareMenuDesc, { color: colors.muted }]}>WhatsApp or system share if not installed</Text>
+                  <Text style={[styles.shareMenuDesc, { color: colors.muted }]}>Send solution directly to a WhatsApp chat</Text>
                 </View>
                 <IconSymbol size={16} name="chevron.right" color={colors.muted} />
               </TouchableOpacity>
