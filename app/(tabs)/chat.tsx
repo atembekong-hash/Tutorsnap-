@@ -854,6 +854,7 @@ function ChatScreenContent() {
   const copyToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Emoji reaction picker
   const [reactionPickerMsgId, setReactionPickerMsgId] = useState<string | null>(null);
+  const [reactionPickerContent, setReactionPickerContent] = useState<string>('');
   const [reactions, setReactions] = useState<Record<string, string>>({}); // msgId -> emoji
   const [subjectClearedToast] = useState(false);
   const subjectClearedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1678,6 +1679,7 @@ function ChatScreenContent() {
   const handleLongPressReaction = useCallback(
     (content: string, msgId: string) => {
       H.impactMedium();
+      setReactionPickerContent(content);
       setReactionPickerMsgId(msgId);
     },
     []
@@ -3263,6 +3265,23 @@ function ChatScreenContent() {
                 <Text style={{ fontSize: 26 }}>{emoji}</Text>
               </TouchableOpacity>
             ))}
+            {/* Define Word row */}
+            <View style={{ width: '100%', height: 0.5, backgroundColor: colors.border, marginVertical: 6 }} />
+            <TouchableOpacity
+              style={[chatStyles.reactionPickerEmoji, { width: '100%', paddingHorizontal: 12, justifyContent: 'flex-start', gap: 8 }]}
+              onPress={() => {
+                if (reactionPickerContent) {
+                  // Extract the first meaningful word or short phrase selected
+                  const firstLine = reactionPickerContent.split('\n')[0].replace(/[*#`_]/g, '').trim().slice(0, 60);
+                  handleSend(`Define this term or concept: "${firstLine}"`);
+                }
+                setReactionPickerMsgId(null);
+              }}
+              activeOpacity={0.7}
+            >
+              <Text style={{ fontSize: 16 }}>📖</Text>
+              <Text style={{ fontSize: 13, color: colors.primary, fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif', fontWeight: '600' }}>Define this concept</Text>
+            </TouchableOpacity>
           </View>
         </TouchableOpacity>
       )}

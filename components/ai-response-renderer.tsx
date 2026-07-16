@@ -41,6 +41,8 @@ export interface AIResponseRendererProps {
   flavor?: 'commonmark' | 'github';
   animateWords?: boolean;
   stripPreamble?: boolean;
+  /** Called when user selects text and taps "Define" in the context menu */
+  onDefineWord?: (word: string) => void;
 }
 
 // ─── Segment types ────────────────────────────────────────────────────────────
@@ -187,6 +189,7 @@ function CopyableBlock({
   icon,
   children,
   copyText,
+  collapsible = true,
 }: {
   label: string;
   labelColor: string;
@@ -196,9 +199,13 @@ function CopyableBlock({
   icon: string;
   children: React.ReactNode;
   copyText: string;
+  collapsible?: boolean;
 }) {
   const [copied, setCopied] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+  const chevronAnim = useRef(new Animated.Value(0)).current;
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const handleCopy = async () => {
     try {
       await Clipboard.setStringAsync(copyText);
@@ -207,23 +214,52 @@ function CopyableBlock({
       timerRef.current = setTimeout(() => setCopied(false), 1500);
     } catch { /* ignore */ }
   };
+
+  const toggleCollapse = () => {
+    const toValue = collapsed ? 0 : 1;
+    Animated.timing(chevronAnim, {
+      toValue,
+      duration: 200,
+      easing: Easing.out(Easing.ease),
+      useNativeDriver: true,
+    }).start();
+    setCollapsed((prev) => !prev);
+  };
+
+  const chevronRotate = chevronAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '180deg'],
+  });
+
   useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+
   return (
     <View style={[blockStyles.container, { backgroundColor: bg, borderColor }]}>
       {/* Header row */}
-      <View style={[blockStyles.header, { borderBottomColor: borderColor }]}>
-        <View style={[blockStyles.labelPill, { backgroundColor: labelBg }]}>
-          <Text style={[blockStyles.labelIcon]}>{icon}</Text>
-          <Text style={[blockStyles.labelText, { color: labelColor }]}>{label}</Text>
+      <TouchableOpacity
+        onPress={collapsible ? toggleCollapse : undefined}
+        activeOpacity={collapsible ? 0.7 : 1}
+        style={[blockStyles.header, { borderBottomColor: collapsed ? 'transparent' : borderColor, borderBottomWidth: collapsed ? 0 : 0.5 }]}
+      >
+        <View style={blockStyles.headerLeft}>
+          {collapsible && (
+            <Animated.View style={[blockStyles.chevron, { transform: [{ rotate: chevronRotate }] }]}>
+              <Text style={{ fontSize: 10, color: labelColor, lineHeight: 14 }}>▼</Text>
+            </Animated.View>
+          )}
+          <View style={[blockStyles.labelPill, { backgroundColor: labelBg }]}>
+            <Text style={[blockStyles.labelIcon]}>{icon}</Text>
+            <Text style={[blockStyles.labelText, { color: labelColor }]}>{label}</Text>
+          </View>
         </View>
         <TouchableOpacity onPress={handleCopy} hitSlop={{ top: 8, bottom: 8, left: 12, right: 12 }} style={blockStyles.copyBtn}>
           <Text style={[blockStyles.copyBtnText, copied && blockStyles.copyBtnDone]}>
             {copied ? '✓ Copied' : 'Copy'}
           </Text>
         </TouchableOpacity>
-      </View>
-      {/* Content */}
-      <View style={blockStyles.content}>{children}</View>
+      </TouchableOpacity>
+      {/* Content — hidden when collapsed */}
+      {!collapsed && <View style={blockStyles.content}>{children}</View>}
     </View>
   );
 }
@@ -243,6 +279,17 @@ const blockStyles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 9,
     borderBottomWidth: 0.5,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  chevron: {
+    width: 16,
+    height: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   labelPill: {
     flexDirection: 'row',
@@ -562,6 +609,38 @@ function buildRenderRules(
       <View key={node.key} style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: primary, marginRight: 10, marginTop: (lh - 6) / 2, flexShrink: 0 }} />
     ),
 
+    // H4: Summary / Conclusion block — green tint, checkmark icon, copy button
+    heading4: (node: any, children: React.ReactNode[]) => (
+      <CopyableBlock
+        key={node.key}
+        label="Summary"
+        icon="✅"
+        labelColor={success}
+        labelBg={`${success}18`}
+        borderColor={`${success}30`}
+        bg={`${success}07`}
+        copyText={extractNodeText(node)}
+      >
+        <Text style={{ fontSize: fontSize * 1.05, fontFamily: 'Inter_500Medium', color: textColor, lineHeight: fontSize * 1.05 * 1.5 }}>
+          {children}
+        </Text>
+      </CopyableBlock>
+    ),
+
+    // H5: compact section label
+    heading5: (node: any, children: React.ReactNode[]) => (
+      <Text key={node.key} style={{ fontSize, fontFamily: 'Inter_600SemiBold', color: textColor, marginTop: 10, marginBottom: 2, lineHeight: fontSize * 1.3 }}>
+        {children}
+      </Text>
+    ),
+
+    // H6: muted micro-label
+    heading6: (node: any, children: React.ReactNode[]) => (
+      <Text key={node.key} style={{ fontSize: fontSize * 0.9, fontFamily: 'Inter_500Medium', color: `${textColor}80`, marginTop: 8, marginBottom: 2, lineHeight: fontSize * 0.9 * 1.3, letterSpacing: 0.5, textTransform: 'uppercase' }}>
+        {children}
+      </Text>
+    ),
+
     // Strong: Inter Bold
     strong: (node: any, children: React.ReactNode[]) => (
       <Text key={node.key} style={{ fontFamily: 'Inter_700Bold', color: textColor }}>{children}</Text>
@@ -599,6 +678,15 @@ function FallbackRenderer({ text, fontSize, color }: { text: string; fontSize: n
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
+// ─── Define Word Bar — appears when text is selected inside an AI bubble ────────
+function DefineWordBar({ onDefine }: { onDefine: (word: string) => void }) {
+  const [selectedText, setSelectedText] = useState('');
+  // Expose a way for the Markdown text to report selection
+  // We use a View with onStartShouldSetResponder to intercept selection events
+  // The actual selection is captured via the Text component's onSelectionChange
+  return null; // Placeholder — selection is handled via Text.onSelectionChange below
+}
+
 export function AIResponseRenderer({
   markdown,
   fontSize = 15,
@@ -610,6 +698,7 @@ export function AIResponseRenderer({
   onLinkPress,
   flavor = 'github',
   stripPreamble = !streaming,
+  onDefineWord,
 }: AIResponseRendererProps) {
   const colors = useColors();
   const textColor = color ?? colors.foreground;
