@@ -45,6 +45,8 @@ export interface AIResponseRendererProps {
   onDefineWord?: (word: string) => void;
   /** Whether structured blocks (Definition, Key Concept, etc.) start collapsed */
   blocksStartCollapsed?: boolean;
+  /** Compact mode: reduces block padding, radius, and margins for a denser layout */
+  compactBlocks?: boolean;
 }
 
 // ─── Segment types ────────────────────────────────────────────────────────────
@@ -194,6 +196,11 @@ function CopyableBlock({
   copyText,
   collapsible = true,
   startCollapsed = false,
+  blockPad,
+  blockRadius,
+  blockIconSize,
+  blockIconRadius,
+  blockMarginV,
 }: {
   label: string;
   labelColor: string;
@@ -207,7 +214,18 @@ function CopyableBlock({
   copyText: string;
   collapsible?: boolean;
   startCollapsed?: boolean;
+  /** Compact mode: reduces padding, radius, and margins */
+  blockPad?: number;
+  blockRadius?: number;
+  blockIconSize?: number;
+  blockIconRadius?: number;
+  blockMarginV?: number;
 }) {
+  const pad = blockPad ?? 16;
+  const radius = blockRadius ?? 14;
+  const iconSz = blockIconSize ?? 32;
+  const iconRad = blockIconRadius ?? 10;
+  const marginV = blockMarginV ?? 14;
   const [copied, setCopied] = useState(false);
   const [collapsed, setCollapsed] = useState(startCollapsed);
   const chevronAnim = useRef(new Animated.Value(startCollapsed ? 1 : 0)).current;
@@ -241,17 +259,17 @@ function CopyableBlock({
   useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
 
   return (
-    <View style={[blockStyles.container, { backgroundColor: bg, borderColor, borderWidth: 1.5 }]}>
+    <View style={[blockStyles.container, { backgroundColor: bg, borderColor, borderWidth: 1.5, borderRadius: radius, marginTop: marginV, marginBottom: marginV + 4 }]}>
       {/* Top accent bar */}
       {accentBar && <View style={[blockStyles.accentBar, { backgroundColor: accentBar }]} />}
       {/* Header row */}
       <TouchableOpacity
         onPress={collapsible ? toggleCollapse : undefined}
         activeOpacity={collapsible ? 0.75 : 1}
-        style={[blockStyles.header, { borderBottomColor: collapsed ? 'transparent' : borderColor, borderBottomWidth: collapsed ? 0 : 1 }]}
+        style={[blockStyles.header, { paddingHorizontal: pad, borderBottomColor: collapsed ? 'transparent' : borderColor, borderBottomWidth: collapsed ? 0 : 1 }]}
       >
         <View style={blockStyles.headerLeft}>
-          <View style={[blockStyles.iconCircle, { backgroundColor: labelBg }]}>
+          <View style={[blockStyles.iconCircle, { backgroundColor: labelBg, width: iconSz, height: iconSz, borderRadius: iconRad }]}>
             <Text style={blockStyles.labelIcon}>{icon}</Text>
           </View>
           <Text style={[blockStyles.labelText, { color: labelColor }]}>{label}</Text>
@@ -263,7 +281,7 @@ function CopyableBlock({
             style={[blockStyles.copyBtn, { backgroundColor: copied ? `${labelColor}22` : `${labelColor}12` }]}
           >
             <Text style={[blockStyles.copyBtnText, { color: labelColor }, copied && blockStyles.copyBtnDone]}>
-              {copied ? '✓ Copied' : '⎘ Copy'}
+              {copied ? '✓ Copied' : '⍘ Copy'}
             </Text>
           </TouchableOpacity>
           {collapsible && (
@@ -274,7 +292,7 @@ function CopyableBlock({
         </View>
       </TouchableOpacity>
       {/* Content — hidden when collapsed */}
-      {!collapsed && <View style={blockStyles.content}>{children}</View>}
+      {!collapsed && <View style={[blockStyles.content, { paddingHorizontal: pad, paddingVertical: pad - 2 }]}>{children}</View>}
     </View>
   );
 }
@@ -527,7 +545,13 @@ function buildRenderRules(
   fontSize: number,
   textColor: string,
   startCollapsed = false,
+  compact = false,
 ) {
+  const blockPad = compact ? 8 : 14;
+  const blockRadius = compact ? 10 : 14;
+  const blockIconSize = compact ? 24 : 32;
+  const blockIconRadius = compact ? 7 : 10;
+  const blockMarginV = compact ? 8 : 14;
   const primary = colors.primary;
   const border = colors.border;
   const lh = fontSize * 1.68;
@@ -548,6 +572,11 @@ function buildRenderRules(
         accentBar={primary}
         copyText={extractNodeText(node)}
         startCollapsed={startCollapsed}
+        blockPad={blockPad}
+        blockRadius={blockRadius}
+        blockIconSize={blockIconSize}
+        blockIconRadius={blockIconRadius}
+        blockMarginV={blockMarginV}
       >
         <Text style={{ fontSize: fontSize * 1.18, fontFamily: 'Inter_700Bold', color: textColor, lineHeight: fontSize * 1.18 * 1.4, letterSpacing: -0.4 }}>
           {children}
@@ -590,19 +619,24 @@ function buildRenderRules(
       </View>
     ),
 
-    // Blockquote: Important Note — orange sticky-note style with italic body
+    // Blockquote: Important Note — orange sticky-note style with italic body (dark-mode aware)
     blockquote: (node: any, children: React.ReactNode[]) => (
       <CopyableBlock
         key={node.key}
         label="Important Note"
         icon="⚠️"
         labelColor="#D97706"
-        labelBg="#D9770620"
-        borderColor="#D9770635"
-        bg="#FFFBEB"
+        labelBg="#D9770622"
+        borderColor="#D9770638"
+        bg={`${warning}0D`}
         accentBar="#D97706"
         copyText={extractNodeText(node)}
         startCollapsed={startCollapsed}
+        blockPad={blockPad}
+        blockRadius={blockRadius}
+        blockIconSize={blockIconSize}
+        blockIconRadius={blockIconRadius}
+        blockMarginV={blockMarginV}
       >
         <View style={{ borderLeftWidth: 0, paddingLeft: 0 }}>{children}</View>
       </CopyableBlock>
@@ -627,12 +661,40 @@ function buildRenderRules(
       return <CodeCard key={node.key} code={code.trim()} language={lang} fontSize={fontSize} />;
     },
 
+    // Ordered list: Step-by-step card wrapper with header + copy-all button
+    ordered_list: (node: any, children: React.ReactNode[], _styles: any, inheritedStyles: any) => {
+      const stepsText = extractNodeText(node);
+      return (
+        <View key={node.key} style={{ marginTop: 14, marginBottom: 18, borderRadius: 14, overflow: 'hidden', borderWidth: 1.5, borderColor: `${primary}30`, backgroundColor: `${primary}07` }}>
+          {/* Header */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingTop: 12, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: `${primary}20` }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: `${primary}18`, alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ fontSize: 16 }}>🔢</Text>
+              </View>
+              <Text style={{ fontSize: 13, fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif', fontWeight: '700', color: primary, letterSpacing: 0.3, textTransform: 'uppercase' }}>Steps</Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => {
+                Clipboard.setStringAsync(stepsText).catch(() => {});
+              }}
+              style={{ paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, backgroundColor: `${primary}15`, flexDirection: 'row', alignItems: 'center', gap: 5 }}
+            >
+              <Text style={{ fontSize: 11, color: primary, fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif', fontWeight: '600' }}>Copy All</Text>
+            </TouchableOpacity>
+          </View>
+          {/* Steps content */}
+          <View style={{ paddingHorizontal: 14, paddingVertical: 12 }}>{children}</View>
+        </View>
+      );
+    },
+
     // Ordered list icon: numbered badge
     ordered_list_icon: (node: any) => {
       const num = node.index != null ? node.index + 1 : '•';
       return (
-        <View key={node.key} style={{ width: 22, height: 22, borderRadius: 6, backgroundColor: `${primary}18`, alignItems: 'center', justifyContent: 'center', marginRight: 9, marginTop: (lh - 22) / 2, flexShrink: 0 }}>
-          <Text style={{ fontSize: fontSize * 0.72, fontFamily: 'Inter_700Bold', color: primary, lineHeight: 22 }}>
+        <View key={node.key} style={{ width: 26, height: 26, borderRadius: 8, backgroundColor: `${primary}20`, alignItems: 'center', justifyContent: 'center', marginRight: 10, marginTop: (lh - 26) / 2, flexShrink: 0 }}>
+          <Text style={{ fontSize: fontSize * 0.75, fontFamily: 'Inter_700Bold', color: primary, lineHeight: 26 }}>
             {num}
           </Text>
         </View>
@@ -657,6 +719,11 @@ function buildRenderRules(
         accentBar={success}
         copyText={extractNodeText(node)}
         startCollapsed={startCollapsed}
+        blockPad={blockPad}
+        blockRadius={blockRadius}
+        blockIconSize={blockIconSize}
+        blockIconRadius={blockIconRadius}
+        blockMarginV={blockMarginV}
       >
         <Text style={{ fontSize: fontSize * 1.08, fontFamily: 'Inter_500Medium', color: textColor, lineHeight: fontSize * 1.08 * 1.55 }}>
           {children}
@@ -678,6 +745,11 @@ function buildRenderRules(
         copyText={extractNodeText(node)}
         startCollapsed={startCollapsed}
         collapsible={false}
+        blockPad={blockPad}
+        blockRadius={blockRadius}
+        blockIconSize={blockIconSize}
+        blockIconRadius={blockIconRadius}
+        blockMarginV={blockMarginV}
       >
         <Text style={{ fontSize: fontSize * 1.22, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', color: '#E2E8F0', lineHeight: fontSize * 1.22 * 1.5, letterSpacing: 0.5 }}>
           {children}
@@ -698,6 +770,11 @@ function buildRenderRules(
         accentBar="#7C3AED"
         copyText={extractNodeText(node)}
         startCollapsed={startCollapsed}
+        blockPad={blockPad}
+        blockRadius={blockRadius}
+        blockIconSize={blockIconSize}
+        blockIconRadius={blockIconRadius}
+        blockMarginV={blockMarginV}
       >
         <Text style={{ fontSize: fontSize * 1.0, fontFamily: 'Inter_400Regular', color: textColor, lineHeight: fontSize * 1.0 * 1.6, fontStyle: 'italic' }}>
           {children}
@@ -764,6 +841,7 @@ export function AIResponseRenderer({
   stripPreamble = !streaming,
   onDefineWord,
   blocksStartCollapsed = false,
+  compactBlocks = false,
 }: AIResponseRendererProps) {
   const colors = useColors();
   const textColor = color ?? colors.foreground;
@@ -785,8 +863,8 @@ export function AIResponseRenderer({
   );
 
   const renderRules = useMemo(
-    () => buildRenderRules(colors, fontSize, textColor, blocksStartCollapsed),
-    [colors, fontSize, textColor, blocksStartCollapsed],
+    () => buildRenderRules(colors, fontSize, textColor, blocksStartCollapsed, compactBlocks),
+    [colors, fontSize, textColor, blocksStartCollapsed, compactBlocks],
   );
 
   const handleLinkPress = useCallback(

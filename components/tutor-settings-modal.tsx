@@ -98,6 +98,7 @@ export interface TutorSettings {
   showSpeedIndicator: boolean;
   showAccentBar: boolean;
   blocksStartCollapsed: boolean; // Whether structured blocks start collapsed
+  compactBlocks: boolean; // Whether structured blocks use compact (denser) layout
 
   // 7. Notifications & Reminders
   studyReminders: boolean;
@@ -151,6 +152,7 @@ export const DEFAULT_TUTOR_SETTINGS: TutorSettings = {
   showSpeedIndicator: false,
   showAccentBar: false,
   blocksStartCollapsed: false,
+  compactBlocks: false,
 
   studyReminders: false,
   studyReminderTime: "18:00",
@@ -1051,6 +1053,13 @@ export function TutorSettingsModal({
               sub="Definition, Key Concept, and Summary blocks start collapsed"
               value={settings.blocksStartCollapsed}
               onChange={(v) => onUpdate({ blocksStartCollapsed: v })}
+            />
+            <ToggleRow
+              icon="square.grid.2x2"
+              label="Compact Blocks"
+              sub="Reduce padding and margins in structured blocks for a denser layout"
+              value={settings.compactBlocks}
+              onChange={(v) => onUpdate({ compactBlocks: v })}
               last
             />
           </SettingsCard>

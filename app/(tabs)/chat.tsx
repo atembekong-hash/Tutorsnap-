@@ -396,6 +396,7 @@ function MessageBubble({
   animateWords = false,
   showAccentBar = false,
   blocksStartCollapsed = false,
+  compactBlocks = false,
 }: {
   message: ChatMessage;
   isFirstInRun: boolean;
@@ -408,6 +409,7 @@ function MessageBubble({
   animateWords?: boolean;
   showAccentBar?: boolean;
   blocksStartCollapsed?: boolean;
+  compactBlocks?: boolean;
 }) {
   const isUser = message.role === "user";
   const { settings } = useAppearance();
@@ -517,6 +519,7 @@ function MessageBubble({
               animateWords={animateWords}
               stripPreamble={!streaming}
               blocksStartCollapsed={blocksStartCollapsed}
+              compactBlocks={compactBlocks}
             />
             {streaming && message.content.length > 0 && (
               <BlinkingCursor color={colors.muted} fontSize={fs(15)} />
@@ -2292,6 +2295,7 @@ function ChatScreenContent() {
                       animateWords={item.id === streamingMsgIdRef.current && isStreaming && tutorSettings.animateAIResponses}
                       showAccentBar={tutorSettings.showAccentBar}
                       blocksStartCollapsed={tutorSettings.blocksStartCollapsed}
+                      compactBlocks={tutorSettings.compactBlocks}
                     />
                   </Swipeable>
                 ) : (
@@ -2307,6 +2311,7 @@ function ChatScreenContent() {
                     animateWords={item.id === streamingMsgIdRef.current && isStreaming && tutorSettings.animateAIResponses}
                     showAccentBar={tutorSettings.showAccentBar}
                     blocksStartCollapsed={tutorSettings.blocksStartCollapsed}
+                    compactBlocks={tutorSettings.compactBlocks}
                   />
                 )}
                 {/* Error bubble — shown when stream fails */}
