@@ -29,6 +29,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { GRADE_OPTIONS, GRADE_LABELS, loadGlobalGrade, saveGlobalGrade } from "@/lib/grade-levels";
 import { PracticeSkeletonCard } from "@/components/skeleton";
 import { loadQuizHistory } from "@/lib/quiz-history";
+import { savePrefetchedQuiz } from "@/lib/quiz-prefetch";
 const QUIZ_COUNTS = [3, 5, 10];
 
 function getDifficulties(gradeLevel: string | null): { id: Difficulty; label: string; color: string; desc: string }[] {
@@ -119,6 +120,8 @@ function PracticeScreenContent() {
   const [currentQuestion, setCurrentQuestion] = useState<PracticeQuestion | null>(null);
   const [showAnswer, setShowAnswer] = useState(false);
   const [hintsShown, setHintsShown] = useState(0);
+  const [consecutiveCorrect, setConsecutiveCorrect] = useState(0);
+  const [showStreakNudge, setShowStreakNudge] = useState(false);
   const [quizCount, setQuizCount] = useState(5);
   const [quizStats, setQuizStats] = useState<QuizStats | null>(null);
   const [diffSuggestion, setDiffSuggestion] = useState<DifficultyUpSuggestion | null>(null);
@@ -167,7 +170,8 @@ function PracticeScreenContent() {
       setCurrentQuestion(data as PracticeQuestion);
       setShowAnswer(false);
       setHintsShown(0);
-      H.notificationSuccess();
+      // Haptic: skeleton → content arrived
+      if (Platform.OS !== "web") H.impactLight();
       // Start pre-fetching the next problem in the background
       triggerPrefetch();
     },
@@ -175,6 +179,7 @@ function PracticeScreenContent() {
 
   const handleGenerate = () => {
     H.impactMedium();
+    setShowStreakNudge(false);
     // If we have a pre-fetched problem ready, use it instantly
     if (prefetchedRef.current) {
       const q = prefetchedRef.current;
@@ -188,6 +193,19 @@ function PracticeScreenContent() {
       return;
     }
     generateMutation.mutate({ subject: selectedSubject, difficulty: selectedDifficulty, gradeLevel: gradeLevel ?? undefined });
+  };
+
+  const handleSelfGrade = (correct: boolean) => {
+    const next = correct ? consecutiveCorrect + 1 : 0;
+    setConsecutiveCorrect(next);
+    if (correct) {
+      H.notificationSuccess();
+      if (next >= 5) setShowStreakNudge(true);
+    } else {
+      H.notificationError();
+    }
+    // Auto-advance to next problem
+    handleGenerate();
   };
 
   const handleShowHint = () => {
@@ -336,7 +354,12 @@ function PracticeScreenContent() {
             ))}
           </View>
           <TouchableOpacity
-            onPress={() => isOnline && router.push({ pathname: "/quiz", params: { subject: selectedSubject, difficulty: selectedDifficulty, count: String(quizCount), gradeLevel: gradeLevel ?? "" } })}
+            onPress={() => {
+              if (!isOnline) return;
+              H.impactMedium();
+              // Navigate to quiz — questions generated on mount in quiz.tsx
+              router.push({ pathname: "/quiz", params: { subject: selectedSubject, difficulty: selectedDifficulty, count: String(quizCount), gradeLevel: gradeLevel ?? "" } });
+            }}
             disabled={!isOnline}
             style={[styles.startQuizBtn, { backgroundColor: isOnline ? colors.primary : colors.muted, opacity: isOnline ? 1 : 0.6 }]}
             activeOpacity={0.85}
@@ -731,6 +754,33 @@ function PracticeScreenContent() {
               </View>
             )}
 
+            {/* Streak nudge — shown after 5 consecutive correct */}
+            {showStreakNudge && (
+              <View style={[styles.streakNudge, { backgroundColor: `${colors.primary}12`, borderColor: `${colors.primary}40` }]}>
+                <Text style={styles.streakNudgeEmoji}>🔥</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.streakNudgeTitle, { color: colors.foreground }]}>You're on fire!</Text>
+                  <Text style={[styles.streakNudgeSub, { color: colors.muted }]}>{consecutiveCorrect} in a row — try a harder one?</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => {
+                    const diffs: Difficulty[] = ["easy", "medium", "hard"];
+                    const idx = diffs.indexOf(selectedDifficulty);
+                    if (idx < diffs.length - 1) handleDifficultyChange(diffs[idx + 1]);
+                    setShowStreakNudge(false);
+                    H.impactMedium();
+                  }}
+                  style={[styles.streakNudgeBtn, { backgroundColor: colors.primary }]}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.streakNudgeBtnText}>Level Up</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setShowStreakNudge(false)} style={{ padding: 6 }}>
+                  <IconSymbol size={16} name="xmark" color={colors.muted} />
+                </TouchableOpacity>
+              </View>
+            )}
+
             {/* Action Buttons */}
             <View style={styles.actionRow}>
               {!showAnswer && hintsShown < (currentQuestion.hints?.length || 0) && (
@@ -752,6 +802,26 @@ function PracticeScreenContent() {
                   <IconSymbol size={16} name="eye.fill" color={colors.success} />
                   <Text style={[styles.answerBtnText, { color: colors.success }]}>Show Answer</Text>
                 </TouchableOpacity>
+              )}
+              {showAnswer && (
+                <>
+                  <TouchableOpacity
+                    onPress={() => handleSelfGrade(true)}
+                    style={[styles.selfGradeBtn, { backgroundColor: colors.success }]}
+                    activeOpacity={0.85}
+                  >
+                    <IconSymbol size={16} name="checkmark" color="#fff" />
+                    <Text style={styles.selfGradeBtnText}>Got it ✓</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => handleSelfGrade(false)}
+                    style={[styles.selfGradeBtn, { backgroundColor: colors.error }]}
+                    activeOpacity={0.85}
+                  >
+                    <IconSymbol size={16} name="xmark" color="#fff" />
+                    <Text style={styles.selfGradeBtnText}>Missed ✗</Text>
+                  </TouchableOpacity>
+                </>
               )}
               <TouchableOpacity
                 onPress={handleViewSolution}
@@ -1030,6 +1100,35 @@ const styles = StyleSheet.create({
   },
   gradeCellLabel: { fontSize: 13, fontWeight: "700", textAlign: "center" },
   gradeCellSub: { fontSize: 10, textAlign: "center" },
+  selfGradeBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
+    flex: 1,
+    justifyContent: "center",
+  },
+  selfGradeBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
+  streakNudge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 12,
+    marginBottom: 10,
+  },
+  streakNudgeEmoji: { fontSize: 24 },
+  streakNudgeTitle: { fontWeight: "700", fontSize: 14 },
+  streakNudgeSub: { fontSize: 12, marginTop: 1 },
+  streakNudgeBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
+  },
+  streakNudgeBtnText: { color: "#fff", fontWeight: "700", fontSize: 13 },
 });
 
 const pStyles = StyleSheet.create({

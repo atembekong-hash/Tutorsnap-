@@ -2120,14 +2120,13 @@ function ChatScreenContent() {
         style={{ flex: 1 }}
         keyboardVerticalOffset={0}
       >
-        {/* ── Glassmorphism header ── */}
+        {/* ── Transparent header ── */}
         <BlurView
-          intensity={Platform.OS === "ios" ? 60 : 0}
+          intensity={0}
           tint={colorScheme === "dark" ? "dark" : "light"}
           style={[
             chatStyles.header,
-            Platform.OS !== "ios" && { backgroundColor: `${colors.background}F0` },
-            { borderBottomColor: `${colors.border}80` },
+            { backgroundColor: "transparent", borderBottomWidth: 0 },
           ]}
         >
           <View style={chatStyles.headerLeft}>
@@ -2144,13 +2143,11 @@ function ChatScreenContent() {
               activeOpacity={0.7}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <IconSymbol name="xmark" size={18} color={colors.muted} />
+              <IconSymbol name="xmark" size={27} color={colors.foreground} />
             </TouchableOpacity>
-            {/* Gradient orb avatar in header */}
-            <AIAvatar size={28} pulsing={isStreaming || isWaitingForFirstToken} moodRing={tutorSettings.moodRingOrb} />
             <View style={{ flex: 1, minWidth: 0 }}>
               <Text
-                style={[chatStyles.headerTitle, { color: colors.foreground, fontSize: fs(16) }]}
+                style={[chatStyles.headerTitle, { color: colors.foreground }]}
                 numberOfLines={1}
               >
                 AI Tutor
@@ -2194,24 +2191,24 @@ function ChatScreenContent() {
           </View>
 
           <View style={chatStyles.headerActions}>
-            {/* Round 44: ⋯ dropdown — history + share */}
+            {/* ⋯ dropdown */}
             <TouchableOpacity
               onPress={() => { setShowMoreMenu(true); H.impactLight(); }}
               accessibilityLabel="More options"
               style={chatStyles.headerBtn}
               activeOpacity={0.7}
             >
-              <IconSymbol size={22} name="ellipsis" color={colors.muted} />
+              <IconSymbol size={33} name="ellipsis" color={colors.foreground} />
             </TouchableOpacity>
 
-            {/* Round 44: Tutor settings gear */}
+            {/* Tutor settings gear */}
             <TouchableOpacity
               onPress={() => { setShowTutorSettings(true); H.impactLight(); }}
               accessibilityLabel="Tutor settings"
               style={chatStyles.headerBtn}
               activeOpacity={0.7}
             >
-              <IconSymbol size={22} name="gearshape.fill" color={colors.muted} />
+              <IconSymbol size={33} name="gearshape.fill" color={colors.foreground} />
             </TouchableOpacity>
 
             {/* New chat */}
@@ -2221,11 +2218,11 @@ function ChatScreenContent() {
               style={[
                 chatStyles.headerBtn,
                 chatStyles.newChatBtn,
-                { backgroundColor: `${colors.primary}18` },
+                { backgroundColor: `${colors.primary}22` },
               ]}
               activeOpacity={0.7}
             >
-              <IconSymbol size={22} name="plus" color={colors.primary} />
+              <IconSymbol size={33} name="plus" color={colors.primary} />
             </TouchableOpacity>
           </View>
         </BlurView>
@@ -3526,7 +3523,7 @@ const chatStyles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
   },
-  headerTitle: { fontWeight: "700" },
+  headerTitle: { fontWeight: "800", fontSize: 20, letterSpacing: -0.3 },
   statusRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 1 },
   statusDot: { width: 6, height: 6, borderRadius: 3 },
   statusText: { fontWeight: "500" },
