@@ -107,7 +107,7 @@ import * as Auth from "@/lib/_core/auth";
 // React Native's built-in fetch does NOT support response.body.getReader() on native.
 import { fetch as expoFetch } from "expo/fetch";
 import { scheduleDailyReminder, cancelDailyReminder, scheduleSessionSummaryNotification } from "@/lib/notifications";
-import { pinDefinition } from "@/lib/glossary";
+import { pinDefinition, readGlossary, unpinDefinition, clearGlossary, type GlossaryEntry } from "@/lib/glossary";
 
 function getAppearanceSubjectKey(subjectId: string | null): string {
   if (!subjectId) return "Mathematics";
@@ -836,6 +836,10 @@ function ChatScreenContent() {
   const { isPremium, isDevMode, incrementUsage: incUsage } = usePremium();
   const [gradeLevel, setGradeLevel] = useState<string | null>(null);
   const [showGradePicker, setShowGradePicker] = useState(false);
+  const [showGlossaryModal, setShowGlossaryModal] = useState(false);
+  const [glossaryEntries, setGlossaryEntries] = useState<GlossaryEntry[]>([]);
+  const [glossarySearch, setGlossarySearch] = useState("");
+  const [glossaryLoading, setGlossaryLoading] = useState(false);
   const [replyTo, setReplyTo] = useState<string | null>(null);
   const [contextualChips, setContextualChips] = useState<string[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -1744,6 +1748,39 @@ function ChatScreenContent() {
     setSessionMessageCount(0);
     await saveSession(newSession, tutorSettings.maxSessions);
   }, [tutorSettings.maxSessions, tutorSettings.sessionSummary, session, messages]);
+
+  // ── Glossary modal ─────────────────────────────────────────────────────────
+
+  const loadGlossary = useCallback(async () => {
+    setGlossaryLoading(true);
+    const data = await readGlossary();
+    setGlossaryEntries(data);
+    setGlossaryLoading(false);
+  }, []);
+
+  const handleUnpinGlossary = useCallback(async (id: string) => {
+    if (Platform.OS !== "web") H.impactMedium();
+    await unpinDefinition(id);
+    setGlossaryEntries((prev) => prev.filter((e) => e.id !== id));
+  }, []);
+
+  const handleClearGlossary = useCallback(() => {
+    Alert.alert(
+      "Clear Glossary",
+      "Remove all pinned definitions? This cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Clear All",
+          style: "destructive",
+          onPress: async () => {
+            await clearGlossary();
+            setGlossaryEntries([]);
+          },
+        },
+      ],
+    );
+  }, []);
 
   // ── Build share text ────────────────────────────────────────────────────────
 
@@ -3139,6 +3176,27 @@ function ChatScreenContent() {
               <IconSymbol size={13} name="chevron.right" color={colors.muted} />
             </TouchableOpacity>
 
+            {/* Glossary */}
+            <TouchableOpacity
+              style={[chatStyles.moreMenuItem, { borderBottomWidth: 0.5, borderBottomColor: colors.border }]}
+              activeOpacity={0.7}
+              onPress={() => {
+                setShowMoreMenu(false);
+                H.impactLight();
+                setTimeout(() => {
+                  loadGlossary();
+                  setGlossarySearch("");
+                  setShowGlossaryModal(true);
+                }, 150);
+              }}
+            >
+              <View style={[chatStyles.moreMenuIcon, { backgroundColor: `${colors.primary}18` }]}>
+                <IconSymbol size={16} name="book.fill" color={colors.primary} />
+              </View>
+              <Text style={[chatStyles.moreMenuLabel, { color: colors.foreground, fontSize: fs(14) }]}>Glossary</Text>
+              <IconSymbol size={13} name="chevron.right" color={colors.muted} />
+            </TouchableOpacity>
+
             {/* Export PDF */}
             {Platform.OS !== "web" && (
               <TouchableOpacity
@@ -3348,6 +3406,102 @@ function ChatScreenContent() {
           </View>
         </View>
       )}
+
+      {/* ── Glossary modal ── */}
+      <Modal
+        visible={showGlossaryModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowGlossaryModal(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: colors.background }}>
+          {/* Header */}
+          <View style={[glossaryModalStyles.header, { borderBottomColor: colors.border, backgroundColor: colors.background }]}>
+            <View style={glossaryModalStyles.headerLeft}>
+              <Text style={{ fontSize: 22 }}>📖</Text>
+              <View>
+                <Text style={[glossaryModalStyles.headerTitle, { color: colors.foreground }]}>Glossary</Text>
+                <Text style={[glossaryModalStyles.headerSub, { color: colors.muted }]}>
+                  {glossaryEntries.length} pinned definition{glossaryEntries.length !== 1 ? "s" : ""}
+                </Text>
+              </View>
+            </View>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              {glossaryEntries.length > 0 && (
+                <TouchableOpacity onPress={handleClearGlossary} activeOpacity={0.7} style={glossaryModalStyles.clearBtn}>
+                  <Text style={[glossaryModalStyles.clearBtnText, { color: colors.error }]}>Clear All</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                onPress={() => setShowGlossaryModal(false)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                style={[glossaryModalStyles.closeBtn, { backgroundColor: colors.surface }]}
+              >
+                <Text style={{ fontSize: 15, color: colors.muted, fontWeight: "600" }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Search bar */}
+          {glossaryEntries.length > 0 && (
+            <View style={[glossaryModalStyles.searchRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Text style={{ fontSize: 14, color: colors.muted, marginRight: 6 }}>🔍</Text>
+              <TextInput
+                value={glossarySearch}
+                onChangeText={setGlossarySearch}
+                placeholder="Search definitions…"
+                placeholderTextColor={colors.muted}
+                style={[glossaryModalStyles.searchInput, { color: colors.foreground }]}
+                returnKeyType="search"
+                clearButtonMode="while-editing"
+              />
+            </View>
+          )}
+
+          {/* List */}
+          {glossaryLoading ? (
+            <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+              <ActivityIndicator size="large" color={colors.primary} />
+            </View>
+          ) : glossaryEntries.length === 0 ? (
+            <View style={glossaryModalStyles.emptyState}>
+              <Text style={{ fontSize: 48, marginBottom: 16 }}>📚</Text>
+              <Text style={[glossaryModalStyles.emptyTitle, { color: colors.foreground }]}>No definitions yet</Text>
+              <Text style={[glossaryModalStyles.emptySub, { color: colors.muted }]}>
+                Long-press any AI response and tap{"\n"}
+                <Text style={{ fontWeight: "700" }}>📌 Pin to Glossary</Text> to save it here.
+              </Text>
+            </View>
+          ) : (
+            <FlatList
+              data={glossarySearch.trim()
+                ? glossaryEntries.filter(
+                    (e) =>
+                      e.term.toLowerCase().includes(glossarySearch.toLowerCase()) ||
+                      e.definition.toLowerCase().includes(glossarySearch.toLowerCase()),
+                  )
+                : glossaryEntries
+              }
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={glossaryModalStyles.list}
+              renderItem={({ item }) => (
+                <GlossaryEntryCard
+                  entry={item}
+                  colors={colors}
+                  onUnpin={() => handleUnpinGlossary(item.id)}
+                />
+              )}
+              ListEmptyComponent={
+                <View style={glossaryModalStyles.emptyState}>
+                  <Text style={[glossaryModalStyles.emptySub, { color: colors.muted }]}>No results for "{glossarySearch}"</Text>
+                </View>
+              }
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            />
+          )}
+        </View>
+      </Modal>
 
       {/* ── Paywall modal ── */}
       {showPaywallModal && (
@@ -3866,4 +4020,158 @@ const chatStyles = StyleSheet.create({
   tutorSettingsRowSub: {
     lineHeight: 16,
   },
+});
+
+// ─── Glossary Entry Card (used inside the inline Glossary modal) ─────────────
+
+function stripMarkdownGlossary(text: string): string {
+  return text
+    .replace(/#{1,6}\s*/g, "")
+    .replace(/\*\*(.+?)\*\*/g, "$1")
+    .replace(/\*(.+?)\*/g, "$1")
+    .replace(/`(.+?)`/g, "$1")
+    .replace(/\[(.+?)\]\(.+?\)/g, "$1")
+    .replace(/^\s*[-*+]\s+/gm, "• ")
+    .trim();
+}
+
+function GlossaryEntryCard({
+  entry,
+  colors,
+  onUnpin,
+}: {
+  entry: GlossaryEntry;
+  colors: ReturnType<typeof useColors>;
+  onUnpin: () => void;
+}) {
+  const [expanded, setExpanded] = React.useState(false);
+  const [copied, setCopied] = React.useState(false);
+  const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleCopy = async () => {
+    try {
+      const Clipboard = await import("expo-clipboard");
+      await Clipboard.setStringAsync(entry.definition);
+      setCopied(true);
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => setCopied(false), 1500);
+      if (Platform.OS !== "web") H.impactLight();
+    } catch { /* ignore */ }
+  };
+
+  React.useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+
+  const plain = stripMarkdownGlossary(entry.definition);
+
+  return (
+    <View style={[glossaryCardStyles.card, { backgroundColor: colors.surface, borderColor: `${colors.primary}25` }]}>
+      <TouchableOpacity
+        onPress={() => setExpanded((v) => !v)}
+        activeOpacity={0.75}
+        style={glossaryCardStyles.cardHeader}
+      >
+        <View style={[glossaryCardStyles.iconPill, { backgroundColor: `${colors.primary}15` }]}>
+          <Text style={{ fontSize: 14 }}>📖</Text>
+        </View>
+        <Text
+          style={[glossaryCardStyles.term, { color: colors.foreground }]}
+          numberOfLines={expanded ? undefined : 1}
+        >
+          {entry.term}
+        </Text>
+        <Text style={[glossaryCardStyles.chevron, { color: colors.muted }]}>
+          {expanded ? "▲" : "▼"}
+        </Text>
+      </TouchableOpacity>
+
+      {expanded && (
+        <View style={[glossaryCardStyles.cardBody, { borderTopColor: `${colors.primary}20` }]}>
+          <Text style={[glossaryCardStyles.definitionText, { color: colors.foreground }]}>
+            {plain}
+          </Text>
+          <View style={glossaryCardStyles.cardFooter}>
+            {entry.subject && (
+              <View style={[glossaryCardStyles.subjectChip, { backgroundColor: `${colors.primary}12` }]}>
+                <Text style={[glossaryCardStyles.subjectChipText, { color: colors.primary }]}>
+                  {entry.subject}
+                </Text>
+              </View>
+            )}
+            <Text style={[glossaryCardStyles.dateText, { color: colors.muted }]}>
+              {new Date(entry.pinnedAt).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" })}
+            </Text>
+            <View style={glossaryCardStyles.cardActions}>
+              <TouchableOpacity
+                onPress={handleCopy}
+                style={[glossaryCardStyles.actionBtn, { backgroundColor: `${colors.primary}12` }]}
+                activeOpacity={0.7}
+              >
+                <Text style={[glossaryCardStyles.actionBtnText, { color: colors.primary }]}>
+                  {copied ? "✓ Copied" : "Copy"}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={onUnpin}
+                style={[glossaryCardStyles.actionBtn, { backgroundColor: `${colors.error}12` }]}
+                activeOpacity={0.7}
+              >
+                <Text style={[glossaryCardStyles.actionBtnText, { color: colors.error }]}>Remove</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
+    </View>
+  );
+}
+
+const glossaryCardStyles = StyleSheet.create({
+  card: { borderRadius: 14, borderWidth: 1, overflow: "hidden" },
+  cardHeader: { flexDirection: "row", alignItems: "center", padding: 12, gap: 10 },
+  iconPill: { width: 32, height: 32, borderRadius: 9, alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  term: { flex: 1, fontSize: 15, fontWeight: "600", letterSpacing: -0.2 },
+  chevron: { fontSize: 10, fontWeight: "700" },
+  cardBody: { borderTopWidth: 0.5, padding: 12, gap: 10 },
+  definitionText: { fontSize: 14, lineHeight: 22 },
+  cardFooter: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 6 },
+  subjectChip: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+  subjectChipText: { fontSize: 11, fontWeight: "600" },
+  dateText: { fontSize: 11, flex: 1 },
+  cardActions: { flexDirection: "row", gap: 6 },
+  actionBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
+  actionBtnText: { fontSize: 12, fontWeight: "600" },
+});
+
+const glossaryModalStyles = StyleSheet.create({
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingTop: 20,
+    paddingBottom: 12,
+    borderBottomWidth: 0.5,
+  },
+  headerLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
+  headerTitle: { fontSize: 20, fontWeight: "700", letterSpacing: -0.4 },
+  headerSub: { fontSize: 12, fontWeight: "500", marginTop: 1 },
+  clearBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
+  clearBtnText: { fontSize: 13, fontWeight: "600" },
+  closeBtn: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" },
+  searchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginHorizontal: 14,
+    marginTop: 10,
+    marginBottom: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  searchInput: { flex: 1, fontSize: 14, paddingVertical: 0 },
+  list: { padding: 14, gap: 10 },
+  emptyState: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32, marginTop: 60 },
+  emptyTitle: { fontSize: 18, fontWeight: "700", marginBottom: 8, letterSpacing: -0.3 },
+  emptySub: { fontSize: 14, textAlign: "center", lineHeight: 22 },
 });
