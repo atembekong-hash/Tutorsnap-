@@ -42,7 +42,8 @@ import {
   AppState,
   type AppStateStatus,
 } from "react-native";
-// expo-linear-gradient is NOT imported at top level (crashes old APKs without the native view compiled in)
+import { LinearGradient } from "expo-linear-gradient";
+import { BlurView } from "expo-blur";
 import * as H from "@/lib/haptics";
 // expo-clipboard, expo-print, expo-sharing are loaded lazily inside handlers
 // to avoid native module crashes on Android when the tab is first mounted.
@@ -208,6 +209,8 @@ function TypingDots({ color }: { color: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const dotColors = ["#6366F1", "#7C3AED", "#4F46E5"];
+
   return (
     <View style={typingStyles.row}>
       {dots.map((dot, i) => (
@@ -215,19 +218,25 @@ function TypingDots({ color }: { color: string }) {
           key={i}
           style={[
             typingStyles.dot,
-            { backgroundColor: color },
+            { backgroundColor: dotColors[i] },
             {
               transform: [
                 {
                   translateY: dot.interpolate({
                     inputRange: [0, 1],
-                    outputRange: [0, -5],
+                    outputRange: [0, -7],
+                  }),
+                },
+                {
+                  scale: dot.interpolate({
+                    inputRange: [0, 0.5, 1],
+                    outputRange: [1, 1.2, 1],
                   }),
                 },
               ],
               opacity: dot.interpolate({
                 inputRange: [0, 1],
-                outputRange: [0.4, 1],
+                outputRange: [0.35, 1],
               }),
             },
           ]}
@@ -238,27 +247,79 @@ function TypingDots({ color }: { color: string }) {
 }
 
 const typingStyles = StyleSheet.create({
-  row: { flexDirection: "row", alignItems: "center", gap: 5, paddingVertical: 4 },
-  dot: { width: 8, height: 8, borderRadius: 4 },
+  row: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 6, paddingHorizontal: 4 },
+  dot: { width: 9, height: 9, borderRadius: 4.5 },
 });
 
-// ─── AI Avatar (pure RN — no expo-linear-gradient, safe on all APKs) ────────
+// ─── AI Avatar — animated gradient orb ─────────────────────────────────────
 
-function AIAvatar({ size = 30 }: { size?: number }) {
+function AIAvatar({ size = 30, pulsing = false }: { size?: number; pulsing?: boolean }) {
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const glowAnim = useRef(new Animated.Value(0.6)).current;
+
+  useEffect(() => {
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.08, duration: 1800, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 0.95, duration: 1800, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      ])
+    );
+    const glow = Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowAnim, { toValue: 1, duration: 1800, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(glowAnim, { toValue: 0.6, duration: 1800, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      ])
+    );
+    if (pulsing) {
+      pulse.start();
+      glow.start();
+    } else {
+      pulseAnim.setValue(1);
+      glowAnim.setValue(0.6);
+    }
+    return () => { pulse.stop(); glow.stop(); };
+  }, [pulsing, pulseAnim, glowAnim]);
+
   return (
-    <View
-      style={{
-        width: size,
-        height: size,
-        borderRadius: size / 2,
-        backgroundColor: SchemeColors.light.secondary,
-        alignItems: "center",
-        justifyContent: "center",
-        flexShrink: 0,
-      }}
+    <Animated.View
+      style={[
+        {
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+          transform: [{ scale: pulseAnim }],
+        },
+      ]}
     >
-      <Text style={{ fontSize: size * 0.42, lineHeight: size * 0.55, color: SchemeColors.light.background }}>✦</Text>
-    </View>
+      {/* Outer glow ring */}
+      <Animated.View
+        style={{
+          position: "absolute",
+          width: size + 8,
+          height: size + 8,
+          borderRadius: (size + 8) / 2,
+          backgroundColor: "#7C3AED",
+          opacity: glowAnim.interpolate({ inputRange: [0.6, 1], outputRange: [0, 0.25] }),
+        }}
+      />
+      <LinearGradient
+        colors={["#6366F1", "#7C3AED", "#4F46E5"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={{
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <Text style={{ fontSize: size * 0.42, lineHeight: size * 0.55, color: "#FFFFFF" }}>✦</Text>
+      </LinearGradient>
+    </Animated.View>
   );
 }
 
@@ -328,7 +389,12 @@ function MessageBubble({
 
     return (
       <View style={[bubbleStyles.userRow, { marginBottom: rowMarginB }]}>
-        <View style={[bubbleStyles.userBubble, { backgroundColor: colors.primary, borderRadius: bubbleRadius, borderBottomRightRadius: settings.chatBubbleStyle === "minimal" ? bubbleRadius : 6, paddingHorizontal: bubblePadH, paddingVertical: bubblePadV }]}>
+        <LinearGradient
+          colors={["#6366F1", "#7C3AED"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[bubbleStyles.userBubble, { borderRadius: bubbleRadius, borderBottomRightRadius: settings.chatBubbleStyle === "minimal" ? bubbleRadius : 6, paddingHorizontal: bubblePadH, paddingVertical: bubblePadV }]}
+        >
           {quoteText.length > 0 && (
             <View style={[
               bubbleStyles.quoteBlock,
@@ -361,7 +427,7 @@ function MessageBubble({
               minute: "2-digit",
             })}
           </Text>
-        </View>
+        </LinearGradient>
       </View>
     );
   }
@@ -487,37 +553,49 @@ function WelcomeCard({
 }) {
   const prompts = getPromptsForSubject(subject);
   const subjectDef = subject ? getSubjectDef(subject) : null;
-
   const nameGreeting = nickname ? `, ${nickname}` : "";
   const greeting = subjectDef
     ? `Hi${nameGreeting}! Ready for ${subjectDef.label} ${subjectDef.emoji}`
-    : `Hi${nameGreeting}! I'm TutorSnap ✨`;
-
+    : `How can I help you today${nameGreeting}?`;
   const subtitle = subjectDef
     ? `Ask me anything about ${subjectDef.label}. I'll explain concepts, work through problems, and guide you step by step.`
-    : "Ask me anything about Math, Science, English, History, and more. I'll explain concepts, help with homework, and guide you step by step.";
+    : "Ask me anything about Math, Science, English, History, and more. I'll guide you step by step.";
+
+  // Staggered entrance animation
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(24)).current;
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 500, delay: 100, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+      Animated.timing(slideAnim, { toValue: 0, duration: 500, delay: 100, easing: Easing.out(Easing.quad), useNativeDriver: true }),
+    ]).start();
+  }, [fadeAnim, slideAnim]);
 
   return (
-    <View style={welcomeStyles.container}>
-      <AIAvatar size={64} />
-      <Text style={[welcomeStyles.title, { color: colors.foreground, fontSize: fs(22) }]}>
-        {greeting}
-      </Text>
-      <Text style={[welcomeStyles.subtitle, { color: colors.muted, fontSize: fs(14) }]}>
-        {subtitle}
-      </Text>
-      {onEditNickname && (
-        <TouchableOpacity
-          onPress={onEditNickname}
-          accessibilityLabel="Edit your nickname in Tutor Settings"
-          accessibilityRole="button"
-          hitSlop={{ top: 8, bottom: 8, left: 12, right: 12 }}
-        >
-          <Text style={[welcomeStyles.editLink, { color: colors.primary, fontSize: fs(12) }]}>
-            {nickname ? "Edit name" : "Set your name"}
-          </Text>
-        </TouchableOpacity>
-      )}
+    <Animated.View style={[welcomeStyles.container, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+      {/* Large animated pulsing orb */}
+      <AIAvatar size={80} pulsing />
+      <View style={{ gap: 6, alignItems: "center", marginTop: 8 }}>
+        <Text style={[welcomeStyles.title, { color: colors.foreground, fontSize: fs(24) }]}>
+          {greeting}
+        </Text>
+        <Text style={[welcomeStyles.subtitle, { color: colors.muted, fontSize: fs(14) }]}>
+          {subtitle}
+        </Text>
+        {onEditNickname && (
+          <TouchableOpacity
+            onPress={onEditNickname}
+            accessibilityLabel="Edit your nickname in Tutor Settings"
+            accessibilityRole="button"
+            hitSlop={{ top: 8, bottom: 8, left: 12, right: 12 }}
+          >
+            <Text style={[welcomeStyles.editLink, { color: colors.primary, fontSize: fs(12) }]}>
+              {nickname ? "Edit name" : "Set your name"}
+            </Text>
+          </TouchableOpacity>
+        )}
+      </View>
+      {/* Glass suggestion chips */}
       <View style={welcomeStyles.grid}>
         {prompts.map((p, i) => (
           <TouchableOpacity
@@ -526,9 +604,12 @@ function WelcomeCard({
             accessibilityLabel={`Ask: ${p.text}`}
             style={[
               welcomeStyles.chip,
-              { backgroundColor: colors.surface, borderColor: colors.border },
+              {
+                backgroundColor: `${colors.primary}18`,
+                borderColor: `${colors.primary}45`,
+              },
             ]}
-            activeOpacity={0.7}
+            activeOpacity={0.65}
           >
             <Text
               style={[
@@ -542,7 +623,7 @@ function WelcomeCard({
           </TouchableOpacity>
         ))}
       </View>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -553,28 +634,28 @@ const welcomeStyles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 24,
     paddingVertical: 32,
-    gap: 12,
+    gap: 16,
   },
-  title: { fontWeight: "700", textAlign: "center" },
-  subtitle: { textAlign: "center", lineHeight: 22, maxWidth: 300 },
+  title: { fontWeight: "800", textAlign: "center", letterSpacing: -0.8 },
+  subtitle: { textAlign: "center", lineHeight: 22, maxWidth: 300, opacity: 0.75 },
   editLink: { fontWeight: "500", textDecorationLine: "underline", opacity: 0.85 },
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 10,
     justifyContent: "center",
-    marginTop: 8,
+    marginTop: 4,
     width: "100%",
   },
   chip: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 22,
-    borderWidth: 1,
+    paddingHorizontal: 18,
+    paddingVertical: 11,
+    borderRadius: 24,
+    borderWidth: 1.5,
     maxWidth: "47%",
     minWidth: "40%",
   },
-  chipText: { fontWeight: "500", textAlign: "center" },
+  chipText: { fontWeight: "600", textAlign: "center", letterSpacing: 0.1 },
 });
 
 // ─── AI Bubble Context Menu (cross-platform, no ActionSheetIOS) ──────────────
@@ -1792,22 +1873,35 @@ function ChatScreenContent() {
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
-    <ScreenContainer edges={["top", "left", "right"]}>
+    <ScreenContainer edges={["top", "left", "right", "bottom"]} containerClassName="">
+      {/* Ambient gradient background */}
+      <LinearGradient
+        colors={colorScheme === "dark"
+          ? ["#0D0D1A", "#0F0F1F", "#0D0D1A"]
+          : ["#F8F7FF", "#FAFAFA", "#F5F4FF"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+        pointerEvents="none"
+      />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
-        keyboardVerticalOffset={TAB_BAR_HEIGHT}
+        keyboardVerticalOffset={0}
       >
-        {/* ── Slim header with gradient avatar ── */}
-        <View
+        {/* ── Glassmorphism header ── */}
+        <BlurView
+          intensity={Platform.OS === "ios" ? 60 : 0}
+          tint={colorScheme === "dark" ? "dark" : "light"}
           style={[
             chatStyles.header,
-            { borderBottomColor: colors.border, backgroundColor: colors.background },
+            Platform.OS !== "ios" && { backgroundColor: `${colors.background}F0` },
+            { borderBottomColor: `${colors.border}80` },
           ]}
         >
           <View style={chatStyles.headerLeft}>
-            {/* Avatar in header — 28px solid purple circle */}
-            <AIAvatar size={28} />
+            {/* Gradient orb avatar in header */}
+            <AIAvatar size={28} pulsing={isStreaming || isWaitingForFirstToken} />
             <View style={{ flex: 1, minWidth: 0 }}>
               <Text
                 style={[chatStyles.headerTitle, { color: colors.foreground, fontSize: fs(16) }]}
@@ -1880,7 +1974,7 @@ function ChatScreenContent() {
               <IconSymbol size={22} name="plus" color={colors.primary} />
             </TouchableOpacity>
           </View>
-        </View>
+        </BlurView>
 
         {/* ── Connectivity banner (offline / reconnecting / back-online) ── */}
         {(bannerState !== "hidden" || !isOnline) && (() => {
@@ -2184,7 +2278,7 @@ function ChatScreenContent() {
                   <View style={chatStyles.typingAvatarCol}>
                     <AIAvatar size={30} />
                   </View>
-                  <View style={[chatStyles.typingBubble, { backgroundColor: colors.surface }]}>
+                  <View style={[chatStyles.typingBubble, { backgroundColor: "transparent" }]}>
                     <TypingDots color={colors.primary} />
                   </View>
                 </View>
@@ -2224,7 +2318,7 @@ function ChatScreenContent() {
         <View
           style={[
             chatStyles.floatingBarWrapper,
-            { paddingBottom: Math.max(insets.bottom > 0 ? insets.bottom - bottomPadding + 8 : 8, 6) },
+            { paddingBottom: Math.max(insets.bottom, 8) },
           ]}
         >
           {/* Limit nudge strip */}
@@ -2279,15 +2373,21 @@ function ChatScreenContent() {
             </View>
           )}
 
-          {/* Pill input card */}
-          <View
+          {/* Pill input card — glassmorphism */}
+          <BlurView
+            intensity={Platform.OS === "ios" ? 50 : 0}
+            tint={colorScheme === "dark" ? "dark" : "light"}
             style={[
               chatStyles.inputCard,
               {
-                backgroundColor: colors.surface,
-                borderColor: colors.border,
-                shadowColor: "#000",
+                borderColor: `${colors.primary}30`,
+                shadowColor: colors.primary,
+                shadowOpacity: 0.12,
+                shadowRadius: 16,
+                shadowOffset: { width: 0, height: 4 },
+                overflow: "hidden",
               },
+              Platform.OS !== "ios" && { backgroundColor: `${colors.surface}F5` },
             ]}
           >
             <TextInput
@@ -2383,28 +2483,27 @@ function ChatScreenContent() {
                   accessibilityLabel="Send message"
                   onPress={() => handleSend()}
                   disabled={!inputText.trim() || !isOnline || isAtLimit}
-                  style={[
-                    chatStyles.sendBtn,
-                    {
-                      backgroundColor:
-                        isOnline && !isAtLimit && inputText.trim()
-                          ? colors.primary
-                          : colors.border,
-                    },
-                  ]}
                   activeOpacity={0.8}
+                  style={chatStyles.sendBtn}
                 >
-                  <IconSymbol
-                    size={17}
-                    name={isOnline ? "paperplane.fill" : "wifi.slash"}
-                    color={
-                      isOnline && !isAtLimit && inputText.trim() ? "#FFFFFF" : colors.muted
-                    }
-                  />
+                  {isOnline && !isAtLimit && inputText.trim() ? (
+                    <LinearGradient
+                      colors={["#6366F1", "#7C3AED"]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={chatStyles.sendBtnGradient}
+                    >
+                      <IconSymbol size={17} name="paperplane.fill" color="#FFFFFF" />
+                    </LinearGradient>
+                  ) : (
+                    <View style={[chatStyles.sendBtnGradient, { backgroundColor: colors.border }]}>
+                      <IconSymbol size={17} name={isOnline ? "paperplane.fill" : "wifi.slash"} color={colors.muted} />
+                    </View>
+                  )}
                 </TouchableOpacity>
               )}
             </Animated.View>
-          </View>
+          </BlurView>
 
           {userMessageCount > 0 && (
             <TouchableOpacity
@@ -2426,7 +2525,7 @@ function ChatScreenContent() {
         style={[
           chatStyles.scrollFab,
           chatStyles.scrollFabLeft,
-          { backgroundColor: colors.surface, borderColor: colors.border, bottom: TAB_BAR_HEIGHT + 80, opacity: scrollTopOpacity, transform: [{ scale: scrollTopScaleAnim }] },
+          { backgroundColor: colors.surface, borderColor: colors.border, bottom: 90, opacity: scrollTopOpacity, transform: [{ scale: scrollTopScaleAnim }] },
         ]}
       >
         <TouchableOpacity
@@ -2453,7 +2552,7 @@ function ChatScreenContent() {
         style={[
           chatStyles.scrollFab,
           chatStyles.scrollFabRight,
-          { backgroundColor: colors.surface, borderColor: colors.border, bottom: TAB_BAR_HEIGHT + 80, opacity: scrollBottomOpacity, transform: [{ scale: scrollBottomScaleAnim }] },
+          { backgroundColor: colors.surface, borderColor: colors.border, bottom: 90, opacity: scrollBottomOpacity, transform: [{ scale: scrollBottomScaleAnim }] },
         ]}
       >
         <TouchableOpacity
@@ -2494,7 +2593,7 @@ function ChatScreenContent() {
           {
             backgroundColor: colors.surface,
             borderColor: colors.border,
-            bottom: TAB_BAR_HEIGHT + 14,
+            bottom: 14,
             opacity: generatingPillAnim,
             transform: [{
               translateY: generatingPillAnim.interpolate({
@@ -2534,7 +2633,7 @@ function ChatScreenContent() {
           }}
           style={[
             chatStyles.transcriptToast,
-            { backgroundColor: colors.foreground, bottom: TAB_BAR_HEIGHT + 130 },
+            { backgroundColor: colors.foreground, bottom: 130 },
           ]}
         >
           <IconSymbol size={14} name="mic.fill" color={colors.background} />
@@ -2962,7 +3061,7 @@ const chatStyles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderBottomWidth: 0.5,
     zIndex: 10,
   },
@@ -3002,6 +3101,7 @@ const chatStyles = StyleSheet.create({
   floatingBarWrapper: {
     paddingHorizontal: 12,
     paddingTop: 6,
+    paddingBottom: 8,
     gap: 6,
   },
   limitStrip: {
@@ -3018,15 +3118,12 @@ const chatStyles = StyleSheet.create({
   inputCard: {
     flexDirection: "row",
     alignItems: "flex-end",
-    borderRadius: 26,
+    borderRadius: 28,
     borderWidth: 1,
-    paddingHorizontal: 10,
+    paddingHorizontal: 14,
     paddingVertical: 8,
     gap: 8,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 4,
+    elevation: 8,
   },
   subjectPill: {
     width: 34,
@@ -3059,6 +3156,13 @@ const chatStyles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     flexShrink: 0,
+  },
+  sendBtnGradient: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: "center",
+    justifyContent: "center",
   },
   clearRow: { alignItems: "center", paddingBottom: 2 },
   clearText: { textDecorationLine: "underline" },

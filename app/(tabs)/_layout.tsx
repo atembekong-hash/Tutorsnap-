@@ -32,7 +32,6 @@ function ChatTabIcon({ color, focused: _focused }: { color: string; focused: boo
 
   useEffect(() => {
     if (unreadCount > prevUnreadRef.current) {
-      // Pulse: scale 0.8 → 1.15 → 1.0 when badge increments
       Animated.sequence([
         Animated.timing(badgeScaleAnim, { toValue: 0.8, duration: 60, useNativeDriver: true, easing: Easing.out(Easing.quad) }),
         Animated.timing(badgeScaleAnim, { toValue: 1.15, duration: 160, useNativeDriver: true, easing: Easing.out(Easing.back(2)) }),
@@ -40,14 +39,11 @@ function ChatTabIcon({ color, focused: _focused }: { color: string; focused: boo
       ]).start();
     }
     prevUnreadRef.current = unreadCount;
-    // Mark as read whenever the tab icon is rendered with focus (tab is active)
     if (unreadCount > 0 && _focused) {
       markAsRead();
     }
   }, [unreadCount, _focused, badgeScaleAnim, markAsRead]);
 
-  // Use a plain View — never nest a Touchable inside a tab button (HapticTab)
-  // as it intercepts the press and breaks tab navigation
   return (
     <View style={{ position: "relative" }}>
       <IconSymbol size={24} name="bubble.left.fill" color={color} />
@@ -133,6 +129,8 @@ export default function TabLayout() {
         options={{
           title: "AI Tutor",
           tabBarIcon: ({ color, focused }) => <ChatTabIcon color={color} focused={focused} />,
+          // Hide tab bar when chat is active — immersive full-screen experience
+          tabBarStyle: { display: "none" },
         }}
       />
       <Tabs.Screen
