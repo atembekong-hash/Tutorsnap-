@@ -2143,7 +2143,7 @@ function ChatScreenContent() {
               activeOpacity={0.7}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <IconSymbol name="xmark" size={27} color={colors.foreground} />
+              <IconSymbol name="xmark" size={20} color={colors.foreground} />
             </TouchableOpacity>
             <View style={{ flex: 1, minWidth: 0 }}>
               <Text
@@ -2198,7 +2198,7 @@ function ChatScreenContent() {
               style={chatStyles.headerBtn}
               activeOpacity={0.7}
             >
-              <IconSymbol size={33} name="ellipsis" color={colors.foreground} />
+              <IconSymbol size={25} name="ellipsis" color={colors.foreground} />
             </TouchableOpacity>
 
             {/* Tutor settings gear */}
@@ -2208,7 +2208,7 @@ function ChatScreenContent() {
               style={chatStyles.headerBtn}
               activeOpacity={0.7}
             >
-              <IconSymbol size={33} name="gearshape.fill" color={colors.foreground} />
+              <IconSymbol size={25} name="gearshape.fill" color={colors.foreground} />
             </TouchableOpacity>
 
             {/* New chat */}
@@ -2222,7 +2222,7 @@ function ChatScreenContent() {
               ]}
               activeOpacity={0.7}
             >
-              <IconSymbol size={33} name="plus" color={colors.primary} />
+              <IconSymbol size={25} name="plus" color={colors.primary} />
             </TouchableOpacity>
           </View>
         </BlurView>
