@@ -477,9 +477,7 @@ function MessageBubble({
   if (message.error) {
     return (
       <View style={[bubbleStyles.aiRow, { marginBottom: rowMarginB }]}>
-        <View style={bubbleStyles.avatarCol}>
-          {isFirstInRun ? <AIAvatar size={30} /> : null}
-        </View>
+        <View style={bubbleStyles.avatarCol} />
         <View style={bubbleStyles.aiContent} />
       </View>
     );
@@ -495,9 +493,7 @@ function MessageBubble({
       accessibilityLabel="Tap to copy, long press for options"
     >
       <View style={[bubbleStyles.aiRow, { marginBottom: rowMarginB }]}>
-        <View style={bubbleStyles.avatarCol}>
-          {isFirstInRun ? <AIAvatar size={30} /> : null}
-        </View>
+        <View style={bubbleStyles.avatarCol} />
         <View style={bubbleStyles.aiContentWrapper}>
           <View style={[bubbleStyles.aiAccentBar, { backgroundColor: colors.primary }]} />
           <View style={bubbleStyles.aiContent}>
@@ -2495,9 +2491,7 @@ function ChatScreenContent() {
               isWaitingForFirstToken ? (
                 // Three-dot typing indicator: shown from send until first AI token arrives
                 <View style={chatStyles.typingRow}>
-                  <View style={chatStyles.typingAvatarCol}>
-                    <AIAvatar size={30} />
-                  </View>
+                  <View style={chatStyles.typingAvatarCol} />
                   <View style={[chatStyles.typingBubble, { backgroundColor: "transparent" }]}>
                     <TypingDots color={colors.primary} />
                   </View>
@@ -2593,21 +2587,18 @@ function ChatScreenContent() {
             </View>
           )}
 
-          {/* Pill input card — glassmorphism */}
-          <BlurView
-            intensity={Platform.OS === "ios" ? 50 : 0}
-            tint={colorScheme === "dark" ? "dark" : "light"}
+          {/* Pill input card — solid surface background */}
+          <View
             style={[
               chatStyles.inputCard,
               {
+                backgroundColor: colors.surface,
                 borderColor: `${colors.primary}30`,
-                shadowColor: colors.primary,
-                shadowOpacity: 0.12,
-                shadowRadius: 16,
-                shadowOffset: { width: 0, height: 4 },
-                overflow: "hidden",
+                shadowColor: colors.foreground,
+                shadowOpacity: 0.06,
+                shadowRadius: 8,
+                shadowOffset: { width: 0, height: 2 },
               },
-              Platform.OS !== "ios" && { backgroundColor: `${colors.surface}F5` },
             ]}
           >
             <TextInput
@@ -2723,7 +2714,7 @@ function ChatScreenContent() {
                 </TouchableOpacity>
               )}
             </Animated.View>
-          </BlurView>
+          </View>
 
           {userMessageCount > 0 && (
             <TouchableOpacity
