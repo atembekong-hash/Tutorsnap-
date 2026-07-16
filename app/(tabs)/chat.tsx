@@ -2724,7 +2724,7 @@ function ChatScreenContent() {
         style={[
           chatStyles.scrollFab,
           chatStyles.scrollFabLeft,
-          { backgroundColor: colors.surface, borderColor: colors.border, bottom: 90, opacity: scrollTopOpacity, transform: [{ scale: scrollTopScaleAnim }] },
+          { backgroundColor: colors.surface, borderColor: colors.border, bottom: 200, opacity: scrollTopOpacity, transform: [{ scale: scrollTopScaleAnim }] },
         ]}
       >
         <TouchableOpacity
@@ -2751,7 +2751,7 @@ function ChatScreenContent() {
         style={[
           chatStyles.scrollFab,
           chatStyles.scrollFabRight,
-          { backgroundColor: colors.surface, borderColor: colors.border, bottom: 90, opacity: scrollBottomOpacity, transform: [{ scale: scrollBottomScaleAnim }] },
+          { backgroundColor: colors.surface, borderColor: colors.border, bottom: 152, opacity: scrollBottomOpacity, transform: [{ scale: scrollBottomScaleAnim }] },
         ]}
       >
         <TouchableOpacity
