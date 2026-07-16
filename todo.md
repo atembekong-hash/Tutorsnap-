@@ -714,3 +714,12 @@
 - [x] ScreenContainer extended to include bottom safe area edge
 - [x] expo-blur@15.0.8 installed (SDK 54 compatible, new arch)
 - [x] TypeScript: 0 errors
+
+## Premium Chat Animations with Settings (Round 64)
+- [x] Swipe-to-reveal tab bar: pill indicator at bottom, tap to show tab bar for 3 seconds
+- [x] Word-by-word fade-in animation for AI streaming responses (AnimatedFadeInWrapper)
+- [x] Mood ring orb color shift: indigo→teal gradient when AI is generating
+- [x] Settings toggles: "Swipe to Show Tab Bar", "Animate AI Responses", "Mood Ring Orb" in Appearance section
+- [x] Icon mappings added: hand.draw, text.word.spacing, circle.hexagongrid.fill
+- [x] animateWords prop added to AIResponseRenderer and MessageBubble
+- [x] TypeScript: 0 errors

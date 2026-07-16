@@ -166,6 +166,10 @@ const MAPPING = {
   "rectangle.grid.1x2.fill": "view-agenda",
   // Round 55: TutorSettings Section 1 new fields
   "book.closed.fill": "book",
+  // Round 64: Premium animation settings
+  "hand.draw.fill": "swipe",
+  "text.word.spacing": "text-fields",
+  "circle.hexagongrid.fill": "blur-circular",
 } as unknown as IconMapping;
 
 export function IconSymbol({

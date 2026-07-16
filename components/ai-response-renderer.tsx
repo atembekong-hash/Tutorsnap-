@@ -18,8 +18,8 @@
  *   <AIResponseRenderer markdown={text} fontSize={14} color={colors.foreground} />
  */
 
-import React, { useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, Linking } from 'react-native';
+import React, { useMemo, useCallback, useRef, useEffect } from 'react';
+import { View, Text, StyleSheet, Linking, Animated, Easing } from 'react-native';
 import Markdown from 'react-native-markdown-display';
 import { MathRenderer } from '@/components/math-renderer';
 import { processAIResponse } from '@/lib/ai-response-pipeline';
@@ -45,6 +45,8 @@ export interface AIResponseRendererProps {
    * Default: 'github'
    */
   flavor?: 'commonmark' | 'github';
+  /** Whether to animate words fading in one-by-one during streaming. Default: false. */
+  animateWords?: boolean;
   /**
    * Whether to strip AI preamble phrases ("Sure! Here is...").
    * Default: true for complete responses, false for streaming chunks.
@@ -292,6 +294,7 @@ export function AIResponseRenderer({
   color,
   codeBackground,
   streaming = false,
+  animateWords = false,
   containerStyle,
   onLinkPress,
   flavor = 'github',
@@ -337,14 +340,19 @@ export function AIResponseRenderer({
     return null;
   }
 
+  // Wrap in fade-in animation when animateWords is enabled and streaming
+  const AnimatedWrapper = animateWords && streaming ? AnimatedFadeInWrapper : React.Fragment;
+
   // If no math, render as plain markdown for performance
   if (!hasMath) {
     try {
       return (
         <View style={[styles.container, containerStyle]}>
-          <Markdown style={markdownStyles} onLinkPress={handleLinkPress}>
-            {cleanMarkdown}
-          </Markdown>
+          <AnimatedWrapper>
+            <Markdown style={markdownStyles} onLinkPress={handleLinkPress}>
+              {cleanMarkdown}
+            </Markdown>
+          </AnimatedWrapper>
         </View>
       );
     } catch {
@@ -437,6 +445,24 @@ export class AIResponseErrorBoundary extends React.Component<
     }
     return this.props.children;
   }
+}
+
+/**
+ * Animated wrapper that fades in new content smoothly during streaming.
+ * Each time content changes, a subtle fade-in is triggered.
+ */
+function AnimatedFadeInWrapper({ children }: { children: React.ReactNode }) {
+  const opacity = useRef(new Animated.Value(0.4)).current;
+  useEffect(() => {
+    opacity.setValue(0.4);
+    Animated.timing(opacity, {
+      toValue: 1,
+      duration: 300,
+      easing: Easing.out(Easing.ease),
+      useNativeDriver: true,
+    }).start();
+  });
+  return <Animated.View style={{ opacity }}>{children}</Animated.View>;
 }
 
 const styles = StyleSheet.create({

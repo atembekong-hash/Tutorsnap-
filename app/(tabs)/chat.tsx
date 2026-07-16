@@ -48,7 +48,7 @@ import * as H from "@/lib/haptics";
 // expo-clipboard, expo-print, expo-sharing are loaded lazily inside handlers
 // to avoid native module crashes on Android when the tab is first mounted.
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter, useNavigation } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -251,11 +251,42 @@ const typingStyles = StyleSheet.create({
   dot: { width: 9, height: 9, borderRadius: 4.5 },
 });
 
+
+// ─── Animated Word Fade-In ──────────────────────────────────────────────────
+function AnimatedWordText({ text, color, fontSize, enabled }: { text: string; color: string; fontSize: number; enabled: boolean }) {
+  if (!enabled || !text) {
+    return <Text style={{ color, fontSize, lineHeight: fontSize * 1.5 }}>{text}</Text>;
+  }
+  const words = text.split(/( )/);
+  return (
+    <Text style={{ color, fontSize, lineHeight: fontSize * 1.5, flexWrap: "wrap" }}>
+      {words.map((word, i) => (
+        <AnimatedWordSpan key={`${i}-${word}`} word={word} delay={i * 35} />
+      ))}
+    </Text>
+  );
+}
+
+function AnimatedWordSpan({ word, delay }: { word: string; delay: number }) {
+  const opacity = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(opacity, {
+      toValue: 1,
+      duration: 250,
+      delay: Math.min(delay, 2000),
+      easing: Easing.out(Easing.ease),
+      useNativeDriver: true,
+    }).start();
+  }, [opacity, delay]);
+  return <Animated.Text style={{ opacity }}>{word}</Animated.Text>;
+}
+
 // ─── AI Avatar — animated gradient orb ─────────────────────────────────────
 
-function AIAvatar({ size = 30, pulsing = false }: { size?: number; pulsing?: boolean }) {
+function AIAvatar({ size = 30, pulsing = false, moodRing = false }: { size?: number; pulsing?: boolean; moodRing?: boolean }) {
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const glowAnim = useRef(new Animated.Value(0.6)).current;
+  const colorShiftAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const pulse = Animated.loop(
@@ -279,6 +310,22 @@ function AIAvatar({ size = 30, pulsing = false }: { size?: number; pulsing?: boo
     }
     return () => { pulse.stop(); glow.stop(); };
   }, [pulsing, pulseAnim, glowAnim]);
+  // Mood ring: shift orb colors when AI is generating
+  useEffect(() => {
+    if (moodRing && pulsing) {
+      const shift = Animated.loop(
+        Animated.sequence([
+          Animated.timing(colorShiftAnim, { toValue: 1, duration: 2200, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
+          Animated.timing(colorShiftAnim, { toValue: 0, duration: 2200, easing: Easing.inOut(Easing.ease), useNativeDriver: false }),
+        ])
+      );
+      shift.start();
+      return () => shift.stop();
+    } else {
+      colorShiftAnim.setValue(0);
+    }
+  }, [moodRing, pulsing, colorShiftAnim]);
+  const moodActive = moodRing && pulsing;
 
   return (
     <Animated.View
@@ -301,12 +348,12 @@ function AIAvatar({ size = 30, pulsing = false }: { size?: number; pulsing?: boo
           width: size + 8,
           height: size + 8,
           borderRadius: (size + 8) / 2,
-          backgroundColor: "#7C3AED",
+backgroundColor: moodActive ? "#06B6D4" : "#7C3AED",
           opacity: glowAnim.interpolate({ inputRange: [0.6, 1], outputRange: [0, 0.25] }),
         }}
       />
       <LinearGradient
-        colors={["#6366F1", "#7C3AED", "#4F46E5"]}
+        colors={moodActive ? ["#06B6D4", "#0891B2", "#14B8A6"] : ["#6366F1", "#7C3AED", "#4F46E5"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={{
@@ -355,6 +402,7 @@ function MessageBubble({
   fs,
   onLongPressAI,
   streaming = false,
+  animateWords = false,
 }: {
   message: ChatMessage;
   isFirstInRun: boolean;
@@ -362,6 +410,7 @@ function MessageBubble({
   fs: (n: number) => number;
   onLongPressAI: (content: string) => void;
   streaming?: boolean;
+  animateWords?: boolean;
 }) {
   const isUser = message.role === "user";
   const { settings } = useAppearance();
@@ -469,6 +518,7 @@ function MessageBubble({
               codeBackground={colors.surface}
               flavor="github"
               streaming={streaming}
+              animateWords={animateWords}
               stripPreamble={!streaming}
             />
             {streaming && message.content.length > 0 && (
@@ -820,6 +870,29 @@ function ChatScreenContent() {
   const colorScheme = useColorScheme();
   const { getSubjectAccent, settings: appearanceSettings, updateSetting } = useAppearance();
   const { settings: tutorSettings, update: updateTutorSetting, reset: resetTutorSettings } = useTutorSettings();
+
+  // ── Swipe-to-show tab bar ───────────────────────────────────────────────────
+  const [tabBarVisible, setTabBarVisible] = useState(false);
+  const tabBarTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const navigation = useNavigation();
+  useEffect(() => {
+    navigation.setOptions({
+      tabBarStyle: tabBarVisible ? {
+        paddingTop: 8,
+        paddingBottom: Platform.OS === "web" ? 12 : Math.max(insets.bottom, 8),
+        height: 60 + (Platform.OS === "web" ? 12 : Math.max(insets.bottom, 8)),
+        backgroundColor: colors.background,
+        borderTopColor: colors.border,
+        borderTopWidth: 0.5,
+      } : { display: "none" as const },
+    });
+  }, [tabBarVisible, navigation, colors, insets]);
+  const showTabBarBriefly = useCallback(() => {
+    if (!tutorSettings.swipeToShowTabBar) return;
+    setTabBarVisible(true);
+    if (tabBarTimeoutRef.current) clearTimeout(tabBarTimeoutRef.current);
+    tabBarTimeoutRef.current = setTimeout(() => setTabBarVisible(false), 3500);
+  }, [tutorSettings.swipeToShowTabBar]);
   const subjectAccent = selectedSubject
     ? getSubjectAccent(getAppearanceSubjectKey(selectedSubject), colorScheme)
     : colors.primary;
@@ -1874,6 +1947,25 @@ function ChatScreenContent() {
 
   return (
     <ScreenContainer edges={["top", "left", "right", "bottom"]} containerClassName="">
+        {/* Swipe indicator pill — tap to briefly show tab bar */}
+        {tutorSettings.swipeToShowTabBar && !tabBarVisible && (
+          <TouchableOpacity
+            onPress={showTabBarBriefly}
+            style={{
+              position: "absolute",
+              bottom: 8,
+              alignSelf: "center",
+              zIndex: 999,
+              paddingVertical: 6,
+              paddingHorizontal: 20,
+              borderRadius: 12,
+              backgroundColor: `${colors.muted}20`,
+            }}
+            activeOpacity={0.5}
+          >
+            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: `${colors.muted}50` }} />
+          </TouchableOpacity>
+        )}
       {/* Ambient gradient background */}
       <LinearGradient
         colors={colorScheme === "dark"
@@ -1901,7 +1993,7 @@ function ChatScreenContent() {
         >
           <View style={chatStyles.headerLeft}>
             {/* Gradient orb avatar in header */}
-            <AIAvatar size={28} pulsing={isStreaming || isWaitingForFirstToken} />
+            <AIAvatar size={28} pulsing={isStreaming || isWaitingForFirstToken} moodRing={tutorSettings.moodRingOrb} />
             <View style={{ flex: 1, minWidth: 0 }}>
               <Text
                 style={[chatStyles.headerTitle, { color: colors.foreground, fontSize: fs(16) }]}
@@ -2083,6 +2175,7 @@ function ChatScreenContent() {
                       fs={fs}
                       onLongPressAI={handleLongPressAI}
                       streaming={item.id === streamingMsgIdRef.current && isStreaming}
+                      animateWords={item.id === streamingMsgIdRef.current && isStreaming && tutorSettings.animateAIResponses}
                     />
                   </Swipeable>
                 ) : (
@@ -2093,6 +2186,7 @@ function ChatScreenContent() {
                     fs={fs}
                     onLongPressAI={handleLongPressAI}
                     streaming={item.id === streamingMsgIdRef.current && isStreaming}
+                    animateWords={item.id === streamingMsgIdRef.current && isStreaming && tutorSettings.animateAIResponses}
                   />
                 )}
                 {/* Error bubble — shown when stream fails */}

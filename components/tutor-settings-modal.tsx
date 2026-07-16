@@ -84,6 +84,9 @@ export interface TutorSettings {
   chatFontSize: ChatFontSize;
   codeTheme: CodeTheme;
   messageDensity: MessageDensity;
+  swipeToShowTabBar: boolean;
+  animateAIResponses: boolean;
+  moodRingOrb: boolean;
 
   // 6. Accessibility
   highContrast: boolean;
@@ -130,6 +133,9 @@ export const DEFAULT_TUTOR_SETTINGS: TutorSettings = {
   chatFontSize: "medium",
   codeTheme: "dark",
   messageDensity: "comfortable",
+  swipeToShowTabBar: true,
+  animateAIResponses: true,
+  moodRingOrb: true,
 
   highContrast: false,
   reduceMotion: false,
@@ -962,6 +968,27 @@ export function TutorSettingsModal({
               value={settings.messageDensity}
               options={DENSITY_OPTIONS}
               onChange={(v) => onUpdate({ messageDensity: v })}
+            />
+            <ToggleRow
+              icon="hand.draw.fill"
+              label="Swipe to Show Tab Bar"
+              sub="Swipe down in chat to reveal navigation"
+              value={settings.swipeToShowTabBar}
+              onChange={(v) => onUpdate({ swipeToShowTabBar: v })}
+            />
+            <ToggleRow
+              icon="text.word.spacing"
+              label="Animate AI Responses"
+              sub="Words fade in one by one as AI responds"
+              value={settings.animateAIResponses}
+              onChange={(v) => onUpdate({ animateAIResponses: v })}
+            />
+            <ToggleRow
+              icon="circle.hexagongrid.fill"
+              label="Mood Ring Orb"
+              sub="Orb shifts color when AI is thinking"
+              value={settings.moodRingOrb}
+              onChange={(v) => onUpdate({ moodRingOrb: v })}
               last
             />
           </SettingsCard>
