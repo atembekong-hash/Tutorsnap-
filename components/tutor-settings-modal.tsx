@@ -93,6 +93,10 @@ export interface TutorSettings {
   reduceMotion: boolean;
   screenReaderHints: boolean;
 
+  // 6b. Header Indicators (off by default)
+  showOnlineStatus: boolean;
+  showSpeedIndicator: boolean;
+
   // 7. Notifications & Reminders
   studyReminders: boolean;
   studyReminderTime: string; // "HH:MM"
@@ -140,6 +144,9 @@ export const DEFAULT_TUTOR_SETTINGS: TutorSettings = {
   highContrast: false,
   reduceMotion: false,
   screenReaderHints: false,
+
+  showOnlineStatus: false,
+  showSpeedIndicator: false,
 
   studyReminders: false,
   studyReminderTime: "18:00",
@@ -876,6 +883,20 @@ export function TutorSettingsModal({
               sub="Show microphone button in chat bar"
               value={settings.voiceInput}
               onChange={(v) => onUpdate({ voiceInput: v })}
+            />
+            <ToggleRow
+              icon="wifi"
+              label="Show Online Status"
+              sub="Display Online / Offline in the header"
+              value={settings.showOnlineStatus}
+              onChange={(v) => onUpdate({ showOnlineStatus: v })}
+            />
+            <ToggleRow
+              icon="speedometer"
+              label="Show Speed Indicator"
+              sub="Display Fast / Slow connection in the header"
+              value={settings.showSpeedIndicator}
+              onChange={(v) => onUpdate({ showSpeedIndicator: v })}
               last
             />
           </SettingsCard>

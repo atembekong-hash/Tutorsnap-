@@ -373,23 +373,11 @@ backgroundColor: moodActive ? "#06B6D4" : "#7C3AED",
 // ─── Blinking Cursor ─────────────────────────────────────────────────────────
 
 function BlinkingCursor({ color, fontSize }: { color: string; fontSize: number }) {
-  const opacity = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    const anim = Animated.loop(
-      Animated.sequence([
-        Animated.timing(opacity, { toValue: 0, duration: 500, useNativeDriver: true, easing: Easing.linear }),
-        Animated.timing(opacity, { toValue: 1, duration: 500, useNativeDriver: true, easing: Easing.linear }),
-      ])
-    );
-    anim.start();
-    return () => anim.stop();
-  }, [opacity]);
-
+  // Static cursor — no animation loop to avoid layout jitter / screen shake
   return (
-    <Animated.Text style={{ opacity, color, fontSize, lineHeight: fontSize * 1.4, fontWeight: "300" }}>
-      {"|"}  
-    </Animated.Text>
+    <Text style={{ color, fontSize, lineHeight: fontSize * 1.4, fontWeight: "300", opacity: 0.7 }}>
+      {"|"}
+    </Text>
   );
 }
 
@@ -574,7 +562,7 @@ const bubbleStyles = StyleSheet.create({
     alignItems: "flex-start",
   },
   avatarCol: {
-    width: 38,
+    width: 8,
     alignItems: "center",
     paddingTop: 2,
     flexShrink: 0,
@@ -2064,16 +2052,7 @@ function ChatScreenContent() {
             <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: `${colors.muted}50` }} />
           </TouchableOpacity>
         )}
-      {/* Ambient gradient background */}
-      <LinearGradient
-        colors={colorScheme === "dark"
-          ? ["#151718", "#151718", "#151718"]
-          : ["#ffffff", "#ffffff", "#ffffff"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
-        pointerEvents="none"
-      />
+      {/* Plain background — no gradient to avoid tint/filter effect */}
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
@@ -2092,7 +2071,13 @@ function ChatScreenContent() {
           <View style={chatStyles.headerLeft}>
             {/* Close / back button */}
             <TouchableOpacity
-              onPress={() => router.replace("/(tabs)/index" as any)}
+              onPress={() => {
+                if (router.canGoBack()) {
+                  router.back();
+                } else {
+                  router.replace("/(tabs)" as any);
+                }
+              }}
               style={{ marginRight: 8, padding: 4 }}
               activeOpacity={0.7}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -2108,33 +2093,41 @@ function ChatScreenContent() {
               >
                 AI Tutor
               </Text>
-              <View style={chatStyles.statusRow}>
-                <View
-                  style={[
-                    chatStyles.statusDot,
-                    { backgroundColor: isOnline ? colors.success : colors.error },
-                  ]}
-                />
-                <Text
-                  style={[
-                    chatStyles.statusText,
-                    { color: isOnline ? colors.success : colors.error, fontSize: fs(11) },
-                  ]}
-                >
-                  {isOnline ? "Online" : "Offline"}
-                </Text>
-                {isOnline && connectionQuality !== null && (
-                  <>
-                    <Text style={[chatStyles.statusSep, { color: colors.border }]}>·</Text>
-                    <Text
-                      style={[chatStyles.statusText, { color: connectionQuality === "fast" ? colors.success : colors.warning, fontSize: fs(11) }]}
-                    >
-                      {connectionQuality === "fast" ? "Fast" : "Slow"}
-                    </Text>
-                  </>
-                )}
-                {/* Round 44: subject moved to color dot on the input bar */}
-              </View>
+              {/* Online / speed indicators — only shown when user enables them in settings */}
+              {(tutorSettings.showOnlineStatus || tutorSettings.showSpeedIndicator) && (
+                <View style={chatStyles.statusRow}>
+                  {tutorSettings.showOnlineStatus && (
+                    <>
+                      <View
+                        style={[
+                          chatStyles.statusDot,
+                          { backgroundColor: isOnline ? colors.success : colors.error },
+                        ]}
+                      />
+                      <Text
+                        style={[
+                          chatStyles.statusText,
+                          { color: isOnline ? colors.success : colors.error, fontSize: fs(11) },
+                        ]}
+                      >
+                        {isOnline ? "Online" : "Offline"}
+                      </Text>
+                    </>
+                  )}
+                  {tutorSettings.showSpeedIndicator && isOnline && connectionQuality !== null && (
+                    <>
+                      {tutorSettings.showOnlineStatus && (
+                        <Text style={[chatStyles.statusSep, { color: colors.border }]}>·</Text>
+                      )}
+                      <Text
+                        style={[chatStyles.statusText, { color: connectionQuality === "fast" ? colors.success : colors.warning, fontSize: fs(11) }]}
+                      >
+                        {connectionQuality === "fast" ? "Fast" : "Slow"}
+                      </Text>
+                    </>
+                  )}
+                </View>
+              )}
             </View>
           </View>
 
@@ -2545,7 +2538,7 @@ function ChatScreenContent() {
         <View
           style={[
             chatStyles.floatingBarWrapper,
-            { paddingBottom: Math.max(insets.bottom, 8) },
+            { paddingBottom: Math.max(insets.bottom, 2) },
           ]}
         >
           {/* Limit nudge strip */}
@@ -3376,7 +3369,7 @@ const chatStyles = StyleSheet.create({
     alignItems: "flex-end",
   },
   typingAvatarCol: {
-    width: 38,
+    width: 8,
     alignItems: "center",
     paddingBottom: 4,
     flexShrink: 0,
@@ -3388,9 +3381,9 @@ const chatStyles = StyleSheet.create({
   },
   floatingBarWrapper: {
     paddingHorizontal: 12,
-    paddingTop: 6,
-    paddingBottom: 8,
-    gap: 6,
+    paddingTop: 2,
+    paddingBottom: 2,
+    gap: 4,
   },
   limitStrip: {
     flexDirection: "row",
