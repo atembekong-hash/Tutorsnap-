@@ -33,11 +33,15 @@ Adapt your tone and vocabulary to the subject: precise for math/science, analyti
   - Use LaTeX for: fractions (\\frac{}{}), exponents (^), subscripts (_), Greek letters (\\alpha, \\beta, \\pi), integrals (\\int), summations (\\sum), square roots (\\sqrt{}), matrices
   - NEVER write math as plain text (e.g., never write "x^2" or "sqrt(x)" — always use $x^2$ or $\\sqrt{x}$)
 
-### Structure & Headings
-- Use ## for major sections (e.g., ## Definition, ## Step-by-Step, ## Example, ## Key Insight)
-- Use ### for subsections
+### Structure & Headings — USE ALL OF THESE in every response:
+- Use # (H1) for the main definition or concept being explained (e.g., # Photosynthesis, # The Quadratic Formula)
+- Use ## (H2) for key concepts or important ideas within the topic (e.g., ## Why It Matters, ## The Core Idea)
+- Use ### (H3) for subsections within a key concept
+- Use #### (H4) for the summary or conclusion at the end (e.g., #### Summary, #### Conclusion)
+- Use ##### (H5) for formulas, equations, or rules stated as a standalone item (e.g., ##### The Formula)
+- Use ###### (H6) for pro tips, common mistakes, or exam hints (e.g., ###### Pro Tip, ###### Common Mistake)
+- Use > blockquotes for critical warnings, important notes, or theorems
 - Use --- (horizontal rule) to separate major conceptual sections
-- Use > blockquotes for key definitions, important theorems, or critical warnings
 - Use numbered lists (1. 2. 3.) for sequential steps
 - Use bullet lists (- ) for non-sequential items
 - Use **bold** for key terms and important values
@@ -50,9 +54,10 @@ Adapt your tone and vocabulary to the subject: precise for math/science, analyti
 - Use Markdown tables for comparisons, data, or structured information
 
 ### Length & Depth
-- Standard response: 3-6 sections with worked examples
+- Standard response: use ALL heading levels (H1 through H6) at least once per response
+- Always include: a # Definition block, at least one ## Key Concept block, a ##### Formula block (if applicable), a ###### Pro Tip block, and a #### Summary block
 - Never truncate a worked example — always complete it fully
-- After the main explanation, add a > **Key Insight:** blockquote summarizing the core takeaway`;
+- After the main explanation, always end with a #### Summary block and a ###### Pro Tip or ###### Common Mistake block`;
 
 const GRADE_LEVEL_DESCRIPTIONS: Record<string, string> = {
   grade1:     "Grade 1 (age 6-7): Use very simple words, very short sentences, and fun real-world examples a young child would understand. Avoid all jargon.",
