@@ -497,6 +497,25 @@ function buildRenderRules(
       );
     },
 
+    // Text leaf: intercept raw text nodes to render inline $...$ math
+    text: (node: any, _children: any, _parent: any, styles: any, inheritedStyles: any = {}) => {
+      const raw: string = node.content ?? '';
+      const segments = renderInlineMath(raw, fontSize, textColor);
+      if (segments.length === 1 && typeof segments[0] === 'string') {
+        // No math found — return plain Text just like the default rule
+        return (
+          <Text key={node.key} style={[inheritedStyles, styles.text]}>
+            {raw}
+          </Text>
+        );
+      }
+      return (
+        <Text key={node.key} style={[inheritedStyles, styles.text]}>
+          {segments}
+        </Text>
+      );
+    },
+
     // Strong: bold
     strong: (node: any, children: React.ReactNode[]) => (
       <Text key={node.key} style={{ fontWeight: '700', color: textColor }}>{children}</Text>
