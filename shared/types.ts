@@ -99,6 +99,4 @@ export type ChatMessage = {
   stopped?: boolean; // true when user manually stopped streaming
   error?: boolean;  // true when the AI stream failed — shows retry button
   retryPayload?: Array<{ role: "user" | "assistant"; content: string }>; // context to retry
-  /** Structured educational card data parsed from the AI response */
-  parsedCards?: unknown[];
 };

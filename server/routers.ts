@@ -422,35 +422,6 @@ Respond ONLY with this JSON:
       const jsonStr = extractJsonFromContent(text);
       return JSON.parse(jsonStr) as { problems: { id: string; problem: string; hint: string }[] };
     }),
-  /**
-   * Parse a raw AI chat response into structured educational cards.
-   * Returns a JSON array of ResponseCard objects.
-   */
-  parseCards: publicProcedure
-    .input(z.object({
-      rawText: z.string().max(8000),
-      subject: z.string().optional(),
-    }))
-    .mutation(async ({ input }) => {
-      const { CARD_EXTRACTION_SYSTEM_PROMPT } = await import("@/lib/response-cards");
-      const result = await invokeLLM({
-        model: "claude-haiku-4-5",
-        messages: [
-          { role: "system", content: CARD_EXTRACTION_SYSTEM_PROMPT },
-          { role: "user", content: `Parse this AI tutor response into cards${input.subject ? ` (subject: ${input.subject})` : ""}:\n\n${input.rawText}` },
-        ],
-        max_tokens: 3000,
-        response_format: { type: "json_object" },
-      });
-      const text = extractLLMContent(result);
-      const jsonStr = extractJsonFromContent(text);
-      try {
-        const parsed = JSON.parse(jsonStr) as { cards: unknown[] };
-        return { cards: parsed.cards ?? [], rawText: input.rawText };
-      } catch {
-        return { cards: [], rawText: input.rawText };
-      }
-    }),
 });
 // ─── Voice router ────────────────────────────────────────────────────────────
 const voiceRouter = router({
