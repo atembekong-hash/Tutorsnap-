@@ -99,7 +99,6 @@ export interface TutorSettings {
   showAccentBar: boolean;
   blocksStartCollapsed: boolean; // Whether structured blocks start collapsed
   compactBlocks: boolean; // Whether structured blocks use compact (denser) layout
-  responseMode: 'classic' | 'structured'; // Toggle between classic prose and structured block cards
 
   // 7. Notifications & Reminders
   studyReminders: boolean;
@@ -154,7 +153,6 @@ export const DEFAULT_TUTOR_SETTINGS: TutorSettings = {
   showAccentBar: false,
   blocksStartCollapsed: false,
   compactBlocks: false,
-  responseMode: 'classic',
 
   studyReminders: false,
   studyReminderTime: "18:00",
