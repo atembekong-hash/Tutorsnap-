@@ -393,6 +393,7 @@ function MessageBubble({
   fs,
   onLongPressAI,
   onTapCopyAI,
+  onAction,
   reaction,
   streaming = false,
   animateWords = false,
@@ -407,6 +408,7 @@ function MessageBubble({
   fs: (n: number) => number;
   onLongPressAI: (content: string) => void;
   onTapCopyAI?: (content: string) => void;
+  onAction?: (text: string) => void;
   reaction?: string | null;
   streaming?: boolean;
   animateWords?: boolean;
@@ -517,6 +519,7 @@ function MessageBubble({
               <StructuredBlockRenderer
                 blocks={parseStructuredBlocks(message.content)}
                 fontSize={fs(15)}
+                onAction={onAction}
               />
             ) : (
               <>
@@ -2343,6 +2346,7 @@ function ChatScreenContent() {
                     fs={fs}
                     onLongPressAI={(content) => handleLongPressReaction(content, item.id)}
                     onTapCopyAI={handleTapCopyAI}
+                    onAction={handleSend}
                     reaction={reactions[item.id]}
                     streaming={item.id === streamingMsgIdRef.current && isStreaming}
                     animateWords={item.id === streamingMsgIdRef.current && isStreaming && tutorSettings.animateAIResponses}

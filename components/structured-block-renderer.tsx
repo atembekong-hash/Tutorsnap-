@@ -324,9 +324,10 @@ interface BlockCardProps {
   isDark: boolean;
   colors: ReturnType<typeof useColors>;
   index: number;
+  onAction?: (text: string) => void;
 }
 
-function BlockCard({ block, fontSize, isDark, colors, index }: BlockCardProps) {
+function BlockCard({ block, fontSize, isDark, colors, index, onAction }: BlockCardProps) {
   const design = BLOCK_DESIGNS[block.type];
   const accent = isDark ? design.accentDark : design.accent;
   const textColor = colors.foreground;
@@ -431,6 +432,30 @@ function BlockCard({ block, fontSize, isDark, colors, index }: BlockCardProps) {
       {!collapsed && (
         <View style={blockCardStyles.body}>
           {bodyContent}
+          {onAction && (
+            <View style={blockCardStyles.actionRow}>
+              <TouchableOpacity
+                onPress={() => {
+                  if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  onAction('Explain this more simply, as if I were a beginner.');
+                }}
+                activeOpacity={0.7}
+                style={[blockCardStyles.actionBtn, { borderColor: accent + '55' }]}
+              >
+                <Text style={[blockCardStyles.actionBtnText, { color: accent }]}>↓ Simpler</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  onAction('Explain this in more detail with additional examples.');
+                }}
+                activeOpacity={0.7}
+                style={[blockCardStyles.actionBtn, { borderColor: accent + '55' }]}
+              >
+                <Text style={[blockCardStyles.actionBtnText, { color: accent }]}>↑ More Detail</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       )}
     </Animated.View>
@@ -508,6 +533,23 @@ const blockCardStyles = StyleSheet.create({
     paddingBottom: 12,
     paddingTop: 2,
   },
+  actionRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 10,
+    marginBottom: 2,
+  },
+  actionBtn: {
+    borderWidth: 1,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+  },
+  actionBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0.2,
+  },
 });
 
 // ─── Main export ──────────────────────────────────────────────────────────────
@@ -516,12 +558,14 @@ export interface StructuredBlockRendererProps {
   blocks: StructuredBlock[];
   fontSize?: number;
   streaming?: boolean;
+  onAction?: (text: string) => void;
 }
 
 export function StructuredBlockRenderer({
   blocks,
   fontSize = 15,
   streaming = false,
+  onAction,
 }: StructuredBlockRendererProps) {
   const colors = useColors();
   const colorScheme = useColorScheme();
@@ -539,6 +583,7 @@ export function StructuredBlockRenderer({
           isDark={isDark}
           colors={colors}
           index={index}
+          onAction={onAction}
         />
       ))}
     </View>
