@@ -7,6 +7,7 @@ import { registerOAuthRoutes } from "./oauth";
 import { registerStorageProxy } from "./storageProxy";
 import { registerVoiceUploadRoute } from "./voiceUpload";
 import { registerChatStreamRoute } from "./chatStream";
+import { registerMathRenderRoute } from "./mathRender";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 
@@ -65,6 +66,7 @@ async function startServer() {
   registerOAuthRoutes(app);
   registerVoiceUploadRoute(app);
   registerChatStreamRoute(app);
+  registerMathRenderRoute(app);
 
   app.get("/api/health", (_req, res) => {
     res.json({ ok: true, timestamp: Date.now() });

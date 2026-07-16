@@ -3,6 +3,13 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack , useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useFonts } from "expo-font";
+import { Inter_400Regular } from "@expo-google-fonts/inter/400Regular";
+import { Inter_500Medium } from "@expo-google-fonts/inter/500Medium";
+import { Inter_600SemiBold } from "@expo-google-fonts/inter/600SemiBold";
+import { Inter_700Bold } from "@expo-google-fonts/inter/700Bold";
+import { Inter_800ExtraBold } from "@expo-google-fonts/inter/800ExtraBold";
+import { JetBrainsMono_400Regular } from "@expo-google-fonts/jetbrains-mono/400Regular";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-reanimated";
 import { Platform , Alert } from "react-native";
@@ -57,6 +64,16 @@ export default function RootLayout() {
   const initialFrame = initialWindowMetrics?.frame ?? DEFAULT_WEB_FRAME;
   const [insets, setInsets] = useState<EdgeInsets>(initialInsets);
   const [frame, setFrame] = useState<Rect>(initialFrame);
+
+  // Load premium fonts — Inter for body text, JetBrains Mono for code
+  const [_fontsLoaded] = useFonts({
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
+    Inter_800ExtraBold,
+    JetBrainsMono_400Regular,
+  });
 
   useEffect(() => {
     initManusRuntime();

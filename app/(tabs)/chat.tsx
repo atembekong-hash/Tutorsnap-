@@ -505,7 +505,9 @@ function MessageBubble({
         <View style={bubbleStyles.avatarCol}>
           {isFirstInRun ? <AIAvatar size={30} /> : null}
         </View>
-        <View style={bubbleStyles.aiContent}>
+        <View style={bubbleStyles.aiContentWrapper}>
+          <View style={[bubbleStyles.aiAccentBar, { backgroundColor: colors.primary }]} />
+          <View style={bubbleStyles.aiContent}>
           <AIResponseErrorBoundary
             fallbackText={message.content}
             fontSize={fs(15)}
@@ -525,17 +527,17 @@ function MessageBubble({
               <BlinkingCursor color={colors.muted} fontSize={fs(15)} />
             )}
           </AIResponseErrorBoundary>
-          <Text
-            style={[
-              bubbleStyles.timeText,
-              { color: colors.muted, fontSize: fs(10), marginTop: 4 },
-            ]}
-          >
-            {new Date(message.timestamp).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </Text>
+          <View style={bubbleStyles.metaRow}>
+            <Text style={[bubbleStyles.timeText, { color: colors.muted, fontSize: fs(10) }]}>
+              {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </Text>
+            {!streaming && message.content.length > 80 && (
+              <Text style={[bubbleStyles.readingTime, { color: colors.muted, fontSize: fs(10) }]}>
+                {`  ·  ${Math.max(1, Math.ceil(message.content.split(/\s+/).length / 200))} min read`}
+              </Text>
+            )}
+          </View>
+          </View>
         </View>
       </View>
     </TouchableOpacity>
@@ -569,8 +571,26 @@ const bubbleStyles = StyleSheet.create({
     paddingTop: 2,
     flexShrink: 0,
   },
+  aiContentWrapper: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'stretch',
+  },
+  aiAccentBar: {
+    width: 2,
+    borderRadius: 2,
+    marginRight: 10,
+    opacity: 0.25,
+    alignSelf: 'stretch',
+  },
   aiContent: { flex: 1, paddingRight: 8 },
-  timeText: { textAlign: "right" },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  timeText: { textAlign: "left" },
+  readingTime: { fontStyle: 'italic' },
   quoteBlock: {
     borderLeftWidth: 3,
     borderRadius: 4,
