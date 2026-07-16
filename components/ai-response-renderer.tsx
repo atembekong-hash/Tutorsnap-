@@ -1,22 +1,20 @@
 /**
  * AIResponseRenderer — Clean, production-quality AI response rendering
  *
+ * Fixes applied in this version:
+ *   1. Dark mode code blocks: CodeCard and fence style now use useColorScheme()
+ *   2. Inline math: text rule added to buildRenderRules so $...$ renders in paragraphs
+ *   3. Typography: improved letter-spacing, paragraph spacing, heading weights
+ *   4. Light/dark: all color-sensitive values use theme tokens or colorScheme check
+ *
  * Architecture:
  *   1. processAIResponse() sanitizes and normalizes the raw text
  *   2. splitIntoSegments() splits text at $$...$$ block math boundaries only
  *      (inline $...$ stays inside Markdown segments for proper paragraph flow)
  *   3. Each Markdown segment renders via react-native-markdown-display with
- *      carefully tuned styles and minimal custom rules
+ *      carefully tuned styles and custom rules
  *   4. Block math segments render via MathRenderer (SVG server or Unicode fallback)
- *   5. Inline math ($...$) inside Markdown is handled by a custom text rule that
- *      replaces $...$ spans with styled Unicode/text so they flow in the paragraph
- *
- * Design principles:
- *   - Headings are HEADINGS, not cards. Only blockquotes become callout cards.
- *   - Ordered lists are LISTS, not "Steps" cards (unless the AI explicitly uses
- *     a heading to label them).
- *   - Inline math stays inline — it does not break paragraph flow.
- *   - All spacing, typography, and color tokens adapt to light/dark mode.
+ *   5. Inline math ($...$) inside Markdown is handled by the custom text rule
  */
 
 import React, { useMemo, useCallback, useRef, useEffect, useState } from 'react';
@@ -35,6 +33,7 @@ import Markdown from 'react-native-markdown-display';
 import { MathRenderer } from '@/components/math-renderer';
 import { processAIResponse } from '@/lib/ai-response-pipeline';
 import { useColors } from '@/hooks/use-colors';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Clipboard from 'expo-clipboard';
 
@@ -55,15 +54,12 @@ export interface AIResponseRendererProps {
 }
 
 // ─── Segment types ─────────────────────────────────────────────────────────────
-// We ONLY split on BLOCK math ($$...$$). Inline math ($...$) stays inside
-// the Markdown segment so it flows naturally within paragraphs.
 type Segment =
   | { type: 'markdown'; content: string }
   | { type: 'math-block'; latex: string };
 
 function splitIntoSegments(text: string): Segment[] {
   const segments: Segment[] = [];
-  // Only split on $$...$$ (block math), NOT on $...$ (inline math)
   const blockMathPattern = /\$\$([\s\S]*?)\$\$/g;
   let lastIndex = 0;
   let match: RegExpExecArray | null;
@@ -83,8 +79,6 @@ function splitIntoSegments(text: string): Segment[] {
 }
 
 // ─── Inline math: convert $...$ to styled Unicode text within a paragraph ─────
-// This runs as a text post-processor on each markdown text node so inline math
-// stays in the paragraph flow without breaking into a separate View.
 function renderInlineMath(text: string, fontSize: number, color: string): React.ReactNode[] {
   const parts = text.split(/(\$[^$\n]+?\$)/g);
   if (parts.length === 1) return [text];
@@ -92,7 +86,6 @@ function renderInlineMath(text: string, fontSize: number, color: string): React.
   return parts.map((part, i) => {
     if (part.startsWith('$') && part.endsWith('$') && part.length > 2) {
       const latex = part.slice(1, -1).trim();
-      // Convert simple LaTeX to Unicode inline
       const unicode = latexToInlineUnicode(latex);
       return (
         <Text
@@ -128,7 +121,7 @@ const INLINE_SYMBOL_MAP: [RegExp, string][] = [
   [/\\text\{([^}]+)\}/g,'$1'],[/\\mathrm\{([^}]+)\}/g,'$1'],
   [/\\mathbf\{([^}]+)\}/g,'$1'],[/\\left/g,''],[/\\right/g,''],
   [/\^2/g,'²'],[/\^3/g,'³'],[/\^n/g,'ⁿ'],[/\^i/g,'ⁱ'],
-  [/\^{([^}]+)}/g,'($1)'],[/_{([^}]+)}/g,'_($1)'],
+  [/\^{([^}]+)}/g,'($1)'],[/_{([^}]+)}/g,'₍$1₎'],
   [/\{/g,''],[/\}/g,''],[/\\,/g,' '],[/\\;/g,' '],[/\\ /g,' '],
 ];
 
@@ -139,8 +132,8 @@ function latexToInlineUnicode(latex: string): string {
   return r.trim();
 }
 
-// ─── Premium Code Card ─────────────────────────────────────────────────────────
-function CodeCard({ code, language, fontSize }: { code: string; language?: string; fontSize: number }) {
+// ─── Premium Code Card (dark/light aware) ─────────────────────────────────────
+function CodeCard({ code, language, fontSize, isDark }: { code: string; language?: string; fontSize: number; isDark: boolean }) {
   const [copied, setCopied] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -157,27 +150,34 @@ function CodeCard({ code, language, fontSize }: { code: string; language?: strin
 
   const langLabel = language && language !== 'text' ? language.toLowerCase() : null;
 
+  const bg = isDark ? '#1E1E2E' : '#F3F4F6';
+  const topBarBg = isDark ? '#181825' : '#E9EBF0';
+  const codeFg = isDark ? '#CDD6F4' : '#1F2937';
+  const labelFg = isDark ? '#585B70' : '#6B7280';
+  const borderFg = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.08)';
+  const topBorderFg = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)';
+
   return (
-    <View style={codeCardStyles.container}>
-      <View style={codeCardStyles.topBar}>
+    <View style={[codeCardStyles.container, { backgroundColor: bg, borderColor: borderFg }]}>
+      <View style={[codeCardStyles.topBar, { backgroundColor: topBarBg, borderBottomColor: topBorderFg }]}>
         <View style={codeCardStyles.dotRow}>
           <View style={[codeCardStyles.dot, { backgroundColor: '#FF5F57' }]} />
           <View style={[codeCardStyles.dot, { backgroundColor: '#FFBD2E' }]} />
           <View style={[codeCardStyles.dot, { backgroundColor: '#28C840' }]} />
         </View>
         {langLabel ? (
-          <Text style={codeCardStyles.langLabel}>{langLabel}</Text>
+          <Text style={[codeCardStyles.langLabel, { color: labelFg }]}>{langLabel}</Text>
         ) : (
           <View style={{ flex: 1 }} />
         )}
         <TouchableOpacity onPress={handleCopy} hitSlop={{ top: 8, bottom: 8, left: 12, right: 12 }}>
-          <Text style={[codeCardStyles.copyBtn, copied && codeCardStyles.copyBtnDone]}>
+          <Text style={[codeCardStyles.copyBtn, { color: copied ? '#A6E3A1' : labelFg }]}>
             {copied ? '✓ Copied' : 'Copy'}
           </Text>
         </TouchableOpacity>
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={codeCardStyles.scrollView}>
-        <Text style={[codeCardStyles.code, { fontSize: fontSize * 0.84, lineHeight: fontSize * 0.84 * 1.7 }]}>
+        <Text style={[codeCardStyles.code, { fontSize: fontSize * 0.84, lineHeight: fontSize * 0.84 * 1.7, color: codeFg }]}>
           {code}
         </Text>
       </ScrollView>
@@ -187,13 +187,11 @@ function CodeCard({ code, language, fontSize }: { code: string; language?: strin
 
 const codeCardStyles = StyleSheet.create({
   container: {
-    backgroundColor: '#1E1E2E',
     borderRadius: 12,
     marginTop: 10,
     marginBottom: 14,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.07)',
   },
   topBar: {
     flexDirection: 'row',
@@ -201,24 +199,19 @@ const codeCardStyles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 9,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.05)',
-    backgroundColor: '#181825',
   },
   dotRow: { flexDirection: 'row', gap: 6, marginRight: 10 },
   dot: { width: 10, height: 10, borderRadius: 5 },
   langLabel: {
     flex: 1,
     fontSize: 11,
-    color: '#585B70',
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
-  copyBtn: { fontSize: 11, color: '#585B70', fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
-  copyBtnDone: { color: '#A6E3A1' },
+  copyBtn: { fontSize: 11, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
   scrollView: { paddingHorizontal: 14, paddingVertical: 12 },
   code: {
-    color: '#CDD6F4',
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
   },
 });
@@ -246,29 +239,30 @@ function buildMarkdownStyles(
   fontSize: number,
   textColor: string,
   codeBackground?: string,
+  isDark?: boolean,
 ) {
   const primary = colors.primary;
   const surface = codeBackground ?? colors.surface;
   const border = colors.border;
   const muted = colors.muted;
-  const lh = fontSize * 1.7;
+  const lh = fontSize * 1.72;
+
+  const codeBg = isDark ? '#1E1E2E' : '#F3F4F6';
+  const codeFg = isDark ? '#CDD6F4' : '#1F2937';
 
   return {
-    // Body
     body: {
       fontSize,
       color: textColor,
       lineHeight: lh,
     },
-    // Paragraphs — clean spacing, no extra margin-top
     paragraph: {
       fontSize,
       color: textColor,
       lineHeight: lh,
       marginTop: 0,
-      marginBottom: fontSize * 0.85,
+      marginBottom: fontSize * 0.75,
     },
-    // Headings — real headings, not cards
     heading1: {
       fontSize: fontSize * 1.45,
       fontWeight: '800' as const,
@@ -277,8 +271,6 @@ function buildMarkdownStyles(
       marginBottom: 8,
       lineHeight: fontSize * 1.45 * 1.25,
       letterSpacing: -0.5,
-      borderBottomWidth: 1,
-      borderBottomColor: border,
       paddingBottom: 6,
     },
     heading2: {
@@ -308,11 +300,12 @@ function buildMarkdownStyles(
       lineHeight: fontSize * 1.02 * 1.35,
     },
     heading5: {
-      fontSize,
+      fontSize: fontSize * 0.95,
       fontWeight: '600' as const,
       color: muted,
       marginTop: 10,
       marginBottom: 3,
+      lineHeight: fontSize * 0.95 * 1.35,
     },
     heading6: {
       fontSize: fontSize * 0.9,
@@ -320,8 +313,8 @@ function buildMarkdownStyles(
       color: muted,
       marginTop: 8,
       marginBottom: 2,
+      lineHeight: fontSize * 0.9 * 1.35,
     },
-    // Blockquote — callout style
     blockquote: {
       fontSize,
       color: textColor,
@@ -336,7 +329,6 @@ function buildMarkdownStyles(
       marginBottom: 12,
       borderRadius: 4,
     },
-    // Lists — clean, properly spaced
     bullet_list: { marginBottom: 8, marginTop: 4 },
     ordered_list: { marginBottom: 8, marginTop: 4 },
     list_item: {
@@ -346,7 +338,6 @@ function buildMarkdownStyles(
       marginBottom: 4,
       flexDirection: 'row' as const,
     },
-    // Bullet icon — colored dot
     bullet_list_icon: {
       color: primary,
       fontSize: fontSize * 0.5,
@@ -354,7 +345,6 @@ function buildMarkdownStyles(
       marginRight: 8,
       lineHeight: fontSize * 0.5,
     },
-    // Ordered icon — colored number
     ordered_list_icon: {
       color: primary,
       fontSize,
@@ -362,14 +352,13 @@ function buildMarkdownStyles(
       marginRight: 6,
       lineHeight: lh,
     },
-    // Code
     fence: {
       fontSize: fontSize * 0.84,
-      color: '#CDD6F4',
-      backgroundColor: '#1E1E2E',
+      color: codeFg,
+      backgroundColor: codeBg,
       borderRadius: 12,
       borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.07)',
+      borderColor: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.08)',
       padding: 14,
       marginTop: 10,
       marginBottom: 14,
@@ -385,18 +374,14 @@ function buildMarkdownStyles(
       paddingVertical: 1,
       fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
     },
-    // Links
     link: {
       color: primary,
       textDecorationLine: 'underline' as const,
     },
-    // Inline formatting
     strong: { fontWeight: '700' as const, color: textColor },
     em: { fontStyle: 'italic' as const, color: textColor },
     s: { textDecorationLine: 'line-through' as const },
-    // HR
     hr: { marginTop: 14, marginBottom: 14, borderColor: border, height: 1 },
-    // Tables
     table: {
       fontSize,
       color: textColor,
@@ -418,30 +403,23 @@ function buildMarkdownStyles(
   };
 }
 
-// ─── Helper: extract plain text from a node tree ──────────────────────────────
-function extractNodeText(node: any): string {
-  if (!node) return '';
-  if (typeof node.content === 'string') return node.content;
-  if (Array.isArray(node.children)) return node.children.map(extractNodeText).join('');
-  return '';
-}
-
 // ─── Custom render rules ───────────────────────────────────────────────────────
 function buildRenderRules(
   colors: ReturnType<typeof useColors>,
   fontSize: number,
   textColor: string,
+  isDark: boolean,
 ) {
   const primary = colors.primary;
   const border = colors.border;
-  const lh = fontSize * 1.7;
+  const lh = fontSize * 1.72;
 
   return {
-    // Fence: use our premium CodeCard
+    // Fence: use our premium CodeCard (dark/light aware)
     fence: (node: any) => {
       const code = node.content ?? '';
       const lang = node.sourceInfo ?? '';
-      return <CodeCard key={node.key} code={code.trim()} language={lang} fontSize={fontSize} />;
+      return <CodeCard key={node.key} code={code.trim()} language={lang} fontSize={fontSize} isDark={isDark} />;
     },
 
     // HR: gradient line
@@ -502,6 +480,26 @@ function buildRenderRules(
       <Text key={node.key} style={{ fontWeight: '700', color: textColor }}>{children}</Text>
     ),
 
+    // Text: handle inline math $...$ within paragraphs
+    text: (node: any, children: React.ReactNode[], parent: any, styles: any) => {
+      const content = node.content ?? '';
+      if (content.includes('$')) {
+        const parts = renderInlineMath(content, fontSize, textColor);
+        if (parts.length > 1) {
+          return (
+            <Text key={node.key} style={{ fontSize, color: textColor, lineHeight: lh }}>
+              {parts}
+            </Text>
+          );
+        }
+      }
+      return (
+        <Text key={node.key} style={styles.text}>
+          {children}
+        </Text>
+      );
+    },
+
     // Table: scrollable with rounded border
     table: (node: any, children: React.ReactNode[]) => (
       <View key={node.key} style={{ marginTop: 10, marginBottom: 14, borderRadius: 10, borderWidth: 1, borderColor: border, overflow: 'hidden' }}>
@@ -516,7 +514,16 @@ function buildRenderRules(
       <View key={node.key} style={{ backgroundColor: `${primary}10` }}>{children}</View>
     ),
 
-    // H2: add a subtle left accent bar (still a heading, not a card)
+    // H1: large bold heading with bottom border
+    heading1: (node: any, children: React.ReactNode[]) => (
+      <View key={node.key} style={{ marginTop: 20, marginBottom: 8, paddingBottom: 6, borderBottomWidth: 1, borderBottomColor: border }}>
+        <Text style={{ fontSize: fontSize * 1.45, fontWeight: '800', color: textColor, letterSpacing: -0.5, lineHeight: fontSize * 1.45 * 1.25 }}>
+          {children}
+        </Text>
+      </View>
+    ),
+
+    // H2: left accent bar
     heading2: (node: any, children: React.ReactNode[]) => (
       <View key={node.key} style={{ flexDirection: 'row', alignItems: 'flex-start', marginTop: 16, marginBottom: 6 }}>
         <View style={{ width: 3, borderRadius: 2, backgroundColor: primary, marginRight: 10, marginTop: 3, alignSelf: 'stretch' }} />
@@ -531,6 +538,24 @@ function buildRenderRules(
       <View key={node.key} style={{ flexDirection: 'row', alignItems: 'flex-start', marginTop: 14, marginBottom: 5 }}>
         <View style={{ width: 2.5, borderRadius: 2, backgroundColor: `${primary}70`, marginRight: 9, marginTop: 4, alignSelf: 'stretch' }} />
         <Text style={{ flex: 1, fontSize: fontSize * 1.1, fontWeight: '600', color: textColor, letterSpacing: -0.2, lineHeight: fontSize * 1.1 * 1.35 }}>
+          {children}
+        </Text>
+      </View>
+    ),
+
+    // H5: formula label style
+    heading5: (node: any, children: React.ReactNode[]) => (
+      <View key={node.key} style={{ marginTop: 10, marginBottom: 4 }}>
+        <Text style={{ fontSize: fontSize * 0.95, fontWeight: '600', color: primary, letterSpacing: 0.3, lineHeight: fontSize * 0.95 * 1.35 }}>
+          {children}
+        </Text>
+      </View>
+    ),
+
+    // H6: tip/warning label style
+    heading6: (node: any, children: React.ReactNode[]) => (
+      <View key={node.key} style={{ marginTop: 8, marginBottom: 3 }}>
+        <Text style={{ fontSize: fontSize * 0.9, fontWeight: '500', color: colors.muted, fontStyle: 'italic', lineHeight: fontSize * 0.9 * 1.35 }}>
           {children}
         </Text>
       </View>
@@ -551,7 +576,7 @@ function FallbackRenderer({ text, fontSize, color }: { text: string; fontSize: n
     .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
     .trim();
   return (
-    <Text style={{ fontSize, color, lineHeight: fontSize * 1.7 }}>
+    <Text style={{ fontSize, color, lineHeight: fontSize * 1.72 }}>
       {plain}
     </Text>
   );
@@ -574,6 +599,8 @@ export function AIResponseRenderer({
   compactBlocks = false,
 }: AIResponseRendererProps) {
   const colors = useColors();
+  const scheme = useColorScheme();
+  const isDark = scheme === 'dark';
   const textColor = color ?? colors.foreground;
 
   const cleanMarkdown = useMemo(
@@ -581,17 +608,16 @@ export function AIResponseRenderer({
     [markdown, stripPreamble],
   );
 
-  // Split ONLY on block math ($$...$$)
   const segments = useMemo(() => splitIntoSegments(cleanMarkdown), [cleanMarkdown]);
 
   const markdownStyles = useMemo(
-    () => buildMarkdownStyles(colors, fontSize, textColor, codeBackground),
-    [colors, fontSize, textColor, codeBackground],
+    () => buildMarkdownStyles(colors, fontSize, textColor, codeBackground, isDark),
+    [colors, fontSize, textColor, codeBackground, isDark],
   );
 
   const renderRules = useMemo(
-    () => buildRenderRules(colors, fontSize, textColor),
-    [colors, fontSize, textColor],
+    () => buildRenderRules(colors, fontSize, textColor, isDark),
+    [colors, fontSize, textColor, isDark],
   );
 
   const handleLinkPress = useCallback(
