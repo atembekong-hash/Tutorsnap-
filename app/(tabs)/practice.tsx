@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { ErrorBoundary } from "@/components/error-boundary";
 import {
   View,
@@ -18,7 +18,7 @@ import { trpc } from "@/lib/trpc";
 import type { PracticeQuestion, Difficulty } from "@/shared/types";
 import { SubjectPicker } from "@/components/subject-picker";
 import { type SubjectId, getSubjectColor, getSubjectLabel , type SubjectCategory } from "@/lib/subjects";
-import { loadQuizStats, getAdaptiveDifficultySuggestion, type QuizStats, type DifficultyUpSuggestion } from "@/lib/quiz-history";
+import { loadQuizStats, getAdaptiveDifficultySuggestion, getDifficultyDownSuggestion, type QuizStats, type DifficultyUpSuggestion, type DifficultyDownSuggestion } from "@/lib/quiz-history";
 import { getProgress, type ProgressData } from "@/lib/progress";
 import { getWeeklyData, type WeeklyData } from "@/lib/weekly-goals";
 import { getCheatSheet, hasCheatSheet } from "@/lib/cheat-sheets";
@@ -27,7 +27,8 @@ import { useNetworkStatus } from "@/hooks/use-network-status";
 import { getSubjectDifficulty, setSubjectDifficulty } from "@/lib/subject-difficulty";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { GRADE_OPTIONS, GRADE_LABELS, loadGlobalGrade, saveGlobalGrade } from "@/lib/grade-levels";
-
+import { PracticeSkeletonCard } from "@/components/skeleton";
+import { loadQuizHistory } from "@/lib/quiz-history";
 const QUIZ_COUNTS = [3, 5, 10];
 
 function getDifficulties(gradeLevel: string | null): { id: Difficulty; label: string; color: string; desc: string }[] {
@@ -121,7 +122,9 @@ function PracticeScreenContent() {
   const [quizCount, setQuizCount] = useState(5);
   const [quizStats, setQuizStats] = useState<QuizStats | null>(null);
   const [diffSuggestion, setDiffSuggestion] = useState<DifficultyUpSuggestion | null>(null);
+  const [diffDownSuggestion, setDiffDownSuggestion] = useState<DifficultyDownSuggestion | null>(null);
   const [suggestionDismissed, setSuggestionDismissed] = useState(false);
+  const [downSuggestionDismissed, setDownSuggestionDismissed] = useState(false);
   const [progressData, setProgressData] = useState<ProgressData | null>(null);
   const [weeklyData, setWeeklyData] = useState<WeeklyData | null>(null);
   const [cheatSheetExpanded, setCheatSheetExpanded] = useState(false);
@@ -137,11 +140,27 @@ function PracticeScreenContent() {
     }, [])
   );
 
-  // Re-check adaptive suggestion whenever subject or difficulty changes
+  // Re-check adaptive suggestions (both up and down) whenever subject or difficulty changes
   useEffect(() => {
     setSuggestionDismissed(false);
+    setDownSuggestionDismissed(false);
     getAdaptiveDifficultySuggestion(selectedSubject, selectedDifficulty).then(setDiffSuggestion);
+    getDifficultyDownSuggestion(selectedSubject, selectedDifficulty).then(setDiffDownSuggestion);
   }, [selectedSubject, selectedDifficulty]);
+
+  // ── Pre-fetch: keep a queued-up next problem ready ───────────────────────────
+  const prefetchedRef = useRef<PracticeQuestion | null>(null);
+  const prefetchMutation = trpc.academic.generatePractice.useMutation({
+    onSuccess: (data) => { prefetchedRef.current = data as PracticeQuestion; },
+  });
+
+  const triggerPrefetch = useCallback(() => {
+    prefetchedRef.current = null;
+    prefetchMutation.mutate({ subject: selectedSubject, difficulty: selectedDifficulty, gradeLevel: gradeLevel ?? undefined });
+  }, [selectedSubject, selectedDifficulty, gradeLevel]);
+
+  // Kick off first prefetch once subject/difficulty are ready
+  useEffect(() => { triggerPrefetch(); }, [selectedSubject, selectedDifficulty, gradeLevel]);
 
   const generateMutation = trpc.academic.generatePractice.useMutation({
     onSuccess: (data) => {
@@ -149,11 +168,25 @@ function PracticeScreenContent() {
       setShowAnswer(false);
       setHintsShown(0);
       H.notificationSuccess();
+      // Start pre-fetching the next problem in the background
+      triggerPrefetch();
     },
   });
 
   const handleGenerate = () => {
     H.impactMedium();
+    // If we have a pre-fetched problem ready, use it instantly
+    if (prefetchedRef.current) {
+      const q = prefetchedRef.current;
+      prefetchedRef.current = null;
+      setCurrentQuestion(q);
+      setShowAnswer(false);
+      setHintsShown(0);
+      H.notificationSuccess();
+      // Start pre-fetching the next one
+      triggerPrefetch();
+      return;
+    }
     generateMutation.mutate({ subject: selectedSubject, difficulty: selectedDifficulty, gradeLevel: gradeLevel ?? undefined });
   };
 
@@ -584,8 +617,73 @@ function PracticeScreenContent() {
           </View>
         )}
 
+        {/* Skeleton loading card — shown while generating (no prefetch available) */}
+        {generateMutation.isPending && (
+          <View style={{ marginTop: 4 }}>
+            <PracticeSkeletonCard />
+          </View>
+        )}
+
+        {/* Downward difficulty suggestion banner — shown when student is struggling */}
+        {diffDownSuggestion && !downSuggestionDismissed && !diffSuggestion && (
+          <View
+            style={[
+              styles.suggestionBanner,
+              { backgroundColor: colors.surface, borderColor: colors.warning },
+            ]}
+          >
+            <View style={[styles.suggestionAccentStrip, { backgroundColor: colors.warning }]} />
+            <View style={styles.suggestionInner}>
+              <View style={[styles.suggestionIconWrap, { backgroundColor: "rgba(245,158,11,0.12)" }]}>
+                <Text style={styles.suggestionEmoji}>💪</Text>
+              </View>
+              <View style={styles.suggestionBody}>
+                <Text style={[styles.suggestionTitle, { color: colors.foreground }]}>
+                  Let’s build confidence first
+                </Text>
+                <Text style={[styles.suggestionSub, { color: colors.muted }]}>
+                  You averaged{" "}
+                  <Text style={{ fontWeight: "700", color: colors.warning }}>
+                    {diffDownSuggestion.avgPct}%
+                  </Text>{" "}
+                  on your last 3{" "}
+                  <Text style={{ fontWeight: "600", color: colors.foreground }}>
+                    {diffDownSuggestion.currentDifficulty}
+                  </Text>{" "}
+                  {getSubjectLabel(selectedSubject)} quizzes. Try{" "}
+                  <Text style={{ fontWeight: "700", color: colors.warning }}>
+                    {diffDownSuggestion.suggestedDifficulty}
+                  </Text>{" "}to solidify the fundamentals!
+                </Text>
+                <View style={styles.suggestionBtnRow}>
+                  <TouchableOpacity
+                    onPress={() => {
+                      handleDifficultyChange(diffDownSuggestion.suggestedDifficulty);
+                      setDownSuggestionDismissed(true);
+                      if (Platform.OS !== "web") H.impactMedium();
+                    }}
+                    style={[styles.suggestionAccept, { backgroundColor: colors.warning }]}
+                    activeOpacity={0.85}
+                  >
+                    <IconSymbol size={14} name="arrow.down.circle.fill" color="#fff" />
+                    <Text style={styles.suggestionAcceptText}>
+                      Switch to {diffDownSuggestion.suggestedDifficulty}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => setDownSuggestionDismissed(true)}
+                    style={styles.suggestionDismiss}
+                  >
+                    <Text style={[styles.suggestionDismissText, { color: colors.muted }]}>Not now</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </View>
+        )}
+
         {/* Current Question */}
-        {currentQuestion && (
+        {currentQuestion && !generateMutation.isPending && (
           <View style={styles.questionSection}>
             <View style={[styles.questionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <View style={styles.questionHeader}>

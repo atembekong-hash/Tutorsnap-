@@ -89,6 +89,41 @@ export async function getAdaptiveDifficultySuggestion(
   };
 }
 
+// ─── Downward difficulty suggestion ───────────────────────────────────────────
+
+export interface DifficultyDownSuggestion {
+  subject: string;
+  currentDifficulty: "medium" | "hard";
+  suggestedDifficulty: "easy" | "medium";
+  avgPct: number;
+  quizCount: number;
+}
+
+/**
+ * Returns a suggestion to drop difficulty if the last 3 quizzes on the same
+ * subject at the current difficulty all scored < 50% (struggling).
+ */
+export async function getDifficultyDownSuggestion(
+  subject: string,
+  currentDifficulty: "easy" | "medium" | "hard"
+): Promise<DifficultyDownSuggestion | null> {
+  if (currentDifficulty === "easy") return null;
+  const history = await loadQuizHistory();
+  const relevant = history
+    .filter((h) => h.subject === subject && h.difficulty === currentDifficulty)
+    .slice(0, 3);
+  if (relevant.length < 3) return null;
+  const avgPct = Math.round(relevant.reduce((s, h) => s + h.pct, 0) / relevant.length);
+  if (avgPct >= 50) return null;
+  return {
+    subject,
+    currentDifficulty: currentDifficulty as "medium" | "hard",
+    suggestedDifficulty: currentDifficulty === "hard" ? "medium" : "easy",
+    avgPct,
+    quizCount: relevant.length,
+  };
+}
+
 export async function loadQuizStats(): Promise<QuizStats> {
   const history = await loadQuizHistory();
   if (history.length === 0) {

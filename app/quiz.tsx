@@ -25,6 +25,7 @@ import { usePremium } from "@/hooks/use-premium";
 import { FREE_LIMITS } from "@/lib/subscription";
 import { QuizNudgeBanner } from "@/components/quiz-nudge-banner";
 import { maybeRequestReview } from "@/lib/review-prompt";
+import { QuizSkeletonCard } from "@/components/skeleton";
 import { loadGlobalGrade, GRADE_LABELS } from "@/lib/grade-levels";
 import AsyncStorageLib from "@react-native-async-storage/async-storage";
 import PaywallScreen from "./paywall";
@@ -493,9 +494,10 @@ export default function QuizScreen() {
           <Text style={[styles.navTitle, { color: colors.foreground }]}>Quiz</Text>
           <View style={{ width: 30 }} />
         </View>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[styles.loadingText, { color: colors.muted }]}>Generating your quiz…</Text>
+        <View style={{ flex: 1, paddingTop: 8 }}>
+          <QuizSkeletonCard />
+          <QuizSkeletonCard />
+          <QuizSkeletonCard />
         </View>
       </ScreenContainer>
     );

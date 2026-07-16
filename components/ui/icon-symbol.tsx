@@ -60,6 +60,7 @@ const MAPPING = {
   "chart.xyaxis.line": "show-chart",
   "arrow.up.right": "north-east",
   "arrow.up.circle.fill": "arrow-circle-up",
+  "arrow.down.circle.fill": "arrow-circle-down",
   "arrow.counterclockwise": "replay",
   "play.fill": "play-arrow",
   "pause.fill": "pause",
