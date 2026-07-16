@@ -166,36 +166,9 @@ function buildPracticePrompt(subject: string, difficulty: string): string {
   if (isEnglish) taskType = "question or short writing prompt";
   if (isSocial) taskType = "question or analysis prompt";
 
-  return `You are TutorSnap, an expert academic tutor.
-Generate a ${difficulty} ${taskType} for the subject: ${subject}.
-The question should be appropriate for a high school or early college student.
-
-CRITICAL: The "hints" array must contain EXACTLY 3 hints that are ELABORATE and EDUCATIONAL:
-- Hint 1: Point the student toward the right concept or formula WITHOUT giving the answer. Explain WHY that concept applies here (2-3 sentences).
-- Hint 2: Break down the first key step they should take, explaining the reasoning and any relevant formula or rule (2-4 sentences).
-- Hint 3: Guide them through the most difficult part of the problem, explaining common mistakes to avoid and what to check (2-4 sentences).
-
-Always respond with valid JSON in this exact format:
-{
-  "id": "practice-${Date.now()}",
-  "subject": "${subject}",
-  "difficulty": "${difficulty}",
-  "problem": "The practice question or prompt",
-  "answer": "The correct answer or a model answer",
-  "steps": [
-    {
-      "stepNumber": 1,
-      "title": "Step or point title",
-      "explanation": "Detailed explanation of this step (3-5 sentences)",
-      "expression": "Optional: formula, quote, or key phrase"
-    }
-  ],
-  "hints": [
-    "Hint 1: [concept pointer with explanation of why it applies, 2-3 sentences]",
-    "Hint 2: [first key step breakdown with formula/rule reasoning, 2-4 sentences]",
-    "Hint 3: [guidance on the hardest part with common mistakes to avoid, 2-4 sentences]"
-  ]
-}`;
+  return `You are TutorSnap, an expert academic tutor. Generate ONE ${difficulty} ${taskType} for: ${subject}.
+Respond ONLY with this JSON (no extra text):
+{"id":"p1","subject":"${subject}","difficulty":"${difficulty}","problem":"<question>","answer":"<answer>","steps":[{"stepNumber":1,"title":"<title>","explanation":"<1-2 sentences>","expression":"<formula if any>"}],"hints":["<hint 1, 1 sentence>","<hint 2, 1 sentence>","<hint 3, 1 sentence>"]}`;
 }
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
@@ -219,12 +192,12 @@ const academicRouter = router({
       try {
         const systemPrompt = buildSolveSystemPrompt(input.subject) + gradeContext(input.gradeLevel);
         const result = await invokeLLM({
-          model: "gpt-4o-mini",
+          model: "gpt-5-nano",
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: input.problem },
           ],
-          max_tokens: 6000,
+          max_tokens: 1500,
           response_format: { type: "json_object" },
         });
         const rawContent = result.choices[0]?.message?.content ?? "";
@@ -246,7 +219,7 @@ const academicRouter = router({
     .mutation(async ({ input }) => {
       try {
         const result = await invokeLLM({
-          model: "gpt-4o-mini",
+          model: "gpt-5-nano",
           messages: [
             { role: "system", content: IMAGE_SOLVE_SYSTEM_PROMPT + gradeContext(input.gradeLevel) },
             {
@@ -260,7 +233,7 @@ const academicRouter = router({
               ],
             },
           ],
-          max_tokens: 6000,
+          max_tokens: 1500,
           response_format: { type: "json_object" },
         });
         const rawContent = result.choices[0]?.message?.content ?? "";
@@ -281,12 +254,12 @@ const academicRouter = router({
     .mutation(async ({ input }) => {
       const practicePrompt = buildPracticePrompt(input.subject, input.difficulty) + gradeContext(input.gradeLevel);
       const result = await invokeLLM({
-        model: "gpt-4o-mini",
+        model: "gpt-5-nano",
         messages: [
           { role: "system", content: practicePrompt },
           { role: "user", content: `Generate a ${input.difficulty} ${input.subject} practice question.` },
         ],
-        max_tokens: 1500,
+        max_tokens: 600,
         response_format: { type: "json_object" },
       });
       const rawContent = result.choices[0]?.message?.content ?? "";
@@ -303,35 +276,19 @@ const academicRouter = router({
       gradeLevel: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
-      const isEnglish = ["american_literature","british_literature","world_literature","composition","creative_writing","debate","journalism","grammar","poetry"].includes(input.subject);
-      const isSocial = ["us_history","world_history","government","economics","geography","psychology","sociology","civics"].includes(input.subject);
-      let taskType = "problem";
-      if (isEnglish) taskType = "question";
-      if (isSocial) taskType = "question";
-
       const quizPrompt = `You are TutorSnap, an expert academic tutor.${gradeContext(input.gradeLevel)}
-Generate exactly ${input.count} ${input.difficulty} ${taskType}s for the subject: ${input.subject}.
-Each question must have 4 multiple-choice options (A, B, C, D) with exactly one correct answer.
-Respond ONLY with valid JSON in this exact format:
-{
-  "questions": [
-    {
-      "id": "q1",
-      "problem": "The question text",
-      "options": { "A": "Option A", "B": "Option B", "C": "Option C", "D": "Option D" },
-      "correctAnswer": "A",
-      "explanation": "Why this answer is correct"
-    }
-  ]
-}`;
+Generate exactly ${input.count} ${input.difficulty} multiple-choice questions for: ${input.subject}.
+Each question has 4 options (A-D), one correct answer, and a brief 1-sentence explanation.
+Respond ONLY with this JSON:
+{"questions":[{"id":"q1","problem":"<question>","options":{"A":"<a>","B":"<b>","C":"<c>","D":"<d>"},"correctAnswer":"A","explanation":"<1 sentence>"}]}`;
 
       const result = await invokeLLM({
-        model: "gpt-4o-mini",
+        model: "gpt-5-nano",
         messages: [
           { role: "system", content: quizPrompt },
           { role: "user", content: `Generate ${input.count} ${input.difficulty} multiple-choice questions for ${input.subject}.` },
         ],
-        max_tokens: 3000,
+        max_tokens: Math.min(input.count * 200, 1200),
         response_format: { type: "json_object" },
       });
       const rawContent = result.choices[0]?.message?.content ?? "";
@@ -351,7 +308,7 @@ Respond ONLY with valid JSON in this exact format:
       const gradeHint = input.gradeLevel && GRADE_LEVEL_DESCRIPTIONS[input.gradeLevel] ? ` Tailor the tip for a ${GRADE_LEVEL_DESCRIPTIONS[input.gradeLevel].split(":")[0]} student.` : "";
       const tipPrompt = `You are TutorSnap, a friendly academic tutor. Generate a single, practical, actionable study tip for a student studying ${input.subject}.${gradeHint} The tip should be specific, encouraging, and 1-2 sentences long. Respond with ONLY the tip text, no preamble, no quotes.`;
       const result = await invokeLLM({
-        model: "gpt-4o-mini",
+        model: "gpt-5-nano",
         messages: [
           { role: "system", content: tipPrompt },
           { role: "user", content: `Give me a study tip for ${input.subject}.` },
@@ -381,7 +338,7 @@ Respond ONLY with valid JSON in this exact format:
         : "";
       const systemPrompt = CHAT_SYSTEM_PROMPT + subjectContext + gradeContext;
       const result = await invokeLLM({
-        model: "gpt-4o-mini",
+        model: "gpt-5-nano",
         messages: [
           { role: "system", content: systemPrompt },
           ...input.messages.map((m) => ({
@@ -403,7 +360,7 @@ Respond ONLY with valid JSON in this exact format:
     .mutation(async ({ input }) => {
       const prompt = `You are a helpful academic tutor assistant. Based on the following AI tutor response, generate exactly 3 short follow-up questions or prompts a student might want to ask next. Each should be 3-7 words, specific to the content of the response, and help deepen understanding.\n\nAI response:\n"${input.aiResponse.slice(0, 800)}"\n\nRespond ONLY with valid JSON in this exact format:\n{"chips": ["Question 1", "Question 2", "Question 3"]}`;
       const result = await invokeLLM({
-        model: "gpt-4o-mini",
+        model: "gpt-5-nano",
         messages: [
           { role: "system", content: prompt },
           { role: "user", content: "Generate the 3 follow-up chips now." },
@@ -430,14 +387,19 @@ Respond ONLY with valid JSON in this exact format:
       gradeLevel: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
-      const prompt = `You are TutorSnap, an expert academic tutor.${gradeContext(input.gradeLevel)}\nThe student just solved this problem:\n"${input.problem}"\n\nGenerate exactly ${input.count} similar practice problems of ${input.difficulty} difficulty in the subject "${input.subject}".\nThe problems should test the same concept or skill but use different numbers, scenarios, or contexts.\n\nFor each problem, provide an ELABORATE hint (2-4 sentences) that:\n- Points toward the right concept or technique WITHOUT giving the answer\n- Explains WHY that approach applies to this specific problem\n- Mentions any formula, theorem, or rule the student should recall\n\nRespond ONLY with valid JSON in this exact format:\n{\n  "problems": [\n    {\n      "id": "p1",\n      "problem": "The practice problem text",\n      "hint": "Elaborate hint: 2-4 sentences pointing to the concept, explaining why it applies, and naming the relevant formula or rule"\n    }\n  ]\n}`;
+      const prompt = `You are TutorSnap, an expert academic tutor.${gradeContext(input.gradeLevel)}
+The student solved: "${input.problem.slice(0, 200)}"
+Generate exactly ${input.count} similar ${input.difficulty} problems for "${input.subject}" testing the same concept.
+Each has a 1-sentence hint (point to the concept, no answer).
+Respond ONLY with this JSON:
+{"problems":[{"id":"p1","problem":"<problem>","hint":"<1-sentence hint>"}]}`;
       const result = await invokeLLM({
-        model: "gpt-4o-mini",
+        model: "gpt-5-nano",
         messages: [
           { role: "system", content: prompt },
           { role: "user", content: "Generate the similar problems now." },
         ],
-        max_tokens: 2500,
+        max_tokens: Math.min(input.count * 150, 800),
         response_format: { type: "json_object" },
       });
       const rawContent = result.choices[0]?.message?.content ?? "";
