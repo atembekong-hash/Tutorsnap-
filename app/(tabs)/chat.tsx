@@ -65,7 +65,7 @@ import {
   isScienceSubject,
 } from "@/lib/subjects";
 import { useNetworkStatus } from "@/hooks/use-network-status";
-import { Swipeable } from "react-native-gesture-handler";
+
 import { useFontSize } from "@/lib/font-size-provider";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { VoiceButton } from "@/components/voice-button";
@@ -2304,46 +2304,7 @@ function ChatScreenContent() {
             keyboardShouldPersistTaps="always"
             renderItem={({ item, index }) => (
               <View>
-                {item.role === "assistant" && !item.id.startsWith("welcome") && Platform.OS !== "web" ? (
-                  <Swipeable
-                    renderRightActions={() => (
-                      <View style={[chatStyles.swipeReplyHint, { backgroundColor: `${colors.primary}18` }]}>
-                        <IconSymbol size={18} name="arrowshape.turn.up.left.fill" color={colors.primary} />
-                        <Text style={[chatStyles.swipeReplyLabel, { color: colors.primary, fontSize: fs(11) }]}>Reply</Text>
-                      </View>
-                    )}
-                    rightThreshold={60}
-                    overshootRight={false}
-                    friction={2}
-                    onSwipeableOpen={() => {
-                      const plainText = item.content
-                        .replace(/#{1,6}\s/g, "")
-                        .replace(/\*\*|__/g, "")
-                        .replace(/\*|_/g, "")
-                        .replace(/`{1,3}/g, "")
-                        .trim()
-                        .slice(0, 120);
-                      setReplyTo(plainText);
-                      H.impactLight()
-                    }}
-                  >
-                    <MessageBubble
-                      message={item}
-                      isFirstInRun={isFirstInRun(index)}
-                      colors={colors}
-                      fs={fs}
-                      onLongPressAI={(content) => handleLongPressReaction(content, item.id)}
-                      onTapCopyAI={handleTapCopyAI}
-                      reaction={reactions[item.id]}
-                      streaming={item.id === streamingMsgIdRef.current && isStreaming}
-                      animateWords={item.id === streamingMsgIdRef.current && isStreaming && tutorSettings.animateAIResponses}
-                      showAccentBar={tutorSettings.showAccentBar}
-                      blocksStartCollapsed={tutorSettings.blocksStartCollapsed}
-                      compactBlocks={tutorSettings.compactBlocks}
-                    />
-                  </Swipeable>
-                ) : (
-                  <MessageBubble
+                <MessageBubble
                     message={item}
                     isFirstInRun={isFirstInRun(index)}
                     colors={colors}
@@ -2357,7 +2318,6 @@ function ChatScreenContent() {
                     blocksStartCollapsed={tutorSettings.blocksStartCollapsed}
                     compactBlocks={tutorSettings.compactBlocks}
                   />
-                )}
                 {/* Error bubble — shown when stream fails */}
                 {item.role === "assistant" && item.error && !isStreaming && (
                   <View style={chatStyles.stoppedRow}>
