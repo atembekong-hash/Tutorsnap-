@@ -97,6 +97,7 @@ export interface TutorSettings {
   showOnlineStatus: boolean;
   showSpeedIndicator: boolean;
   showAccentBar: boolean;
+  blocksStartCollapsed: boolean; // Whether structured blocks start collapsed
 
   // 7. Notifications & Reminders
   studyReminders: boolean;
@@ -149,6 +150,7 @@ export const DEFAULT_TUTOR_SETTINGS: TutorSettings = {
   showOnlineStatus: false,
   showSpeedIndicator: false,
   showAccentBar: false,
+  blocksStartCollapsed: false,
 
   studyReminders: false,
   studyReminderTime: "18:00",
@@ -1042,6 +1044,13 @@ export function TutorSettingsModal({
               sub="Show a coloured left border on AI bubbles"
               value={settings.showAccentBar}
               onChange={(v) => onUpdate({ showAccentBar: v })}
+            />
+            <ToggleRow
+              icon="chevron.right"
+              label="Collapse Blocks by Default"
+              sub="Definition, Key Concept, and Summary blocks start collapsed"
+              value={settings.blocksStartCollapsed}
+              onChange={(v) => onUpdate({ blocksStartCollapsed: v })}
               last
             />
           </SettingsCard>

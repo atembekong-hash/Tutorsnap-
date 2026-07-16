@@ -107,6 +107,7 @@ import * as Auth from "@/lib/_core/auth";
 // React Native's built-in fetch does NOT support response.body.getReader() on native.
 import { fetch as expoFetch } from "expo/fetch";
 import { scheduleDailyReminder, cancelDailyReminder, scheduleSessionSummaryNotification } from "@/lib/notifications";
+import { pinDefinition } from "@/lib/glossary";
 
 function getAppearanceSubjectKey(subjectId: string | null): string {
   if (!subjectId) return "Mathematics";
@@ -394,6 +395,7 @@ function MessageBubble({
   streaming = false,
   animateWords = false,
   showAccentBar = false,
+  blocksStartCollapsed = false,
 }: {
   message: ChatMessage;
   isFirstInRun: boolean;
@@ -405,6 +407,7 @@ function MessageBubble({
   streaming?: boolean;
   animateWords?: boolean;
   showAccentBar?: boolean;
+  blocksStartCollapsed?: boolean;
 }) {
   const isUser = message.role === "user";
   const { settings } = useAppearance();
@@ -513,6 +516,7 @@ function MessageBubble({
               streaming={streaming}
               animateWords={animateWords}
               stripPreamble={!streaming}
+              blocksStartCollapsed={blocksStartCollapsed}
             />
             {streaming && message.content.length > 0 && (
               <BlinkingCursor color={colors.muted} fontSize={fs(15)} />
@@ -1049,6 +1053,8 @@ function ChatScreenContent() {
               existing.messages.filter((m) => !m.id.startsWith("welcome"))
             );
             setSelectedSubject((existing.subject as SubjectId | null) ?? null);
+            // Restore persisted reactions
+            if (existing.reactions) setReactions(existing.reactions);
             // Load per-session grade level, fall back to global preference
             if (existing.gradeLevel) {
               setGradeLevel(existing.gradeLevel);
@@ -1690,17 +1696,23 @@ function ChatScreenContent() {
       if (!reactionPickerMsgId) return;
       setReactions((prev) => {
         // Toggle: if same emoji already set, remove it
+        let next: Record<string, string>;
         if (prev[reactionPickerMsgId] === emoji) {
-          const next = { ...prev };
+          next = { ...prev };
           delete next[reactionPickerMsgId];
-          return next;
+        } else {
+          next = { ...prev, [reactionPickerMsgId]: emoji };
         }
-        return { ...prev, [reactionPickerMsgId]: emoji };
+        // Persist reactions to session storage (fire-and-forget)
+        if (session) {
+          saveSession({ ...session, reactions: next }, tutorSettings.maxSessions).catch(() => {});
+        }
+        return next;
       });
       H.impactLight();
       setReactionPickerMsgId(null);
     },
-    [reactionPickerMsgId]
+    [reactionPickerMsgId, session, tutorSettings.maxSessions]
   );
 
   // ── New Chat ────────────────────────────────────────────────────────────────
@@ -2279,6 +2291,7 @@ function ChatScreenContent() {
                       streaming={item.id === streamingMsgIdRef.current && isStreaming}
                       animateWords={item.id === streamingMsgIdRef.current && isStreaming && tutorSettings.animateAIResponses}
                       showAccentBar={tutorSettings.showAccentBar}
+                      blocksStartCollapsed={tutorSettings.blocksStartCollapsed}
                     />
                   </Swipeable>
                 ) : (
@@ -2293,6 +2306,7 @@ function ChatScreenContent() {
                     streaming={item.id === streamingMsgIdRef.current && isStreaming}
                     animateWords={item.id === streamingMsgIdRef.current && isStreaming && tutorSettings.animateAIResponses}
                     showAccentBar={tutorSettings.showAccentBar}
+                    blocksStartCollapsed={tutorSettings.blocksStartCollapsed}
                   />
                 )}
                 {/* Error bubble — shown when stream fails */}
@@ -3281,6 +3295,22 @@ function ChatScreenContent() {
             >
               <Text style={{ fontSize: 16 }}>📖</Text>
               <Text style={{ fontSize: 13, color: colors.primary, fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif', fontWeight: '600' }}>Define this concept</Text>
+            </TouchableOpacity>
+            {/* Pin Definition row */}
+            <TouchableOpacity
+              style={[chatStyles.reactionPickerEmoji, { width: '100%', paddingHorizontal: 12, justifyContent: 'flex-start', gap: 8 }]}
+              onPress={async () => {
+                if (reactionPickerContent) {
+                  const term = reactionPickerContent.split('\n')[0].replace(/[*#`_]/g, '').trim().slice(0, 80);
+                  await pinDefinition(term, reactionPickerContent, selectedSubject);
+                  H.notificationSuccess();
+                }
+                setReactionPickerMsgId(null);
+              }}
+              activeOpacity={0.7}
+            >
+              <Text style={{ fontSize: 16 }}>📌</Text>
+              <Text style={{ fontSize: 13, color: colors.success, fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif', fontWeight: '600' }}>Pin to Glossary</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>

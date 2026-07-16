@@ -43,6 +43,8 @@ export interface AIResponseRendererProps {
   stripPreamble?: boolean;
   /** Called when user selects text and taps "Define" in the context menu */
   onDefineWord?: (word: string) => void;
+  /** Whether structured blocks (Definition, Key Concept, etc.) start collapsed */
+  blocksStartCollapsed?: boolean;
 }
 
 // ─── Segment types ────────────────────────────────────────────────────────────
@@ -190,6 +192,7 @@ function CopyableBlock({
   children,
   copyText,
   collapsible = true,
+  startCollapsed = false,
 }: {
   label: string;
   labelColor: string;
@@ -200,9 +203,10 @@ function CopyableBlock({
   children: React.ReactNode;
   copyText: string;
   collapsible?: boolean;
+  startCollapsed?: boolean;
 }) {
   const [copied, setCopied] = useState(false);
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(startCollapsed);
   const chevronAnim = useRef(new Animated.Value(0)).current;
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -503,6 +507,7 @@ function buildRenderRules(
   colors: ReturnType<typeof useColors>,
   fontSize: number,
   textColor: string,
+  startCollapsed = false,
 ) {
   const primary = colors.primary;
   const border = colors.border;
@@ -522,6 +527,7 @@ function buildRenderRules(
         borderColor={`${primary}30`}
         bg={`${primary}07`}
         copyText={extractNodeText(node)}
+        startCollapsed={startCollapsed}
       >
         <Text style={{ fontSize: fontSize * 1.15, fontFamily: 'Inter_700Bold', color: textColor, lineHeight: fontSize * 1.15 * 1.35, letterSpacing: -0.3 }}>
           {children}
@@ -540,6 +546,7 @@ function buildRenderRules(
         borderColor={`${warning}30`}
         bg={`${warning}07`}
         copyText={extractNodeText(node)}
+        startCollapsed={startCollapsed}
       >
         <Text style={{ fontSize: fontSize * 1.1, fontFamily: 'Inter_600SemiBold', color: textColor, lineHeight: fontSize * 1.1 * 1.35, letterSpacing: -0.2 }}>
           {children}
@@ -568,6 +575,7 @@ function buildRenderRules(
         borderColor={`${warning}30`}
         bg={`${warning}06`}
         copyText={extractNodeText(node)}
+        startCollapsed={startCollapsed}
       >
         <View>{children}</View>
       </CopyableBlock>
@@ -620,6 +628,7 @@ function buildRenderRules(
         borderColor={`${success}30`}
         bg={`${success}07`}
         copyText={extractNodeText(node)}
+        startCollapsed={startCollapsed}
       >
         <Text style={{ fontSize: fontSize * 1.05, fontFamily: 'Inter_500Medium', color: textColor, lineHeight: fontSize * 1.05 * 1.5 }}>
           {children}
@@ -699,6 +708,7 @@ export function AIResponseRenderer({
   flavor = 'github',
   stripPreamble = !streaming,
   onDefineWord,
+  blocksStartCollapsed = false,
 }: AIResponseRendererProps) {
   const colors = useColors();
   const textColor = color ?? colors.foreground;
@@ -720,8 +730,8 @@ export function AIResponseRenderer({
   );
 
   const renderRules = useMemo(
-    () => buildRenderRules(colors, fontSize, textColor),
-    [colors, fontSize, textColor],
+    () => buildRenderRules(colors, fontSize, textColor, blocksStartCollapsed),
+    [colors, fontSize, textColor, blocksStartCollapsed],
   );
 
   const handleLinkPress = useCallback(

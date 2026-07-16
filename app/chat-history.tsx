@@ -178,6 +178,20 @@ function SessionCard({
         {session.preview}
       </Text>
 
+      {/* Reaction summary badge — shown when session has reactions */}
+      {session.topReactions && session.topReactions.length > 0 && (
+        <View style={styles.reactionSummaryRow}>
+          {session.topReactions.map((emoji, i) => (
+            <View key={i} style={[styles.reactionSummaryChip, { backgroundColor: `${colors.primary}10`, borderColor: `${colors.border}` }]}>
+              <Text style={{ fontSize: 13 }}>{emoji}</Text>
+            </View>
+          ))}
+          <Text style={[styles.reactionSummaryLabel, { color: colors.muted, fontSize: fs(11) }]}>
+            {session.topReactions.length === 1 ? 'reaction' : 'reactions'}
+          </Text>
+        </View>
+      )}
+
       {/* Actions */}
       <View style={[styles.cardActions, { borderTopColor: colors.border }]}>
         <TouchableOpacity
@@ -996,6 +1010,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingBottom: 12,
     lineHeight: 20,
+  },
+  reactionSummaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 14,
+    paddingBottom: 8,
+  },
+  reactionSummaryChip: {
+    width: 24,
+    height: 24,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  reactionSummaryLabel: {
+    marginLeft: 2,
+    fontWeight: '500',
   },
   cardActions: {
     flexDirection: "row",

@@ -25,6 +25,7 @@ export interface ChatSession {
   updatedAt: number;
   messageCount: number;    // Cached for list display
   tags: string[];          // User-defined tags (e.g. "Exam Prep", "Homework")
+  reactions?: Record<string, string>; // msgId -> emoji reaction
 }
 
 export interface ChatSessionSummary {
@@ -38,6 +39,7 @@ export interface ChatSessionSummary {
   preview: string;         // Last AI message snippet
   pinned: boolean;         // Whether this session is pinned to the top
   tags: string[];          // User-defined tags
+  topReactions: string[];  // Up to 3 most-used emoji reactions in this session
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -255,6 +257,17 @@ export async function listSessionSummaries(): Promise<ChatSessionSummary[]> {
       const preview = lastAI
         ? lastAI.content.replace(/[#*_`~\[\]]/g, "").slice(0, 80).trim()
         : "No messages yet";
+      // Compute top 3 reactions by frequency
+      const reactionCounts: Record<string, number> = {};
+      if (s.reactions) {
+        for (const emoji of Object.values(s.reactions)) {
+          reactionCounts[emoji] = (reactionCounts[emoji] ?? 0) + 1;
+        }
+      }
+      const topReactions = Object.entries(reactionCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([emoji]) => emoji);
       summaries.push({
         id: s.id,
         title: s.title,
@@ -266,6 +279,7 @@ export async function listSessionSummaries(): Promise<ChatSessionSummary[]> {
         preview,
         pinned: pinSet.has(s.id),
         tags: s.tags ?? [],
+        topReactions,
       });
     } catch { /* skip malformed */ }
   }
