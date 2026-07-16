@@ -2176,7 +2176,6 @@ function ChatScreenContent() {
               <View>
                 {item.role === "assistant" && !item.id.startsWith("welcome") && Platform.OS !== "web" ? (
                   <Swipeable
-                    waitFor={flatListRef}
                     renderRightActions={() => (
                       <View style={[chatStyles.swipeReplyHint, { backgroundColor: `${colors.primary}18` }]}>
                         <IconSymbol size={18} name="arrowshape.turn.up.left.fill" color={colors.primary} />
