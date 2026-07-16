@@ -28,6 +28,7 @@ import * as Haptics from 'expo-haptics';
 import Markdown from 'react-native-markdown-display';
 import { MathRenderer } from '@/components/math-renderer';
 import { useColors } from '@/hooks/use-colors';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { type StructuredBlock, type BlockType } from '@/lib/structured-blocks';
 
 // ─── Block design tokens ──────────────────────────────────────────────────────
@@ -180,6 +181,7 @@ function buildMdStyles(
   fontSize: number,
   textColor: string,
   accent: string,
+  isDark: boolean,
 ) {
   const lh = fontSize * 1.65;
   return {
@@ -204,8 +206,8 @@ function buildMdStyles(
     bullet_list_icon: { color: accent, fontSize: fontSize * 0.5, marginTop: fontSize * 0.6, marginRight: 8, lineHeight: fontSize * 0.5 },
     ordered_list_icon: { color: accent, fontSize, fontWeight: '700' as const, marginRight: 6, lineHeight: lh },
     fence: {
-      fontSize: fontSize * 0.84, color: '#CDD6F4', backgroundColor: '#1E1E2E',
-      borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)',
+      fontSize: fontSize * 0.84, color: isDark ? '#CDD6F4' : '#1F2937', backgroundColor: isDark ? '#1E1E2E' : '#F3F4F6',
+      borderRadius: 10, borderWidth: 1, borderColor: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.08)',
       padding: 12, marginTop: 8, marginBottom: 10,
       fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
       lineHeight: fontSize * 0.84 * 1.65,
@@ -265,6 +267,8 @@ function buildRenderRules(fontSize: number, textColor: string) {
 // ─── Code block inside a structured block ────────────────────────────────────
 
 function CodeBlock({ code, language, fontSize }: { code: string; language?: string; fontSize: number }) {
+  const colorScheme = useColorScheme();
+  const isDarkBlock = colorScheme === 'dark';
   const [copied, setCopied] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const handleCopy = async () => {
@@ -278,22 +282,22 @@ function CodeBlock({ code, language, fontSize }: { code: string; language?: stri
   useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
   const langLabel = language && language !== 'text' ? language.toLowerCase() : null;
   return (
-    <View style={codeBlockStyles.container}>
-      <View style={codeBlockStyles.topBar}>
+    <View style={[codeBlockStyles.container, { backgroundColor: isDarkBlock ? '#1E1E2E' : '#F3F4F6', borderColor: isDarkBlock ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.08)' }]}>
+        <View style={[codeBlockStyles.topBar, { borderBottomColor: isDarkBlock ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.08)' }]}>
         <View style={codeBlockStyles.dotRow}>
           <View style={[codeBlockStyles.dot, { backgroundColor: '#FF5F57' }]} />
           <View style={[codeBlockStyles.dot, { backgroundColor: '#FFBD2E' }]} />
           <View style={[codeBlockStyles.dot, { backgroundColor: '#28C840' }]} />
         </View>
-        {langLabel ? <Text style={codeBlockStyles.langLabel}>{langLabel}</Text> : <View style={{ flex: 1 }} />}
+        {langLabel ? <Text style={[codeBlockStyles.langLabel, { color: isDarkBlock ? '#6E7681' : '#9CA3AF' }]}>{langLabel}</Text> : <View style={{ flex: 1 }} />}
         <TouchableOpacity onPress={handleCopy} hitSlop={{ top: 8, bottom: 8, left: 12, right: 12 }}>
-          <Text style={[codeBlockStyles.copyBtn, copied && codeBlockStyles.copyBtnDone]}>
+          <Text style={[codeBlockStyles.copyBtn, { color: isDarkBlock ? '#6E7681' : '#9CA3AF' }, copied && codeBlockStyles.copyBtnDone]}>
             {copied ? '✓ Copied' : 'Copy'}
           </Text>
         </TouchableOpacity>
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <Text style={[codeBlockStyles.code, { fontSize: fontSize * 0.84, lineHeight: fontSize * 0.84 * 1.65 }]}>
+        <Text style={[codeBlockStyles.code, { color: isDarkBlock ? '#CDD6F4' : '#1F2937', fontSize: fontSize * 0.84, lineHeight: fontSize * 0.84 * 1.65 }]}>
           {code}
         </Text>
       </ScrollView>
@@ -350,7 +354,7 @@ function BlockCard({ block, fontSize, isDark, colors, index }: BlockCardProps) {
     if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, [collapsed, collapseAnim]);
 
-  const mdStyles = buildMdStyles(colors, fontSize, textColor, accent);
+  const mdStyles = buildMdStyles(colors, fontSize, textColor, accent, isDark);
   const renderRules = buildRenderRules(fontSize, textColor);
 
   // Split content into markdown segments and block math
@@ -520,7 +524,8 @@ export function StructuredBlockRenderer({
   streaming = false,
 }: StructuredBlockRendererProps) {
   const colors = useColors();
-  const isDark = colors.background === '#151718' || colors.background.toLowerCase().includes('1');
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
 
   if (streaming || blocks.length === 0) return null;
 
