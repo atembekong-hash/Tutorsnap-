@@ -889,6 +889,7 @@ function ChatScreenContent() {
 
   const flatListRef = useRef<FlatList>(null);
   const inputRef = useRef<import("react-native").TextInput>(null);
+  const [composerHeight, setComposerHeight] = useState(132);
   const isUserScrolledUpRef = useRef(false);
   const shareCopiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Throttle streaming scroll — fire at most every 120ms with animated:true for smooth glide
@@ -906,6 +907,19 @@ function ChatScreenContent() {
   const colorScheme = useColorScheme();
   const { getSubjectAccent, settings: appearanceSettings, updateSetting } = useAppearance();
   const { settings: tutorSettings, update: updateTutorSetting, reset: resetTutorSettings } = useTutorSettings();
+
+  const scrollToBottom = useCallback((animated = true) => {
+    requestAnimationFrame(() => {
+      flatListRef.current?.scrollToEnd({ animated });
+    });
+  }, []);
+
+  const settleScrollToBottom = useCallback(() => {
+    scrollToBottom(false);
+    setTimeout(() => scrollToBottom(false), 40);
+    setTimeout(() => scrollToBottom(true), 140);
+    setTimeout(() => scrollToBottom(false), 260);
+  }, [scrollToBottom]);
 
   // ── Swipe-to-show tab bar ───────────────────────────────────────────────────
   const [tabBarVisible, setTabBarVisible] = useState(false);
@@ -1165,7 +1179,7 @@ function ChatScreenContent() {
       if (nextState === "active" && isStreamingRef.current) {
         setTimeout(() => {
           if (!isUserScrolledUpRef.current) {
-            flatListRef.current?.scrollToEnd({ animated: true });
+            settleScrollToBottom();
           }
         }, 200);
       }
@@ -1280,7 +1294,7 @@ function ChatScreenContent() {
       setIsWaitingForFirstToken(true); // show dots until first token
       setContextualChips([]);
 
-      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+      settleScrollToBottom();
 
       try {
         const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -1376,12 +1390,10 @@ function ChatScreenContent() {
         const reqDelayMs = getTypingDelayMs(subject);
 
         // Throttled smooth scroll — glide to bottom at most every 120ms
-        const SCROLL_THROTTLE_MS = 120;
+        const SCROLL_THROTTLE_MS = 80;
         const smoothScrollToEnd = () => {
-          if (!tutorSettings.autoScroll) return; // Fix 4: respect autoScroll setting
+          if (!tutorSettings.autoScroll) return;
           if (isUserScrolledUpRef.current) return;
-          // Pause during high-velocity manual flick to avoid fighting the user's scroll
-          if (isHighVelocityScrollRef.current) return;
           const now = Date.now();
           const elapsed = now - lastScrollTimeRef.current;
           if (scrollPendingRef.current) {
@@ -1390,12 +1402,11 @@ function ChatScreenContent() {
           }
           if (elapsed >= SCROLL_THROTTLE_MS) {
             lastScrollTimeRef.current = now;
-            flatListRef.current?.scrollToEnd({ animated: true });
+            scrollToBottom(false);
           } else {
-            // Schedule a trailing scroll so the last characters always land at bottom
             scrollPendingRef.current = setTimeout(() => {
               lastScrollTimeRef.current = Date.now();
-              flatListRef.current?.scrollToEnd({ animated: true });
+              scrollToBottom(false);
               scrollPendingRef.current = null;
             }, SCROLL_THROTTLE_MS - elapsed);
           }
@@ -1406,7 +1417,7 @@ function ChatScreenContent() {
             renderLoopRunning = false;
             // Final scroll to ensure we land exactly at the bottom
             if (!isUserScrolledUpRef.current) {
-              flatListRef.current?.scrollToEnd({ animated: true });
+              scrollToBottom(false);
             }
             return;
           }
@@ -1500,10 +1511,9 @@ function ChatScreenContent() {
           clearTimeout(scrollInactivityTimerRef.current);
           scrollInactivityTimerRef.current = null;
         }
-        // Streaming done: if the user never scrolled away, glide to the bottom.
-        // If they did scroll up to read, respect their position and don't force-jump.
+        // Streaming done: glide to bottom if user hasn't scrolled away.
         if (!isUserScrolledUpRef.current) {
-          setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+          settleScrollToBottom();
         }
         // Do NOT auto-focus here — doing so re-opens the keyboard which pushes the
         // input bar back up. The user taps the input when they are ready to type.
@@ -1595,7 +1605,7 @@ function ChatScreenContent() {
       isHighVelocityScrollRef.current = false;
       if (highVelocityPauseTimerRef.current) clearTimeout(highVelocityPauseTimerRef.current);
       if (scrollPendingRef.current) { clearTimeout(scrollPendingRef.current); scrollPendingRef.current = null; }
-      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+      settleScrollToBottom();
 
       const contextMessages = updatedMessages
         .filter((m) => !m.id.startsWith("welcome"))
@@ -2439,114 +2449,61 @@ function ChatScreenContent() {
                 )}
               </View>
             )}
-            contentContainerStyle={{ paddingTop: 12, paddingBottom: 16 }}
+            contentContainerStyle={{ paddingTop: 12, paddingBottom: composerHeight + 16 }}
             showsVerticalScrollIndicator={false}
             scrollEventThrottle={16}
             onScrollBeginDrag={() => {
-              // User started dragging — lock auto-scroll immediately.
-              // During streaming this lock stays until the user taps the
-              // scroll-to-bottom FAB or streaming ends and they are near bottom.
               isUserScrolledUpRef.current = true;
-              // Also cancel any pending throttled scroll so it doesn't fire
-              // and fight the user mid-drag.
               if (scrollPendingRef.current) {
                 clearTimeout(scrollPendingRef.current);
                 scrollPendingRef.current = null;
               }
-              // Round 42: show the generating pill if we're currently streaming
               if (isStreaming) setGeneratingPillVisible(true);
-            }}
-            onMomentumScrollBegin={() => {
-              // Keep auto-scroll locked during the deceleration phase too.
-              isHighVelocityScrollRef.current = true;
-              if (highVelocityPauseTimerRef.current) clearTimeout(highVelocityPauseTimerRef.current);
             }}
             onMomentumScrollEnd={(e) => {
               const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
               const distanceFromBottom = contentSize.height - contentOffset.y - layoutMeasurement.height;
-              // Only re-enable auto-scroll if the user has landed near the bottom
-              // AND we are NOT actively streaming (during streaming the user must
-              // explicitly tap the FAB to re-engage).
-              if (distanceFromBottom < 80 && !isStreaming) {
-                isUserScrolledUpRef.current = false;
-                isHighVelocityScrollRef.current = false;
-              } else if (distanceFromBottom < 80 && isStreaming) {
-                // Near bottom while streaming — re-engage so new tokens scroll into view
-                isUserScrolledUpRef.current = false;
-                isHighVelocityScrollRef.current = false;
-              } else {
-                // Still scrolled up — release velocity lock but keep user-scroll lock
-                highVelocityPauseTimerRef.current = setTimeout(() => {
-                  isHighVelocityScrollRef.current = false;
-                }, 300);
-              }
+              const nearBottom = distanceFromBottom < 80;
+              isUserScrolledUpRef.current = !nearBottom;
+              if (nearBottom && generatingPillVisible) setGeneratingPillVisible(false);
             }}
             onScroll={(e) => {
               const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
               const distanceFromBottom = contentSize.height - contentOffset.y - layoutMeasurement.height;
-              // Re-enable auto-scroll only when the user has scrolled back to
-              // within 80px of the bottom (generous threshold so it's easy to
-              // re-engage without pixel-perfect precision).
-              if (distanceFromBottom < 80) {
+              const nearBottom = distanceFromBottom < 80;
+              if (nearBottom) {
                 isUserScrolledUpRef.current = false;
-                isHighVelocityScrollRef.current = false;
-                // Round 42: hide the generating pill once back near the bottom
                 if (generatingPillVisible) setGeneratingPillVisible(false);
               }
-              // Velocity detection: pause auto-scroll during fast manual flicks.
-              // During streaming we skip the timer-based re-enable so the lock
-              // isn't prematurely released while the user is still reading.
-              const now = Date.now();
-              const dt = now - lastScrollEventTimeRef.current;
-              const dy = Math.abs(contentOffset.y - lastScrollYRef.current);
-              if (dt > 0 && dt < 100) {
-                const velocity = dy / dt; // px/ms
-                if (velocity > 2.5) {
-                  isHighVelocityScrollRef.current = true;
-                  if (highVelocityPauseTimerRef.current) clearTimeout(highVelocityPauseTimerRef.current);
-                  if (!isStreaming) {
-                    // Outside streaming: release lock after 800ms as before
-                    highVelocityPauseTimerRef.current = setTimeout(() => {
-                      isHighVelocityScrollRef.current = false;
-                    }, 800);
-                  }
-                  // During streaming: no timer — lock stays until near-bottom or FAB tap
-                }
-              }
               lastScrollYRef.current = contentOffset.y;
-              lastScrollEventTimeRef.current = now;
-              // Round 43: auto-resume on inactivity — while streaming and scrolled up,
-              // reset a 3s timer on every scroll event. When the timer fires (user
-              // hasn't scrolled for 3s) automatically scroll back to the bottom and
-              // re-engage auto-scroll so they don't miss the end of the response.
+              lastScrollEventTimeRef.current = Date.now();
+              // Auto-resume: if user has been idle for autoResumeDelay seconds while streaming, scroll back
               if (isStreaming && isUserScrolledUpRef.current && tutorSettings.autoResumeDelay > 0) {
                 if (scrollInactivityTimerRef.current) clearTimeout(scrollInactivityTimerRef.current);
                 scrollInactivityTimerRef.current = setTimeout(() => {
-                  // Only auto-resume if still streaming and still scrolled up
                   if (isUserScrolledUpRef.current) {
                     isUserScrolledUpRef.current = false;
-                    isHighVelocityScrollRef.current = false;
                     setGeneratingPillVisible(false);
-                    flatListRef.current?.scrollToEnd({ animated: true });
+                    scrollToBottom(true);
                   }
                   scrollInactivityTimerRef.current = null;
                 }, tutorSettings.autoResumeDelay * 1000);
               } else if (!isStreaming || !isUserScrolledUpRef.current || tutorSettings.autoResumeDelay === 0) {
-                // Clear the timer if streaming ended or user is already at the bottom
                 if (scrollInactivityTimerRef.current) {
                   clearTimeout(scrollInactivityTimerRef.current);
                   scrollInactivityTimerRef.current = null;
                 }
               }
-              // Show/hide scroll buttons based on position
               setShowScrollTop(contentOffset.y > 120);
               setShowScrollBottom(distanceFromBottom > 120);
             }}
             onContentSizeChange={() => {
-              // Only auto-scroll on content size change when NOT streaming
-              // (during streaming, smoothScrollToEnd handles it with throttled animated scroll)
-              if (!isUserScrolledUpRef.current && !isStreaming) {
-                flatListRef.current?.scrollToEnd({ animated: true });
+              if (!isUserScrolledUpRef.current) {
+                if (isStreaming) {
+                  scrollToBottom(false);
+                } else {
+                  settleScrollToBottom();
+                }
               }
             }}
             ListFooterComponent={
@@ -2564,6 +2521,17 @@ function ChatScreenContent() {
         )}
 
         {/* ── Pending queued message bubbles (shown while offline) ── */}
+        {/* ── Pinned bottom dock: offline queue + input bar ── */}
+        <View
+          style={chatStyles.bottomDock}
+          onLayout={(e) => {
+            const h = Math.ceil(e.nativeEvent.layout.height);
+            if (h > 0 && Math.abs(h - composerHeight) > 2) {
+              setComposerHeight(h);
+              if (!isUserScrolledUpRef.current) settleScrollToBottom();
+            }
+          }}
+        >
         {offlineQueue.length > 0 && (
           <View style={[chatStyles.pendingQueueContainer, { borderTopColor: colors.border }]}>
             {offlineQueue.map((text, i) => (
@@ -2790,6 +2758,7 @@ function ChatScreenContent() {
             </TouchableOpacity>
           )}
         </View>
+        </View>{/* end bottomDock */}
       </KeyboardAvoidingView>
 
       {/* ── Floating scroll buttons (always rendered, opacity-animated + scale press) ── */}
@@ -2848,7 +2817,8 @@ function ChatScreenContent() {
             }
             // Round 42: hide the generating pill on FAB tap
             setGeneratingPillVisible(false);
-            flatListRef.current?.scrollToEnd({ animated: true });
+            isUserScrolledUpRef.current = false;
+            settleScrollToBottom();
             H.impactLight();
           }}
           style={chatStyles.scrollFabInner}
@@ -2885,7 +2855,7 @@ function ChatScreenContent() {
             if (highVelocityPauseTimerRef.current) clearTimeout(highVelocityPauseTimerRef.current);
             if (scrollPendingRef.current) { clearTimeout(scrollPendingRef.current); scrollPendingRef.current = null; }
             setGeneratingPillVisible(false);
-            flatListRef.current?.scrollToEnd({ animated: true });
+            settleScrollToBottom();
             H.impactLight();
           }}
           style={chatStyles.generatingPillInner}
@@ -3581,6 +3551,12 @@ const chatStyles = StyleSheet.create({
     borderRadius: 18,
     paddingHorizontal: 16,
     paddingVertical: 10,
+  },
+  bottomDock: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
   floatingBarWrapper: {
     paddingHorizontal: 12,

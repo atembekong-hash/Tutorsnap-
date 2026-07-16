@@ -723,3 +723,8 @@
 - [x] Icon mappings added: hand.draw, text.word.spacing, circle.hexagongrid.fill
 - [x] animateWords prop added to AIResponseRenderer and MessageBubble
 - [x] TypeScript: 0 errors
+- [ ] Keep the chat input bar pinned to the bottom of the screen before and after sending a request
+- [ ] Fix chat auto-scroll so the latest user message and AI response always land fully at the bottom
+- [ ] Remove scroll resistance and scroll-fighting during and after AI response generation for a smooth, seamless feel
+- [ ] Refactor the chat layout so the composer height is reserved correctly in the message list
+
