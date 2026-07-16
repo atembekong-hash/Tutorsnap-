@@ -401,6 +401,8 @@ function MessageBubble({
   colors,
   fs,
   onLongPressAI,
+  onTapCopyAI,
+  reaction,
   streaming = false,
   animateWords = false,
 }: {
@@ -409,6 +411,8 @@ function MessageBubble({
   colors: ReturnType<typeof useColors>;
   fs: (n: number) => number;
   onLongPressAI: (content: string) => void;
+  onTapCopyAI?: (content: string) => void;
+  reaction?: string | null;
   streaming?: boolean;
   animateWords?: boolean;
 }) {
@@ -493,13 +497,14 @@ function MessageBubble({
     );
   }
 
-  // AI bubble — full width, no card, long-pressable
+  // AI bubble — full width, no card, tap-to-copy + long-press for reaction menu
   return (
     <TouchableOpacity
+      onPress={() => onTapCopyAI?.(message.content)}
       onLongPress={() => onLongPressAI(message.content)}
       delayLongPress={450}
-      activeOpacity={1}
-      accessibilityLabel="Long press for options"
+      activeOpacity={0.92}
+      accessibilityLabel="Tap to copy, long press for options"
     >
       <View style={[bubbleStyles.aiRow, { marginBottom: rowMarginB }]}>
         <View style={bubbleStyles.avatarCol}>
@@ -536,6 +541,9 @@ function MessageBubble({
                 {`  ·  ${Math.max(1, Math.ceil(message.content.split(/\s+/).length / 200))} min read`}
               </Text>
             )}
+            {reaction ? (
+              <Text style={[bubbleStyles.reactionBadge, { fontSize: fs(13) }]}>{reaction}</Text>
+            ) : null}
           </View>
           </View>
         </View>
@@ -588,6 +596,10 @@ const bubbleStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 4,
+  },
+  reactionBadge: {
+    marginLeft: 8,
+    lineHeight: 18,
   },
   timeText: { textAlign: "left" },
   readingTime: { fontStyle: 'italic' },
@@ -851,6 +863,12 @@ function ChatScreenContent() {
   const [showScrollBottom, setShowScrollBottom] = useState(false);
   const [transcriptToast, setTranscriptToast] = useState<string | null>(null);
   const transcriptToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Tap-to-copy toast
+  const [copyToast, setCopyToast] = useState(false);
+  const copyToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Emoji reaction picker
+  const [reactionPickerMsgId, setReactionPickerMsgId] = useState<string | null>(null);
+  const [reactions, setReactions] = useState<Record<string, string>>({}); // msgId -> emoji
   const [subjectClearedToast] = useState(false);
   const subjectClearedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollTopScaleAnim = useRef(new Animated.Value(1)).current;
@@ -1637,6 +1655,66 @@ function ChatScreenContent() {
     [colors]
   );
 
+  // ── Tap-to-copy AI bubble ────────────────────────────────────────────────────
+
+  const handleTapCopyAI = useCallback(
+    async (content: string) => {
+      const plainText = content
+        .replace(/\$\$[\s\S]*?\$\$/g, "[equation]")
+        .replace(/\$[^$\n]+\$/g, "[math]")
+        .replace(/#{1,6}\s/g, "")
+        .replace(/\*\*|__/g, "")
+        .replace(/\*|_/g, "")
+        .replace(/`{1,3}/g, "")
+        .trim();
+      try {
+        if (Platform.OS === "web") {
+          if (typeof navigator !== "undefined" && navigator.clipboard) {
+            await navigator.clipboard.writeText(plainText);
+          }
+        } else {
+          const Clip = await import("expo-clipboard");
+          await Clip.setStringAsync(plainText);
+        }
+        H.notificationSuccess();
+        setCopyToast(true);
+        if (copyToastTimerRef.current) clearTimeout(copyToastTimerRef.current);
+        copyToastTimerRef.current = setTimeout(() => setCopyToast(false), 2000);
+      } catch {
+        // silently ignore
+      }
+    },
+    []
+  );
+
+  // ── Long-press reaction picker ──────────────────────────────────────────────
+
+  const handleLongPressReaction = useCallback(
+    (content: string, msgId: string) => {
+      H.impactMedium();
+      setReactionPickerMsgId(msgId);
+    },
+    []
+  );
+
+  const handlePickReaction = useCallback(
+    (emoji: string) => {
+      if (!reactionPickerMsgId) return;
+      setReactions((prev) => {
+        // Toggle: if same emoji already set, remove it
+        if (prev[reactionPickerMsgId] === emoji) {
+          const next = { ...prev };
+          delete next[reactionPickerMsgId];
+          return next;
+        }
+        return { ...prev, [reactionPickerMsgId]: emoji };
+      });
+      H.impactLight();
+      setReactionPickerMsgId(null);
+    },
+    [reactionPickerMsgId]
+  );
+
   // ── New Chat ────────────────────────────────────────────────────────────────
 
   const handleNewChat = useCallback(async () => {
@@ -2202,7 +2280,9 @@ function ChatScreenContent() {
                       isFirstInRun={isFirstInRun(index)}
                       colors={colors}
                       fs={fs}
-                      onLongPressAI={handleLongPressAI}
+                      onLongPressAI={(content) => handleLongPressReaction(content, item.id)}
+                      onTapCopyAI={handleTapCopyAI}
+                      reaction={reactions[item.id]}
                       streaming={item.id === streamingMsgIdRef.current && isStreaming}
                       animateWords={item.id === streamingMsgIdRef.current && isStreaming && tutorSettings.animateAIResponses}
                     />
@@ -2213,7 +2293,9 @@ function ChatScreenContent() {
                     isFirstInRun={isFirstInRun(index)}
                     colors={colors}
                     fs={fs}
-                    onLongPressAI={handleLongPressAI}
+                    onLongPressAI={(content) => handleLongPressReaction(content, item.id)}
+                    onTapCopyAI={handleTapCopyAI}
+                    reaction={reactions[item.id]}
                     streaming={item.id === streamingMsgIdRef.current && isStreaming}
                     animateWords={item.id === streamingMsgIdRef.current && isStreaming && tutorSettings.animateAIResponses}
                   />
@@ -3048,6 +3130,29 @@ function ChatScreenContent() {
               <IconSymbol size={13} name="chevron.right" color={colors.muted} />
             </TouchableOpacity>
 
+            {/* Export PDF */}
+            {Platform.OS !== "web" && (
+              <TouchableOpacity
+                style={[chatStyles.moreMenuItem, { borderBottomWidth: 0.5, borderBottomColor: colors.border }]}
+                activeOpacity={0.7}
+                onPress={() => {
+                  setShowMoreMenu(false);
+                  H.impactLight();
+                  setTimeout(() => handleSharePDF(), 150);
+                }}
+              >
+                <View style={[chatStyles.moreMenuIcon, { backgroundColor: `${colors.error}18` }]}>
+                  {pdfLoading ? (
+                    <ActivityIndicator size="small" color={colors.error} />
+                  ) : (
+                    <IconSymbol size={16} name="doc.fill" color={colors.error} />
+                  )}
+                </View>
+                <Text style={[chatStyles.moreMenuLabel, { color: colors.foreground, fontSize: fs(14) }]}>Export PDF</Text>
+                <IconSymbol size={13} name="chevron.right" color={colors.muted} />
+              </TouchableOpacity>
+            )}
+
             {/* Share */}
             <TouchableOpacity
               style={chatStyles.moreMenuItem}
@@ -3135,6 +3240,44 @@ function ChatScreenContent() {
           tutorSettings.useEmojis ? "Emojis: enabled" : "Emojis: disabled",
         ].filter(Boolean).join("\n")}
       />
+
+      {/* ── Tap-to-copy toast ── */}
+      {copyToast && (
+        <View style={[chatStyles.linkToast, { backgroundColor: colors.primary, bottom: 120 }]}>
+          <Text style={{ fontSize: 14 }}>📋</Text>
+          <Text style={chatStyles.linkToastText}>Copied!</Text>
+        </View>
+      )}
+
+      {/* ── Emoji reaction picker ── */}
+      {reactionPickerMsgId !== null && (
+        <TouchableOpacity
+          style={[StyleSheet.absoluteFillObject, { zIndex: 300 }]}
+          activeOpacity={1}
+          onPress={() => setReactionPickerMsgId(null)}
+        >
+          <View
+            style={[
+              chatStyles.reactionPickerCard,
+              { backgroundColor: colors.surface, borderColor: colors.border },
+            ]}
+          >
+            {["\ud83d\udc4d", "✅", "💡", "🔁", "❤️"].map((emoji) => (
+              <TouchableOpacity
+                key={emoji}
+                style={[
+                  chatStyles.reactionPickerEmoji,
+                  reactions[reactionPickerMsgId] === emoji && { backgroundColor: `${colors.primary}22`, borderRadius: 10 },
+                ]}
+                onPress={() => handlePickReaction(emoji)}
+                activeOpacity={0.7}
+              >
+                <Text style={{ fontSize: 26 }}>{emoji}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </TouchableOpacity>
+      )}
 
       {/* ── Copy Link toast ── */}
       {copyLinkFeedback && (
@@ -3637,6 +3780,27 @@ const chatStyles = StyleSheet.create({
     borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
+  },
+  reactionPickerCard: {
+    position: "absolute",
+    alignSelf: "center",
+    top: "40%",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    elevation: 10,
+    zIndex: 301,
+  },
+  reactionPickerEmoji: {
+    padding: 6,
   },
   tutorSettingsRow: {
     flexDirection: "row",
