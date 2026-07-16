@@ -62,37 +62,40 @@ Guidance: ${guide}
 CRITICAL RULES:
 - NEVER refuse to answer or say a problem is too hard. Solve EVERYTHING: basic arithmetic, advanced calculus, differential equations, abstract algebra, graduate-level physics, etc.
 - If a problem is advanced, apply the appropriate advanced techniques (L'Hôpital, eigenvalues, Green's theorem, Fourier series, Lagrangians, etc.).
-- Produce a COMPREHENSIVE, DETAILED solution. Aim for at least 6-10 steps, each with thorough explanation.
-- Include a WORKED EXAMPLE section showing a similar problem solved from scratch.
-- The conceptExplained field must be a full paragraph (5-8 sentences) explaining the underlying theory.
-- Each step explanation must be at least 3-5 sentences long.
-- Tips must be detailed and actionable (2-4 sentences each).
+- Produce an EXHAUSTIVE, DEEPLY DETAILED solution. Aim for AT LEAST 10-15 steps, each with a thorough multi-sentence explanation.
+- Each step explanation MUST be at least 5-8 sentences: state what you are doing, WHY, the rule or theorem that justifies it, any edge cases, and how it connects to the next step.
+- Include a WORKED EXAMPLE section showing a COMPLETE similar problem solved from scratch — this example must itself have at least 8 steps.
+- The conceptExplained field must be a LONG, RICH paragraph (10-15 sentences) covering: the underlying theory, historical context or motivation, formal definition, intuitive explanation, when the concept applies, common pitfalls, and how it connects to at least 3 related topics.
+- The answer field must be a FULL paragraph (5-8 sentences) restating the result, interpreting it, and noting any important caveats or special cases.
+- Tips must be detailed, actionable, and specific (4-6 sentences each). Include at least 4 tips.
+- The workedExample.solution must be a LONG narrative (at least 300 words) walking through every single step.
 
 Always respond with valid JSON in this exact format:
 {
   "problem": "the original question or problem, reproduced exactly",
   "subject": "${subject}",
-  "answer": "the complete final answer with all values, units, and interpretation (at least 3-5 sentences)",
+  "answer": "A FULL PARAGRAPH (5-8 sentences): state the result, interpret it, note units, explain any special cases or caveats, and summarise what was learned.",
   "steps": [
     {
       "stepNumber": 1,
       "title": "Descriptive step title",
-      "explanation": "Thorough explanation of this step: what you are doing, why, and what rule or theorem justifies it. At least 3-5 sentences.",
+      "explanation": "DETAILED explanation (5-8 sentences): what you are doing, why, the rule/theorem that justifies it, any edge cases, and how it leads to the next step.",
       "expression": "The key formula, equation, or expression for this step"
     }
   ],
   "workedExample": {
     "title": "Worked Example: [brief description of the example problem]",
     "problem": "A similar but distinct example problem",
-    "solution": "Complete step-by-step solution of the example problem, written as a narrative with all steps shown inline"
+    "solution": "LONG narrative solution (at least 300 words): walk through every single step, explain every operation, state every rule used, and interpret the final result."
   },
-  "conceptExplained": "A thorough paragraph (5-8 sentences) explaining the underlying concept, its mathematical or theoretical basis, when it applies, common pitfalls, and how it connects to related topics.",
+  "conceptExplained": "A LONG, RICH paragraph (10-15 sentences): underlying theory, historical context or motivation, formal definition, intuitive explanation, when the concept applies, common pitfalls, and connections to at least 3 related topics.",
   "tips": [
-    "Detailed tip 1: specific, actionable, 2-4 sentences",
-    "Detailed tip 2: specific, actionable, 2-4 sentences",
-    "Detailed tip 3: specific, actionable, 2-4 sentences"
+    "Detailed tip 1: specific, actionable, 4-6 sentences",
+    "Detailed tip 2: specific, actionable, 4-6 sentences",
+    "Detailed tip 3: specific, actionable, 4-6 sentences",
+    "Detailed tip 4: specific, actionable, 4-6 sentences"
   ],
-  "relatedTopics": ["Topic 1", "Topic 2", "Topic 3", "Topic 4"]
+  "relatedTopics": ["Topic 1", "Topic 2", "Topic 3", "Topic 4", "Topic 5"]
 }`;
 }
 
@@ -102,32 +105,35 @@ Determine the subject area automatically, then solve or answer it COMPLETELY and
 
 CRITICAL RULES:
 - NEVER refuse to answer or say a problem is too hard. Solve EVERYTHING.
-- Produce a COMPREHENSIVE, DETAILED solution with at least 6-10 steps.
-- Include a WORKED EXAMPLE showing a similar problem solved from scratch.
-- Each step explanation must be at least 3-5 sentences.
-- The conceptExplained field must be a full paragraph (5-8 sentences).
+- Produce an EXHAUSTIVE, DEEPLY DETAILED solution. Aim for AT LEAST 10-15 steps, each with a thorough multi-sentence explanation.
+- Each step explanation MUST be at least 5-8 sentences: state what you are doing, WHY, the rule or theorem that justifies it, any edge cases, and how it connects to the next step.
+- Include a WORKED EXAMPLE section showing a COMPLETE similar problem solved from scratch — this example must itself have at least 8 steps.
+- The conceptExplained field must be a LONG, RICH paragraph (10-15 sentences) covering: the underlying theory, historical context or motivation, formal definition, intuitive explanation, when the concept applies, common pitfalls, and how it connects to at least 3 related topics.
+- The answer field must be a FULL paragraph (5-8 sentences) restating the result, interpreting it, and noting any important caveats or special cases.
+- Tips must be detailed, actionable, and specific (4-6 sentences each). Include at least 4 tips.
+- The workedExample.solution must be a LONG narrative (at least 300 words) walking through every single step.
 
 Always respond with valid JSON in this exact format:
 {
   "problem": "the question or problem you found in the image",
   "subject": "the detected subject id (e.g. algebra, calculus, biology, us_history, etc.)",
-  "answer": "the complete final answer with all values, units, and interpretation (at least 3-5 sentences)",
+  "answer": "A FULL PARAGRAPH (5-8 sentences): state the result, interpret it, note units, explain any special cases or caveats, and summarise what was learned.",
   "steps": [
     {
       "stepNumber": 1,
       "title": "Descriptive step title",
-      "explanation": "Thorough explanation: what you are doing, why, and what rule justifies it. At least 3-5 sentences.",
+      "explanation": "DETAILED explanation (5-8 sentences): what you are doing, why, the rule/theorem that justifies it, any edge cases, and how it leads to the next step.",
       "expression": "The key formula, equation, or expression"
     }
   ],
   "workedExample": {
     "title": "Worked Example: [brief description]",
     "problem": "A similar but distinct example problem",
-    "solution": "Complete step-by-step solution written as a narrative"
+    "solution": "LONG narrative solution (at least 300 words): walk through every single step, explain every operation, state every rule used, and interpret the final result."
   },
-  "conceptExplained": "A thorough paragraph (5-8 sentences) explaining the underlying concept, its basis, when it applies, common pitfalls, and related topics.",
-  "tips": ["Detailed tip 1: 2-4 sentences", "Detailed tip 2: 2-4 sentences", "Detailed tip 3: 2-4 sentences"],
-  "relatedTopics": ["Topic 1", "Topic 2", "Topic 3", "Topic 4"]
+  "conceptExplained": "A LONG, RICH paragraph (10-15 sentences): underlying theory, historical context or motivation, formal definition, intuitive explanation, when the concept applies, common pitfalls, and connections to at least 3 related topics.",
+  "tips": ["Detailed tip 1: 4-6 sentences", "Detailed tip 2: 4-6 sentences", "Detailed tip 3: 4-6 sentences", "Detailed tip 4: 4-6 sentences"],
+  "relatedTopics": ["Topic 1", "Topic 2", "Topic 3", "Topic 4", "Topic 5"]
 }`;
 
 const CHAT_SYSTEM_PROMPT = `You are TutorSnap, a friendly and expert academic tutor covering all school subjects.
@@ -167,8 +173,10 @@ function buildPracticePrompt(subject: string, difficulty: string): string {
   if (isSocial) taskType = "question or analysis prompt";
 
   return `You are TutorSnap, an expert academic tutor. Generate ONE ${difficulty} ${taskType} for: ${subject}.
+The "answer" field must be a FULL PARAGRAPH (4-6 sentences) explaining the complete solution.
+The "steps" array must have AT LEAST 5-8 steps, each with a detailed explanation (3-5 sentences).
 Respond ONLY with this JSON (no extra text):
-{"id":"p1","subject":"${subject}","difficulty":"${difficulty}","problem":"<question>","answer":"<answer>","steps":[{"stepNumber":1,"title":"<title>","explanation":"<1-2 sentences>","expression":"<formula if any>"}],"hints":["<hint 1, 1 sentence>","<hint 2, 1 sentence>","<hint 3, 1 sentence>"]}`;
+{"id":"p1","subject":"${subject}","difficulty":"${difficulty}","problem":"<question>","answer":"<full paragraph answer, 4-6 sentences>","steps":[{"stepNumber":1,"title":"<descriptive title>","explanation":"<detailed explanation, 3-5 sentences>","expression":"<formula if any>"}],"hints":["<hint 1, 1-2 sentences>","<hint 2, 1-2 sentences>","<hint 3, 1-2 sentences>"]}`;
 }
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
@@ -213,7 +221,7 @@ const academicRouter = router({
             { role: "system", content: systemPrompt },
             { role: "user", content: input.problem },
           ],
-          max_tokens: 1500,
+          max_tokens: 4000,
           response_format: { type: "json_object" },
         });
         const text = extractLLMContent(result);
@@ -248,7 +256,7 @@ const academicRouter = router({
               ],
             },
           ],
-          max_tokens: 1500,
+          max_tokens: 4000,
           response_format: { type: "json_object" },
         });
         const text = extractLLMContent(result);
@@ -268,12 +276,12 @@ const academicRouter = router({
     .mutation(async ({ input }) => {
       const practicePrompt = buildPracticePrompt(input.subject, input.difficulty) + gradeContext(input.gradeLevel);
       const result = await invokeLLM({
-        model: "claude-haiku-4-5",
+        model: "gpt-5-nano",
         messages: [
           { role: "system", content: practicePrompt },
           { role: "user", content: `Generate a ${input.difficulty} ${input.subject} practice question.` },
         ],
-        max_tokens: 600,
+        max_tokens: 900,
         response_format: { type: "json_object" },
       });
       const text = extractLLMContent(result);
@@ -300,12 +308,12 @@ Respond ONLY with this JSON:
 {"questions":[{"id":"q1","problem":"<question>","options":{"A":"<a>","B":"<b>","C":"<c>","D":"<d>"},"correctAnswer":"A","explanation":"<1 sentence>"}]}`;
 
       const result = await invokeLLM({
-        model: "claude-haiku-4-5",
+        model: "gpt-5-nano",
         messages: [
           { role: "system", content: quizPrompt },
           { role: "user", content: `Generate ${input.count} ${input.difficulty} multiple-choice questions for ${input.subject}.` },
         ],
-        max_tokens: Math.min(input.count * 200, 1200),
+        max_tokens: Math.min(input.count * 350, 2500),
         response_format: { type: "json_object" },
       });
       const rawContent = extractLLMContent(result);
