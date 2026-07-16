@@ -31,6 +31,7 @@ import { getMyClassroom, getJoinedClassroom, shareToClassroom } from "@/lib/clas
 import { createSession, renameSession } from "@/lib/chat-sessions";
 import { APP_URL } from "@/constants/app";
 import { loadGlobalGrade, GRADE_LABELS } from "@/lib/grade-levels";
+import { cleanMathText } from "@/lib/clean-math-text";
 
 function StepCard({ step, colors, fs, delay = 0 }: { step: SolutionStep; colors: any; fs: (n: number) => number; delay?: number }) {
   const [expanded, setExpanded] = useState(true);
@@ -1101,7 +1102,7 @@ export default function SolutionScreen() {
               <Text style={[styles.copyText, { color: copyProblemFeedback ? colors.success : colors.muted }]}>{copyProblemFeedback ? "Copied!" : "Copy"}</Text>
             </TouchableOpacity>
           </View>
-          <Text style={[styles.problemText, { color: colors.foreground, fontSize: fs(16), lineHeight: fs(16) * 1.5 }]}>{solution.problem}</Text>
+          <Text style={[styles.problemText, { color: colors.foreground, fontSize: fs(16), lineHeight: fs(16) * 1.5 }]}>{cleanMathText(solution.problem)}</Text>
         </View>
 
         {/* Answer */}
@@ -1119,7 +1120,7 @@ export default function SolutionScreen() {
               </Text>
             </TouchableOpacity>
           </View>
-          <Text style={[styles.answerText, { color: colors.foreground, fontSize: fs(22) }]}>{solution.answer}</Text>
+          <Text style={[styles.answerText, { color: colors.foreground, fontSize: fs(22) }]}>{cleanMathText(solution.answer)}</Text>
         </View>
 
         {/* Steps */}
@@ -1325,7 +1326,7 @@ export default function SolutionScreen() {
                     <View style={[styles.similarNum, { backgroundColor: `${colors.primary}20` }]}>
                       <Text style={[styles.similarNumText, { color: colors.primary }]}>{i + 1}</Text>
                     </View>
-                    <Text style={[styles.similarProblem, { color: colors.foreground, fontSize: fs(14) }]}>{p.problem}</Text>
+                    <Text style={[styles.similarProblem, { color: colors.foreground, fontSize: fs(14) }]}>{cleanMathText(p.problem)}</Text>
                     <TouchableOpacity
                       accessibilityLabel={`Copy problem ${i + 1}`}
                       accessibilityRole="button"
@@ -1363,7 +1364,7 @@ export default function SolutionScreen() {
                   {expandedHint === p.id && (
                     <View style={[styles.hintExpanded, { backgroundColor: `${colors.warning}08`, borderColor: `${colors.warning}25` }]}>
                       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                        <Text style={[styles.hintText, { color: colors.foreground, fontSize: fs(13), flex: 1 }]}>{p.hint}</Text>
+                        <Text style={[styles.hintText, { color: colors.foreground, fontSize: fs(13), flex: 1 }]}>{cleanMathText(p.hint)}</Text>
                         <TouchableOpacity
                           accessibilityLabel="Copy hint"
                           onPress={async () => {

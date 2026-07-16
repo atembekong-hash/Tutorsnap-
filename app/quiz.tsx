@@ -27,6 +27,7 @@ import { QuizNudgeBanner } from "@/components/quiz-nudge-banner";
 import { maybeRequestReview } from "@/lib/review-prompt";
 import { QuizSkeletonCard } from "@/components/skeleton";
 import { loadGlobalGrade, GRADE_LABELS } from "@/lib/grade-levels";
+import { cleanMathText } from "@/lib/clean-math-text";
 import AsyncStorageLib from "@react-native-async-storage/async-storage";
 import PaywallScreen from "./paywall";
 
@@ -106,7 +107,7 @@ function OptionRow({
       <View style={[styles.optionBadge, { backgroundColor: revealed && correct ? colors.success : revealed && selected ? colors.error : selected ? colors.primary : colors.border }]}>
         <Text style={[styles.optionBadgeText, { color: revealed || selected ? "#fff" : colors.muted }]}>{optKey}</Text>
       </View>
-      <Text style={[styles.optionText, { color: textColor }]}>{text}</Text>
+      <Text style={[styles.optionText, { color: textColor }]}>{cleanMathText(text)}</Text>
       {revealed && correct && <IconSymbol size={18} name="checkmark.circle.fill" color={colors.success} />}
       {revealed && selected && !correct && <IconSymbol size={18} name="xmark.circle.fill" color={colors.error} />}
     </TouchableOpacity>
@@ -231,12 +232,12 @@ function ScoreSummary({
           <View key={q.id} style={[styles.reviewCard, { backgroundColor: colors.surface, borderColor: isCorrect ? `${colors.success}40` : `${colors.error}40` }]}>
             <View style={styles.reviewHeader}>
               <IconSymbol size={16} name={isCorrect ? "checkmark.circle.fill" : "xmark.circle.fill"} color={isCorrect ? colors.success : colors.error} />
-              <Text style={[styles.reviewQ, { color: colors.foreground }]} numberOfLines={2}>{q.problem}</Text>
+              <Text style={[styles.reviewQ, { color: colors.foreground }]} numberOfLines={2}>{cleanMathText(q.problem)}</Text>
             </View>
             <Text style={[styles.reviewAns, { color: isCorrect ? colors.success : colors.error }]}>
               Your answer: {userAns ?? "Timed out"} — {isCorrect ? "Correct ✓" : `Correct: ${q.correctAnswer}`}
             </Text>
-            <Text style={[styles.reviewExp, { color: colors.muted }]}>{q.explanation}</Text>
+            <Text style={[styles.reviewExp, { color: colors.muted }]}>{cleanMathText(q.explanation)}</Text>
           </View>
         );
       })}
@@ -584,7 +585,7 @@ export default function QuizScreen() {
 
           {/* Question */}
           <View style={[styles.questionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text style={[styles.questionText, { color: colors.foreground }]}>{q.problem}</Text>
+            <Text style={[styles.questionText, { color: colors.foreground }]}>{cleanMathText(q.problem)}</Text>
           </View>
 
           {/* Quiz nudge banner — shown after first question answered, hidden for premium/dev */}
@@ -620,7 +621,7 @@ export default function QuizScreen() {
               ) : fullExplanations[q.problem] ? (
                 <Text style={[styles.explanationText, { color: colors.foreground, lineHeight: 22 }]}>{fullExplanations[q.problem]}</Text>
               ) : (
-                <Text style={[styles.explanationText, { color: colors.foreground }]}>{q.explanation}</Text>
+                <Text style={[styles.explanationText, { color: colors.foreground }]}>{cleanMathText(q.explanation)}</Text>
               )}
             </View>
           )}

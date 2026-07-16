@@ -38,6 +38,7 @@ import { getChallengeHistory, getChallengeStats, type ChallengeAttempt } from "@
 import { StreakShieldCard } from "@/components/streak-shield-card";
 import { StreakFreezeCard } from "@/components/streak-freeze-card";
 import { GRADE_LABELS } from "@/lib/grade-levels";
+import { cleanMathText } from "@/lib/clean-math-text";
 
 
 const GOAL_OPTIONS = [1, 3, 5, 10];
@@ -496,7 +497,7 @@ export default function ProgressScreen() {
                 <View key={attempt.id} style={[styles.challengeRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                   <View style={[styles.challengeRowAccent, { backgroundColor: attempt.correct ? colors.success : colors.error }]} />
                   <View style={styles.challengeRowBody}>
-                    <Text style={[styles.challengeRowProblem, { color: colors.foreground }]} numberOfLines={2}>{attempt.problem}</Text>
+                    <Text style={[styles.challengeRowProblem, { color: colors.foreground }]} numberOfLines={2}>{cleanMathText(attempt.problem)}</Text>
                     <View style={styles.challengeRowMeta}>
                       <Text style={[styles.challengeRowSubject, { color: colors.muted }]}>{getSubjectEmoji(attempt.subject as any)} {attempt.subject}</Text>
                       <Text style={[styles.challengeRowTime, { color: colors.muted }]}>{attempt.timeTaken}s · {new Date(attempt.date).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</Text>

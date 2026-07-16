@@ -20,6 +20,7 @@ import { toggleBookmark, getBookmarks } from "@/lib/bookmarks";
 import type { HistoryItem, MathSubject } from "@/shared/types";
 import { getSubjectColor, getSubjectLabel } from "@/lib/subjects";
 import { GRADE_LABELS } from "@/lib/grade-levels";
+import { cleanMathText } from "@/lib/clean-math-text";
 
 function formatTime(timestamp: number): string {
   const now = Date.now();
@@ -162,12 +163,12 @@ function HistoryScreenContent() {
             })()}
           </View>
           <Text style={[styles.problemText, { color: colors.foreground }]} numberOfLines={2}>
-            {item.problem}
+            {cleanMathText(item.problem)}
           </Text>
           <View style={styles.answerRow}>
             <IconSymbol size={12} name="checkmark.circle.fill" color={colors.success} />
             <Text style={[styles.answerText, { color: colors.success }]} numberOfLines={1}>
-              {item.answer}
+              {cleanMathText(item.answer)}
             </Text>
           </View>
           <Text style={[styles.timeText, { color: colors.muted }]}>

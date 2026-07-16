@@ -17,6 +17,7 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { loadQuizHistory, type QuizResult, type QuizQuestionSnapshot } from "@/lib/quiz-history";
 import { getSubjectLabel } from "@/lib/subjects";
+import { cleanMathText } from "@/lib/clean-math-text";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -94,7 +95,7 @@ function OptionBadge({
         <Text style={[styles.optionBadgeText, { color: badgeText }]}>{optKey}</Text>
       </View>
       <Text style={[styles.optionText, { color: textColor }]} numberOfLines={3}>
-        {text}
+        {cleanMathText(text)}
       </Text>
       {isCorrect && (
         <IconSymbol size={16} name="checkmark.circle.fill" color={colors.success} />
@@ -181,7 +182,7 @@ function QuestionCard({
       </View>
 
       {/* Problem text */}
-      <Text style={[styles.problemText, { color: colors.foreground }]}>{q.problem}</Text>
+      <Text style={[styles.problemText, { color: colors.foreground }]}>{cleanMathText(q.problem)}</Text>
 
       {/* Options */}
       <View style={styles.optionsContainer}>
@@ -232,7 +233,7 @@ function QuestionCard({
       {expanded && (
         <View style={[styles.explanationBody, { backgroundColor: `${colors.primary}08` }]}>
           <Text style={[styles.explanationText, { color: colors.foreground }]}>
-            {q.explanation}
+            {cleanMathText(q.explanation)}
           </Text>
         </View>
       )}

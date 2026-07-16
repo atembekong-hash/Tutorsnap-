@@ -48,6 +48,7 @@ import { useAppearance } from "@/lib/appearance-context";
 import { loadGlobalGrade, saveGlobalGrade, GRADE_LABELS, GRADE_OPTIONS } from "@/lib/grade-levels";
 import { listSessionSummaries, type ChatSessionSummary } from "@/lib/chat-sessions";
 import { Swipeable } from "react-native-gesture-handler";
+import { cleanMathText } from "@/lib/clean-math-text";
 
 function getAppearanceSubjectKey(subjectId: string): string {
   const def = getSubjectDef(subjectId);
@@ -1212,10 +1213,10 @@ function SolveScreenContent() {
                         </View>
                         <Text style={[styles.recentSolveTime, { color: colors.muted }]}>{timeAgo}</Text>
                       </View>
-                      <Text style={[styles.recentSolveProblem, { color: colors.foreground }]} numberOfLines={2}>{item.problem}</Text>
+                      <Text style={[styles.recentSolveProblem, { color: colors.foreground }]} numberOfLines={2}>{cleanMathText(item.problem)}</Text>
                       <View style={styles.recentSolveAnswerRow}>
                         <IconSymbol size={12} name="checkmark.circle.fill" color={colors.success} />
-                        <Text style={[styles.recentSolveAnswer, { color: colors.success }]} numberOfLines={1}>{item.answer}</Text>
+                        <Text style={[styles.recentSolveAnswer, { color: colors.success }]} numberOfLines={1}>{cleanMathText(item.answer)}</Text>
                       </View>
                     </View>
                     <IconSymbol size={16} name="chevron.right" color={colors.muted} />

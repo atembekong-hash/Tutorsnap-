@@ -31,6 +31,7 @@ import {
 } from "@/lib/daily-challenge";
 import { recordSolve } from "@/lib/progress";
 import { loadGlobalGrade } from "@/lib/grade-levels";
+import { cleanMathText } from "@/lib/clean-math-text";
 
 type OptionKey = "A" | "B" | "C" | "D";
 
@@ -161,7 +162,7 @@ export default function DailyChallengeScreen() {
         {/* Problem card */}
         <View style={[styles.problemCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Text style={[styles.problemLabel, { color: colors.muted }]}>Today's Problem</Text>
-          <Text style={[styles.problemText, { color: colors.foreground }]}>{question.problem}</Text>
+          <Text style={[styles.problemText, { color: colors.foreground }]}>{cleanMathText(question.problem)}</Text>
         </View>
 
         {/* Answer options */}
@@ -201,7 +202,7 @@ export default function DailyChallengeScreen() {
               <View style={[styles.optionKeyBadge, { backgroundColor: `${borderColor}25` }]}>
                 <Text style={[styles.optionKey, { color: borderColor }]}>{key}</Text>
               </View>
-              <Text style={[styles.optionText, { color: textColor, flex: 1 }]}>{question.options[key]}</Text>
+              <Text style={[styles.optionText, { color: textColor, flex: 1 }]}>{cleanMathText(question.options[key])}</Text>
               {revealed && isCorrect && (
                 <IconSymbol size={18} name="checkmark.circle.fill" color={colors.success} />
               )}
@@ -222,7 +223,7 @@ export default function DailyChallengeScreen() {
               {state.correct ? `🎉 Correct! +${question.bonusXp} Bonus XP` : "❌ Not quite — here's why:"}
             </Text>
             <Text style={[styles.resultExplanation, { color: colors.foreground }]}>
-              {question.explanation}
+              {cleanMathText(question.explanation)}
             </Text>
           </View>
         )}

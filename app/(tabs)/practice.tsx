@@ -30,6 +30,7 @@ import { GRADE_OPTIONS, GRADE_LABELS, loadGlobalGrade, saveGlobalGrade } from "@
 import { PracticeSkeletonCard } from "@/components/skeleton";
 import { loadQuizHistory } from "@/lib/quiz-history";
 import { savePrefetchedQuiz } from "@/lib/quiz-prefetch";
+import { cleanMathText } from "@/lib/clean-math-text";
 const QUIZ_COUNTS = [3, 5, 10];
 
 function getDifficulties(gradeLevel: string | null): { id: Difficulty; label: string; color: string; desc: string }[] {
@@ -722,7 +723,7 @@ function PracticeScreenContent() {
                 </View>
               </View>
               <Text style={[styles.questionText, { color: colors.foreground }]}>
-                {currentQuestion.problem}
+                {cleanMathText(currentQuestion.problem)}
               </Text>
             </View>
 
@@ -735,7 +736,7 @@ function PracticeScreenContent() {
                 {currentQuestion.hints.slice(0, hintsShown).map((hint, i) => (
                   <View key={i} style={styles.hintRow}>
                     <Text style={[styles.hintNumber, { color: colors.warning }]}>{i + 1}.</Text>
-                    <Text style={[styles.hintText, { color: colors.foreground }]}>{hint}</Text>
+                    <Text style={[styles.hintText, { color: colors.foreground }]}>{cleanMathText(hint)}</Text>
                   </View>
                 ))}
               </View>
@@ -749,7 +750,7 @@ function PracticeScreenContent() {
                   <Text style={[styles.answerLabel, { color: colors.success }]}>ANSWER</Text>
                 </View>
                 <Text style={[styles.answerText, { color: colors.foreground }]}>
-                  {currentQuestion.answer}
+                  {cleanMathText(currentQuestion.answer)}
                 </Text>
               </View>
             )}
