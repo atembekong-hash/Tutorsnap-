@@ -107,9 +107,6 @@ export interface TutorSettings {
 
   // 8. Advanced
   debugMode: boolean;
-
-  // 9. Response rendering mode
-  responseMode: 'classic' | 'structured';
 }
 
 export const DEFAULT_TUTOR_SETTINGS: TutorSettings = {
@@ -162,8 +159,6 @@ export const DEFAULT_TUTOR_SETTINGS: TutorSettings = {
   sessionSummary: false,
 
   debugMode: false,
-
-  responseMode: 'classic',
 };
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────

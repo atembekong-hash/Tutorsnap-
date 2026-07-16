@@ -73,8 +73,6 @@ import {
   AIResponseRenderer,
   AIResponseErrorBoundary,
 } from "@/components/ai-response-renderer";
-import { StructuredBlockRenderer } from "@/components/structured-block-renderer";
-import { parseStructuredBlocks } from "@/lib/structured-blocks";
 import {
   createSession,
   loadSession,
@@ -399,8 +397,6 @@ function MessageBubble({
   showAccentBar = false,
   blocksStartCollapsed = false,
   compactBlocks = false,
-  responseMode = 'classic',
-  onAction,
 }: {
   message: ChatMessage;
   isFirstInRun: boolean;
@@ -414,8 +410,6 @@ function MessageBubble({
   showAccentBar?: boolean;
   blocksStartCollapsed?: boolean;
   compactBlocks?: boolean;
-  responseMode?: 'classic' | 'structured';
-  onAction?: (text: string) => void;
 }) {
   const isUser = message.role === "user";
   const { settings } = useAppearance();
@@ -515,28 +509,18 @@ function MessageBubble({
             fontSize={fs(15)}
             color={colors.foreground}
           >
-            {responseMode === 'structured' && !streaming ? (
-              <StructuredBlockRenderer
-                blocks={parseStructuredBlocks(message.content)}
-                fontSize={fs(15)}
-                startCollapsed={blocksStartCollapsed}
-                compact={compactBlocks}
-                onAction={onAction}
-              />
-            ) : (
-              <AIResponseRenderer
-                markdown={message.content}
-                fontSize={fs(15)}
-                color={colors.foreground}
-                codeBackground={colors.surface}
-                flavor="github"
-                streaming={streaming}
-                animateWords={animateWords}
-                stripPreamble={!streaming}
-                blocksStartCollapsed={blocksStartCollapsed}
-                compactBlocks={compactBlocks}
-              />
-            )}
+            <AIResponseRenderer
+              markdown={message.content}
+              fontSize={fs(15)}
+              color={colors.foreground}
+              codeBackground={colors.surface}
+              flavor="github"
+              streaming={streaming}
+              animateWords={animateWords}
+              stripPreamble={!streaming}
+              blocksStartCollapsed={blocksStartCollapsed}
+              compactBlocks={compactBlocks}
+            />
             {streaming && message.content.length > 0 && (
               <BlinkingCursor color={colors.muted} fontSize={fs(15)} />
             )}
@@ -2206,46 +2190,6 @@ function ChatScreenContent() {
             </View>
           </View>
 
-          {/* ── Classic / Structured mode toggle ── */}
-          <View style={chatStyles.modeToggle}>
-            <TouchableOpacity
-              style={[
-                chatStyles.modeBtn,
-                tutorSettings.responseMode !== 'structured' && {
-                  backgroundColor: colors.primary,
-                },
-              ]}
-              onPress={() => {
-                H.impactLight();
-                updateTutorSetting({ responseMode: 'classic' });
-              }}
-              activeOpacity={0.8}
-            >
-              <Text style={[
-                chatStyles.modeBtnText,
-                { color: tutorSettings.responseMode !== 'structured' ? '#fff' : colors.muted },
-              ]}>≡ Classic</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                chatStyles.modeBtn,
-                tutorSettings.responseMode === 'structured' && {
-                  backgroundColor: colors.primary,
-                },
-              ]}
-              onPress={() => {
-                H.impactLight();
-                updateTutorSetting({ responseMode: 'structured' });
-              }}
-              activeOpacity={0.8}
-            >
-              <Text style={[
-                chatStyles.modeBtnText,
-                { color: tutorSettings.responseMode === 'structured' ? '#fff' : colors.muted },
-              ]}>⊞ Cards</Text>
-            </TouchableOpacity>
-          </View>
-
           <View style={chatStyles.headerActions}>
             {/* ⋯ dropdown */}
             <TouchableOpacity
@@ -2373,8 +2317,6 @@ function ChatScreenContent() {
                     showAccentBar={tutorSettings.showAccentBar}
                     blocksStartCollapsed={tutorSettings.blocksStartCollapsed}
                     compactBlocks={tutorSettings.compactBlocks}
-                    responseMode={tutorSettings.responseMode}
-                    onAction={(text) => handleSend(text)}
                   />
                 {/* Error bubble — shown when stream fails */}
                 {item.role === "assistant" && item.error && !isStreaming && (
@@ -3549,23 +3491,6 @@ const chatStyles = StyleSheet.create({
   headerActions: { flexDirection: "row", alignItems: "center", gap: 4 },
   headerBtn: { padding: 9 },
   newChatBtn: { borderRadius: 10, padding: 8 },
-  modeToggle: {
-    flexDirection: "row",
-    backgroundColor: "rgba(120,120,128,0.12)",
-    borderRadius: 20,
-    padding: 2,
-    marginHorizontal: 6,
-  },
-  modeBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 18,
-  },
-  modeBtnText: {
-    fontSize: 11,
-    fontWeight: "600",
-    letterSpacing: 0.1,
-  },
   loadingCenter: { flex: 1, alignItems: "center", justifyContent: "center" },
   typingRow: {
     flexDirection: "row",
