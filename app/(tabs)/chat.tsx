@@ -3483,7 +3483,7 @@ const chatStyles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
   },
-  headerTitle: { fontWeight: "800", fontSize: 10, letterSpacing: -0.3 },
+  headerTitle: { fontWeight: "800", fontSize: 20, letterSpacing: -0.3 },
   statusRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 1 },
   statusDot: { width: 6, height: 6, borderRadius: 3 },
   statusText: { fontWeight: "500" },
