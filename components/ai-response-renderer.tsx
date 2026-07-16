@@ -177,6 +177,89 @@ const calloutStyles = StyleSheet.create({
   content: { flex: 1, paddingHorizontal: 14, paddingVertical: 11 },
 });
 
+// ─── CopyableBlock — base for all structured blocks ─────────────────────────
+function CopyableBlock({
+  label,
+  labelColor,
+  labelBg,
+  borderColor,
+  bg,
+  icon,
+  children,
+  copyText,
+}: {
+  label: string;
+  labelColor: string;
+  labelBg: string;
+  borderColor: string;
+  bg: string;
+  icon: string;
+  children: React.ReactNode;
+  copyText: string;
+}) {
+  const [copied, setCopied] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleCopy = async () => {
+    try {
+      await Clipboard.setStringAsync(copyText);
+      setCopied(true);
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => setCopied(false), 1500);
+    } catch { /* ignore */ }
+  };
+  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+  return (
+    <View style={[blockStyles.container, { backgroundColor: bg, borderColor }]}>
+      {/* Header row */}
+      <View style={[blockStyles.header, { borderBottomColor: borderColor }]}>
+        <View style={[blockStyles.labelPill, { backgroundColor: labelBg }]}>
+          <Text style={[blockStyles.labelIcon]}>{icon}</Text>
+          <Text style={[blockStyles.labelText, { color: labelColor }]}>{label}</Text>
+        </View>
+        <TouchableOpacity onPress={handleCopy} hitSlop={{ top: 8, bottom: 8, left: 12, right: 12 }} style={blockStyles.copyBtn}>
+          <Text style={[blockStyles.copyBtnText, copied && blockStyles.copyBtnDone]}>
+            {copied ? '✓ Copied' : 'Copy'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+      {/* Content */}
+      <View style={blockStyles.content}>{children}</View>
+    </View>
+  );
+}
+
+const blockStyles = StyleSheet.create({
+  container: {
+    borderRadius: 12,
+    borderWidth: 1,
+    marginTop: 10,
+    marginBottom: 14,
+    overflow: 'hidden',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderBottomWidth: 0.5,
+  },
+  labelPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    gap: 5,
+  },
+  labelIcon: { fontSize: 12 },
+  labelText: { fontSize: 11, fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif', fontWeight: '700', letterSpacing: 0.4, textTransform: 'uppercase' },
+  copyBtn: { paddingHorizontal: 8, paddingVertical: 3 },
+  copyBtnText: { fontSize: 11, color: '#94A3B8', fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
+  copyBtnDone: { color: '#4ADE80' },
+  content: { paddingHorizontal: 14, paddingVertical: 12 },
+});
+
 // ─── Staggered Reveal (complete responses only) ───────────────────────────────
 function StaggeredReveal({ children, streaming }: { children: React.ReactNode; streaming: boolean }) {
   const opacity = useRef(new Animated.Value(streaming ? 1 : 0)).current;
@@ -358,6 +441,16 @@ function buildMarkdownStyles(
   };
 }
 
+// ─── Helper: extract plain text from a react-native-markdown-display node tree ───
+function extractNodeText(node: any): string {
+  if (!node) return '';
+  if (typeof node.content === 'string') return node.content;
+  if (Array.isArray(node.children)) {
+    return node.children.map(extractNodeText).join('');
+  }
+  return '';
+}
+
 // ─── Custom render rules ──────────────────────────────────────────────────────
 function buildRenderRules(
   colors: ReturnType<typeof useColors>,
@@ -367,19 +460,47 @@ function buildRenderRules(
   const primary = colors.primary;
   const border = colors.border;
   const lh = fontSize * 1.68;
+  const success = colors.success;
+  const warning = colors.warning;
 
   return {
-    // H2: left accent bar
-    heading2: (node: any, children: React.ReactNode[]) => (
-      <View key={node.key} style={{ flexDirection: 'row', alignItems: 'flex-start', marginTop: 18, marginBottom: 8 }}>
-        <View style={{ width: 3, borderRadius: 2, backgroundColor: primary, marginRight: 10, marginTop: 2, alignSelf: 'stretch' }} />
-        <Text style={{ flex: 1, fontSize: fontSize * 1.25, fontFamily: 'Inter_700Bold', color: textColor, letterSpacing: -0.3, lineHeight: fontSize * 1.25 * 1.35 }}>
+    // H1: Definition block — indigo/primary tint, book icon, copy button
+    heading1: (node: any, children: React.ReactNode[]) => (
+      <CopyableBlock
+        key={node.key}
+        label="Definition"
+        icon="📖"
+        labelColor={primary}
+        labelBg={`${primary}18`}
+        borderColor={`${primary}30`}
+        bg={`${primary}07`}
+        copyText={extractNodeText(node)}
+      >
+        <Text style={{ fontSize: fontSize * 1.15, fontFamily: 'Inter_700Bold', color: textColor, lineHeight: fontSize * 1.15 * 1.35, letterSpacing: -0.3 }}>
           {children}
         </Text>
-      </View>
+      </CopyableBlock>
     ),
 
-    // H3: subtle left bar
+    // H2: Key Concept block — amber/warning tint, lightning icon, copy button
+    heading2: (node: any, children: React.ReactNode[]) => (
+      <CopyableBlock
+        key={node.key}
+        label="Key Concept"
+        icon="⚡"
+        labelColor={warning}
+        labelBg={`${warning}18`}
+        borderColor={`${warning}30`}
+        bg={`${warning}07`}
+        copyText={extractNodeText(node)}
+      >
+        <Text style={{ fontSize: fontSize * 1.1, fontFamily: 'Inter_600SemiBold', color: textColor, lineHeight: fontSize * 1.1 * 1.35, letterSpacing: -0.2 }}>
+          {children}
+        </Text>
+      </CopyableBlock>
+    ),
+
+    // H3: subtle left bar (section label, not a full block)
     heading3: (node: any, children: React.ReactNode[]) => (
       <View key={node.key} style={{ flexDirection: 'row', alignItems: 'flex-start', marginTop: 14, marginBottom: 6 }}>
         <View style={{ width: 2, borderRadius: 1, backgroundColor: `${primary}60`, marginRight: 8, marginTop: 2, alignSelf: 'stretch' }} />
@@ -389,11 +510,20 @@ function buildRenderRules(
       </View>
     ),
 
-    // Blockquote: premium callout card
+    // Blockquote: Note/Important callout block — amber tint, pin icon, copy button
     blockquote: (node: any, children: React.ReactNode[]) => (
-      <CalloutBlockquote key={node.key} primary={primary}>
-        {children}
-      </CalloutBlockquote>
+      <CopyableBlock
+        key={node.key}
+        label="Note"
+        icon="📌"
+        labelColor={warning}
+        labelBg={`${warning}18`}
+        borderColor={`${warning}30`}
+        bg={`${warning}06`}
+        copyText={extractNodeText(node)}
+      >
+        <View>{children}</View>
+      </CopyableBlock>
     ),
 
     // HR: gradient line
@@ -516,7 +646,9 @@ export function AIResponseRenderer({
 
   if (!cleanMarkdown) return null;
 
-  const AnimatedWrapper = animateWords && streaming ? AnimatedFadeInWrapper : React.Fragment;
+  // Only wrap with AnimatedFadeInWrapper when the response is COMPLETE (not streaming).
+  // During streaming, React.Fragment is used so no opacity animation fires on every token.
+  const AnimatedWrapper = animateWords && !streaming ? AnimatedFadeInWrapper : React.Fragment;
 
   if (!hasMath) {
     try {
@@ -593,13 +725,14 @@ export class AIResponseErrorBoundary extends React.Component<
   }
 }
 
-// ─── Animated fade-in wrapper (streaming) ────────────────────────────────────
+// ─── Animated fade-in wrapper (completion only, NOT during streaming) ──────────
 function AnimatedFadeInWrapper({ children }: { children: React.ReactNode }) {
-  const opacity = useRef(new Animated.Value(0.4)).current;
+  // Only runs once on mount (completion). No dependency array means it ran on every
+  // streaming token before — that caused the screen to flash on each new character.
+  const opacity = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    opacity.setValue(0.4);
-    Animated.timing(opacity, { toValue: 1, duration: 300, easing: Easing.out(Easing.ease), useNativeDriver: true }).start();
-  });
+    Animated.timing(opacity, { toValue: 1, duration: 280, easing: Easing.out(Easing.ease), useNativeDriver: true }).start();
+  }, []); // ← empty dep array: animate once on mount only
   return <Animated.View style={{ opacity }}>{children}</Animated.View>;
 }
 

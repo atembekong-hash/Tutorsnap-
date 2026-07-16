@@ -96,6 +96,7 @@ export interface TutorSettings {
   // 6b. Header Indicators (off by default)
   showOnlineStatus: boolean;
   showSpeedIndicator: boolean;
+  showAccentBar: boolean;
 
   // 7. Notifications & Reminders
   studyReminders: boolean;
@@ -138,8 +139,8 @@ export const DEFAULT_TUTOR_SETTINGS: TutorSettings = {
   codeTheme: "dark",
   messageDensity: "comfortable",
   swipeToShowTabBar: true,
-  animateAIResponses: true,
-  moodRingOrb: true,
+  animateAIResponses: false,
+  moodRingOrb: false,
 
   highContrast: false,
   reduceMotion: false,
@@ -147,6 +148,7 @@ export const DEFAULT_TUTOR_SETTINGS: TutorSettings = {
 
   showOnlineStatus: false,
   showSpeedIndicator: false,
+  showAccentBar: false,
 
   studyReminders: false,
   studyReminderTime: "18:00",
@@ -1033,6 +1035,13 @@ export function TutorSettingsModal({
               sub="Orb shifts color when AI is thinking"
               value={settings.moodRingOrb}
               onChange={(v) => onUpdate({ moodRingOrb: v })}
+            />
+            <ToggleRow
+              icon="sidebar.left"
+              label="Accent Bar on Responses"
+              sub="Show a coloured left border on AI bubbles"
+              value={settings.showAccentBar}
+              onChange={(v) => onUpdate({ showAccentBar: v })}
               last
             />
           </SettingsCard>

@@ -393,6 +393,7 @@ function MessageBubble({
   reaction,
   streaming = false,
   animateWords = false,
+  showAccentBar = false,
 }: {
   message: ChatMessage;
   isFirstInRun: boolean;
@@ -403,6 +404,7 @@ function MessageBubble({
   reaction?: string | null;
   streaming?: boolean;
   animateWords?: boolean;
+  showAccentBar?: boolean;
 }) {
   const isUser = message.role === "user";
   const { settings } = useAppearance();
@@ -495,7 +497,7 @@ function MessageBubble({
       <View style={[bubbleStyles.aiRow, { marginBottom: rowMarginB }]}>
         <View style={bubbleStyles.avatarCol} />
         <View style={bubbleStyles.aiContentWrapper}>
-          <View style={[bubbleStyles.aiAccentBar, { backgroundColor: colors.primary }]} />
+          {showAccentBar && <View style={[bubbleStyles.aiAccentBar, { backgroundColor: colors.primary }]} />}
           <View style={bubbleStyles.aiContent}>
           <AIResponseErrorBoundary
             fallbackText={message.content}
@@ -2274,6 +2276,7 @@ function ChatScreenContent() {
                       reaction={reactions[item.id]}
                       streaming={item.id === streamingMsgIdRef.current && isStreaming}
                       animateWords={item.id === streamingMsgIdRef.current && isStreaming && tutorSettings.animateAIResponses}
+                      showAccentBar={tutorSettings.showAccentBar}
                     />
                   </Swipeable>
                 ) : (
@@ -2287,6 +2290,7 @@ function ChatScreenContent() {
                     reaction={reactions[item.id]}
                     streaming={item.id === streamingMsgIdRef.current && isStreaming}
                     animateWords={item.id === streamingMsgIdRef.current && isStreaming && tutorSettings.animateAIResponses}
+                    showAccentBar={tutorSettings.showAccentBar}
                   />
                 )}
                 {/* Error bubble — shown when stream fails */}
