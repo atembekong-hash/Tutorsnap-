@@ -561,7 +561,7 @@ const bubbleStyles = StyleSheet.create({
   userText: { fontWeight: "400" },
   aiRow: {
     flexDirection: "row",
-    paddingHorizontal: 12,
+    paddingHorizontal: 4,
     marginBottom: 4,
     alignItems: "flex-start",
   },
@@ -583,7 +583,7 @@ const bubbleStyles = StyleSheet.create({
     opacity: 0.25,
     alignSelf: 'stretch',
   },
-  aiContent: { flex: 1, paddingRight: 8 },
+  aiContent: { flex: 1, paddingRight: 0 },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1989,8 +1989,8 @@ function ChatScreenContent() {
       {/* Ambient gradient background */}
       <LinearGradient
         colors={colorScheme === "dark"
-          ? ["#0D0D1A", "#0F0F1F", "#0D0D1A"]
-          : ["#F8F7FF", "#FAFAFA", "#F5F4FF"]}
+          ? ["#151718", "#151718", "#151718"]
+          : ["#ffffff", "#ffffff", "#ffffff"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
@@ -2012,6 +2012,15 @@ function ChatScreenContent() {
           ]}
         >
           <View style={chatStyles.headerLeft}>
+            {/* Close / back button */}
+            <TouchableOpacity
+              onPress={() => router.replace("/(tabs)/index" as any)}
+              style={{ marginRight: 8, padding: 4 }}
+              activeOpacity={0.7}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <IconSymbol name="xmark" size={18} color={colors.muted} />
+            </TouchableOpacity>
             {/* Gradient orb avatar in header */}
             <AIAvatar size={28} pulsing={isStreaming || isWaitingForFirstToken} moodRing={tutorSettings.moodRingOrb} />
             <View style={{ flex: 1, minWidth: 0 }}>
@@ -2162,11 +2171,12 @@ function ChatScreenContent() {
             data={messages}
             keyExtractor={(item) => item.id}
             keyboardDismissMode="on-drag"
-            keyboardShouldPersistTaps="handled"
+            keyboardShouldPersistTaps="always"
             renderItem={({ item, index }) => (
               <View>
                 {item.role === "assistant" && !item.id.startsWith("welcome") && Platform.OS !== "web" ? (
                   <Swipeable
+                    waitFor={flatListRef}
                     renderRightActions={() => (
                       <View style={[chatStyles.swipeReplyHint, { backgroundColor: `${colors.primary}18` }]}>
                         <IconSymbol size={18} name="arrowshape.turn.up.left.fill" color={colors.primary} />
@@ -2254,6 +2264,28 @@ function ChatScreenContent() {
                       <Text style={[chatStyles.regenerateBtnText, { color: colors.primary }]}>↺ Regenerate</Text>
                     </TouchableOpacity>
                   </View>
+                )}
+                {/* Per-message Regenerate button — shown for all completed AI responses */}
+                {item.role === "assistant" && !item.id.startsWith("welcome") && !item.error && !item.stopped && !isStreaming && (
+                  <TouchableOpacity
+                    style={[chatStyles.regenerateBtn, { borderColor: `${colors.muted}40`, marginLeft: 50, marginTop: 2, marginBottom: 2 }]}
+                    onPress={() => {
+                      if (!session) return;
+                      H.impactLight();
+                      // Build context up to (but not including) this AI message, then re-send
+                      const msgIndex = messages.findIndex((m) => m.id === item.id);
+                      const contextMessages = messages
+                        .slice(0, msgIndex)
+                        .filter((m) => !m.id.startsWith("welcome"))
+                        .map((m) => ({ role: m.role, content: m.content }));
+                      // Remove this AI message and regenerate
+                      setMessages((prev) => prev.filter((m) => m.id !== item.id));
+                      sendStreamingChat(contextMessages, selectedSubject ?? undefined, gradeLevel ?? undefined, session);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[chatStyles.regenerateBtnText, { color: colors.muted, fontSize: fs(11) }]}>↺ Regenerate</Text>
+                  </TouchableOpacity>
                 )}
                 {isLastAIMessage(index) && !isStreaming && !item.stopped && tutorSettings.followUpChips && (
                   <View style={chatStyles.followUpRow}>

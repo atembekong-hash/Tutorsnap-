@@ -948,13 +948,36 @@ export function TutorSettingsModal({
               options={BUBBLE_STYLE_OPTIONS}
               onChange={(v) => onUpdate({ bubbleStyle: v })}
             />
-            <SegmentRow
-              icon="textformat.size"
-              label="Font Size"
-              value={settings.chatFontSize}
-              options={FONT_SIZE_OPTIONS}
-              onChange={(v) => onUpdate({ chatFontSize: v })}
-            />
+            {/* Font Size — visual 3-step selector */}
+            <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 0.5, borderBottomColor: colors.border }}>
+              <IconSymbol name="textformat.size" size={18} color={colors.muted} style={{ marginRight: 12 }} />
+              <Text style={{ fontSize: 14, fontWeight: "500", color: colors.foreground, flex: 1 }}>Font Size</Text>
+              <View style={{ flexDirection: "row", gap: 6 }}>
+                {(["small", "medium", "large"] as ChatFontSize[]).map((size) => {
+                  const isActive = settings.chatFontSize === size;
+                  const labelFontSize = size === "small" ? 12 : size === "medium" ? 16 : 21;
+                  return (
+                    <TouchableOpacity
+                      key={size}
+                      onPress={() => onUpdate({ chatFontSize: size })}
+                      style={{
+                        width: 44,
+                        height: 36,
+                        borderRadius: 10,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: isActive ? colors.primary : `${colors.muted}18`,
+                        borderWidth: isActive ? 0 : 1,
+                        borderColor: `${colors.muted}30`,
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={{ fontSize: labelFontSize, fontWeight: "600", color: isActive ? "#fff" : colors.muted, lineHeight: labelFontSize + 4 }}>A</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
             <SegmentRow
               icon="chevron.left.forwardslash.chevron.right"
               label="Code Theme"
