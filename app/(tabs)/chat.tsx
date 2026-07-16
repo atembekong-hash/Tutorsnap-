@@ -73,6 +73,8 @@ import {
   AIResponseRenderer,
   AIResponseErrorBoundary,
 } from "@/components/ai-response-renderer";
+import { AICardResponse } from "@/components/ai-card-response";
+import type { ResponseCard } from "@/lib/response-cards";
 import {
   createSession,
   loadSession,
@@ -509,20 +511,31 @@ function MessageBubble({
             fontSize={fs(15)}
             color={colors.foreground}
           >
-            <AIResponseRenderer
-              markdown={message.content}
-              fontSize={fs(15)}
-              color={colors.foreground}
-              codeBackground={colors.surface}
-              flavor="github"
-              streaming={streaming}
-              animateWords={animateWords}
-              stripPreamble={!streaming}
-              blocksStartCollapsed={blocksStartCollapsed}
-              compactBlocks={compactBlocks}
-            />
-            {streaming && message.content.length > 0 && (
-              <BlinkingCursor color={colors.muted} fontSize={fs(15)} />
+            {/* Show card-based layout when cards are available (non-streaming), else markdown */}
+            {!streaming && message.parsedCards && (message.parsedCards as ResponseCard[]).length > 0 ? (
+              <AICardResponse
+                parsed={{ cards: message.parsedCards as ResponseCard[], rawText: message.content }}
+                rawText={message.content}
+                streaming={false}
+              />
+            ) : (
+              <>
+                <AIResponseRenderer
+                  markdown={message.content}
+                  fontSize={fs(15)}
+                  color={colors.foreground}
+                  codeBackground={colors.surface}
+                  flavor="github"
+                  streaming={streaming}
+                  animateWords={animateWords}
+                  stripPreamble={!streaming}
+                  blocksStartCollapsed={blocksStartCollapsed}
+                  compactBlocks={compactBlocks}
+                />
+                {streaming && message.content.length > 0 && (
+                  <BlinkingCursor color={colors.muted} fontSize={fs(15)} />
+                )}
+              </>
             )}
           </AIResponseErrorBoundary>
           <View style={bubbleStyles.metaRow}>
@@ -1258,6 +1271,19 @@ function ChatScreenContent() {
 
   // ── Chat mutation ───────────────────────────────────────────────────────────
 
+  const parseCardsMutation = trpc.academic.parseCards.useMutation({
+    onSuccess: (data, variables) => {
+      if (data.cards && data.cards.length > 0) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.role === "assistant" && m.content === variables.rawText
+              ? { ...m, parsedCards: data.cards as ResponseCard[] }
+              : m
+          )
+        );
+      }
+    },
+  });
   const suggestFollowUpsMutation = trpc.academic.suggestFollowUps.useMutation({
     onSuccess: (data) => {
       if (data.chips && data.chips.length > 0) {
@@ -1523,6 +1549,13 @@ function ChatScreenContent() {
           aiResponse: accumulated,
           subject: undefined,
         });
+        // Parse response into educational cards (async, non-blocking)
+        if (accumulated.length > 80) {
+          parseCardsMutation.mutate({
+            rawText: accumulated,
+            subject: subject,
+          });
+        }
       } catch (err: unknown) {
         const isAbort = err instanceof Error && err.name === "AbortError";
         if (!isAbort) {
@@ -1545,7 +1578,7 @@ function ChatScreenContent() {
         setIsStreaming(false);
       }
     },
-    [persistMessages, suggestFollowUpsMutation, getTypingDelayMs]
+    [persistMessages, suggestFollowUpsMutation, parseCardsMutation, getTypingDelayMs]
   );
 
   // ── Send ────────────────────────────────────────────────────────────────────
