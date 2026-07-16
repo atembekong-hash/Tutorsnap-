@@ -179,6 +179,22 @@ function extractJsonFromContent(content: string): string {
   return content;
 }
 
+/**
+ * Safely extract text content from an invokeLLM result.
+ * Handles:
+ *  - Normal OpenAI Chat Completions shape: result.choices[0].message.content
+ *  - Proxy error shape: result has an `error` key instead of `choices`
+ * Throws a TRPCError with the upstream error message if the result is an error.
+ */
+function extractLLMContent(result: any): string {
+  if (result?.error) {
+    const msg = result.error?.message ?? JSON.stringify(result.error);
+    throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `AI service error: ${msg}` });
+  }
+  const raw = result?.choices?.[0]?.message?.content ?? "";
+  return typeof raw === "string" ? raw : JSON.stringify(raw);
+}
+
 // ─── Academic router ──────────────────────────────────────────────────────────
 
 const academicRouter = router({
@@ -192,7 +208,7 @@ const academicRouter = router({
       try {
         const systemPrompt = buildSolveSystemPrompt(input.subject) + gradeContext(input.gradeLevel);
         const result = await invokeLLM({
-          model: "gpt-5-nano",
+          model: "claude-haiku-4-5",
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: input.problem },
@@ -200,8 +216,7 @@ const academicRouter = router({
           max_tokens: 1500,
           response_format: { type: "json_object" },
         });
-        const rawContent = result.choices[0]?.message?.content ?? "";
-        const text = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
+        const text = extractLLMContent(result);
         const jsonStr = extractJsonFromContent(text);
         return JSON.parse(jsonStr);
       } catch (err: unknown) {
@@ -219,7 +234,7 @@ const academicRouter = router({
     .mutation(async ({ input }) => {
       try {
         const result = await invokeLLM({
-          model: "gpt-5-nano",
+          model: "claude-haiku-4-5",
           messages: [
             { role: "system", content: IMAGE_SOLVE_SYSTEM_PROMPT + gradeContext(input.gradeLevel) },
             {
@@ -236,8 +251,7 @@ const academicRouter = router({
           max_tokens: 1500,
           response_format: { type: "json_object" },
         });
-        const rawContent = result.choices[0]?.message?.content ?? "";
-        const text = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
+        const text = extractLLMContent(result);
         const jsonStr = extractJsonFromContent(text);
         return JSON.parse(jsonStr);
       } catch (err: unknown) {
@@ -254,7 +268,7 @@ const academicRouter = router({
     .mutation(async ({ input }) => {
       const practicePrompt = buildPracticePrompt(input.subject, input.difficulty) + gradeContext(input.gradeLevel);
       const result = await invokeLLM({
-        model: "gpt-5-nano",
+        model: "claude-haiku-4-5",
         messages: [
           { role: "system", content: practicePrompt },
           { role: "user", content: `Generate a ${input.difficulty} ${input.subject} practice question.` },
@@ -262,10 +276,13 @@ const academicRouter = router({
         max_tokens: 600,
         response_format: { type: "json_object" },
       });
-      const rawContent = result.choices[0]?.message?.content ?? "";
-      const text = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
+      const text = extractLLMContent(result);
       const jsonStr = extractJsonFromContent(text);
-      return JSON.parse(jsonStr);
+      try {
+        return JSON.parse(jsonStr);
+      } catch {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned invalid JSON. Please try again." });
+      }
     }),
 
   generateQuiz: publicProcedure
@@ -283,7 +300,7 @@ Respond ONLY with this JSON:
 {"questions":[{"id":"q1","problem":"<question>","options":{"A":"<a>","B":"<b>","C":"<c>","D":"<d>"},"correctAnswer":"A","explanation":"<1 sentence>"}]}`;
 
       const result = await invokeLLM({
-        model: "gpt-5-nano",
+        model: "claude-haiku-4-5",
         messages: [
           { role: "system", content: quizPrompt },
           { role: "user", content: `Generate ${input.count} ${input.difficulty} multiple-choice questions for ${input.subject}.` },
@@ -291,7 +308,7 @@ Respond ONLY with this JSON:
         max_tokens: Math.min(input.count * 200, 1200),
         response_format: { type: "json_object" },
       });
-      const rawContent = result.choices[0]?.message?.content ?? "";
+      const rawContent = extractLLMContent(result);
       const text = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
       const jsonStr = extractJsonFromContent(text);
       let parsed: any;
@@ -315,8 +332,8 @@ Respond ONLY with this JSON:
         ],
         max_tokens: 120,
       });
-      const rawContent = result.choices[0]?.message?.content ?? "";
-      const tip = typeof rawContent === "string" ? rawContent.trim() : "";
+      const rawTip = (result as any)?.error ? "" : (result.choices?.[0]?.message?.content ?? "");
+      const tip = typeof rawTip === "string" ? rawTip.trim() : "";
       return { tip: tip || `Practice ${input.subject} problems daily. Consistency is the key to mastery!` };
     }),
 
@@ -348,7 +365,7 @@ Respond ONLY with this JSON:
         ],
         max_tokens: 1000,
       });
-      const rawContent = result.choices[0]?.message?.content ?? "";
+      const rawContent = (result as any)?.error ? "" : (result.choices?.[0]?.message?.content ?? "");
       const text = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
       return { content: text || "I apologize, I couldn't process your request." };
     }),
@@ -360,7 +377,7 @@ Respond ONLY with this JSON:
     .mutation(async ({ input }) => {
       const prompt = `You are a helpful academic tutor assistant. Based on the following AI tutor response, generate exactly 3 short follow-up questions or prompts a student might want to ask next. Each should be 3-7 words, specific to the content of the response, and help deepen understanding.\n\nAI response:\n"${input.aiResponse.slice(0, 800)}"\n\nRespond ONLY with valid JSON in this exact format:\n{"chips": ["Question 1", "Question 2", "Question 3"]}`;
       const result = await invokeLLM({
-        model: "gpt-5-nano",
+        model: "claude-haiku-4-5",
         messages: [
           { role: "system", content: prompt },
           { role: "user", content: "Generate the 3 follow-up chips now." },
@@ -368,8 +385,7 @@ Respond ONLY with this JSON:
         max_tokens: 120,
         response_format: { type: "json_object" },
       });
-      const rawContent = result.choices[0]?.message?.content ?? "";
-      const text = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
+      const text = (result as any)?.error ? "" : extractLLMContent(result);
       try {
         const parsed = JSON.parse(extractJsonFromContent(text)) as { chips: string[] };
         return { chips: (parsed.chips || []).slice(0, 3) };
@@ -394,7 +410,7 @@ Each has a 1-sentence hint (point to the concept, no answer).
 Respond ONLY with this JSON:
 {"problems":[{"id":"p1","problem":"<problem>","hint":"<1-sentence hint>"}]}`;
       const result = await invokeLLM({
-        model: "gpt-5-nano",
+        model: "claude-haiku-4-5",
         messages: [
           { role: "system", content: prompt },
           { role: "user", content: "Generate the similar problems now." },
@@ -402,8 +418,7 @@ Respond ONLY with this JSON:
         max_tokens: Math.min(input.count * 150, 800),
         response_format: { type: "json_object" },
       });
-      const rawContent = result.choices[0]?.message?.content ?? "";
-      const text = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
+      const text = extractLLMContent(result);
       const jsonStr = extractJsonFromContent(text);
       return JSON.parse(jsonStr) as { problems: { id: string; problem: string; hint: string }[] };
     }),
