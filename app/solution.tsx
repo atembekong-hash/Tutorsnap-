@@ -281,7 +281,13 @@ export default function SolutionScreen() {
       if (markdownPreviewTimerRef.current) clearTimeout(markdownPreviewTimerRef.current);
     };
   }, []);
-  const generateSimilarMutation = trpc.math.generateSimilar.useMutation();
+  const generateSimilarMutation = trpc.math.generateSimilar.useMutation({
+    onSuccess: (data) => {
+      if (data.problems?.length > 0) {
+        setSimilarProblems(data.problems);
+      }
+    },
+  });
   const [discussLoading, setDiscussLoading] = useState(false);
   const [explainDiffLoading, setExplainDiffLoading] = useState(false);
   const [altExplanation, setAltExplanation] = useState<string | null>(null);
@@ -331,8 +337,19 @@ export default function SolutionScreen() {
       { problem: parsedSolution!.problem, subject: parsedSolution!.subject as any, gradeLevel: gradeLevel ?? undefined },
       {
         onSuccess: (data) => {
-          setLiveSolution(data as unknown as MathSolution);
+          const sol = data as unknown as MathSolution;
+          setLiveSolution(sol);
           setAutoSolving(false);
+          // Background pre-generate similar problems so they are ready instantly
+          if (sol?.problem && similarProblems.length === 0) {
+            generateSimilarMutation.mutate({
+              problem: sol.problem,
+              subject: (sol.subject ?? parsedSolution?.subject ?? "other") as any,
+              difficulty: "medium",
+              count: 3,
+              gradeLevel: gradeLevel ?? undefined,
+            });
+          }
         },
         onError: (err) => {
           setAutoSolveError(err.message || "Failed to solve. Please try again.");

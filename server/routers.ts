@@ -188,6 +188,58 @@ function extractJsonFromContent(content: string): string {
 }
 
 /**
+ * Attempt to repair truncated JSON by closing any open arrays/objects.
+ * This handles the case where the LLM hits max_tokens mid-JSON.
+ */
+function repairTruncatedJson(raw: string): string {
+  let s = raw.trim();
+  // Remove trailing incomplete key-value pair (e.g. ,"key":"partial)
+  s = s.replace(/,\s*"[^"]*"\s*:\s*"[^"]*$/, "");
+  s = s.replace(/,\s*"[^"]*"\s*:\s*[^,}\]]*$/, "");
+  s = s.replace(/,\s*$/, "");
+  // Count unclosed brackets
+  const stack: string[] = [];
+  let inStr = false;
+  let escape = false;
+  for (const ch of s) {
+    if (escape) { escape = false; continue; }
+    if (ch === '\\' && inStr) { escape = true; continue; }
+    if (ch === '"') { inStr = !inStr; continue; }
+    if (inStr) continue;
+    if (ch === '{') stack.push('}');
+    else if (ch === '[') stack.push(']');
+    else if (ch === '}' || ch === ']') stack.pop();
+  }
+  // Close all open brackets in reverse order
+  return s + stack.reverse().join("");
+}
+
+async function invokeLLMWithFallback(primaryModel: string, fallbackModel: string, params: Parameters<typeof invokeLLM>[0]): Promise<string> {
+  // Try primary model
+  try {
+    const result = await invokeLLM({ ...params, model: primaryModel });
+    const text = extractLLMContent(result);
+    const jsonStr = extractJsonFromContent(text);
+    JSON.parse(jsonStr); // validate
+    return jsonStr;
+  } catch {
+    // Fallback to stronger model
+    const result2 = await invokeLLM({ ...params, model: fallbackModel, max_tokens: Math.min((params.max_tokens ?? 4000) + 1000, 6000) });
+    const text2 = extractLLMContent(result2);
+    const raw2 = extractJsonFromContent(text2);
+    try {
+      JSON.parse(raw2);
+      return raw2;
+    } catch {
+      // Last resort: try to repair truncated JSON
+      const repaired = repairTruncatedJson(raw2);
+      JSON.parse(repaired); // throws if still invalid
+      return repaired;
+    }
+  }
+}
+
+/**
  * Safely extract text content from an invokeLLM result.
  * Handles:
  *  - Normal OpenAI Chat Completions shape: result.choices[0].message.content
@@ -215,21 +267,56 @@ const academicRouter = router({
     .mutation(async ({ input }) => {
       try {
         const systemPrompt = buildSolveSystemPrompt(input.subject) + gradeContext(input.gradeLevel);
-        const result = await invokeLLM({
-          model: "claude-haiku-4-5",
+        const params = {
+          model: "gpt-5-nano" as const,
           messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: input.problem },
+            { role: "system" as const, content: systemPrompt },
+            { role: "user" as const, content: input.problem },
           ],
           max_tokens: 4000,
-          response_format: { type: "json_object" },
-        });
-        const text = extractLLMContent(result);
-        const jsonStr = extractJsonFromContent(text);
+          response_format: { type: "json_object" as const },
+        };
+        const jsonStr = await invokeLLMWithFallback("gpt-5-nano", "gpt-5-mini", params);
         return JSON.parse(jsonStr);
       } catch (err: unknown) {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err instanceof Error ? err.message : "Failed to solve problem. Please try again." });
       }
+    }),
+
+  solveExplanation: publicProcedure
+    .input(z.object({
+      problem: z.string().min(1),
+      correctAnswer: z.string(),
+      selectedAnswer: z.string(),
+      subject: z.string().default("other"),
+      gradeLevel: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const prompt = `You are TutorSnap, an expert academic tutor.${gradeContext(input.gradeLevel)}
+A student answered a multiple-choice question.
+Question: "${input.problem}"
+Correct answer: ${input.correctAnswer}
+Student selected: ${input.selectedAnswer}
+${input.selectedAnswer === input.correctAnswer ? "The student got it RIGHT." : "The student got it WRONG."}
+
+Provide a FULL, DETAILED worked solution:
+1. State the correct answer clearly
+2. Explain WHY it is correct (full reasoning, 4-6 sentences)
+3. Show the complete working/derivation step by step
+4. If the student was wrong, explain specifically why their choice was incorrect (2-3 sentences)
+5. Give a key insight or tip to remember this concept
+
+Respond with plain text (no JSON). Be thorough and educational.`;
+      const result = await invokeLLM({
+        model: "gpt-5-nano",
+        messages: [
+          { role: "system", content: prompt },
+          { role: "user", content: "Explain the answer fully." },
+        ],
+        max_tokens: 800,
+      });
+      const text = extractLLMContent(result);
+      return { explanation: text.trim() };
     }),
 
   solveFromImage: publicProcedure
@@ -241,26 +328,27 @@ const academicRouter = router({
     }))
     .mutation(async ({ input }) => {
       try {
-        const result = await invokeLLM({
-          model: "claude-haiku-4-5",
-          messages: [
-            { role: "system", content: IMAGE_SOLVE_SYSTEM_PROMPT + gradeContext(input.gradeLevel) },
-            {
-              role: "user",
-              content: [
-                { type: "text", text: `Please identify and answer the question in this image. Subject hint: ${input.subject}` },
-                {
-                  type: "image_url",
-                  image_url: { url: `data:${input.mimeType};base64,${input.imageBase64}` },
-                },
-              ],
-            },
-          ],
+        // Use gemini for vision (best multimodal) with gpt-5-mini fallback
+        const messages = [
+          { role: "system" as const, content: IMAGE_SOLVE_SYSTEM_PROMPT + gradeContext(input.gradeLevel) },
+          {
+            role: "user" as const,
+            content: [
+              { type: "text" as const, text: `Please identify and answer the question in this image. Subject hint: ${input.subject}` },
+              {
+                type: "image_url" as const,
+                image_url: { url: `data:${input.mimeType};base64,${input.imageBase64}` },
+              },
+            ],
+          },
+        ];
+        const params = {
+          model: "gemini-3-flash-preview" as const,
+          messages,
           max_tokens: 4000,
-          response_format: { type: "json_object" },
-        });
-        const text = extractLLMContent(result);
-        const jsonStr = extractJsonFromContent(text);
+          response_format: { type: "json_object" as const },
+        };
+        const jsonStr = await invokeLLMWithFallback("gemini-3-flash-preview", "gpt-5-mini", params);
         return JSON.parse(jsonStr);
       } catch (err: unknown) {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err instanceof Error ? err.message : "Failed to process image. Please try again." });
@@ -418,17 +506,22 @@ Each has a 1-sentence hint (point to the concept, no answer).
 Respond ONLY with this JSON:
 {"problems":[{"id":"p1","problem":"<problem>","hint":"<1-sentence hint>"}]}`;
       const result = await invokeLLM({
-        model: "claude-haiku-4-5",
+        model: "gpt-5-nano",
         messages: [
           { role: "system", content: prompt },
           { role: "user", content: "Generate the similar problems now." },
         ],
-        max_tokens: Math.min(input.count * 150, 800),
+        max_tokens: Math.min(input.count * 200, 1000),
         response_format: { type: "json_object" },
       });
       const text = extractLLMContent(result);
       const jsonStr = extractJsonFromContent(text);
-      return JSON.parse(jsonStr) as { problems: { id: string; problem: string; hint: string }[] };
+      try {
+        return JSON.parse(jsonStr) as { problems: { id: string; problem: string; hint: string }[] };
+      } catch {
+        const repaired = repairTruncatedJson(jsonStr);
+        return JSON.parse(repaired) as { problems: { id: string; problem: string; hint: string }[] };
+      }
     }),
 });
 // ─── Voice router ────────────────────────────────────────────────────────────

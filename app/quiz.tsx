@@ -321,6 +321,18 @@ export default function QuizScreen() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const progressAnim = useRef(new Animated.Value(1)).current;
 
+  // Full worked explanation — fetched after answer reveal
+  const [fullExplanations, setFullExplanations] = useState<Record<string, string>>({});
+  const [loadingExplanation, setLoadingExplanation] = useState(false);
+  const solveExplanationMutation = trpc.academic.solveExplanation.useMutation({
+    onSuccess: (data, variables) => {
+      // variables.problem is the question — use currentIdx captured via closure
+      setFullExplanations((prev) => ({ ...prev, [variables.problem]: data.explanation }));
+      setLoadingExplanation(false);
+    },
+    onError: () => setLoadingExplanation(false),
+  });
+
   const generateMutation = trpc.academic.generateQuiz.useMutation({
     onSuccess: (data) => {
       const qs = data as QuizQuestion[];
@@ -378,6 +390,18 @@ export default function QuizScreen() {
   const handleConfirm = () => {
     if (!selectedOption && timeLeft > 0) return;
     if (timerRef.current) clearInterval(timerRef.current);
+    // Kick off full explanation fetch in background
+    const q = questions[currentIdx];
+    if (q && selectedOption && !fullExplanations[q.problem]) {
+      setLoadingExplanation(true);
+      solveExplanationMutation.mutate({
+        problem: q.problem,
+        correctAnswer: q.correctAnswer,
+        selectedAnswer: selectedOption,
+        subject,
+        gradeLevel: gradeLevel ?? undefined,
+      });
+    }
     setRevealed(true);
     const newAnswers = [...answers];
     newAnswers[currentIdx] = selectedOption;
@@ -587,8 +611,17 @@ export default function QuizScreen() {
           {/* Explanation (after reveal) */}
           {revealed && (
             <View style={[styles.explanationCard, { backgroundColor: `${colors.primary}10`, borderColor: `${colors.primary}30` }]}>
-              <Text style={[styles.explanationLabel, { color: colors.primary }]}>💡 Explanation</Text>
-              <Text style={[styles.explanationText, { color: colors.foreground }]}>{q.explanation}</Text>
+              <Text style={[styles.explanationLabel, { color: colors.primary }]}>💡 Full Explanation</Text>
+              {loadingExplanation && !fullExplanations[q.problem] ? (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 }}>
+                  <ActivityIndicator size="small" color={colors.primary} />
+                  <Text style={[styles.explanationText, { color: colors.muted }]}>Generating detailed solution...</Text>
+                </View>
+              ) : fullExplanations[q.problem] ? (
+                <Text style={[styles.explanationText, { color: colors.foreground, lineHeight: 22 }]}>{fullExplanations[q.problem]}</Text>
+              ) : (
+                <Text style={[styles.explanationText, { color: colors.foreground }]}>{q.explanation}</Text>
+              )}
             </View>
           )}
 
