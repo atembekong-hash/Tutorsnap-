@@ -360,16 +360,18 @@ const trStyles = StyleSheet.create({
     width: 130, // overridden at runtime via widgetWidth from AppearanceContext
     borderRadius: 12,
     borderWidth: 1.5,
-    padding: 8,   // was 14 — reduced ~50%
-    gap: 2,       // was 4
+    padding: 8,
+    gap: 2,
+    overflow: "hidden",
+    minWidth: 0,
   },
-  cardEmoji: { fontSize: 16 },           // was 24
-  cardTitle: { fontSize: 11, fontWeight: "700", marginTop: 2 }, // was 13, marginTop 4
-  cardSub: { fontSize: 10, lineHeight: 13 },                    // was 11, lineHeight 15
-  cardBadge: { marginTop: 3, borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2, alignSelf: "flex-start" }, // was marginTop 6, paddingVertical 4
-  cardBadgeText: { fontSize: 10, fontWeight: "700" },           // was 11
-  progressBar: { height: 3, borderRadius: 2, marginTop: 3, overflow: "hidden" }, // was height 4, marginTop 6
-  progressFill: { height: 3, borderRadius: 2 },                 // was 4
+  cardEmoji: { fontSize: 16 },
+  cardTitle: { fontSize: 11, fontWeight: "700", marginTop: 2, flexShrink: 1, minWidth: 0 },
+  cardSub: { fontSize: 10, lineHeight: 13, flexShrink: 1, minWidth: 0 },
+  cardBadge: { marginTop: 3, borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2, alignSelf: "flex-start", maxWidth: "100%" },
+  cardBadgeText: { fontSize: 10, fontWeight: "700" },
+  progressBar: { height: 3, borderRadius: 2, marginTop: 3, overflow: "hidden", alignSelf: "stretch" },
+  progressFill: { height: 3, borderRadius: 2 },
 });
 
 
