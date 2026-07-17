@@ -1,9 +1,6 @@
 import { z } from "zod";
 import { router, publicProcedure, protectedProcedure } from "./_core/trpc";
 import { invokeLLM } from "./_core/llm";
-import { invokeParallel } from "./_core/parallel-invoke";
-import { scoreConfidence, shouldRetry, generateRetryPrompt } from "./_core/confidence-scorer";
-import { generateCacheKey, getCachedResponse, setCachedResponse, getCacheStats } from "./_core/response-cache";
 import { systemRouter } from "./_core/systemRouter";
 import { COOKIE_NAME } from "../shared/const";
 import { transcribeAudio } from "./_core/voiceTranscription";
@@ -102,32 +99,41 @@ Always respond with valid JSON in this exact format:
 }`;
 }
 
-const IMAGE_SOLVE_SYSTEM_PROMPT = `You are TutorSnap, an expert academic tutor covering ALL subjects at ALL difficulty levels.
+const IMAGE_SOLVE_SYSTEM_PROMPT = `You are TutorSnap, an expert academic tutor and professor covering ALL subjects at ALL difficulty levels.
 Analyze the image and identify any question, problem, or text in it.
-Determine the subject area automatically, then solve or answer it CLEARLY and ACCURATELY.
+Determine the subject area automatically, then solve or answer it COMPLETELY and COMPREHENSIVELY.
 
 CRITICAL RULES:
 - NEVER refuse to answer or say a problem is too hard. Solve EVERYTHING.
-- Provide a CLEAR, FOCUSED solution with 3-5 key steps (not exhaustive — concise and direct).
-- Each step should have 2-3 sentences: state what you are doing, WHY, and the rule/theorem that justifies it.
-- The answer field should be 2-3 sentences: state the result clearly, interpret it, and note any important caveats.
-- Tips should be practical and specific (2-3 sentences each). Include 2-3 tips.
-- Keep the entire response under 800 tokens — prioritize clarity over exhaustiveness.
+- Produce an EXHAUSTIVE, DEEPLY DETAILED solution. Aim for AT LEAST 10-15 steps, each with a thorough multi-sentence explanation.
+- Each step explanation MUST be at least 5-8 sentences: state what you are doing, WHY, the rule or theorem that justifies it, any edge cases, and how it connects to the next step.
+- Include a WORKED EXAMPLE section showing a COMPLETE similar problem solved from scratch — this example must itself have at least 8 steps.
+- The conceptExplained field must be a LONG, RICH paragraph (10-15 sentences) covering: the underlying theory, historical context or motivation, formal definition, intuitive explanation, when the concept applies, common pitfalls, and how it connects to at least 3 related topics.
+- The answer field must be a FULL paragraph (5-8 sentences) restating the result, interpreting it, and noting any important caveats or special cases.
+- Tips must be detailed, actionable, and specific (4-6 sentences each). Include at least 4 tips.
+- The workedExample.solution must be a LONG narrative (at least 300 words) walking through every single step.
 
 Always respond with valid JSON in this exact format:
 {
   "problem": "the question or problem you found in the image",
   "subject": "the detected subject id (e.g. algebra, calculus, biology, us_history, etc.)",
-  "answer": "2-3 sentences: state the result clearly, interpret it, and note any important caveats.",
+  "answer": "A FULL PARAGRAPH (5-8 sentences): state the result, interpret it, note units, explain any special cases or caveats, and summarise what was learned.",
   "steps": [
     {
       "stepNumber": 1,
-      "title": "Step title",
-      "explanation": "2-3 sentences: what you are doing, why, and the rule/theorem that justifies it.",
-      "expression": "The key formula or equation"
+      "title": "Descriptive step title",
+      "explanation": "DETAILED explanation (5-8 sentences): what you are doing, why, the rule/theorem that justifies it, any edge cases, and how it leads to the next step.",
+      "expression": "The key formula, equation, or expression"
     }
   ],
-  "tips": ["Practical tip 1: 2-3 sentences", "Practical tip 2: 2-3 sentences", "Practical tip 3: 2-3 sentences"]
+  "workedExample": {
+    "title": "Worked Example: [brief description]",
+    "problem": "A similar but distinct example problem",
+    "solution": "LONG narrative solution (at least 300 words): walk through every single step, explain every operation, state every rule used, and interpret the final result."
+  },
+  "conceptExplained": "A LONG, RICH paragraph (10-15 sentences): underlying theory, historical context or motivation, formal definition, intuitive explanation, when the concept applies, common pitfalls, and connections to at least 3 related topics.",
+  "tips": ["Detailed tip 1: 4-6 sentences", "Detailed tip 2: 4-6 sentences", "Detailed tip 3: 4-6 sentences", "Detailed tip 4: 4-6 sentences"],
+  "relatedTopics": ["Topic 1", "Topic 2", "Topic 3", "Topic 4", "Topic 5"]
 }`;
 
 // ─── Complexity detector ─────────────────────────────────────────────────────
@@ -403,16 +409,7 @@ Respond with plain text (no JSON). Be thorough and educational.`;
     }))
     .mutation(async ({ input }) => {
       try {
-        // Check cache first
-        const cacheKey = generateCacheKey(input.imageBase64, input.subject, input.gradeLevel);
-        const cachedResponse = getCachedResponse(cacheKey);
-        if (cachedResponse) {
-          console.log(`[Solve] Returning cached response for ${input.subject}`);
-          return cachedResponse;
-        }
-        
-        // Parallel racing: send to Gemini Flash + GPT-4o-mini simultaneously
-        // Return whichever responds first with valid JSON
+        // Use gemini for vision (best multimodal) with gpt-5-mini fallback
         const messages = [
           { role: "system" as const, content: IMAGE_SOLVE_SYSTEM_PROMPT + gradeContext(input.gradeLevel) },
           {
@@ -426,15 +423,13 @@ Respond with plain text (no JSON). Be thorough and educational.`;
             ],
           },
         ];
-
-        const jsonStr = await invokeParallel(
-          ["gemini-2.0-flash", "gpt-4o-mini"],
-          {
-            messages,
-            max_tokens: 800,
-            response_format: { type: "json_object" },
-          }
-        );
+        const params = {
+          model: "gemini-3-flash-preview" as const,
+          messages,
+          max_tokens: 2500,
+          response_format: { type: "json_object" as const },
+        };
+        const jsonStr = await invokeLLMWithFallback("gemini-3-flash-preview", "claude-haiku-4-5", params);
         return JSON.parse(jsonStr);
       } catch (err: unknown) {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err instanceof Error ? err.message : "Failed to process image. Please try again." });
@@ -448,14 +443,6 @@ Respond with plain text (no JSON). Be thorough and educational.`;
       gradeLevel: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
-      // Check cache first
-      const practiceCacheKey = generateCacheKey(JSON.stringify(input), "practice", input.gradeLevel);
-      const cachedPractice = getCachedResponse(practiceCacheKey);
-      if (cachedPractice) {
-        console.log(`[Practice] Returning cached question for ${input.subject} ${input.difficulty}`);
-        return cachedPractice;
-      }
-      
       // Scale token budget by difficulty: easy=700, medium=1100, hard=1800
       const practiceTokens = input.difficulty === 'easy' ? 700 : input.difficulty === 'medium' ? 1100 : 1800;
       const practicePrompt = buildPracticePrompt(input.subject, input.difficulty) + gradeContext(input.gradeLevel);
@@ -471,9 +458,7 @@ Respond with plain text (no JSON). Be thorough and educational.`;
       const text = extractLLMContent(result);
       const jsonStr = extractJsonFromContent(text);
       try {
-        const parsed = JSON.parse(jsonStr);
-      setCachedResponse(practiceCacheKey, parsed);
-      return parsed;
+        return JSON.parse(jsonStr);
       } catch {
         // Try repair for truncated JSON
         try {
@@ -493,14 +478,6 @@ Respond with plain text (no JSON). Be thorough and educational.`;
       gradeLevel: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
-      // Check cache first
-      const quizCacheKey = generateCacheKey(JSON.stringify(input), "quiz", input.gradeLevel);
-      const cachedQuiz = getCachedResponse(quizCacheKey);
-      if (cachedQuiz) {
-        console.log(`[Quiz] Returning cached questions for ${input.subject} ${input.difficulty}`);
-        return cachedQuiz;
-      }
-      
       const quizPrompt = `You are TutorSnap, an expert academic tutor.${gradeContext(input.gradeLevel)}
 Generate exactly ${input.count} ${input.difficulty} multiple-choice questions for: ${input.subject}.
 Each question has 4 options (A-D), one correct answer, and a brief 1-sentence explanation.
@@ -522,14 +499,7 @@ Respond ONLY with this JSON:
       const jsonStr = extractJsonFromContent(text);
       let parsed: any;
       try { parsed = JSON.parse(jsonStr); } catch { throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid JSON in AI response" }); }
-      const questions = parsed.questions ?? [];
-      setCachedResponse(quizCacheKey, questions);
-      return questions;
-    }),
-
-  cacheStats: publicProcedure
-    .query(() => {
-      return getCacheStats();
+      return parsed.questions ?? [];
     }),
 
   studyTip: publicProcedure
