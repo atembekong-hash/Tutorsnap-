@@ -37,7 +37,12 @@ export class RealStabilityMonitor {
   private unsubscribeMotion: (() => void) | null = null;
 
   constructor() {
-    this.motionMonitor = new RealMotionMonitor();
+    try {
+      this.motionMonitor = new RealMotionMonitor();
+    } catch (error) {
+      console.error("Failed to initialize motion monitor:", error);
+      this.motionMonitor = new RealMotionMonitor();
+    }
   }
 
   /**

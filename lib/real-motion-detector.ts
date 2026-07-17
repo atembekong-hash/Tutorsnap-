@@ -3,7 +3,18 @@
  * Measures actual device movement to determine if camera is stable
  */
 
-import { Accelerometer, Gyroscope } from "expo-sensors";
+let Accelerometer: any;
+let Gyroscope: any;
+
+try {
+  const sensors = require("expo-sensors");
+  Accelerometer = sensors.Accelerometer;
+  Gyroscope = sensors.Gyroscope;
+} catch (error) {
+  console.warn("Sensors not available:", error);
+  Accelerometer = { setUpdateInterval: () => {}, addListener: () => ({ remove: () => {} }) };
+  Gyroscope = { setUpdateInterval: () => {}, addListener: () => ({ remove: () => {} }) };
+}
 
 export interface MotionData {
   accelerationX: number;

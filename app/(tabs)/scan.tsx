@@ -24,7 +24,8 @@ import type { HistoryItem, MathSubject } from "@/shared/types";
 import { SubjectPicker } from "@/components/subject-picker";
 import { type SubjectId } from "@/lib/subjects";
 import { useNetworkStatus } from "@/hooks/use-network-status";
-import { CameraView, useCameraPermissions } from "@/lib/camera-wrapper";
+import { CameraView } from "@/lib/camera-wrapper";
+import { useSafeCameraPermissions } from "@/lib/safe-camera-permissions";
 import { GRADE_OPTIONS, GRADE_LABELS, loadGlobalGrade, saveGlobalGrade } from "@/lib/grade-levels";
 import { RealStabilityMonitor, type RealFrameStability } from "@/lib/real-stability-detector";
 import { analyzeImageQualityReal, getQualityFeedbackReal, type RealImageQuality } from "@/lib/real-image-analyzer";
@@ -68,7 +69,7 @@ function ScanScreenContent() {
     loadGlobalGrade().then((g: string | null) => { if (g) setGradeLevel(g); });
   }, []);
 
-  const [permission, requestPermission] = useCameraPermissions();
+  const [permission, requestPermission] = useSafeCameraPermissions();
 
   // Request camera permission on mount (native only)
   useEffect(() => {
