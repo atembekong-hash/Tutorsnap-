@@ -42,12 +42,15 @@ import { useNetworkStatus } from "@/hooks/use-network-status";
 import { CameraView, useCameraPermissions } from "@/lib/camera-wrapper";
 import { GRADE_OPTIONS, GRADE_LABELS, loadGlobalGrade, saveGlobalGrade } from "@/lib/grade-levels";
 import { analyzeImageQuality, enhanceImage, shouldEnhanceImage, shouldRejectImage } from "@/lib/image-quality";
+import { queueSolveRequest, getQueueStats } from "@/lib/offline-queue";
+import { useConnectivity } from "@/hooks/use-connectivity";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 type ScanMode = "camera" | "solving" | "web-picker";
 
 function ScanScreenContent() {
   const colors = useColors();
+  const { isOnline, queueSize } = useConnectivity();
   const router = useRouter();
   const cameraRef = useRef<any>(null);
 
@@ -58,7 +61,6 @@ function ScanScreenContent() {
   const [selectedSubject, setSelectedSubject] = useState<SubjectId | null>(null);
   const [isCameraActive, setIsCameraActive] = useState(Platform.OS !== "web");
   const [facing, setFacing] = useState<"back" | "front">("back");
-  const { isOnline } = useNetworkStatus();
   const [gradeLevel, setGradeLevel] = useState<string | null>(null);
 
   // Stability tracking for auto-capture
