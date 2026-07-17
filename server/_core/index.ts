@@ -8,6 +8,7 @@ import { registerStorageProxy } from "./storageProxy";
 import { registerVoiceUploadRoute } from "./voiceUpload";
 import { registerChatStreamRoute } from "./chatStream";
 import { registerMathRenderRoute } from "./mathRender";
+import { registerSolveDirectRoute } from "./solve-direct";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 
@@ -67,6 +68,7 @@ async function startServer() {
   registerVoiceUploadRoute(app);
   registerChatStreamRoute(app);
   registerMathRenderRoute(app);
+  registerSolveDirectRoute(app);
 
   app.get("/api/health", (_req, res) => {
     res.json({ ok: true, timestamp: Date.now() });

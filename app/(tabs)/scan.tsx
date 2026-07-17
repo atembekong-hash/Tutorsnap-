@@ -12,6 +12,8 @@ import {
   ScrollView,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
+import { useMutation } from "@tanstack/react-query";
+import { getApiBaseUrl } from "@/constants/oauth";
 import * as ImagePicker from "expo-image-picker";
 import * as H from "@/lib/haptics";
 import * as FileSystem from "expo-file-system/legacy";
@@ -132,8 +134,20 @@ function ScanScreenContent() {
 
 
 
-  const solveMutation = trpc.academic.solveFromImage.useMutation({
-    onSuccess: async (data) => {
+  const solveMutation = useMutation({
+    mutationFn: async (input: { imageBase64: string; mimeType: string; subject: string; gradeLevel?: string }) => {
+      const response = await fetch(`${getApiBaseUrl()}/api/solve-direct`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(input),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to solve image");
+      }
+      return response.json();
+    },
+    onSuccess: async (data: any) => {
       H.notificationSuccess();
       const historyItem: HistoryItem = {
         id: `history-${Date.now()}`,
@@ -156,7 +170,7 @@ function ScanScreenContent() {
       setIsProcessing(false);
       router.push({ pathname: "/solution", params: { data: JSON.stringify(data) } });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       H.notificationError();
       setIsProcessing(false);
       const errorMessage = error?.message || "Could not reach server";
