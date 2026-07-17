@@ -490,7 +490,8 @@ Respond ONLY with this JSON:
           { role: "system", content: quizPrompt },
           { role: "user", content: `Generate ${input.count} ${input.difficulty} multiple-choice questions for ${input.subject}.` },
         ],
-        max_tokens: Math.min(input.count * 350, 2500),
+        // Scale per-question token budget by difficulty
+        max_tokens: Math.min(input.count * (input.difficulty === 'easy' ? 150 : input.difficulty === 'medium' ? 250 : 350), 2500),
         response_format: { type: "json_object" },
       });
       const rawContent = extractLLMContent(result);
@@ -548,7 +549,14 @@ Respond ONLY with this JSON:
             content: m.content,
           })),
         ],
-        max_tokens: 1000,
+        // Scale chat response length by message complexity
+        max_tokens: (() => {
+          const lastMsg = input.messages[input.messages.length - 1]?.content ?? "";
+          const wordCount = lastMsg.trim().split(/\s+/).length;
+          if (wordCount <= 10) return 600;   // short/simple question
+          if (wordCount <= 30) return 1000;  // medium question
+          return 1500;                        // long/complex question
+        })(),
       });
       const rawContent = (result as any)?.error ? "" : (result.choices?.[0]?.message?.content ?? "");
       const text = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
@@ -600,7 +608,8 @@ Respond ONLY with this JSON:
           { role: "system", content: prompt },
           { role: "user", content: "Generate the similar problems now." },
         ],
-        max_tokens: Math.min(input.count * 200, 1000),
+        // Scale per-problem token budget by difficulty
+        max_tokens: Math.min(input.count * (input.difficulty === 'easy' ? 120 : input.difficulty === 'medium' ? 180 : 250), 1000),
         response_format: { type: "json_object" },
       });
       const text = extractLLMContent(result);
