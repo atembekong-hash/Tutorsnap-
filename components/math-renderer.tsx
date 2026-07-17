@@ -136,16 +136,35 @@ function ServerMathRenderer({
     | { status: 'error' }
   >({ status: 'loading' });
   const abortRef = useRef<AbortController | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     abortRef.current?.abort();
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
     const ac = new AbortController();
     abortRef.current = ac;
     setState({ status: 'loading' });
 
+    // Fallback to Unicode after 3 seconds if SVG server is slow or unavailable
+    timeoutRef.current = setTimeout(() => {
+      if (!ac.signal.aborted) {
+        ac.abort();
+        setState({ status: 'error' });
+      }
+    }, 3000);
+
     // Use the local API server (same process)
+    // On web: replace the Metro port (8081) with the API port (3000)
     const apiBase = Platform.OS === 'web'
-      ? window.location.origin.replace(':8081', ':3000')
+      ? (() => {
+          try {
+            const origin = window.location.origin;
+            // Handle both :8081 and no-port cases (proxied envs)
+            return origin.includes(':8081')
+              ? origin.replace(':8081', ':3000')
+              : origin.replace(/\/+$/, '') + ':3000';
+          } catch { return 'http://127.0.0.1:3000'; }
+        })()
       : 'http://127.0.0.1:3000';
     const url = `${apiBase}/api/math/svg?latex=${encodeURIComponent(latex)}&display=${display ? '1' : '0'}`;
 
@@ -153,12 +172,19 @@ function ServerMathRenderer({
       .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
       .then((data) => {
         if (!ac.signal.aborted) {
+          if (timeoutRef.current) clearTimeout(timeoutRef.current);
           setState({ status: 'done', svg: data.svg, width: data.width, height: data.height });
         }
       })
-      .catch(() => { if (!ac.signal.aborted) setState({ status: 'error' }); });
+      .catch(() => {
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        if (!ac.signal.aborted) setState({ status: 'error' });
+      });
 
-    return () => ac.abort();
+    return () => {
+      ac.abort();
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
   }, [latex, display]);
 
   if (state.status === 'loading') {
