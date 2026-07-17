@@ -41,6 +41,7 @@ import { type SubjectId } from "@/lib/subjects";
 import { useNetworkStatus } from "@/hooks/use-network-status";
 import { CameraView, useCameraPermissions } from "@/lib/camera-wrapper";
 import { GRADE_OPTIONS, GRADE_LABELS, loadGlobalGrade, saveGlobalGrade } from "@/lib/grade-levels";
+import { analyzeImageQuality, enhanceImage, shouldEnhanceImage, shouldRejectImage } from "@/lib/image-quality";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 type ScanMode = "camera" | "solving" | "web-picker";
@@ -269,17 +270,45 @@ function ScanScreenContent() {
           encoding: FileSystem.EncodingType.Base64,
         });
       }
-      solveMutation.mutate({
-        imageBase64: base64,
-        mimeType: "image/jpeg",
-        subject: selectedSubject ?? "other",
-        gradeLevel: gradeLevel ?? undefined,
-      });
-    } catch (_) {
+
+      // Analyze image quality
+      const quality = await analyzeImageQuality(base64);
+
+      // If quality is too low, reject and ask for retake
+      if (shouldRejectImage(quality)) {
+        setIsProcessing(false);
+        const recommendation = quality.recommendations[0] || "Image quality is too low.";
+        Alert.alert("Image Quality", recommendation, [
+          { text: "Retake", onPress: handleRetake },
+          { text: "Try Anyway", onPress: () => submitImageToSolver(base64) },
+        ]);
+        return;
+      }
+
+      // If quality is acceptable but could be better, enhance
+      let finalBase64 = base64;
+      if (shouldEnhanceImage(quality)) {
+        finalBase64 = await enhanceImage(base64);
+      }
+
+      // Submit to solver
+      submitImageToSolver(finalBase64);
+    } catch (error) {
       setIsProcessing(false);
+      console.error("Error in submitToSolver:", error);
       Alert.alert("Error", "Failed to process image. Please try again.");
       handleRetake();
     }
+  };
+
+  // --- Actually submit to solver (after quality check) ---
+  const submitImageToSolver = (base64: string) => {
+    solveMutation.mutate({
+      imageBase64: base64,
+      mimeType: "image/jpeg",
+      subject: selectedSubject ?? "other",
+      gradeLevel: gradeLevel ?? undefined,
+    });
   };
 
   // --- Retake: go back to camera ---
