@@ -15,6 +15,7 @@ import { useRouter, useFocusEffect } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import * as H from "@/lib/haptics";
 import * as FileSystem from "expo-file-system/legacy";
+import * as ImageManipulator from "expo-image-manipulator";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
@@ -27,7 +28,7 @@ import { CameraView, useCameraPermissions } from "@/lib/camera-wrapper";
 import { loadGlobalGrade } from "@/lib/grade-levels";
 
 // How long (ms) to wait after screen focus before auto-capturing
-const AUTO_CAPTURE_DELAY = 1500;
+const AUTO_CAPTURE_DELAY = 500;
 
 type ScanMode = "camera" | "solving" | "web-picker";
 
@@ -136,7 +137,7 @@ function ScanScreenContent() {
       let base64: string;
       // Detect MIME type from URI extension if not provided
       const ext = uri.split("?")[0].split(".").pop()?.toLowerCase() ?? "";
-      const resolvedMime = mimeType ??
+      let resolvedMime = mimeType ??
         (ext === "png" ? "image/png" :
          ext === "gif" ? "image/gif" :
          ext === "webp" ? "image/webp" : "image/jpeg");
@@ -150,7 +151,23 @@ function ScanScreenContent() {
           reader.readAsDataURL(blob);
         });
       } else {
-        base64 = await FileSystem.readAsStringAsync(uri, {
+        // Compress to 768px max-width JPEG at 55% quality before encoding.
+        // This reduces payload size by ~8-12x vs raw camera output, dramatically
+        // cutting upload time and LLM vision processing time.
+        let compressedUri = uri;
+        try {
+          const manipResult = await ImageManipulator.manipulateAsync(
+            uri,
+            [{ resize: { width: 768 } }],
+            { compress: 0.55, format: ImageManipulator.SaveFormat.JPEG }
+          );
+          compressedUri = manipResult.uri;
+          // Always JPEG after compression
+          resolvedMime = "image/jpeg";
+        } catch (_) {
+          // Fall back to original if compression fails
+        }
+        base64 = await FileSystem.readAsStringAsync(compressedUri, {
           encoding: FileSystem.EncodingType.Base64,
         });
       }
@@ -170,40 +187,34 @@ function ScanScreenContent() {
   const startCountdown = useCallback(() => {
     if (autoCaptureFiredRef.current) return;
     autoCaptureFiredRef.current = true;
-    setCountdown(2);
 
-    // Pulse animation
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1.12, duration: 500, useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
-      ])
-    ).start();
+    // Brief pulse to signal imminent capture
+    Animated.sequence([
+      Animated.timing(pulseAnim, { toValue: 1.1, duration: 200, useNativeDriver: true }),
+      Animated.timing(pulseAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+    ]).start();
 
-    countdownTimerRef.current = setTimeout(() => {
-      setCountdown(1);
-      countdownTimerRef.current = setTimeout(async () => {
-        setCountdown(null);
-        pulseAnim.stopAnimation();
-        pulseAnim.setValue(1);
-        if (!cameraRef.current) return;
-        try {
-          H.impactMedium();
-          const photo = await cameraRef.current.takePictureAsync({
-            quality: 0.85,
-            base64: false,
-            skipProcessing: false,
-          });
-          if (photo?.uri) {
-            setIsCameraActive(false);
-            await solveImage(photo.uri);
-          }
-        } catch (_) {
-          Alert.alert("Error", "Failed to take photo. Please try again.");
-          resetToCamera();
+    countdownTimerRef.current = setTimeout(async () => {
+      setCountdown(null);
+      pulseAnim.stopAnimation();
+      pulseAnim.setValue(1);
+      if (!cameraRef.current) return;
+      try {
+        H.impactMedium();
+        const photo = await cameraRef.current.takePictureAsync({
+          quality: 0.5,
+          base64: false,
+          skipProcessing: true,
+        });
+        if (photo?.uri) {
+          setIsCameraActive(false);
+          await solveImage(photo.uri);
         }
-      }, 1000);
-    }, 1000);
+      } catch (_) {
+        Alert.alert("Error", "Failed to take photo. Please try again.");
+        resetToCamera();
+      }
+    }, 500);
   }, [solveImage]);
 
   const clearCountdown = useCallback(() => {
