@@ -136,6 +136,79 @@ Always respond with valid JSON in this exact format:
   "relatedTopics": ["Topic 1", "Topic 2", "Topic 3", "Topic 4", "Topic 5"]
 }`;
 
+// ─── Complexity detector ─────────────────────────────────────────────────────
+
+/**
+ * Estimates problem complexity and returns an appropriate max_tokens budget.
+ * Simple problems (basic arithmetic, single-step) get 800 tokens.
+ * Medium problems (multi-step algebra, short essay) get 1400 tokens.
+ * Complex problems (calculus, proofs, multi-concept) get 2500 tokens.
+ */
+function estimateSolveTokens(problem: string, subject: string): number {
+  const p = problem.toLowerCase().trim();
+
+  // Simple: very short, single operation, basic arithmetic
+  const isSimpleArithmetic =
+    /^[\d\s+\-*/^().=?]+$/.test(p) ||
+    /^what is \d+\s*[+\-×÷*/]\s*\d+/.test(p) ||
+    /^(calculate|compute|find|evaluate)\s+\d+\s*[+\-×÷*/]\s*\d+/.test(p) ||
+    (p.split(' ').length <= 8 && ['arithmetic', 'basic_math'].includes(subject));
+
+  // Simple: single-variable linear equation, basic definition
+  const isSimpleAlgebra =
+    /^solve\s+(for\s+)?[a-z]:\s*[\d\w\s+\-*/^=().]+$/.test(p) &&
+    !p.includes('system') && !p.includes('matrix') && !p.includes('quadratic');
+
+  // Complex indicators
+  const isComplex =
+    /integral|derivative|limit|eigenvalue|differential|proof|theorem|series|transform|vector|matrix|determinant|gradient|divergence|curl|laplace|fourier|taylor|maclaurin|lagrangian|hamiltonian/.test(p) ||
+    ['calculus', 'linear_algebra', 'differential_equations', 'number_theory'].includes(subject) ||
+    p.split(' ').length > 40;
+
+  // Medium: multi-step but not graduate-level
+  const isMedium =
+    /quadratic|polynomial|system of|simultaneous|inequality|function|graph|slope|intercept|probability|statistics|hypothesis|confidence/.test(p) ||
+    p.split(' ').length > 20;
+
+  if (isComplex) return 2500;
+  if (isSimpleArithmetic || isSimpleAlgebra) return 800;
+  if (isMedium) return 1400;
+  return 1400; // default to medium
+}
+
+/**
+ * Returns a system prompt scaled to the complexity level.
+ * Simple problems get a concise prompt; complex problems get the full exhaustive prompt.
+ */
+function buildSolveSystemPromptScaled(subject: string, problem: string): string {
+  const tokens = estimateSolveTokens(problem, subject);
+  const base = buildSolveSystemPrompt(subject);
+
+  if (tokens <= 800) {
+    // Replace the exhaustive length requirements with concise ones
+    return base
+      .replace('Aim for AT LEAST 10-15 steps, each with a thorough multi-sentence explanation.', 'Use 3-6 clear steps.')
+      .replace('Each step explanation MUST be at least 5-8 sentences: state what you are doing, WHY, the rule or theorem that justifies it, any edge cases, and how it connects to the next step.', 'Each step explanation should be 2-3 sentences: what you are doing and why.')
+      .replace('Include a WORKED EXAMPLE section showing a COMPLETE similar problem solved from scratch — this example must itself have at least 8 steps.', 'Include a brief worked example (3-4 steps).')
+      .replace('The conceptExplained field must be a LONG, RICH paragraph (10-15 sentences) covering: the underlying theory, historical context or motivation, formal definition, intuitive explanation, when the concept applies, common pitfalls, and how it connects to at least 3 related topics.', 'The conceptExplained field should be 3-4 sentences: a clear, simple explanation of the concept.')
+      .replace('The answer field must be a FULL paragraph (5-8 sentences) restating the result, interpreting it, and noting any important caveats or special cases.', 'The answer field should be 2-3 sentences: state the result clearly and simply.')
+      .replace('Tips must be detailed, actionable, and specific (4-6 sentences each). Include at least 4 tips.', 'Include 2-3 short, practical tips (2 sentences each).')
+      .replace('The workedExample.solution must be a LONG narrative (at least 300 words) walking through every single step.', 'The workedExample.solution should be a brief narrative (50-80 words).');
+  }
+
+  if (tokens <= 1400) {
+    return base
+      .replace('Aim for AT LEAST 10-15 steps, each with a thorough multi-sentence explanation.', 'Use 5-8 well-explained steps.')
+      .replace('Each step explanation MUST be at least 5-8 sentences: state what you are doing, WHY, the rule or theorem that justifies it, any edge cases, and how it connects to the next step.', 'Each step explanation should be 3-4 sentences: what you are doing, why, and the rule that justifies it.')
+      .replace('Include a WORKED EXAMPLE section showing a COMPLETE similar problem solved from scratch — this example must itself have at least 8 steps.', 'Include a worked example with 4-6 steps.')
+      .replace('The conceptExplained field must be a LONG, RICH paragraph (10-15 sentences)', 'The conceptExplained field should be a solid paragraph (5-7 sentences)')
+      .replace('Tips must be detailed, actionable, and specific (4-6 sentences each). Include at least 4 tips.', 'Include 3 practical tips (3-4 sentences each).')
+      .replace('The workedExample.solution must be a LONG narrative (at least 300 words) walking through every single step.', 'The workedExample.solution should be a clear narrative (100-150 words).');
+  }
+
+  return base; // full exhaustive prompt for complex problems
+}
+
 const CHAT_SYSTEM_PROMPT = `You are TutorSnap, a friendly and expert academic tutor covering all school subjects.
 You help students understand concepts across Mathematics, English/Language Arts, Science, and Social Studies.
 Be encouraging, clear, and pedagogical. Use examples when helpful.
@@ -273,14 +346,15 @@ const academicRouter = router({
     }))
     .mutation(async ({ input }) => {
       try {
-        const systemPrompt = buildSolveSystemPrompt(input.subject) + gradeContext(input.gradeLevel);
+        const tokenBudget = estimateSolveTokens(input.problem, input.subject);
+        const systemPrompt = buildSolveSystemPromptScaled(input.subject, input.problem) + gradeContext(input.gradeLevel);
         const params = {
           model: "gemini-3-flash-preview" as const,
           messages: [
             { role: "system" as const, content: systemPrompt },
             { role: "user" as const, content: input.problem },
           ],
-          max_tokens: 2500,
+          max_tokens: tokenBudget,
           response_format: { type: "json_object" as const },
         };
         const jsonStr = await invokeLLMWithFallback("gemini-3-flash-preview", "claude-haiku-4-5", params);
