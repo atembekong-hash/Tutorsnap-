@@ -14,13 +14,34 @@ export interface ModelRaceResult {
 
 export interface RaceConfig {
   models: string[]; // e.g., ["gemini-2.0-flash", "gpt-4o-mini"]
-  messages: Array<{ role: "system" | "user"; content: string }>;
+  messages: Array<{ role: "system" | "user"; content: any }>;
   maxTokens: number;
   timeout: number; // ms
 }
 
 /**
+ * Extract JSON from response that may contain fenced code blocks or extra text
+ */
+function extractJsonFromResponse(text: string): string {
+  // Try to find JSON in fenced code blocks first
+  const fencedMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fencedMatch && fencedMatch[1]) {
+    return fencedMatch[1].trim();
+  }
+
+  // Try to find JSON object directly
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    return jsonMatch[0];
+  }
+
+  // If no JSON found, return original text
+  return text;
+}
+
+/**
  * Race multiple models in parallel
+ * Returns first successful result, not first to finish
  */
 export async function raceModels(config: RaceConfig): Promise<ModelRaceResult> {
   const startTime = Date.now();
@@ -30,14 +51,25 @@ export async function raceModels(config: RaceConfig): Promise<ModelRaceResult> {
     invokeModelWithTimeout(model, config, startTime)
   );
 
-  // Race them - first to finish wins
-  try {
-    const result = await Promise.race(racePromises);
-    return result;
-  } catch (error) {
-    // All models failed - throw error
-    throw new Error(`All models failed in race: ${error}`);
+  // Use allSettled to get all results, then find first success
+  const results = await Promise.allSettled(racePromises);
+
+  // Find first successful result
+  for (const result of results) {
+    if (result.status === "fulfilled") {
+      return result.value;
+    }
   }
+
+  // All models failed - throw error with details
+  const errors = results
+    .filter((r) => r.status === "rejected")
+    .map((r) => {
+      const reason = (r as PromiseRejectedResult).reason;
+      return reason?.message || String(reason) || "Unknown error";
+    })
+    .join("; ");
+  throw new Error(`All models failed in race: ${errors}`);
 }
 
 /**
@@ -63,6 +95,8 @@ async function invokeModelWithTimeout(
               answer: { type: "string" },
               steps: { type: "array", items: { type: "string" } },
               tips: { type: "array", items: { type: "string" } },
+              problem: { type: "string" },
+              conceptExplained: { type: "string" },
             },
             required: ["answer", "steps"],
           },
@@ -82,25 +116,29 @@ async function invokeModelWithTimeout(
     }
 
     if (!responseText || responseText.length === 0) {
-      throw new Error("Empty response");
+      throw new Error("Empty response from model");
     }
 
-    // Try to parse JSON to validate
+    // Extract JSON from response (handles fenced blocks, extra text, etc.)
+    const jsonText = extractJsonFromResponse(responseText);
+
+    // Validate JSON
     try {
-      JSON.parse(responseText);
-    } catch {
-      throw new Error("Invalid JSON response");
+      JSON.parse(jsonText);
+    } catch (parseError) {
+      throw new Error(`Invalid JSON response: ${jsonText.substring(0, 100)}`);
     }
 
     return {
       winner: model,
-      response: responseText,
+      response: jsonText,
       confidence: 85,
       processingTime,
     };
   } catch (error) {
     // Model failed - throw to trigger next in race
-    throw new Error(`Model ${model} failed: ${error}`);
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    throw new Error(`Model ${model} failed: ${errorMsg}`);
   }
 }
 
@@ -117,10 +155,10 @@ export async function sequentialFallback(
       const result = await invokeModelWithTimeout(model, config, startTime);
       return result;
     } catch (error) {
-      console.log(`Model ${model} failed, trying next...`);
+      console.warn(`Model ${model} failed, trying next:`, error);
       continue;
     }
   }
 
-  throw new Error("All models exhausted in fallback");
+  throw new Error("All models failed in sequential fallback");
 }
