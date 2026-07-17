@@ -1075,12 +1075,12 @@ function SolveScreenContent() {
                 showAll
                 triggerStyle={{
                   flex: 1,
-                  alignSelf: "stretch",
                   paddingVertical: 11,
                   paddingHorizontal: 10,
                   borderRadius: 14,
                   borderWidth: 1.5,
                   justifyContent: "center",
+                  alignItems: "center",
                 }}
               />
 
@@ -2139,7 +2139,7 @@ const styles = StyleSheet.create({
   // ── Unified 3-pill action row ─────────────────────────────────────────────
   unifiedActionRow: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "stretch",
     paddingHorizontal: 16,
     marginTop: 12,
     gap: 8,
