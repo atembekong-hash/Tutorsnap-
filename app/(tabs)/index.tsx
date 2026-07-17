@@ -47,7 +47,6 @@ import { UpsellNudgeBanner } from "@/components/upsell-nudge-banner";
 import { useAppearance } from "@/lib/appearance-context";
 import { loadGlobalGrade, saveGlobalGrade, GRADE_LABELS, GRADE_OPTIONS } from "@/lib/grade-levels";
 import { listSessionSummaries, type ChatSessionSummary } from "@/lib/chat-sessions";
-import { Swipeable } from "react-native-gesture-handler";
 import { cleanMathText } from "@/lib/clean-math-text";
 
 function getAppearanceSubjectKey(subjectId: string): string {
@@ -486,19 +485,12 @@ function SolveScreenContent() {
   const [rememberGrade, setRememberGrade] = useState(false);
   const [_userName, setUserName] = useState<string | null>(null);
   const [lastSession, setLastSession] = useState<ChatSessionSummary | null>(null);
-  const [quickAskText, setQuickAskText] = useState("");
-  const [continueSessionDismissed, setContinueSessionDismissed] = useState(false);
-  const [sessionPreviewTooltip, setSessionPreviewTooltip] = useState(false);
-  const bannerScaleAnim = useRef(new Animated.Value(1)).current;
-  const quickAskInputRef = useRef<TextInput>(null);
   const [undoToast, setUndoToast] = useState(false);
   const undoToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [showQuickAskSubjectPicker, setShowQuickAskSubjectPicker] = useState(false);
   // Round 40: recent subjects row
   const [recentSubjects, setRecentSubjects] = useState<SubjectId[]>([]);
   // Round 40: quick ask history dropdown
   const [quickAskHistory, setQuickAskHistory] = useState<string[]>([]);
-  const [showQuickAskHistory, setShowQuickAskHistory] = useState(false);
   // Round 40: animated undo toast
   const undoToastAnim = useRef(new Animated.Value(0)).current; // 0=hidden, 1=visible
   // Recent solves mini-history
@@ -560,10 +552,7 @@ function SolveScreenContent() {
         const sorted = sessions.sort((a, b) => b.updatedAt - a.updatedAt);
         setLastSession(sorted[0] ?? null);
       }).catch(() => {});
-      // Load continue-session dismissed state
-      AsyncStorage.getItem("@tutorsnap/continueSessionDismissed").then((v) => {
-        setContinueSessionDismissed(v === "1");
-      }).catch(() => {});
+      // Continue-session dismissed state handled elsewhere
       // Round 40: load recent subjects from chat sessions (last 3 unique non-null subjects)
       listSessionSummaries().then((sessions) => {
         const sorted = sessions.sort((a, b) => b.updatedAt - a.updatedAt);
