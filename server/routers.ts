@@ -182,9 +182,16 @@ Respond ONLY with this JSON (no extra text):
 // ─── Helper ───────────────────────────────────────────────────────────────────
 
 function extractJsonFromContent(content: string): string {
-  const jsonMatch = content.match(/\{[\s\S]*\}/);
+  // Strip markdown code fences (```json ... ``` or ``` ... ```)
+  let cleaned = content
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```\s*$/, '')
+    .trim();
+  // Also handle inline fences anywhere in the string
+  cleaned = cleaned.replace(/```(?:json)?\s*([\s\S]*?)\s*```/gi, '$1').trim();
+  const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
   if (jsonMatch) return jsonMatch[0];
-  return content;
+  return cleaned;
 }
 
 /**
@@ -268,15 +275,15 @@ const academicRouter = router({
       try {
         const systemPrompt = buildSolveSystemPrompt(input.subject) + gradeContext(input.gradeLevel);
         const params = {
-          model: "gpt-5-nano" as const,
+          model: "gemini-3-flash-preview" as const,
           messages: [
             { role: "system" as const, content: systemPrompt },
             { role: "user" as const, content: input.problem },
           ],
-          max_tokens: 4000,
+          max_tokens: 2500,
           response_format: { type: "json_object" as const },
         };
-        const jsonStr = await invokeLLMWithFallback("gpt-5-nano", "gpt-5-mini", params);
+        const jsonStr = await invokeLLMWithFallback("gemini-3-flash-preview", "claude-haiku-4-5", params);
         return JSON.parse(jsonStr);
       } catch (err: unknown) {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err instanceof Error ? err.message : "Failed to solve problem. Please try again." });
@@ -308,7 +315,7 @@ Provide a FULL, DETAILED worked solution:
 
 Respond with plain text (no JSON). Be thorough and educational.`;
       const result = await invokeLLM({
-        model: "gpt-5-nano",
+        model: "claude-haiku-4-5",
         messages: [
           { role: "system", content: prompt },
           { role: "user", content: "Explain the answer fully." },
@@ -345,10 +352,10 @@ Respond with plain text (no JSON). Be thorough and educational.`;
         const params = {
           model: "gemini-3-flash-preview" as const,
           messages,
-          max_tokens: 4000,
+          max_tokens: 2500,
           response_format: { type: "json_object" as const },
         };
-        const jsonStr = await invokeLLMWithFallback("gemini-3-flash-preview", "gpt-5-mini", params);
+        const jsonStr = await invokeLLMWithFallback("gemini-3-flash-preview", "claude-haiku-4-5", params);
         return JSON.parse(jsonStr);
       } catch (err: unknown) {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err instanceof Error ? err.message : "Failed to process image. Please try again." });
@@ -364,12 +371,12 @@ Respond with plain text (no JSON). Be thorough and educational.`;
     .mutation(async ({ input }) => {
       const practicePrompt = buildPracticePrompt(input.subject, input.difficulty) + gradeContext(input.gradeLevel);
       const result = await invokeLLM({
-        model: "gpt-5-nano",
+        model: "claude-haiku-4-5",
         messages: [
           { role: "system", content: practicePrompt },
           { role: "user", content: `Generate a ${input.difficulty} ${input.subject} practice question.` },
         ],
-        max_tokens: 900,
+        max_tokens: 1800,
         response_format: { type: "json_object" },
       });
       const text = extractLLMContent(result);
@@ -377,7 +384,13 @@ Respond with plain text (no JSON). Be thorough and educational.`;
       try {
         return JSON.parse(jsonStr);
       } catch {
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned invalid JSON. Please try again." });
+        // Try repair for truncated JSON
+        try {
+          const repaired = repairTruncatedJson(jsonStr);
+          return JSON.parse(repaired);
+        } catch {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned invalid JSON. Please try again." });
+        }
       }
     }),
 
@@ -396,7 +409,7 @@ Respond ONLY with this JSON:
 {"questions":[{"id":"q1","problem":"<question>","options":{"A":"<a>","B":"<b>","C":"<c>","D":"<d>"},"correctAnswer":"A","explanation":"<1 sentence>"}]}`;
 
       const result = await invokeLLM({
-        model: "gpt-5-nano",
+        model: "claude-haiku-4-5",
         messages: [
           { role: "system", content: quizPrompt },
           { role: "user", content: `Generate ${input.count} ${input.difficulty} multiple-choice questions for ${input.subject}.` },
@@ -421,7 +434,7 @@ Respond ONLY with this JSON:
       const gradeHint = input.gradeLevel && GRADE_LEVEL_DESCRIPTIONS[input.gradeLevel] ? ` Tailor the tip for a ${GRADE_LEVEL_DESCRIPTIONS[input.gradeLevel].split(":")[0]} student.` : "";
       const tipPrompt = `You are TutorSnap, a friendly academic tutor. Generate a single, practical, actionable study tip for a student studying ${input.subject}.${gradeHint} The tip should be specific, encouraging, and 1-2 sentences long. Respond with ONLY the tip text, no preamble, no quotes.`;
       const result = await invokeLLM({
-        model: "gpt-5-nano",
+        model: "claude-haiku-4-5",
         messages: [
           { role: "system", content: tipPrompt },
           { role: "user", content: `Give me a study tip for ${input.subject}.` },
@@ -451,7 +464,7 @@ Respond ONLY with this JSON:
         : "";
       const systemPrompt = CHAT_SYSTEM_PROMPT + subjectContext + gradeContext;
       const result = await invokeLLM({
-        model: "gpt-5-nano",
+        model: "claude-haiku-4-5",
         messages: [
           { role: "system", content: systemPrompt },
           ...input.messages.map((m) => ({
@@ -506,7 +519,7 @@ Each has a 1-sentence hint (point to the concept, no answer).
 Respond ONLY with this JSON:
 {"problems":[{"id":"p1","problem":"<problem>","hint":"<1-sentence hint>"}]}`;
       const result = await invokeLLM({
-        model: "gpt-5-nano",
+        model: "claude-haiku-4-5",
         messages: [
           { role: "system", content: prompt },
           { role: "user", content: "Generate the similar problems now." },
