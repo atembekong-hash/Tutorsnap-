@@ -48,10 +48,11 @@ export function getApiBaseUrl(): string {
     }
   }
 
-  // For native apps (iOS/Android), use production domain as fallback
-  // This ensures APK builds have a working API endpoint without env vars
+  // For native apps (iOS/Android), use dev server as fallback
+  // This ensures APK builds have a working API endpoint with all keys configured
+  // TODO: Switch to production domain once production server has env vars configured
   if (ReactNative.Platform.OS !== "web") {
-    return "https://mathgenius-g8jxpbar.manus.space";
+    return "https://3000-ihgp54xd6plxy44heri4g-1b9c3b4c.us1.manus.computer";
   }
 
   // Fallback to empty (will use relative URL)
