@@ -34,10 +34,14 @@ export function createTRPCClient() {
         // because Android's HTTP stack rejects cross-origin credentialed requests
         // without a matching ACAO header — auth is handled via Bearer token instead.
         fetch(url, options) {
+          // Add 30-second timeout to all requests
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 30000);
           return fetch(url, {
             ...options,
             credentials: Platform.OS === "web" ? "include" : "omit",
-          });
+            signal: controller.signal,
+          }).finally(() => clearTimeout(timeoutId));
         },
       }),
     ],
