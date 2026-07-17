@@ -104,7 +104,7 @@ function ScanScreenContent() {
   });
 
   // ─── Submit image to solver ───────────────────────────────────────────────────
-  const solveImage = useCallback(async (uri: string) => {
+  const solveImage = useCallback(async (uri: string, mimeType?: string) => {
     if (!isOnline) {
       Alert.alert("No Internet", "You need an internet connection to solve problems.");
       resetToCamera();
@@ -114,6 +114,13 @@ function ScanScreenContent() {
     setSelectedImage(uri);
     try {
       let base64: string;
+      // Detect MIME type from URI extension if not provided
+      const ext = uri.split("?")[0].split(".").pop()?.toLowerCase() ?? "";
+      const resolvedMime = mimeType ??
+        (ext === "png" ? "image/png" :
+         ext === "gif" ? "image/gif" :
+         ext === "webp" ? "image/webp" : "image/jpeg");
+
       if (Platform.OS === "web") {
         const response = await fetch(uri);
         const blob = await response.blob();
@@ -129,7 +136,7 @@ function ScanScreenContent() {
       }
       solveMutation.mutate({
         imageBase64: base64,
-        mimeType: "image/jpeg",
+        mimeType: resolvedMime,
         subject: selectedSubject ?? "other",
         gradeLevel: gradeLevel ?? undefined,
       });
@@ -242,7 +249,9 @@ function ScanScreenContent() {
     });
     if (!result.canceled && result.assets[0]) {
       setIsCameraActive(false);
-      await solveImage(result.assets[0].uri);
+      const asset = result.assets[0];
+      // Pass the actual MIME type from the picker (e.g. image/png, image/jpeg)
+      await solveImage(asset.uri, asset.mimeType ?? undefined);
     }
   };
 
