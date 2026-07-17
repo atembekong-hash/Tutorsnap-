@@ -12,8 +12,6 @@ import {
   ScrollView,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
-import { useMutation } from "@tanstack/react-query";
-import { getApiBaseUrl } from "@/constants/oauth";
 import * as ImagePicker from "expo-image-picker";
 import * as H from "@/lib/haptics";
 import * as FileSystem from "expo-file-system/legacy";
@@ -26,15 +24,8 @@ import type { HistoryItem, MathSubject } from "@/shared/types";
 import { SubjectPicker } from "@/components/subject-picker";
 import { type SubjectId } from "@/lib/subjects";
 import { useNetworkStatus } from "@/hooks/use-network-status";
-import { CameraView } from "@/lib/camera-wrapper";
-import { useSafeCameraPermissions } from "@/lib/safe-camera-permissions";
+import { CameraView, useCameraPermissions } from "@/lib/camera-wrapper";
 import { GRADE_OPTIONS, GRADE_LABELS, loadGlobalGrade, saveGlobalGrade } from "@/lib/grade-levels";
-import { RealStabilityMonitor, type RealFrameStability } from "@/lib/real-stability-detector";
-import { analyzeImageQualityReal, getQualityFeedbackReal, type RealImageQuality } from "@/lib/real-image-analyzer";
-import { CaptureTimeoutHandler } from "@/lib/capture-timeout-handler";
-import { TorchManager, isLowLight, recommendTorchMode } from "@/lib/torch-handler";
-import { retryWithBackoff, isRetryableError } from "@/lib/error-recovery";
-import { streamText } from "@/lib/response-streamer";
 
 type ScanMode = "camera" | "preview" | "web-picker";
 
@@ -53,25 +44,13 @@ function ScanScreenContent() {
   const { isOnline } = useNetworkStatus();
   const [gradeLevel, setGradeLevel] = useState<string | null>(null);
   const [showGradePicker, setShowGradePicker] = useState(false);
-  const [frameStability, setFrameStability] = useState<RealFrameStability | null>(null);
-  const stabilityMonitorRef = useRef<RealStabilityMonitor | null>(null);
-  const unsubscribeStabilityRef = useRef<(() => void) | null>(null);
-  const autoCaptureLockRef = useRef(false);
-  const [imageQuality, setImageQuality] = useState<RealImageQuality | null>(null);
-  const timeoutHandlerRef = useRef(new CaptureTimeoutHandler());
-  const [showTimeoutOverride, setShowTimeoutOverride] = useState(false);
-  const [remainingTime, setRemainingTime] = useState(10);
-  const torchManagerRef = useRef<TorchManager | null>(null);
-  const [isTorchEnabled, setIsTorchEnabled] = useState(false);
-  const [isTorchSupported, setIsTorchSupported] = useState(false);
-  const [streamingAnswer, setStreamingAnswer] = useState("");
 
   // Load global grade default on mount
   useEffect(() => {
     loadGlobalGrade().then((g: string | null) => { if (g) setGradeLevel(g); });
   }, []);
 
-  const [permission, requestPermission] = useSafeCameraPermissions();
+  const [permission, requestPermission] = useCameraPermissions();
 
   // Request camera permission on mount (native only)
   useEffect(() => {
@@ -81,47 +60,14 @@ function ScanScreenContent() {
     }
   }, []);
 
-  // Manage camera active state and real stability monitoring
+  // Manage camera active state when screen gains/loses focus
   useFocusEffect(
     useCallback(() => {
       if (Platform.OS !== "web" && mode === "camera") {
+        // Activate camera once permission resolves (or if already granted)
         setIsCameraActive(true);
-        autoCaptureLockRef.current = false;
-        setShowTimeoutOverride(false);
-        timeoutHandlerRef.current.reset();
-        timeoutHandlerRef.current.startTimeout();
-        torchManagerRef.current = new TorchManager(cameraRef);
-        torchManagerRef.current.isSupported().then(setIsTorchSupported);
-        stabilityMonitorRef.current = new RealStabilityMonitor();
-        unsubscribeStabilityRef.current = stabilityMonitorRef.current.start(
-          cameraRef,
-          (stability) => {
-            setFrameStability(stability);
-            if (stabilityMonitorRef.current?.isReadyToCapture() && !autoCaptureLockRef.current && cameraRef.current) {
-              autoCaptureLockRef.current = true;
-              H.impactMedium();
-              takePicture();
-            }
-          }
-        );
-        const timeoutInterval = setInterval(() => {
-          const remaining = Math.ceil(timeoutHandlerRef.current.getRemainingTime() / 1000);
-          setRemainingTime(remaining);
-          if (timeoutHandlerRef.current.shouldEnableTimeoutFallback()) {
-            setShowTimeoutOverride(true);
-            clearInterval(timeoutInterval);
-          }
-        }, 500);
-        return () => clearInterval(timeoutInterval);
       }
-      return () => {
-        setIsCameraActive(false);
-        if (unsubscribeStabilityRef.current) unsubscribeStabilityRef.current();
-        if (stabilityMonitorRef.current) {
-          stabilityMonitorRef.current.stop();
-          stabilityMonitorRef.current = null;
-        }
-      };
+      return () => setIsCameraActive(false);
     }, [mode])
   );
 
@@ -132,22 +78,8 @@ function ScanScreenContent() {
     }
   }, [permission?.granted, mode]);
 
-
-
-  const solveMutation = useMutation({
-    mutationFn: async (input: { imageBase64: string; mimeType: string; subject: string; gradeLevel?: string }) => {
-      const response = await fetch(`${getApiBaseUrl()}/api/solve-direct`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(input),
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to solve image");
-      }
-      return response.json();
-    },
-    onSuccess: async (data: any) => {
+  const solveMutation = trpc.academic.solveFromImage.useMutation({
+    onSuccess: async (data) => {
       H.notificationSuccess();
       const historyItem: HistoryItem = {
         id: `history-${Date.now()}`,
@@ -170,11 +102,9 @@ function ScanScreenContent() {
       setIsProcessing(false);
       router.push({ pathname: "/solution", params: { data: JSON.stringify(data) } });
     },
-    onError: (error: any) => {
+    onError: () => {
       H.notificationError();
       setIsProcessing(false);
-      const errorMessage = error?.message || "Could not reach server";
-      Alert.alert("Error", errorMessage);
     },
   });
 
@@ -185,7 +115,7 @@ function ScanScreenContent() {
       H.impactMedium();
       const photo = await cameraRef.current.takePictureAsync({
         quality: 0.85,
-        base64: true,
+        base64: false,
         skipProcessing: false,
       });
       if (photo?.uri) {
@@ -193,10 +123,6 @@ function ScanScreenContent() {
         setIsCameraActive(false);
         setMode("preview");
         solveMutation.reset();
-        if (photo.base64) {
-          const quality = await analyzeImageQualityReal(photo.base64);
-          setImageQuality(quality);
-        }
       }
     } catch (_) {
       Alert.alert("Error", "Failed to take photo. Please try again.");
@@ -261,7 +187,6 @@ function ScanScreenContent() {
   // --- Retake: go back to camera ---
   const handleRetake = () => {
     setSelectedImage(null);
-    setImageQuality(null);
     solveMutation.reset();
     if (Platform.OS !== "web") {
       setMode("camera");
@@ -325,29 +250,9 @@ function ScanScreenContent() {
             <IconSymbol size={22} name="arrow.triangle.2.circlepath.camera" color="#FFFFFF" />
           </TouchableOpacity>
           <Text style={styles.cameraTitle}>Scan Problem</Text>
-          {/* Torch button */}
-          {isTorchSupported && (
-            <TouchableOpacity
-              accessibilityLabel="Toggle flashlight"
-              onPress={() => {
-                if (torchManagerRef.current) {
-                  torchManagerRef.current.toggleTorch().then(setIsTorchEnabled);
-                }
-              }}
-              style={styles.cameraTopBtn}
-            >
-              <IconSymbol size={22} name={isTorchEnabled ? "bolt.fill" : "bolt"} color={isTorchEnabled ? "#FBBF24" : "#FFFFFF"} />
-            </TouchableOpacity>
-          )}
-          {!isTorchSupported && <View style={styles.cameraTopBtn} />}
+          {/* Subject hint label */}
+          <View style={styles.cameraTopBtn} />
         </View>
-
-        {/* Real-time stability indicator bar */}
-        {frameStability && (
-          <View style={styles.stabilityIndicator}>
-            <View style={[styles.stabilityBar, { width: `${frameStability.overallStability}%`, backgroundColor: frameStability.isStable ? "#4ADE80" : "#FBBF24" }]} />
-          </View>
-        )}
 
         {/* Viewfinder corners */}
         <View style={styles.viewfinderGuide}>
@@ -357,42 +262,7 @@ function ScanScreenContent() {
           <View style={[styles.corner, styles.cornerBR]} />
         </View>
 
-        {/* Stability metrics display */}
-        {frameStability && (
-          <View style={styles.stabilityMetrics}>
-            <View style={styles.metricRow}>
-              <Text style={styles.metricLabel}>Focus</Text>
-              <View style={[styles.metricBar, { backgroundColor: frameStability.focusQuality > 70 ? "#4ADE80" : "#FBBF24" }]}>
-                <View style={[styles.metricFill, { width: `${frameStability.focusQuality}%` }]} />
-              </View>
-            </View>
-            <View style={styles.metricRow}>
-              <Text style={styles.metricLabel}>Motion</Text>
-              <View style={[styles.metricBar, { backgroundColor: frameStability.motionLevel < 30 ? "#4ADE80" : "#FBBF24" }]}>
-                <View style={[styles.metricFill, { width: `${100 - frameStability.motionLevel}%` }]} />
-              </View>
-            </View>
-          </View>
-        )}
-
-        {showTimeoutOverride && (
-          <View style={styles.timeoutOverrideContainer}>
-            <Text style={styles.timeoutOverrideText}>Can't find stable frame? Tap to capture anyway.</Text>
-            <TouchableOpacity
-              onPress={() => {
-                autoCaptureLockRef.current = true;
-                H.impactMedium();
-                takePicture();
-              }}
-              style={styles.timeoutOverrideBtn}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.timeoutOverrideBtnText}>Capture Now</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        <Text style={styles.cameraHint}>{frameStability?.isStable ? "Stable! Capturing..." : showTimeoutOverride ? `Manual capture available` : "Position the problem within the frame"}</Text>
+        <Text style={styles.cameraHint}>Position the problem within the frame</Text>
 
         {/* Bottom controls: Gallery | Shutter | Flip */}
         <View style={styles.bottomControls}>
@@ -434,59 +304,6 @@ function ScanScreenContent() {
               <IconSymbol size={16} name="xmark" color="#FFFFFF" />
             </TouchableOpacity>
           </View>
-
-          {imageQuality && (
-            <View style={{ marginBottom: 16 }}>
-              {imageQuality.shouldReject ? (
-                <View style={[styles.qualityAlert, { backgroundColor: `${colors.error}15`, borderColor: `${colors.error}30` }]}>
-                  <IconSymbol size={16} name="exclamationmark.circle.fill" color={colors.error} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.qualityAlertTitle, { color: colors.error }]}>Image Quality Too Poor</Text>
-                    <Text style={[styles.qualityAlertText, { color: colors.error }]}>{getQualityFeedbackReal(imageQuality)}</Text>
-                  </View>
-                </View>
-              ) : imageQuality.shouldEnhance ? (
-                <View style={[styles.qualityAlert, { backgroundColor: `${colors.warning}15`, borderColor: `${colors.warning}30` }]}>
-                  <IconSymbol size={16} name="info.circle.fill" color={colors.warning} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.qualityAlertTitle, { color: colors.warning }]}>Image Quality Acceptable</Text>
-                    <Text style={[styles.qualityAlertText, { color: colors.warning }]}>{getQualityFeedbackReal(imageQuality)}</Text>
-                  </View>
-                </View>
-              ) : (
-                <View style={[styles.qualityAlert, { backgroundColor: `${colors.success}15`, borderColor: `${colors.success}30` }]}>
-                  <IconSymbol size={16} name="checkmark.circle.fill" color={colors.success} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.qualityAlertTitle, { color: colors.success }]}>Image Quality Excellent</Text>
-                    <Text style={[styles.qualityAlertText, { color: colors.success }]}>{getQualityFeedbackReal(imageQuality)}</Text>
-                  </View>
-                </View>
-              )}
-              <View style={{ marginTop: 12, gap: 8 }}>
-                <View style={styles.qualityMetricRow}>
-                  <Text style={[styles.qualityMetricLabel, { color: colors.muted }]}>Brightness</Text>
-                  <View style={[styles.qualityMetricBar, { backgroundColor: colors.surface }]}>
-                    <View style={[styles.qualityMetricFill, { width: `${imageQuality.brightness}%`, backgroundColor: colors.primary }]} />
-                  </View>
-                  <Text style={[styles.qualityMetricValue, { color: colors.muted }]}>{imageQuality.brightness}%</Text>
-                </View>
-                <View style={styles.qualityMetricRow}>
-                  <Text style={[styles.qualityMetricLabel, { color: colors.muted }]}>Contrast</Text>
-                  <View style={[styles.qualityMetricBar, { backgroundColor: colors.surface }]}>
-                    <View style={[styles.qualityMetricFill, { width: `${imageQuality.contrast}%`, backgroundColor: colors.primary }]} />
-                  </View>
-                  <Text style={[styles.qualityMetricValue, { color: colors.muted }]}>{imageQuality.contrast}%</Text>
-                </View>
-                <View style={styles.qualityMetricRow}>
-                  <Text style={[styles.qualityMetricLabel, { color: colors.muted }]}>Sharpness</Text>
-                  <View style={[styles.qualityMetricBar, { backgroundColor: colors.surface }]}>
-                    <View style={[styles.qualityMetricFill, { width: `${imageQuality.sharpness}%`, backgroundColor: colors.primary }]} />
-                  </View>
-                  <Text style={[styles.qualityMetricValue, { color: colors.muted }]}>{imageQuality.sharpness}%</Text>
-                </View>
-              </View>
-            </View>
-          )}
 
           {solveMutation.isError && (
             <View style={{ marginBottom: 12 }}>
@@ -720,21 +537,6 @@ const styles = StyleSheet.create({
     position: "absolute", bottom: "18%", left: 0, right: 0, textAlign: "center",
     color: "rgba(255,255,255,0.8)", fontSize: 14, zIndex: 10,
   },
-  stabilityIndicator: { position: "absolute", top: 0, left: 0, right: 0, height: 3, backgroundColor: "rgba(255,255,255,0.1)", zIndex: 8 },
-  stabilityBar: { height: "100%", backgroundColor: "#FBBF24" },
-  stabilityMetrics: { position: "absolute", top: 80, left: 16, right: 16, zIndex: 9, backgroundColor: "rgba(0,0,0,0.6)", borderRadius: 12, padding: 12, gap: 8 },
-  metricRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  metricLabel: { fontSize: 12, fontWeight: "600", color: "#FFFFFF", width: 50 },
-  metricBar: { flex: 1, height: 6, backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 3, overflow: "hidden" },
-  metricFill: { height: "100%", backgroundColor: "#4ADE80" },
-  qualityAlert: { flexDirection: "row", alignItems: "flex-start", gap: 12, padding: 12, borderRadius: 12, borderWidth: 1, marginBottom: 12 },
-  qualityAlertTitle: { fontSize: 14, fontWeight: "700", marginBottom: 2 },
-  qualityAlertText: { fontSize: 13, lineHeight: 18 },
-  qualityMetricRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  qualityMetricLabel: { fontSize: 12, fontWeight: "600", width: 70 },
-  qualityMetricBar: { flex: 1, height: 6, borderRadius: 3, overflow: "hidden" },
-  qualityMetricFill: { height: "100%" },
-  qualityMetricValue: { fontSize: 12, fontWeight: "600", width: 40, textAlign: "right" },
   bottomControls: {
     position: "absolute", bottom: 48, left: 0, right: 0,
     flexDirection: "row", alignItems: "center", justifyContent: "space-evenly",
@@ -783,8 +585,4 @@ const styles = StyleSheet.create({
   gradeCell: { width: "30%", padding: 12, borderRadius: 14, borderWidth: 1.5, alignItems: "center", gap: 2 },
   gradeCellLabel: { fontSize: 13, fontWeight: "700", textAlign: "center" },
   gradeCellSub: { fontSize: 10, textAlign: "center" },
-  timeoutOverrideContainer: { position: "absolute", bottom: 140, left: 16, right: 16, backgroundColor: "rgba(251, 191, 36, 0.95)", borderRadius: 16, padding: 16, zIndex: 11, gap: 12 },
-  timeoutOverrideText: { fontSize: 14, fontWeight: "600", color: "#000", textAlign: "center" },
-  timeoutOverrideBtn: { backgroundColor: "#000", paddingVertical: 12, borderRadius: 12, alignItems: "center" },
-  timeoutOverrideBtnText: { fontSize: 16, fontWeight: "700", color: "#FBBF24" },
 });

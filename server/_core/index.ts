@@ -8,7 +8,6 @@ import { registerStorageProxy } from "./storageProxy";
 import { registerVoiceUploadRoute } from "./voiceUpload";
 import { registerChatStreamRoute } from "./chatStream";
 import { registerMathRenderRoute } from "./mathRender";
-import { registerSolveDirectRoute } from "./solve-direct";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 
@@ -68,7 +67,6 @@ async function startServer() {
   registerVoiceUploadRoute(app);
   registerChatStreamRoute(app);
   registerMathRenderRoute(app);
-  registerSolveDirectRoute(app);
 
   app.get("/api/health", (_req, res) => {
     res.json({ ok: true, timestamp: Date.now() });
@@ -94,16 +92,6 @@ async function startServer() {
       androidStoreUrl: "https://play.google.com/store/apps/details?id=com.tutorsnap.app",
       forceUpdate: false,
     });
-  });
-
-  // Add request logging middleware
-  app.use("/api/trpc", (req, res, next) => {
-    console.log(`[tRPC] ${req.method} ${req.path}`);
-    console.log(`[tRPC] Headers:`, req.headers);
-    if (req.body) {
-      console.log(`[tRPC] Body:`, JSON.stringify(req.body).substring(0, 500));
-    }
-    next();
   });
 
   app.use(

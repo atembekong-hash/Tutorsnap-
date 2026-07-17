@@ -3,7 +3,7 @@
  * Return whichever responds first with valid JSON
  */
 
-import { solveImageWithOpenAI } from "./openai-integration";
+import { invokeLLM } from "./llm";
 
 export interface ModelRaceResult {
   winner: string; // Which model won
@@ -13,63 +13,114 @@ export interface ModelRaceResult {
 }
 
 export interface RaceConfig {
-  imageBase64: string;
-  mimeType: string;
-  subject: string;
-  systemPrompt: string;
+  models: string[]; // e.g., ["gemini-2.0-flash", "gpt-4o-mini"]
+  messages: Array<{ role: "system" | "user"; content: string }>;
+  maxTokens: number;
   timeout: number; // ms
 }
 
 /**
- * Extract JSON from response that may contain fenced code blocks or extra text
- */
-function extractJsonFromResponse(text: string): string {
-  // Try to find JSON in fenced code blocks first
-  const fencedMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (fencedMatch && fencedMatch[1]) {
-    return fencedMatch[1].trim();
-  }
-
-  // Try to find JSON object directly
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (jsonMatch) {
-    return jsonMatch[0];
-  }
-
-  // If no JSON found, return original text
-  return text;
-}
-
-/**
- * Use OpenAI gpt-4o to solve math problems from images
- * Returns successful result with processing time
+ * Race multiple models in parallel
  */
 export async function raceModels(config: RaceConfig): Promise<ModelRaceResult> {
   const startTime = Date.now();
 
+  // Create promises for each model
+  const racePromises = config.models.map((model) =>
+    invokeModelWithTimeout(model, config, startTime)
+  );
+
+  // Race them - first to finish wins
   try {
-    console.log("[Model Race] Using OpenAI gpt-4o for image solving...");
-    const response = await solveImageWithOpenAI(
-      config.imageBase64,
-      config.mimeType,
-      config.subject,
-      config.systemPrompt
-    );
-
-    const processingTime = Date.now() - startTime;
-    console.log(`[Model Race] gpt-4o succeeded in ${processingTime}ms`);
-
-    return {
-      winner: "gpt-4o",
-      response,
-      confidence: 95,
-      processingTime,
-    };
+    const result = await Promise.race(racePromises);
+    return result;
   } catch (error) {
-    const errorMsg = error instanceof Error ? error.message : String(error);
-    console.error("[Model Race] OpenAI gpt-4o failed:", errorMsg);
-    throw new Error(`OpenAI gpt-4o failed: ${errorMsg}`);
+    // All models failed - throw error
+    throw new Error(`All models failed in race: ${error}`);
   }
 }
 
+/**
+ * Invoke a single model with timeout
+ */
+async function invokeModelWithTimeout(
+  model: string,
+  config: RaceConfig,
+  startTime: number
+): Promise<ModelRaceResult> {
+  try {
+    const result = await invokeLLM({
+      model,
+      messages: config.messages,
+      max_tokens: config.maxTokens,
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "solution",
+          schema: {
+            type: "object",
+            properties: {
+              answer: { type: "string" },
+              steps: { type: "array", items: { type: "string" } },
+              tips: { type: "array", items: { type: "string" } },
+            },
+            required: ["answer", "steps"],
+          },
+        },
+      },
+    });
 
+    const processingTime = Date.now() - startTime;
+
+    // Validate response
+    let responseText = "";
+    if (typeof result === "string") {
+      responseText = result;
+    } else if (result?.choices?.[0]?.message?.content) {
+      const content = result.choices[0].message.content;
+      responseText = typeof content === "string" ? content : JSON.stringify(content);
+    }
+
+    if (!responseText || responseText.length === 0) {
+      throw new Error("Empty response");
+    }
+
+    // Try to parse JSON to validate
+    try {
+      JSON.parse(responseText);
+    } catch {
+      throw new Error("Invalid JSON response");
+    }
+
+    return {
+      winner: model,
+      response: responseText,
+      confidence: 85,
+      processingTime,
+    };
+  } catch (error) {
+    // Model failed - throw to trigger next in race
+    throw new Error(`Model ${model} failed: ${error}`);
+  }
+}
+
+/**
+ * Sequential fallback: try models one by one
+ */
+export async function sequentialFallback(
+  config: RaceConfig
+): Promise<ModelRaceResult> {
+  const startTime = Date.now();
+
+  for (const model of config.models) {
+    try {
+      const result = await invokeModelWithTimeout(model, config, startTime);
+      return result;
+    } catch (error) {
+      console.log(`Model ${model} failed, trying next...`);
+      continue;
+    }
+  }
+
+  throw new Error("All models exhausted in fallback");
+}

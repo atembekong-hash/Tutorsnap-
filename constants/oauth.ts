@@ -45,9 +45,8 @@ export function getApiBaseUrl(): string {
     }
   }
 
-  // Fallback for native app: use hardcoded production API URL
-  // This ensures native APK can reach the backend server
-  return "https://mathgenius-g8jxpbar.manus.space";
+  // Fallback to empty (will use relative URL)
+  return "";
 }
 
 export const SESSION_TOKEN_KEY = "app_session_token";
