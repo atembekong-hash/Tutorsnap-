@@ -15,7 +15,7 @@ import { useRouter, useFocusEffect } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import * as H from "@/lib/haptics";
 import * as FileSystem from "expo-file-system/legacy";
-import * as ImageManipulator from "expo-image-manipulator";
+
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
@@ -28,7 +28,7 @@ import { CameraView, useCameraPermissions } from "@/lib/camera-wrapper";
 import { loadGlobalGrade } from "@/lib/grade-levels";
 
 // How long (ms) to wait after screen focus before auto-capturing
-const AUTO_CAPTURE_DELAY = 500;
+const AUTO_CAPTURE_DELAY = 0;
 
 type ScanMode = "camera" | "solving" | "web-picker";
 
@@ -151,23 +151,7 @@ function ScanScreenContent() {
           reader.readAsDataURL(blob);
         });
       } else {
-        // Compress to 768px max-width JPEG at 55% quality before encoding.
-        // This reduces payload size by ~8-12x vs raw camera output, dramatically
-        // cutting upload time and LLM vision processing time.
-        let compressedUri = uri;
-        try {
-          const manipResult = await ImageManipulator.manipulateAsync(
-            uri,
-            [{ resize: { width: 768 } }],
-            { compress: 0.55, format: ImageManipulator.SaveFormat.JPEG }
-          );
-          compressedUri = manipResult.uri;
-          // Always JPEG after compression
-          resolvedMime = "image/jpeg";
-        } catch (_) {
-          // Fall back to original if compression fails
-        }
-        base64 = await FileSystem.readAsStringAsync(compressedUri, {
+        base64 = await FileSystem.readAsStringAsync(uri, {
           encoding: FileSystem.EncodingType.Base64,
         });
       }

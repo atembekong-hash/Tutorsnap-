@@ -99,15 +99,13 @@ Always respond with valid JSON in this exact format:
 }`;
 }
 
-// Ultra-fast core prompt — used for the parallel race (attempt 1)
-// Requests ONLY the essential fields so the model finishes in ~400 tokens
-const IMAGE_SOLVE_FAST_PROMPT = `Expert tutor. Look at the image, identify the problem, solve it.
-Respond ONLY with this JSON (no markdown, no extra text, no extra fields):
-{"problem":"one sentence","subject":"subject id e.g. algebra","answer":"1-2 sentence answer","steps":[{"stepNumber":1,"title":"Step","explanation":"1 sentence","expression":"formula if any"}],"conceptExplained":"1 sentence","tips":["tip","tip","tip"],"relatedTopics":["t1","t2","t3"],"workedExample":{"title":"Example","problem":"similar","solution":"brief"}}`;
+// Ultra-fast core prompt — absolute minimum to render a useful solution screen
+const IMAGE_SOLVE_FAST_PROMPT = `Tutor. Read image. Solve. JSON only, no markdown:
+{"problem":"<question>","subject":"<id>","answer":"<answer>","steps":[{"stepNumber":1,"title":"<t>","explanation":"<e>","expression":"<f>"}],"conceptExplained":"<c>","tips":["t1","t2","t3"],"relatedTopics":["r1","r2","r3"],"workedExample":{"title":"Ex","problem":"<p>","solution":"<s>"}}`;
 
-// Last-resort fallback — absolute minimum, always fits in 300 tokens
-const IMAGE_SOLVE_MINIMAL_PROMPT = `Solve the problem in the image. JSON only:
-{"problem":"...","subject":"...","answer":"...","steps":[{"stepNumber":1,"title":"Step 1","explanation":"...","expression":""}],"conceptExplained":"...","tips":["tip"],"relatedTopics":["t1"],"workedExample":{"title":"Example","problem":"...","solution":"..."}}`;
+// Last-resort fallback
+const IMAGE_SOLVE_MINIMAL_PROMPT = `Solve image problem. JSON only:
+{"problem":"...","subject":"...","answer":"...","steps":[{"stepNumber":1,"title":"Step","explanation":"...","expression":""}],"conceptExplained":"...","tips":["t"],"relatedTopics":["r"],"workedExample":{"title":"Ex","problem":"...","solution":"..."}}`;
 
 // ─── Complexity detector ─────────────────────────────────────────────────────
 
@@ -383,7 +381,8 @@ Respond with plain text (no JSON). Be thorough and educational.`;
     .mutation(async ({ input }) => {
       const imageContent = [
         { type: "text" as const, text: `Identify and solve the question in this image. Return valid JSON only.` },
-        { type: "image_url" as const, image_url: { url: `data:${input.mimeType};base64,${input.imageBase64}` } },
+        // detail:"low" uses a fixed 85-token image budget instead of tiling — much faster for text-heavy math problems
+        { type: "image_url" as const, image_url: { url: `data:${input.mimeType};base64,${input.imageBase64}`, detail: "low" as const } },
       ];
 
       // Helper: attempt one LLM call and return parsed JSON or throw
