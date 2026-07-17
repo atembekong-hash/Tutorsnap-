@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { router, publicProcedure, protectedProcedure } from "./_core/trpc";
 import { invokeLLM } from "./_core/llm";
+import { invokeParallel } from "./_core/parallel-invoke";
 import { systemRouter } from "./_core/systemRouter";
 import { COOKIE_NAME } from "../shared/const";
 import { transcribeAudio } from "./_core/voiceTranscription";
@@ -400,7 +401,8 @@ Respond with plain text (no JSON). Be thorough and educational.`;
     }))
     .mutation(async ({ input }) => {
       try {
-        // Use gemini for vision (best multimodal) with gpt-5-mini fallback
+        // Parallel racing: send to Gemini Flash + GPT-4o-mini simultaneously
+        // Return whichever responds first with valid JSON
         const messages = [
           { role: "system" as const, content: IMAGE_SOLVE_SYSTEM_PROMPT + gradeContext(input.gradeLevel) },
           {
@@ -414,13 +416,15 @@ Respond with plain text (no JSON). Be thorough and educational.`;
             ],
           },
         ];
-        const params = {
-          model: "gemini-3-flash-preview" as const,
-          messages,
-          max_tokens: 800,
-          response_format: { type: "json_object" as const },
-        };
-        const jsonStr = await invokeLLMWithFallback("gemini-3-flash-preview", "claude-haiku-4-5", params);
+
+        const jsonStr = await invokeParallel(
+          ["gemini-2.0-flash", "gpt-4o-mini"],
+          {
+            messages,
+            max_tokens: 800,
+            response_format: { type: "json_object" },
+          }
+        );
         return JSON.parse(jsonStr);
       } catch (err: unknown) {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err instanceof Error ? err.message : "Failed to process image. Please try again." });
