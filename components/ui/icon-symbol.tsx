@@ -26,6 +26,7 @@ const MAPPING = {
   "brain.head.profile": "psychology",
   "wand.and.stars": "auto-fix-high",
   "bolt.fill": "bolt",
+  "bolt.slash.fill": "flash-off",
   // Camera / Media
   "camera.fill": "photo-camera",
   "arrow.triangle.2.circlepath.camera": "flip-camera-ios",

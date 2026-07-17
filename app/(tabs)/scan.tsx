@@ -40,6 +40,7 @@ function ScanScreenContent() {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isCameraActive, setIsCameraActive] = useState(Platform.OS !== "web");
   const [facing] = useState<"back" | "front">("back");
+  const [torchOn, setTorchOn] = useState(false);
   const { isOnline } = useNetworkStatus();
   const [gradeLevel, setGradeLevel] = useState<string | null>(null);
   const [selectedSubject] = useState<SubjectId | null>(null);
@@ -328,12 +329,21 @@ function ScanScreenContent() {
             ref={cameraRef}
             style={StyleSheet.absoluteFill}
             facing={facing}
+            enableTorch={torchOn}
           />
         )}
 
         {/* Top bar */}
         <View style={styles.cameraTopBar}>
-          <View style={styles.cameraTopBtn} />
+          {/* Torch toggle */}
+          <TouchableOpacity
+            onPress={() => { H.impactLight(); setTorchOn(t => !t); }}
+            style={[styles.cameraTopBtn, torchOn && styles.cameraTopBtnActive]}
+            accessibilityLabel={torchOn ? "Turn flashlight off" : "Turn flashlight on"}
+            activeOpacity={0.75}
+          >
+            <IconSymbol size={20} name={torchOn ? "bolt.fill" : "bolt.slash.fill"} color={torchOn ? "#FFD700" : "#FFFFFF"} />
+          </TouchableOpacity>
           <Text style={styles.cameraTitle}>Scan Problem</Text>
           <View style={styles.cameraTopBtn} />
         </View>
@@ -460,6 +470,11 @@ const styles = StyleSheet.create({
     width: 40, height: 40, borderRadius: 20,
     backgroundColor: "rgba(255,255,255,0.15)",
     alignItems: "center", justifyContent: "center",
+  },
+  cameraTopBtnActive: {
+    backgroundColor: "rgba(255,215,0,0.25)",
+    borderWidth: 1.5,
+    borderColor: "rgba(255,215,0,0.6)",
   },
   cameraTitle: { color: "#FFFFFF", fontSize: 17, fontWeight: "700" },
   viewfinderGuide: { position: "absolute", top: "25%", left: "10%", right: "10%", bottom: "25%", zIndex: 5 },
