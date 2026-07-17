@@ -156,9 +156,11 @@ function ScanScreenContent() {
       setIsProcessing(false);
       router.push({ pathname: "/solution", params: { data: JSON.stringify(data) } });
     },
-    onError: () => {
+    onError: (error) => {
       H.notificationError();
       setIsProcessing(false);
+      const errorMessage = error?.message || "Could not reach server";
+      Alert.alert("Error", errorMessage);
     },
   });
 

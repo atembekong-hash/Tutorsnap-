@@ -410,33 +410,37 @@ Respond with plain text (no JSON). Be thorough and educational.`;
     }))
     .mutation(async ({ input }) => {
       try {
-        // Parallel model racing: Gemini Flash vs GPT-4o-mini
-        const messages = [
-          { role: "system" as const, content: IMAGE_SOLVE_SYSTEM_PROMPT + gradeContext(input.gradeLevel) },
-          {
-            role: "user" as const,
-            content: [
-              { type: "text" as const, text: `Please identify and answer the question in this image. Subject hint: ${input.subject}` },
-              {
-                type: "image_url" as const,
-                image_url: { url: `data:${input.mimeType};base64,${input.imageBase64}` },
-              },
-            ],
-          },
-        ];
-
-        // Race two models in parallel
+        // Use OpenAI gpt-4o to solve the image
+        console.log(`[solveFromImage] Starting OpenAI gpt-4o for subject: ${input.subject}`);
         const raceResult = await raceModels({
-          models: ["gemini-2.0-flash", "gpt-4o-mini"],
-          messages: messages as Array<{ role: "system" | "user"; content: string }>,
-          maxTokens: 1200,
+          imageBase64: input.imageBase64,
+          mimeType: input.mimeType,
+          subject: input.subject,
+          systemPrompt: buildSolveSystemPrompt(input.subject) + gradeContext(input.gradeLevel),
           timeout: 30000,
         });
 
-        console.log(`[solveFromImage] Winner: ${raceResult.winner} (${raceResult.processingTime}ms)`);
+        console.log(`[solveFromImage] Success: ${raceResult.winner} (${raceResult.processingTime}ms)`);
         return JSON.parse(raceResult.response);
       } catch (err: unknown) {
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err instanceof Error ? err.message : "Failed to process image. Please try again." });
+        const errorMessage = err instanceof Error ? err.message : "Failed to process image. Please try again.";
+        console.error(`[solveFromImage] Error: ${errorMessage}`, err);
+        
+        // Provide more specific error messages
+        let userMessage = errorMessage;
+        if (errorMessage.includes("usage exhausted")) {
+          userMessage = "API quota exhausted. Please try again later.";
+        } else if (errorMessage.includes("timeout")) {
+          userMessage = "Request took too long. Please try a simpler problem.";
+        } else if (errorMessage.includes("401") || errorMessage.includes("unauthorized") || errorMessage.includes("Invalid API key")) {
+          userMessage = "OpenAI authentication failed. Please check your API key.";
+        } else if (errorMessage.includes("429") || errorMessage.includes("rate limit")) {
+          userMessage = "Too many requests. Please wait a moment and try again.";
+        } else if (errorMessage.includes("OpenAI")) {
+          userMessage = "OpenAI service error. Please try again.";
+        }
+        
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: userMessage });
       }
     }),
 
