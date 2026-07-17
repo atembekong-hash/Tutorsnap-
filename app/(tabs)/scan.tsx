@@ -26,8 +26,12 @@ import { type SubjectId } from "@/lib/subjects";
 import { useNetworkStatus } from "@/hooks/use-network-status";
 import { CameraView, useCameraPermissions } from "@/lib/camera-wrapper";
 import { GRADE_OPTIONS, GRADE_LABELS, loadGlobalGrade, saveGlobalGrade } from "@/lib/grade-levels";
-import { analyzeFrameStability, StabilityMonitor, type FrameStability } from "@/lib/stability-detector";
-import { analyzeImageQuality, getQualityFeedback, type ImageQuality } from "@/lib/image-quality-analyzer";
+import { RealStabilityMonitor, type RealFrameStability } from "@/lib/real-stability-detector";
+import { analyzeImageQualityReal, getQualityFeedbackReal, type RealImageQuality } from "@/lib/real-image-analyzer";
+import { CaptureTimeoutHandler } from "@/lib/capture-timeout-handler";
+import { TorchManager, isLowLight, recommendTorchMode } from "@/lib/torch-handler";
+import { retryWithBackoff, isRetryableError } from "@/lib/error-recovery";
+import { streamText } from "@/lib/response-streamer";
 
 type ScanMode = "camera" | "preview" | "web-picker";
 
@@ -46,11 +50,18 @@ function ScanScreenContent() {
   const { isOnline } = useNetworkStatus();
   const [gradeLevel, setGradeLevel] = useState<string | null>(null);
   const [showGradePicker, setShowGradePicker] = useState(false);
-  const [frameStability, setFrameStability] = useState<FrameStability | null>(null);
-  const stabilityMonitorRef = useRef(new StabilityMonitor());
-  const stabilityIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [frameStability, setFrameStability] = useState<RealFrameStability | null>(null);
+  const stabilityMonitorRef = useRef<RealStabilityMonitor | null>(null);
+  const unsubscribeStabilityRef = useRef<(() => void) | null>(null);
   const autoCaptureLockRef = useRef(false);
-  const [imageQuality, setImageQuality] = useState<ImageQuality | null>(null);
+  const [imageQuality, setImageQuality] = useState<RealImageQuality | null>(null);
+  const timeoutHandlerRef = useRef(new CaptureTimeoutHandler());
+  const [showTimeoutOverride, setShowTimeoutOverride] = useState(false);
+  const [remainingTime, setRemainingTime] = useState(10);
+  const torchManagerRef = useRef<TorchManager | null>(null);
+  const [isTorchEnabled, setIsTorchEnabled] = useState(false);
+  const [isTorchSupported, setIsTorchSupported] = useState(false);
+  const [streamingAnswer, setStreamingAnswer] = useState("");
 
   // Load global grade default on mount
   useEffect(() => {
@@ -67,29 +78,46 @@ function ScanScreenContent() {
     }
   }, []);
 
-  // Manage camera active state when screen gains/loses focus
+  // Manage camera active state and real stability monitoring
   useFocusEffect(
     useCallback(() => {
       if (Platform.OS !== "web" && mode === "camera") {
         setIsCameraActive(true);
-        stabilityMonitorRef.current.reset();
         autoCaptureLockRef.current = false;
-        if (stabilityIntervalRef.current) clearInterval(stabilityIntervalRef.current);
-        stabilityIntervalRef.current = setInterval(() => {
-          const stability = analyzeFrameStability();
-          setFrameStability(stability);
-          const shouldCapture = stabilityMonitorRef.current.addFrame(stability);
-          if (shouldCapture && !autoCaptureLockRef.current && cameraRef.current) {
-            autoCaptureLockRef.current = true;
-            H.impactMedium();
-            takePicture();
+        setShowTimeoutOverride(false);
+        timeoutHandlerRef.current.reset();
+        timeoutHandlerRef.current.startTimeout();
+        torchManagerRef.current = new TorchManager(cameraRef);
+        torchManagerRef.current.isSupported().then(setIsTorchSupported);
+        stabilityMonitorRef.current = new RealStabilityMonitor();
+        unsubscribeStabilityRef.current = stabilityMonitorRef.current.start(
+          cameraRef,
+          (stability) => {
+            setFrameStability(stability);
+            if (stabilityMonitorRef.current?.isReadyToCapture() && !autoCaptureLockRef.current && cameraRef.current) {
+              autoCaptureLockRef.current = true;
+              H.impactMedium();
+              takePicture();
+            }
           }
-        }, 200);
+        );
+        const timeoutInterval = setInterval(() => {
+          const remaining = Math.ceil(timeoutHandlerRef.current.getRemainingTime() / 1000);
+          setRemainingTime(remaining);
+          if (timeoutHandlerRef.current.shouldEnableTimeoutFallback()) {
+            setShowTimeoutOverride(true);
+            clearInterval(timeoutInterval);
+          }
+        }, 500);
+        return () => clearInterval(timeoutInterval);
       }
       return () => {
         setIsCameraActive(false);
-        if (stabilityIntervalRef.current) clearInterval(stabilityIntervalRef.current);
-        stabilityMonitorRef.current.reset();
+        if (unsubscribeStabilityRef.current) unsubscribeStabilityRef.current();
+        if (stabilityMonitorRef.current) {
+          stabilityMonitorRef.current.stop();
+          stabilityMonitorRef.current = null;
+        }
       };
     }, [mode])
   );
@@ -101,12 +129,7 @@ function ScanScreenContent() {
     }
   }, [permission?.granted, mode]);
 
-  // Cleanup stability monitoring on unmount
-  useEffect(() => {
-    return () => {
-      if (stabilityIntervalRef.current) clearInterval(stabilityIntervalRef.current);
-    };
-  }, []);
+
 
   const solveMutation = trpc.academic.solveFromImage.useMutation({
     onSuccess: async (data) => {
@@ -154,7 +177,7 @@ function ScanScreenContent() {
         setMode("preview");
         solveMutation.reset();
         if (photo.base64) {
-          const quality = await analyzeImageQuality(photo.base64);
+          const quality = await analyzeImageQualityReal(photo.base64);
           setImageQuality(quality);
         }
       }
@@ -285,14 +308,27 @@ function ScanScreenContent() {
             <IconSymbol size={22} name="arrow.triangle.2.circlepath.camera" color="#FFFFFF" />
           </TouchableOpacity>
           <Text style={styles.cameraTitle}>Scan Problem</Text>
-          {/* Subject hint label */}
-          <View style={styles.cameraTopBtn} />
+          {/* Torch button */}
+          {isTorchSupported && (
+            <TouchableOpacity
+              accessibilityLabel="Toggle flashlight"
+              onPress={() => {
+                if (torchManagerRef.current) {
+                  torchManagerRef.current.toggleTorch().then(setIsTorchEnabled);
+                }
+              }}
+              style={styles.cameraTopBtn}
+            >
+              <IconSymbol size={22} name={isTorchEnabled ? "bolt.fill" : "bolt"} color={isTorchEnabled ? "#FBBF24" : "#FFFFFF"} />
+            </TouchableOpacity>
+          )}
+          {!isTorchSupported && <View style={styles.cameraTopBtn} />}
         </View>
 
         {/* Real-time stability indicator bar */}
         {frameStability && (
           <View style={styles.stabilityIndicator}>
-            <View style={[styles.stabilityBar, { width: `${frameStability.stability}%`, backgroundColor: frameStability.isStable ? "#4ADE80" : "#FBBF24" }]} />
+            <View style={[styles.stabilityBar, { width: `${frameStability.overallStability}%`, backgroundColor: frameStability.isStable ? "#4ADE80" : "#FBBF24" }]} />
           </View>
         )}
 
@@ -322,7 +358,24 @@ function ScanScreenContent() {
           </View>
         )}
 
-        <Text style={styles.cameraHint}>{frameStability?.isStable ? "Stable! Capturing..." : "Position the problem within the frame"}</Text>
+        {showTimeoutOverride && (
+          <View style={styles.timeoutOverrideContainer}>
+            <Text style={styles.timeoutOverrideText}>Can't find stable frame? Tap to capture anyway.</Text>
+            <TouchableOpacity
+              onPress={() => {
+                autoCaptureLockRef.current = true;
+                H.impactMedium();
+                takePicture();
+              }}
+              style={styles.timeoutOverrideBtn}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.timeoutOverrideBtnText}>Capture Now</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        <Text style={styles.cameraHint}>{frameStability?.isStable ? "Stable! Capturing..." : showTimeoutOverride ? `Manual capture available` : "Position the problem within the frame"}</Text>
 
         {/* Bottom controls: Gallery | Shutter | Flip */}
         <View style={styles.bottomControls}>
@@ -372,7 +425,7 @@ function ScanScreenContent() {
                   <IconSymbol size={16} name="exclamationmark.circle.fill" color={colors.error} />
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.qualityAlertTitle, { color: colors.error }]}>Image Quality Too Poor</Text>
-                    <Text style={[styles.qualityAlertText, { color: colors.error }]}>{getQualityFeedback(imageQuality)}</Text>
+                    <Text style={[styles.qualityAlertText, { color: colors.error }]}>{getQualityFeedbackReal(imageQuality)}</Text>
                   </View>
                 </View>
               ) : imageQuality.shouldEnhance ? (
@@ -380,7 +433,7 @@ function ScanScreenContent() {
                   <IconSymbol size={16} name="info.circle.fill" color={colors.warning} />
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.qualityAlertTitle, { color: colors.warning }]}>Image Quality Acceptable</Text>
-                    <Text style={[styles.qualityAlertText, { color: colors.warning }]}>{getQualityFeedback(imageQuality)}</Text>
+                    <Text style={[styles.qualityAlertText, { color: colors.warning }]}>{getQualityFeedbackReal(imageQuality)}</Text>
                   </View>
                 </View>
               ) : (
@@ -388,7 +441,7 @@ function ScanScreenContent() {
                   <IconSymbol size={16} name="checkmark.circle.fill" color={colors.success} />
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.qualityAlertTitle, { color: colors.success }]}>Image Quality Excellent</Text>
-                    <Text style={[styles.qualityAlertText, { color: colors.success }]}>{getQualityFeedback(imageQuality)}</Text>
+                    <Text style={[styles.qualityAlertText, { color: colors.success }]}>{getQualityFeedbackReal(imageQuality)}</Text>
                   </View>
                 </View>
               )}
@@ -713,4 +766,8 @@ const styles = StyleSheet.create({
   gradeCell: { width: "30%", padding: 12, borderRadius: 14, borderWidth: 1.5, alignItems: "center", gap: 2 },
   gradeCellLabel: { fontSize: 13, fontWeight: "700", textAlign: "center" },
   gradeCellSub: { fontSize: 10, textAlign: "center" },
+  timeoutOverrideContainer: { position: "absolute", bottom: 140, left: 16, right: 16, backgroundColor: "rgba(251, 191, 36, 0.95)", borderRadius: 16, padding: 16, zIndex: 11, gap: 12 },
+  timeoutOverrideText: { fontSize: 14, fontWeight: "600", color: "#000", textAlign: "center" },
+  timeoutOverrideBtn: { backgroundColor: "#000", paddingVertical: 12, borderRadius: 12, alignItems: "center" },
+  timeoutOverrideBtnText: { fontSize: 16, fontWeight: "700", color: "#FBBF24" },
 });
