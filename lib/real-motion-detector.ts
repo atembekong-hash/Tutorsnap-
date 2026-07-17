@@ -3,15 +3,24 @@
  * Measures actual device movement to determine if camera is stable
  */
 
+import { Platform } from "react-native";
+
 let Accelerometer: any;
 let Gyroscope: any;
 
-try {
-  const sensors = require("expo-sensors");
-  Accelerometer = sensors.Accelerometer;
-  Gyroscope = sensors.Gyroscope;
-} catch (error) {
-  console.warn("Sensors not available:", error);
+// Only load sensors on native platforms
+if (Platform.OS !== "web") {
+  try {
+    const sensors = require("expo-sensors");
+    Accelerometer = sensors.Accelerometer;
+    Gyroscope = sensors.Gyroscope;
+  } catch (error) {
+    console.warn("Sensors not available:", error);
+    Accelerometer = { setUpdateInterval: () => {}, addListener: () => ({ remove: () => {} }) };
+    Gyroscope = { setUpdateInterval: () => {}, addListener: () => ({ remove: () => {} }) };
+  }
+} else {
+  // Web platform - no sensors available
   Accelerometer = { setUpdateInterval: () => {}, addListener: () => ({ remove: () => {} }) };
   Gyroscope = { setUpdateInterval: () => {}, addListener: () => ({ remove: () => {} }) };
 }
