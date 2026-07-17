@@ -207,39 +207,11 @@ function TodayRow({
     );
   }
 
-  // 2. Daily Challenge card
+  // 2. Daily Challenge card — moved to TripleWidget below
   const q = getTodayQuestion(gradeLevel);
   const qColor = getSubjectAccent(getAppearanceSubjectKey(q.subject), colorScheme);
-  if (isWidgetVisible("challenge")) cards.push(
-    <TouchableOpacity
-      key="challenge"
-      onPress={() => router.push("/daily-challenge" as any)}
-      activeOpacity={0.82}
-      style={[trStyles.card, { width: widgetWidth, backgroundColor: colors.surface, borderColor: challengeCompleted ? (challengeCorrect ? `${colors.success}50` : `${colors.error}35`) : `${qColor}35` }]}
-      accessibilityLabel="Open Daily Challenge"
-    >
-      <Text style={trStyles.cardEmoji}>⚡</Text>
-      <Text style={[trStyles.cardTitle, { color: colors.foreground }]} numberOfLines={1}>Daily Challenge</Text>
-      <Text style={[trStyles.cardSub, { color: colors.muted }]} numberOfLines={2}>
-        {challengeCompleted ? (challengeCorrect ? "✅ Done" : "❌ Attempted") : `+${q.bonusXp} XP`}
-      </Text>
-    </TouchableOpacity>
-  );
 
-  // 3. Global Rankings
-  if (isWidgetVisible("rankings")) cards.push(
-    <TouchableOpacity
-      key="rankings"
-      onPress={() => router.push("/(tabs)/leaderboard" as any)}
-      activeOpacity={0.82}
-      style={[trStyles.card, { width: widgetWidth, backgroundColor: colors.surface, borderColor: `${colors.warning}35` }]}
-      accessibilityLabel="View global rankings"
-    >
-      <Text style={trStyles.cardEmoji}>🏆</Text>
-      <Text style={[trStyles.cardTitle, { color: colors.foreground }]} numberOfLines={1}>Rankings</Text>
-      <Text style={[trStyles.cardSub, { color: colors.muted }]} numberOfLines={1}>Weekly top</Text>
-    </TouchableOpacity>
-  );
+  // 3. Global Rankings — moved to TripleWidget below
 
   // 4. Study Plan (only if sessions today)
   if (todaySlots.length > 0 && isWidgetVisible("study")) {
@@ -262,25 +234,7 @@ function TodayRow({
     );
   }
 
-  // 5. Weekly Goals (only if data available)
-  if (weeklyData && isWidgetVisible("goals")) {
-    cards.push(
-      <TouchableOpacity
-        key="goals"
-        onPress={() => router.push("/progress" as any)}
-        activeOpacity={0.82}
-        style={[trStyles.card, { width: widgetWidth, backgroundColor: colors.surface, borderColor: `${colors.success}35` }]}
-        accessibilityLabel="View weekly goals"
-      >
-        <Text style={trStyles.cardEmoji}>🎯</Text>
-        <Text style={[trStyles.cardTitle, { color: colors.foreground }]} numberOfLines={1}>Weekly Goal</Text>
-        <Text style={[trStyles.cardSub, { color: colors.muted }]} numberOfLines={2}>{weeklyData.goalPct}% · {weeklyData.quizzesThisWeek}/{weeklyData.weeklyGoal} quizzes</Text>
-        <View style={[trStyles.progressBar, { backgroundColor: colors.border }]}>
-          <View style={[trStyles.progressFill, { width: `${weeklyData.goalPct}%` as any, backgroundColor: colors.success }]} />
-        </View>
-      </TouchableOpacity>
-    );
-  }
+  // 5. Weekly Goals — moved to TripleWidget below
 
   // 6. Almost-There Badge (only if applicable and not dismissed)
   if (almostBadge && !bannerDismissed && isWidgetVisible("badge")) {
@@ -335,21 +289,107 @@ function TodayRow({
     );
   }
 
-  if (cards.length === 0) return null;
+  const challengeStatus = challengeCompleted
+    ? (challengeCorrect ? "✅ Done" : "❌ Attempted")
+    : `+${q.bonusXp} XP`;
+  const challengeBorderColor = challengeCompleted
+    ? (challengeCorrect ? `${colors.success}50` : `${colors.error}35`)
+    : `${qColor}35`;
 
   return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={trStyles.row}
-      style={trStyles.container}
-      snapToInterval={widgetWidth + 10}
-      snapToAlignment="start"
-      decelerationRate="fast"
-      pagingEnabled={false}
-    >
-      {cards}
-    </ScrollView>
+    <View>
+      {/* Horizontal small-widget strip (streak, study, badge, affiliate, etc.) */}
+      {cards.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={trStyles.row}
+          style={trStyles.container}
+          snapToInterval={widgetWidth + 10}
+          snapToAlignment="start"
+          decelerationRate="fast"
+          pagingEnabled={false}
+        >
+          {cards}
+        </ScrollView>
+      )}
+
+      {/* ── Triple Widget: Daily Challenge + Rankings + Weekly Goal ── */}
+      <View style={[trStyles.tripleCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        {/* Row 1: Daily Challenge */}
+        {isWidgetVisible("challenge") && (
+          <TouchableOpacity
+            onPress={() => router.push("/daily-challenge" as any)}
+            activeOpacity={0.82}
+            style={[trStyles.tripleRow, { borderColor: challengeBorderColor }]}
+            accessibilityLabel="Open Daily Challenge"
+          >
+            <View style={[trStyles.tripleIconWrap, { backgroundColor: `${qColor}18` }]}>
+              <Text style={trStyles.tripleEmoji}>⚡</Text>
+            </View>
+            <View style={trStyles.tripleContent}>
+              <Text style={[trStyles.tripleTitle, { color: colors.foreground }]} numberOfLines={1}>Daily Challenge</Text>
+              <Text style={[trStyles.tripleSub, { color: colors.muted }]} numberOfLines={1}>{challengeStatus}</Text>
+            </View>
+            <IconSymbol size={14} name="chevron.right" color={colors.muted} />
+          </TouchableOpacity>
+        )}
+
+        {/* Divider */}
+        {isWidgetVisible("challenge") && (isWidgetVisible("rankings") || (weeklyData && isWidgetVisible("goals"))) && (
+          <View style={[trStyles.tripleDivider, { backgroundColor: colors.border }]} />
+        )}
+
+        {/* Row 2: Rankings */}
+        {isWidgetVisible("rankings") && (
+          <TouchableOpacity
+            onPress={() => router.push("/(tabs)/leaderboard" as any)}
+            activeOpacity={0.82}
+            style={[trStyles.tripleRow, { borderColor: `${colors.warning}35` }]}
+            accessibilityLabel="View global rankings"
+          >
+            <View style={[trStyles.tripleIconWrap, { backgroundColor: `${colors.warning}18` }]}>
+              <Text style={trStyles.tripleEmoji}>🏆</Text>
+            </View>
+            <View style={trStyles.tripleContent}>
+              <Text style={[trStyles.tripleTitle, { color: colors.foreground }]} numberOfLines={1}>Rankings</Text>
+              <Text style={[trStyles.tripleSub, { color: colors.muted }]} numberOfLines={1}>Weekly leaderboard</Text>
+            </View>
+            <IconSymbol size={14} name="chevron.right" color={colors.muted} />
+          </TouchableOpacity>
+        )}
+
+        {/* Divider */}
+        {isWidgetVisible("rankings") && weeklyData && isWidgetVisible("goals") && (
+          <View style={[trStyles.tripleDivider, { backgroundColor: colors.border }]} />
+        )}
+
+        {/* Row 3: Weekly Goal */}
+        {weeklyData && isWidgetVisible("goals") && (
+          <TouchableOpacity
+            onPress={() => router.push("/progress" as any)}
+            activeOpacity={0.82}
+            style={[trStyles.tripleRow, { borderColor: `${colors.success}35` }]}
+            accessibilityLabel="View weekly goals"
+          >
+            <View style={[trStyles.tripleIconWrap, { backgroundColor: `${colors.success}18` }]}>
+              <Text style={trStyles.tripleEmoji}>🎯</Text>
+            </View>
+            <View style={trStyles.tripleContent}>
+              <Text style={[trStyles.tripleTitle, { color: colors.foreground }]} numberOfLines={1}>Weekly Goal</Text>
+              <View style={trStyles.tripleGoalRow}>
+                <View style={[trStyles.tripleProgressTrack, { backgroundColor: `${colors.success}20` }]}>
+                  <View style={[trStyles.tripleProgressFill, { width: `${weeklyData.goalPct}%` as any, backgroundColor: colors.success }]} />
+                </View>
+                <Text style={[trStyles.tripleGoalPct, { color: colors.success }]}>{weeklyData.goalPct}%</Text>
+              </View>
+              <Text style={[trStyles.tripleSub, { color: colors.muted }]} numberOfLines={1}>{weeklyData.quizzesThisWeek}/{weeklyData.weeklyGoal} quizzes</Text>
+            </View>
+            <IconSymbol size={14} name="chevron.right" color={colors.muted} />
+          </TouchableOpacity>
+        )}
+      </View>
+    </View>
   );
 }
 
@@ -372,6 +412,39 @@ const trStyles = StyleSheet.create({
   cardBadgeText: { fontSize: 10, fontWeight: "700" },
   progressBar: { height: 3, borderRadius: 2, marginTop: 3, overflow: "hidden", alignSelf: "stretch" },
   progressFill: { height: 3, borderRadius: 2 },
+  // Triple Widget styles
+  tripleCard: {
+    marginHorizontal: 16,
+    marginTop: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    overflow: "hidden",
+  },
+  tripleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 12,
+    minWidth: 0,
+  },
+  tripleIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  tripleEmoji: { fontSize: 18 },
+  tripleContent: { flex: 1, minWidth: 0, gap: 2 },
+  tripleTitle: { fontSize: 14, fontWeight: "700", flexShrink: 1 },
+  tripleSub: { fontSize: 12, flexShrink: 1 },
+  tripleGoalRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 2 },
+  tripleProgressTrack: { flex: 1, height: 6, borderRadius: 3, overflow: "hidden" },
+  tripleProgressFill: { height: 6, borderRadius: 3 },
+  tripleGoalPct: { fontSize: 12, fontWeight: "700", flexShrink: 0 },
+  tripleDivider: { height: 1, marginHorizontal: 16 },
 });
 
 
