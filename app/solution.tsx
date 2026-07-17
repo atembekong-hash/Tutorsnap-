@@ -1472,26 +1472,7 @@ export default function SolutionScreen() {
           </View>
         )}
 
-        {/* Discuss with Tutor */}
-        <TouchableOpacity
-          accessibilityLabel="Discuss this solution with AI Tutor"
-          onPress={handleDiscussWithTutor}
-          disabled={discussLoading}
-          style={[
-            styles.discussBtn,
-            { backgroundColor: `${colors.primary}12`, borderColor: `${colors.primary}30` },
-          ]}
-          activeOpacity={0.8}
-        >
-          {discussLoading ? (
-            <ActivityIndicator size="small" color={colors.primary} />
-          ) : (
-            <IconSymbol size={18} name="bubble.left.fill" color={colors.primary} />
-          )}
-          <Text style={[styles.discussBtnText, { color: colors.primary }]}>
-            Discuss with Tutor
-          </Text>
-        </TouchableOpacity>
+
 
 
       </ScrollView>
