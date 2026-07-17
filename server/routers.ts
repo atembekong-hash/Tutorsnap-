@@ -3,6 +3,7 @@ import { router, publicProcedure, protectedProcedure } from "./_core/trpc";
 import { invokeLLM } from "./_core/llm";
 import { invokeParallel } from "./_core/parallel-invoke";
 import { scoreConfidence, shouldRetry, generateRetryPrompt } from "./_core/confidence-scorer";
+import { generateCacheKey, getCachedResponse, setCachedResponse, getCacheStats } from "./_core/response-cache";
 import { systemRouter } from "./_core/systemRouter";
 import { COOKIE_NAME } from "../shared/const";
 import { transcribeAudio } from "./_core/voiceTranscription";
@@ -402,6 +403,14 @@ Respond with plain text (no JSON). Be thorough and educational.`;
     }))
     .mutation(async ({ input }) => {
       try {
+        // Check cache first
+        const cacheKey = generateCacheKey(input.imageBase64, input.subject, input.gradeLevel);
+        const cachedResponse = getCachedResponse(cacheKey);
+        if (cachedResponse) {
+          console.log(`[Solve] Returning cached response for ${input.subject}`);
+          return cachedResponse;
+        }
+        
         // Parallel racing: send to Gemini Flash + GPT-4o-mini simultaneously
         // Return whichever responds first with valid JSON
         const messages = [
@@ -496,6 +505,11 @@ Respond ONLY with this JSON:
       let parsed: any;
       try { parsed = JSON.parse(jsonStr); } catch { throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid JSON in AI response" }); }
       return parsed.questions ?? [];
+    }),
+
+  cacheStats: publicProcedure
+    .query(() => {
+      return getCacheStats();
     }),
 
   studyTip: publicProcedure
