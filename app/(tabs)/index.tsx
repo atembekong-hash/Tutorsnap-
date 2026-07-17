@@ -494,6 +494,7 @@ function SolveScreenContent() {
   const [undoToast, setUndoToast] = useState(false);
   const undoToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showQuickAskSubjectPicker, setShowQuickAskSubjectPicker] = useState(false);
+  const [showSolveSubjectPicker, setShowSolveSubjectPicker] = useState(false);
   // Round 40: recent subjects row
   const [recentSubjects, setRecentSubjects] = useState<SubjectId[]>([]);
   // Round 40: quick ask history dropdown
@@ -1048,64 +1049,93 @@ function SolveScreenContent() {
               </View>
             </View>
 
-            {/* Unified action row: Any level | All Subjects | Solve with AI */}
-            <View style={styles.unifiedActionRow}>
+            {/* Unified action card: Any level | All Subjects | Solve with AI */}
+            <View style={[styles.solveTripleCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
 
-              {/* Pill 1: Grade level */}
+              {/* Row 1: Grade level */}
               <TouchableOpacity
                 onPress={() => { H.impactLight(); setShowSolveGradePicker(true); }}
-                style={[styles.actionPill, {
-                  backgroundColor: homeGradeLevel ? `${colors.primary}15` : colors.surface,
-                  borderColor: homeGradeLevel ? colors.primary : colors.border,
-                }]}
+                activeOpacity={0.82}
+                style={[styles.solveTripleRow]}
                 accessibilityLabel={homeGradeLevel ? `Grade level: ${GRADE_LABELS[homeGradeLevel]}` : "Set grade level"}
-                activeOpacity={0.75}
               >
-                <IconSymbol size={13} name="graduationcap.fill" color={homeGradeLevel ? colors.primary : colors.muted} />
-                <Text style={[styles.actionPillText, { color: homeGradeLevel ? colors.primary : colors.muted }]} numberOfLines={1}>
-                  {homeGradeLevel ? GRADE_LABELS[homeGradeLevel] : "Any level"}
-                </Text>
-                <Text style={[styles.actionPillChevron, { color: homeGradeLevel ? colors.primary : colors.muted }]}>▾</Text>
+                <View style={[styles.solveTripleIconWrap, { backgroundColor: `${colors.primary}18` }]}>
+                  <IconSymbol size={18} name="graduationcap.fill" color={colors.primary} />
+                </View>
+                <View style={styles.solveTripleContent}>
+                  <Text style={[styles.solveTripleTitle, { color: colors.foreground }]} numberOfLines={1}>Grade Level</Text>
+                  <Text style={[styles.solveTripleSub, { color: colors.muted }]} numberOfLines={1}>
+                    {homeGradeLevel ? GRADE_LABELS[homeGradeLevel] : "Any level — AI decides depth"}
+                  </Text>
+                </View>
+                <IconSymbol size={14} name="chevron.right" color={colors.muted} />
               </TouchableOpacity>
 
-              {/* Pill 2: Subject picker — forced to same flex:1 size as the other pills */}
-              <SubjectPicker
-                value={selectedSubject}
-                onChange={handleSubjectChange}
-                showAll
-                triggerStyle={{
-                  flex: 1,
-                  alignSelf: "stretch",
-                  paddingVertical: 11,
-                  paddingHorizontal: 10,
-                  borderRadius: 14,
-                  borderWidth: 1.5,
-                  justifyContent: "center",
-                }}
-              />
+              <View style={[styles.solveTripleDivider, { backgroundColor: colors.border }]} />
 
-              {/* Pill 3: Solve with AI */}
+              {/* Row 2: Subject picker */}
+              <TouchableOpacity
+                onPress={() => { H.impactLight(); setShowSolveSubjectPicker(true); }}
+                activeOpacity={0.82}
+                style={[styles.solveTripleRow]}
+                accessibilityLabel={selectedSubject ? `Subject: ${getSubjectDef(selectedSubject).label}` : "All subjects"}
+              >
+                <View style={[styles.solveTripleIconWrap, { backgroundColor: selectedSubject ? `${getSubjectDef(selectedSubject).color}20` : `${colors.secondary}18` }]}>
+                  <Text style={{ fontSize: 18 }}>{selectedSubject ? getSubjectDef(selectedSubject).emoji : "📚"}</Text>
+                </View>
+                <View style={styles.solveTripleContent}>
+                  <Text style={[styles.solveTripleTitle, { color: colors.foreground }]} numberOfLines={1}>Subject</Text>
+                  <Text style={[styles.solveTripleSub, { color: colors.muted }]} numberOfLines={1}>
+                    {selectedSubject ? getSubjectDef(selectedSubject).label : "All subjects"}
+                  </Text>
+                </View>
+                <IconSymbol size={14} name="chevron.right" color={colors.muted} />
+              </TouchableOpacity>
+
+              <View style={[styles.solveTripleDivider, { backgroundColor: colors.border }]} />
+
+              {/* Row 3: Solve with AI */}
               <TouchableOpacity
                 accessibilityLabel="Solve problem"
                 onPress={handleSolve}
                 disabled={!problem.trim() || solveMutation.isPending || !isOnline}
                 activeOpacity={0.85}
-                style={[styles.actionPill, styles.actionPillSolve, {
-                  backgroundColor: isOnline ? colors.primary : colors.muted,
-                  borderColor: isOnline ? colors.primary : colors.muted,
-                  opacity: !problem.trim() || solveMutation.isPending || !isOnline ? 0.6 : 1,
+                style={[styles.solveTripleRow, {
+                  opacity: !problem.trim() || solveMutation.isPending || !isOnline ? 0.55 : 1,
                 }]}
               >
-                {solveMutation.isPending ? (
-                  <><ActivityIndicator color="#FFFFFF" size="small" /><Text style={styles.actionPillSolveText}>Solving...</Text></>
-                ) : !isOnline ? (
-                  <><IconSymbol size={14} name="wifi.slash" color="#FFFFFF" /><Text style={styles.actionPillSolveText}>Offline</Text></>
-                ) : (
-                  <><IconSymbol size={14} name="wand.and.stars" color="#FFFFFF" /><Text style={styles.actionPillSolveText}>Solve with AI</Text></>
+                <View style={[styles.solveTripleIconWrap, { backgroundColor: isOnline ? `${colors.primary}18` : `${colors.muted}20` }]}>
+                  {solveMutation.isPending ? (
+                    <ActivityIndicator color={colors.primary} size="small" />
+                  ) : (
+                    <IconSymbol size={18} name={isOnline ? "wand.and.stars" : "wifi.slash"} color={isOnline ? colors.primary : colors.muted} />
+                  )}
+                </View>
+                <View style={styles.solveTripleContent}>
+                  <Text style={[styles.solveTripleTitle, { color: isOnline ? colors.foreground : colors.muted }]} numberOfLines={1}>
+                    {solveMutation.isPending ? "Solving…" : !isOnline ? "Offline" : "Solve with AI"}
+                  </Text>
+                  <Text style={[styles.solveTripleSub, { color: colors.muted }]} numberOfLines={1}>
+                    {solveMutation.isPending ? "Building your solution…" : !isOnline ? "No internet connection" : problem.trim() ? "Tap to get step-by-step solution" : "Type a problem above first"}
+                  </Text>
+                </View>
+                {!solveMutation.isPending && isOnline && (
+                  <View style={[styles.solveTripleSolveBtn, { backgroundColor: colors.primary, opacity: problem.trim() ? 1 : 0.4 }]}>
+                    <IconSymbol size={14} name="arrow.right" color="#FFFFFF" />
+                  </View>
                 )}
               </TouchableOpacity>
 
             </View>
+
+            {/* Hidden controlled SubjectPicker for the stacked card row */}
+            <SubjectPicker
+              value={selectedSubject}
+              onChange={handleSubjectChange}
+              showAll
+              open={showSolveSubjectPicker}
+              onClose={() => setShowSolveSubjectPicker(false)}
+            />
 
             {/* Offline warning strip */}
             {!isOnline && (
@@ -2136,7 +2166,43 @@ const styles = StyleSheet.create({
     right: 12,
   },
 
-  // ── Unified 3-pill action row ─────────────────────────────────────────────
+  // ── Solve action stacked card (mirrors tripleCard pattern) ─────────────────
+  solveTripleCard: {
+    marginHorizontal: 16,
+    marginTop: 12,
+    borderRadius: 20,
+    borderWidth: 1,
+    overflow: "hidden",
+  },
+  solveTripleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 12,
+    minWidth: 0,
+  },
+  solveTripleIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  solveTripleContent: { flex: 1, minWidth: 0, gap: 2 },
+  solveTripleTitle: { fontSize: 14, fontWeight: "700", flexShrink: 1 },
+  solveTripleSub: { fontSize: 12, flexShrink: 1 },
+  solveTripleDivider: { height: 1, marginHorizontal: 16 },
+  solveTripleSolveBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  // Keep legacy pill styles for any other potential references
   unifiedActionRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -2165,7 +2231,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   actionPillSolve: {
-    // Override: solid filled pill for the primary CTA
     borderWidth: 0,
   },
   actionPillSolveText: {
