@@ -5,6 +5,7 @@ import type { AppRouter } from "@/server/routers";
 import { getApiBaseUrl } from "@/constants/oauth";
 import * as Auth from "@/lib/_core/auth";
 import { Platform } from "react-native";
+import { trpcRequestLoggerLink } from "@/lib/trpc-request-logger";
 
 /**
  * tRPC React client for type-safe API calls.
@@ -22,6 +23,7 @@ export const trpc = createTRPCReact<AppRouter>();
 export function createTRPCClient() {
   return trpc.createClient({
     links: [
+      trpcRequestLoggerLink,
       httpBatchLink({
         url: `${getApiBaseUrl()}/api/trpc`,
         // tRPC v11: transformer MUST be inside httpBatchLink, not at root

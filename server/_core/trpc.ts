@@ -7,8 +7,38 @@ const t = initTRPC.context<TrpcContext>().create({
   transformer: superjson,
 });
 
+const loggingMiddleware = t.middleware(async (opts) => {
+  const { path, type, input } = opts;
+  console.log('[tRPC Server Request]', {
+    timestamp: new Date().toISOString(),
+    type,
+    path,
+    input: JSON.stringify(input),
+    inputType: typeof input,
+    inputIsUndefined: input === undefined,
+  });
+  try {
+    const result = await opts.next();
+    console.log('[tRPC Server Response]', {
+      timestamp: new Date().toISOString(),
+      type,
+      path,
+      success: true,
+    });
+    return result;
+  } catch (error) {
+    console.log('[tRPC Server Error]', {
+      timestamp: new Date().toISOString(),
+      type,
+      path,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    throw error;
+  }
+});
+
 export const router = t.router;
-export const publicProcedure = t.procedure;
+export const publicProcedure = t.procedure.use(loggingMiddleware);
 
 const requireUser = t.middleware(async (opts) => {
   const { ctx, next } = opts;
@@ -25,9 +55,9 @@ const requireUser = t.middleware(async (opts) => {
   });
 });
 
-export const protectedProcedure = t.procedure.use(requireUser);
+export const protectedProcedure = t.procedure.use(loggingMiddleware).use(requireUser);
 
-export const adminProcedure = t.procedure.use(
+export const adminProcedure = t.procedure.use(loggingMiddleware).use(
   t.middleware(async (opts) => {
     const { ctx, next } = opts;
 
