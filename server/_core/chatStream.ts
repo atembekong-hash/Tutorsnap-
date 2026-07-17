@@ -165,10 +165,18 @@ export function registerChatStreamRoute(app: Express) {
       const profileCtx = buildTutorProfileContext(tutorProfile);
       const systemPrompt = CHAT_SYSTEM_PROMPT + subjectContext + gradeCtx + profileCtx;
 
+      // Scale max_tokens by the complexity of the last user message:
+      // ≤10 words → 600 (quick factual/short answer)
+      // ≤30 words → 1000 (medium explanation)
+      // >30 words → 1500 (long/multi-part question)
+      const lastUserMsg = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
+      const wordCount = lastUserMsg.trim().split(/\s+/).filter(Boolean).length;
+      const streamMaxTokens = wordCount <= 10 ? 600 : wordCount <= 30 ? 1000 : 1500;
+
       const payload = {
         model: "gpt-4o-mini",
         stream: true,
-        max_tokens: 2000,
+        max_tokens: streamMaxTokens,
         messages: [
           { role: "system", content: systemPrompt },
           ...messages.map((m) => ({ role: m.role, content: m.content })),
