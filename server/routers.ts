@@ -99,41 +99,39 @@ Always respond with valid JSON in this exact format:
 }`;
 }
 
-const IMAGE_SOLVE_SYSTEM_PROMPT = `You are TutorSnap, an expert academic tutor and professor covering ALL subjects at ALL difficulty levels.
-Analyze the image and identify any question, problem, or text in it.
-Determine the subject area automatically, then solve or answer it COMPLETELY and COMPREHENSIVELY.
+const IMAGE_SOLVE_SYSTEM_PROMPT = `You are TutorSnap, an expert academic tutor covering ALL subjects at ALL levels.
+Look at the image, identify the question or problem, then solve it completely.
 
-CRITICAL RULES:
-- NEVER refuse to answer or say a problem is too hard. Solve EVERYTHING.
-- Produce an EXHAUSTIVE, DEEPLY DETAILED solution. Aim for AT LEAST 10-15 steps, each with a thorough multi-sentence explanation.
-- Each step explanation MUST be at least 5-8 sentences: state what you are doing, WHY, the rule or theorem that justifies it, any edge cases, and how it connects to the next step.
-- Include a WORKED EXAMPLE section showing a COMPLETE similar problem solved from scratch — this example must itself have at least 8 steps.
-- The conceptExplained field must be a LONG, RICH paragraph (10-15 sentences) covering: the underlying theory, historical context or motivation, formal definition, intuitive explanation, when the concept applies, common pitfalls, and how it connects to at least 3 related topics.
-- The answer field must be a FULL paragraph (5-8 sentences) restating the result, interpreting it, and noting any important caveats or special cases.
-- Tips must be detailed, actionable, and specific (4-6 sentences each). Include at least 4 tips.
-- The workedExample.solution must be a LONG narrative (at least 300 words) walking through every single step.
+RULES:
+- NEVER refuse. Solve everything you see.
+- Be accurate, clear, and educational.
+- Keep each step explanation to 2-3 focused sentences.
+- The answer field: 2-3 sentences stating the result and key insight.
+- The conceptExplained field: 3-5 sentences covering the core idea and why it matters.
+- Include 3 practical tips (1-2 sentences each).
+- Include a short worked example (3-5 steps).
 
-Always respond with valid JSON in this exact format:
+Respond ONLY with valid JSON — no markdown fences, no extra text:
 {
-  "problem": "the question or problem you found in the image",
-  "subject": "the detected subject id (e.g. algebra, calculus, biology, us_history, etc.)",
-  "answer": "A FULL PARAGRAPH (5-8 sentences): state the result, interpret it, note units, explain any special cases or caveats, and summarise what was learned.",
+  "problem": "the question or problem found in the image",
+  "subject": "detected subject id (e.g. algebra, calculus, biology, us_history)",
+  "answer": "2-3 sentence answer stating the result and key insight.",
   "steps": [
     {
       "stepNumber": 1,
-      "title": "Descriptive step title",
-      "explanation": "DETAILED explanation (5-8 sentences): what you are doing, why, the rule/theorem that justifies it, any edge cases, and how it leads to the next step.",
-      "expression": "The key formula, equation, or expression"
+      "title": "Step title",
+      "explanation": "2-3 sentence explanation of what and why.",
+      "expression": "key formula or expression"
     }
   ],
   "workedExample": {
-    "title": "Worked Example: [brief description]",
-    "problem": "A similar but distinct example problem",
-    "solution": "LONG narrative solution (at least 300 words): walk through every single step, explain every operation, state every rule used, and interpret the final result."
+    "title": "Worked Example",
+    "problem": "A similar example problem",
+    "solution": "Step-by-step solution of the example (3-5 steps, ~100 words)."
   },
-  "conceptExplained": "A LONG, RICH paragraph (10-15 sentences): underlying theory, historical context or motivation, formal definition, intuitive explanation, when the concept applies, common pitfalls, and connections to at least 3 related topics.",
-  "tips": ["Detailed tip 1: 4-6 sentences", "Detailed tip 2: 4-6 sentences", "Detailed tip 3: 4-6 sentences", "Detailed tip 4: 4-6 sentences"],
-  "relatedTopics": ["Topic 1", "Topic 2", "Topic 3", "Topic 4", "Topic 5"]
+  "conceptExplained": "3-5 sentence explanation of the core concept and why it matters.",
+  "tips": ["Tip 1 (1-2 sentences)", "Tip 2 (1-2 sentences)", "Tip 3 (1-2 sentences)"],
+  "relatedTopics": ["Topic 1", "Topic 2", "Topic 3"]
 }`;
 
 // ─── Complexity detector ─────────────────────────────────────────────────────
@@ -409,13 +407,13 @@ Respond with plain text (no JSON). Be thorough and educational.`;
     }))
     .mutation(async ({ input }) => {
       try {
-        // Use gemini for vision (best multimodal) with gpt-5-mini fallback
+        const subjectHint = input.subject && input.subject !== "other" ? ` Subject: ${input.subject}.` : "";
         const messages = [
           { role: "system" as const, content: IMAGE_SOLVE_SYSTEM_PROMPT + gradeContext(input.gradeLevel) },
           {
             role: "user" as const,
             content: [
-              { type: "text" as const, text: `Please identify and answer the question in this image. Subject hint: ${input.subject}` },
+              { type: "text" as const, text: `Identify and solve the question in this image.${subjectHint} Return valid JSON only.` },
               {
                 type: "image_url" as const,
                 image_url: { url: `data:${input.mimeType};base64,${input.imageBase64}` },
@@ -423,13 +421,15 @@ Respond with plain text (no JSON). Be thorough and educational.`;
             ],
           },
         ];
+        // Use 1500 tokens — enough for a clear, complete answer without timeout risk.
+        // Primary: gemini-3-flash-preview (fast vision). Fallback: gpt-4o (reliable vision).
         const params = {
           model: "gemini-3-flash-preview" as const,
           messages,
-          max_tokens: 2500,
+          max_tokens: 1500,
           response_format: { type: "json_object" as const },
         };
-        const jsonStr = await invokeLLMWithFallback("gemini-3-flash-preview", "claude-haiku-4-5", params);
+        const jsonStr = await invokeLLMWithFallback("gemini-3-flash-preview", "gpt-4o", params);
         return JSON.parse(jsonStr);
       } catch (err: unknown) {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err instanceof Error ? err.message : "Failed to process image. Please try again." });
