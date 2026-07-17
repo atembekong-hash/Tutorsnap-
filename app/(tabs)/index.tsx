@@ -1134,43 +1134,60 @@ function SolveScreenContent() {
               <View style={[styles.sectionLabelDot, { backgroundColor: colors.success }]} />
               <Text style={[styles.sectionLabelText, { color: colors.muted }]}>EXPLORE</Text>
             </View>
-            <View style={styles.featureRow}>
+            <View style={[trStyles.tripleCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              {/* Row 1: Scan */}
               <TouchableOpacity
                 onPress={() => router.push("/(tabs)/scan" as any)}
-                style={[styles.featureCard, { backgroundColor: `${colors.primary}12`, borderColor: `${colors.primary}25` }]}
-                activeOpacity={0.8}
+                activeOpacity={0.82}
+                style={trStyles.tripleRow}
+                accessibilityLabel="Go to scan"
               >
-                <View style={[styles.featureIcon, { backgroundColor: colors.primary }]}>
-                  <IconSymbol size={20} name="camera.fill" color="#FFFFFF" />
+                <View style={[trStyles.tripleIconWrap, { backgroundColor: `${colors.primary}18` }]}>
+                  <IconSymbol size={18} name="camera.fill" color={colors.primary} />
                 </View>
-                <Text style={[styles.featureTitle, { color: colors.foreground }]} numberOfLines={1}>Scan</Text>
-                <Text style={[styles.featureDesc, { color: colors.muted }]} numberOfLines={2}>Photo to solution</Text>
+                <View style={trStyles.tripleContent}>
+                  <Text style={[trStyles.tripleTitle, { color: colors.foreground }]} numberOfLines={1}>Scan</Text>
+                  <Text style={[trStyles.tripleSub, { color: colors.muted }]} numberOfLines={1}>Photo to solution</Text>
+                </View>
+                <IconSymbol size={14} name="chevron.right" color={colors.muted} />
               </TouchableOpacity>
 
+              <View style={[trStyles.tripleDivider, { backgroundColor: colors.border }]} />
+
+              {/* Row 2: Practice */}
               <TouchableOpacity
                 accessibilityLabel="Go to practice"
                 onPress={() => router.push("/(tabs)/practice" as any)}
-                style={[styles.featureCard, { backgroundColor: `${colors.secondary}12`, borderColor: `${colors.secondary}25` }]}
-                activeOpacity={0.8}
+                activeOpacity={0.82}
+                style={trStyles.tripleRow}
               >
-                <View style={[styles.featureIcon, { backgroundColor: colors.secondary }]}>
-                  <IconSymbol size={20} name="pencil.and.list.clipboard" color="#FFFFFF" />
+                <View style={[trStyles.tripleIconWrap, { backgroundColor: `${colors.secondary}18` }]}>
+                  <IconSymbol size={18} name="pencil.and.list.clipboard" color={colors.secondary} />
                 </View>
-                <Text style={[styles.featureTitle, { color: colors.foreground }]} numberOfLines={1}>Practice</Text>
-                <Text style={[styles.featureDesc, { color: colors.muted }]} numberOfLines={2}>Generated problems</Text>
+                <View style={trStyles.tripleContent}>
+                  <Text style={[trStyles.tripleTitle, { color: colors.foreground }]} numberOfLines={1}>Practice</Text>
+                  <Text style={[trStyles.tripleSub, { color: colors.muted }]} numberOfLines={1}>Generated problems</Text>
+                </View>
+                <IconSymbol size={14} name="chevron.right" color={colors.muted} />
               </TouchableOpacity>
 
+              <View style={[trStyles.tripleDivider, { backgroundColor: colors.border }]} />
+
+              {/* Row 3: Progress */}
               <TouchableOpacity
                 accessibilityLabel="View progress"
                 onPress={() => router.push("/progress" as any)}
-                style={[styles.featureCard, { backgroundColor: `${colors.success}12`, borderColor: `${colors.success}25` }]}
-                activeOpacity={0.8}
+                activeOpacity={0.82}
+                style={trStyles.tripleRow}
               >
-                <View style={[styles.featureIcon, { backgroundColor: colors.success }]}>
-                  <IconSymbol size={20} name="chart.bar.fill" color="#FFFFFF" />
+                <View style={[trStyles.tripleIconWrap, { backgroundColor: `${colors.success}18` }]}>
+                  <IconSymbol size={18} name="chart.bar.fill" color={colors.success} />
                 </View>
-                <Text style={[styles.featureTitle, { color: colors.foreground }]} numberOfLines={1}>Progress</Text>
-                <Text style={[styles.featureDesc, { color: colors.muted }]} numberOfLines={2}>Stats & streaks</Text>
+                <View style={trStyles.tripleContent}>
+                  <Text style={[trStyles.tripleTitle, { color: colors.foreground }]} numberOfLines={1}>Progress</Text>
+                  <Text style={[trStyles.tripleSub, { color: colors.muted }]} numberOfLines={1}>Stats & streaks</Text>
+                </View>
+                <IconSymbol size={14} name="chevron.right" color={colors.muted} />
               </TouchableOpacity>
             </View>
           </View>
