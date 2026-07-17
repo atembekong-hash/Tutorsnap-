@@ -306,11 +306,20 @@ function ScanScreenContent() {
           </View>
 
           {solveMutation.isError && (
-            <View style={[styles.errorBox, { backgroundColor: `${colors.error}15`, borderColor: `${colors.error}30` }]}>
-              <IconSymbol size={16} name="exclamationmark.triangle.fill" color={colors.error} />
-              <Text style={[styles.errorText, { color: colors.error }]}>
-                Failed to analyze the image. Please try a clearer photo.
-              </Text>
+            <View style={{ marginBottom: 12 }}>
+              <View style={[styles.errorBox, { backgroundColor: `${colors.error}15`, borderColor: `${colors.error}30` }]}>
+                <IconSymbol size={16} name="exclamationmark.triangle.fill" color={colors.error} />
+                <Text style={[styles.errorText, { color: colors.error }]}>
+                  Failed to analyze the image. Please try a clearer photo.
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => { solveMutation.reset(); handleSolve(); H.impactLight(); }}
+                style={{ backgroundColor: colors.error, paddingVertical: 10, paddingHorizontal: 20, borderRadius: 10, alignSelf: 'center', marginTop: 8 }}
+                activeOpacity={0.8}
+              >
+                <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '700' }}>Try Again</Text>
+              </TouchableOpacity>
             </View>
           )}
 

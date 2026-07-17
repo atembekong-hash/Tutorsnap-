@@ -443,6 +443,8 @@ Respond with plain text (no JSON). Be thorough and educational.`;
       gradeLevel: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
+      // Scale token budget by difficulty: easy=700, medium=1100, hard=1800
+      const practiceTokens = input.difficulty === 'easy' ? 700 : input.difficulty === 'medium' ? 1100 : 1800;
       const practicePrompt = buildPracticePrompt(input.subject, input.difficulty) + gradeContext(input.gradeLevel);
       const result = await invokeLLM({
         model: "claude-haiku-4-5",
@@ -450,7 +452,7 @@ Respond with plain text (no JSON). Be thorough and educational.`;
           { role: "system", content: practicePrompt },
           { role: "user", content: `Generate a ${input.difficulty} ${input.subject} practice question.` },
         ],
-        max_tokens: 1800,
+        max_tokens: practiceTokens,
         response_format: { type: "json_object" },
       });
       const text = extractLLMContent(result);
