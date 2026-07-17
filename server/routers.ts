@@ -6,6 +6,7 @@ import { COOKIE_NAME } from "../shared/const";
 import { transcribeAudio } from "./_core/voiceTranscription";
 import { storagePut } from "./storage";
 import { TRPCError } from "@trpc/server";
+import { raceModels } from "./_core/model-racing";
 
 // ─── Subject-aware prompt builder ────────────────────────────────────────────
 
@@ -409,7 +410,7 @@ Respond with plain text (no JSON). Be thorough and educational.`;
     }))
     .mutation(async ({ input }) => {
       try {
-        // Use gemini for vision (best multimodal) with gpt-5-mini fallback
+        // Parallel model racing: Gemini Flash vs GPT-4o-mini
         const messages = [
           { role: "system" as const, content: IMAGE_SOLVE_SYSTEM_PROMPT + gradeContext(input.gradeLevel) },
           {
@@ -423,14 +424,17 @@ Respond with plain text (no JSON). Be thorough and educational.`;
             ],
           },
         ];
-        const params = {
-          model: "gemini-3-flash-preview" as const,
-          messages,
-          max_tokens: 2500,
-          response_format: { type: "json_object" as const },
-        };
-        const jsonStr = await invokeLLMWithFallback("gemini-3-flash-preview", "claude-haiku-4-5", params);
-        return JSON.parse(jsonStr);
+
+        // Race two models in parallel
+        const raceResult = await raceModels({
+          models: ["gemini-2.0-flash", "gpt-4o-mini"],
+          messages: messages as Array<{ role: "system" | "user"; content: string }>,
+          maxTokens: 1200,
+          timeout: 30000,
+        });
+
+        console.log(`[solveFromImage] Winner: ${raceResult.winner} (${raceResult.processingTime}ms)`);
+        return JSON.parse(raceResult.response);
       } catch (err: unknown) {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err instanceof Error ? err.message : "Failed to process image. Please try again." });
       }
