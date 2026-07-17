@@ -15,7 +15,6 @@ import { useRouter, useFocusEffect } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import * as H from "@/lib/haptics";
 import * as FileSystem from "expo-file-system/legacy";
-
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
@@ -28,7 +27,7 @@ import { CameraView, useCameraPermissions } from "@/lib/camera-wrapper";
 import { loadGlobalGrade } from "@/lib/grade-levels";
 
 // How long (ms) to wait after screen focus before auto-capturing
-const AUTO_CAPTURE_DELAY = 0;
+const AUTO_CAPTURE_DELAY = 1500;
 
 type ScanMode = "camera" | "solving" | "web-picker";
 
@@ -55,21 +54,6 @@ function ScanScreenContent() {
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   const [permission, requestPermission] = useCameraPermissions();
-
-  // Scan history thumbnails (last 3 images with imageUri)
-  const [scanThumbnails, setScanThumbnails] = useState<{ uri: string; data: string }[]>([]);
-
-  const loadScanThumbnails = useCallback(async () => {
-    try {
-      const raw = await AsyncStorage.getItem("math_history");
-      const history: HistoryItem[] = raw ? JSON.parse(raw) : [];
-      const withImages = history
-        .filter((h) => h.imageUri)
-        .slice(0, 3)
-        .map((h) => ({ uri: h.imageUri!, data: JSON.stringify(h) }));
-      setScanThumbnails(withImages);
-    } catch (_) {}
-  }, []);
 
   // Load global grade default on mount
   useEffect(() => {
@@ -108,14 +92,9 @@ function ScanScreenContent() {
     },
     onError: (err) => {
       H.notificationError();
-      // Show a specific image quality hint rather than a generic error
-      const isJsonError = err.message?.toLowerCase().includes("json") || err.message?.toLowerCase().includes("parse");
-      const hint = isJsonError
-        ? "The AI had trouble reading the image format. Try better lighting, hold the camera closer, or crop to just the question."
-        : (err.message || "Try better lighting, hold the camera closer, or crop to just the question.");
       Alert.alert(
         "Couldn't solve that",
-        hint,
+        err.message || "The image couldn't be read. Try better lighting or a clearer angle.",
         [
           { text: "Try Again", onPress: () => resetToCamera() },
           { text: "Cancel", style: "cancel" },
@@ -137,7 +116,7 @@ function ScanScreenContent() {
       let base64: string;
       // Detect MIME type from URI extension if not provided
       const ext = uri.split("?")[0].split(".").pop()?.toLowerCase() ?? "";
-      let resolvedMime = mimeType ??
+      const resolvedMime = mimeType ??
         (ext === "png" ? "image/png" :
          ext === "gif" ? "image/gif" :
          ext === "webp" ? "image/webp" : "image/jpeg");
@@ -171,34 +150,40 @@ function ScanScreenContent() {
   const startCountdown = useCallback(() => {
     if (autoCaptureFiredRef.current) return;
     autoCaptureFiredRef.current = true;
+    setCountdown(2);
 
-    // Brief pulse to signal imminent capture
-    Animated.sequence([
-      Animated.timing(pulseAnim, { toValue: 1.1, duration: 200, useNativeDriver: true }),
-      Animated.timing(pulseAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
-    ]).start();
+    // Pulse animation
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.12, duration: 500, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
+      ])
+    ).start();
 
-    countdownTimerRef.current = setTimeout(async () => {
-      setCountdown(null);
-      pulseAnim.stopAnimation();
-      pulseAnim.setValue(1);
-      if (!cameraRef.current) return;
-      try {
-        H.impactMedium();
-        const photo = await cameraRef.current.takePictureAsync({
-          quality: 0.5,
-          base64: false,
-          skipProcessing: true,
-        });
-        if (photo?.uri) {
-          setIsCameraActive(false);
-          await solveImage(photo.uri);
+    countdownTimerRef.current = setTimeout(() => {
+      setCountdown(1);
+      countdownTimerRef.current = setTimeout(async () => {
+        setCountdown(null);
+        pulseAnim.stopAnimation();
+        pulseAnim.setValue(1);
+        if (!cameraRef.current) return;
+        try {
+          H.impactMedium();
+          const photo = await cameraRef.current.takePictureAsync({
+            quality: 0.85,
+            base64: false,
+            skipProcessing: false,
+          });
+          if (photo?.uri) {
+            setIsCameraActive(false);
+            await solveImage(photo.uri);
+          }
+        } catch (_) {
+          Alert.alert("Error", "Failed to take photo. Please try again.");
+          resetToCamera();
         }
-      } catch (_) {
-        Alert.alert("Error", "Failed to take photo. Please try again.");
-        resetToCamera();
-      }
-    }, 500);
+      }, 1000);
+    }, 1000);
   }, [solveImage]);
 
   const clearCountdown = useCallback(() => {
@@ -216,9 +201,6 @@ function ScanScreenContent() {
     setIsCameraActive(Platform.OS !== "web");
     clearCountdown();
   }, [clearCountdown]);
-
-  // Load thumbnails when screen gains focus
-  useFocusEffect(useCallback(() => { loadScanThumbnails(); }, [loadScanThumbnails]));
 
   // Manage camera active state and trigger auto-capture when screen gains focus
   useFocusEffect(
@@ -396,31 +378,6 @@ function ScanScreenContent() {
             : "Position the problem within the frame"}
         </Text>
 
-        {/* Scan history thumbnails */}
-        {scanThumbnails.length > 0 && (
-          <View style={styles.thumbnailStrip}>
-            {scanThumbnails.map((item, idx) => (
-              <TouchableOpacity
-                key={idx}
-                onPress={() => {
-                  H.impactLight();
-                  try {
-                    const parsed = JSON.parse(item.data);
-                    router.push({ pathname: "/solution", params: { data: JSON.stringify(parsed) } });
-                  } catch (_) {}
-                }}
-                style={styles.thumbnailBtn}
-                activeOpacity={0.75}
-              >
-                <Image source={{ uri: item.uri }} style={styles.thumbnailImg} resizeMode="cover" />
-                <View style={styles.thumbnailOverlay}>
-                  <IconSymbol size={12} name="wand.and.stars" color="#FFFFFF" />
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-
         {/* Bottom controls: Gallery | Shutter | Spacer */}
         <View style={styles.bottomControls}>
           {/* Gallery button */}
@@ -578,23 +535,6 @@ const styles = StyleSheet.create({
     borderRadius: 24, borderWidth: 1.5, borderColor: "rgba(255,255,255,0.4)",
   },
   solvingCancelText: { color: "#FFFFFF", fontSize: 15, fontWeight: "600" },
-
-  // Scan history thumbnail strip
-  thumbnailStrip: {
-    position: "absolute", bottom: 148, left: 0, right: 0,
-    flexDirection: "row", justifyContent: "center", gap: 10,
-    zIndex: 10, paddingHorizontal: 24,
-  },
-  thumbnailBtn: {
-    width: 56, height: 56, borderRadius: 10, overflow: "hidden",
-    borderWidth: 2, borderColor: "rgba(255,255,255,0.6)",
-  },
-  thumbnailImg: { width: "100%", height: "100%" },
-  thumbnailOverlay: {
-    position: "absolute", bottom: 3, right: 3,
-    backgroundColor: "rgba(0,0,0,0.55)", borderRadius: 6,
-    padding: 2,
-  },
 
   // Gallery button (web)
   galleryBtn: { flexDirection: "row", alignItems: "center", padding: 16, borderRadius: 16, borderWidth: 2, gap: 12 },

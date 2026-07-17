@@ -99,13 +99,27 @@ Always respond with valid JSON in this exact format:
 }`;
 }
 
-// Ultra-fast core prompt — absolute minimum to render a useful solution screen
-const IMAGE_SOLVE_FAST_PROMPT = `Tutor. Read image. Solve. JSON only, no markdown:
-{"problem":"<question>","subject":"<id>","answer":"<answer>","steps":[{"stepNumber":1,"title":"<t>","explanation":"<e>","expression":"<f>"}],"conceptExplained":"<c>","tips":["t1","t2","t3"],"relatedTopics":["r1","r2","r3"],"workedExample":{"title":"Ex","problem":"<p>","solution":"<s>"}}`;
+// Full prompt — used on first attempt
+const IMAGE_SOLVE_SYSTEM_PROMPT = `You are TutorSnap, an expert academic tutor covering ALL subjects at ALL levels.
+Look at the image, identify the question or problem, then solve it completely.
 
-// Last-resort fallback
-const IMAGE_SOLVE_MINIMAL_PROMPT = `Solve image problem. JSON only:
-{"problem":"...","subject":"...","answer":"...","steps":[{"stepNumber":1,"title":"Step","explanation":"...","expression":""}],"conceptExplained":"...","tips":["t"],"relatedTopics":["r"],"workedExample":{"title":"Ex","problem":"...","solution":"..."}}`;
+RULES:
+- NEVER refuse. Solve everything you see.
+- Be concise but accurate. Keep each field SHORT.
+- steps: 3-5 steps, each explanation 1-2 sentences max.
+- answer: 1-2 sentences.
+- conceptExplained: 2-3 sentences.
+- tips: exactly 3 tips, 1 sentence each.
+- workedExample.solution: 2-3 sentences only.
+- relatedTopics: exactly 3 short strings.
+
+Respond ONLY with this exact JSON structure (no markdown, no extra text):
+{"problem":"...","subject":"...","answer":"...","steps":[{"stepNumber":1,"title":"...","explanation":"...","expression":"..."}],"workedExample":{"title":"...","problem":"...","solution":"..."},"conceptExplained":"...","tips":["...","...","..."],"relatedTopics":["...","...","..."]}`;
+
+// Minimal prompt — used as fallback when the full response is truncated
+const IMAGE_SOLVE_MINIMAL_PROMPT = `You are TutorSnap, an expert tutor. Look at the image and solve the problem.
+Respond ONLY with this compact JSON (no markdown, no extra text):
+{"problem":"one sentence","subject":"subject id","answer":"1-2 sentence answer","steps":[{"stepNumber":1,"title":"Step 1","explanation":"brief","expression":""},{"stepNumber":2,"title":"Step 2","explanation":"brief","expression":""}],"workedExample":{"title":"Example","problem":"similar problem","solution":"brief solution"},"conceptExplained":"1-2 sentences","tips":["tip1","tip2","tip3"],"relatedTopics":["t1","t2","t3"]}`;
 
 // ─── Complexity detector ─────────────────────────────────────────────────────
 
@@ -381,8 +395,7 @@ Respond with plain text (no JSON). Be thorough and educational.`;
     .mutation(async ({ input }) => {
       const imageContent = [
         { type: "text" as const, text: `Identify and solve the question in this image. Return valid JSON only.` },
-        // detail:"low" uses a fixed 85-token image budget instead of tiling — much faster for text-heavy math problems
-        { type: "image_url" as const, image_url: { url: `data:${input.mimeType};base64,${input.imageBase64}`, detail: "low" as const } },
+        { type: "image_url" as const, image_url: { url: `data:${input.mimeType};base64,${input.imageBase64}` } },
       ];
 
       // Helper: attempt one LLM call and return parsed JSON or throw
@@ -413,16 +426,18 @@ Respond with plain text (no JSON). Be thorough and educational.`;
       }
 
       try {
-        // Stage 1: Race gemini-flash and gpt-4o-mini in parallel — take whichever wins
-        const fastPrompt = IMAGE_SOLVE_FAST_PROMPT + gradeContext(input.gradeLevel);
-        const raceResult = await Promise.any([
-          attemptSolve(fastPrompt, 600, "gemini-3-flash-preview"),
-          attemptSolve(fastPrompt, 600, "gpt-4o-mini"),
-        ]).catch(() => null);
-        if (raceResult) return raceResult;
-
-        // Stage 2: Last-resort — gpt-4o with minimal prompt, guaranteed to fit
-        return await attemptSolve(IMAGE_SOLVE_MINIMAL_PROMPT, 400, "gpt-4o");
+        // Attempt 1: gemini-3-flash-preview, full prompt, 2000 tokens
+        try {
+          return await attemptSolve(IMAGE_SOLVE_SYSTEM_PROMPT + gradeContext(input.gradeLevel), 2000, "gemini-3-flash-preview");
+        } catch (_e1) {
+          // Attempt 2: gpt-4o, full prompt, 2000 tokens
+          try {
+            return await attemptSolve(IMAGE_SOLVE_SYSTEM_PROMPT + gradeContext(input.gradeLevel), 2000, "gpt-4o");
+          } catch (_e2) {
+            // Attempt 3: gpt-4o, minimal prompt, 800 tokens — always fits
+            return await attemptSolve(IMAGE_SOLVE_MINIMAL_PROMPT, 800, "gpt-4o");
+          }
+        }
       } catch (err: unknown) {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err instanceof Error ? err.message : "Failed to process image. Please try again." });
       }
