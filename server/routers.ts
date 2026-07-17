@@ -155,15 +155,14 @@ const academicRouter = router({
           },
         ];
         const params = {
-          model: "gpt-5-nano" as const, // FASTEST model: 3-5x faster than Gemini for 10x speedup
+          model: "gemini-3-flash-preview" as const,
           messages,
-          max_tokens: 800, // Aggressive reduction: fast answer over perfect detail
+          max_tokens: 1500, // Reduced for faster response
           response_format: { type: "json_object" as const },
         };
 
         const llmStartTime = Date.now();
-        // Fallback to gpt-5-mini if nano fails (still very fast)
-        const jsonStr = await invokeLLMWithFallback("gpt-5-nano", "gpt-5-mini", params);
+        const jsonStr = await invokeLLMWithFallback("gemini-3-flash-preview", "gpt-5-mini", params);
         const llmTime = Date.now() - llmStartTime;
         console.log(`[solveFromImage] LLM response received in ${llmTime}ms`);
 
