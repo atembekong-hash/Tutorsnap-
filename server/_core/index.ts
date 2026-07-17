@@ -94,6 +94,16 @@ async function startServer() {
     });
   });
 
+  // Add request logging middleware
+  app.use("/api/trpc", (req, res, next) => {
+    console.log(`[tRPC] ${req.method} ${req.path}`);
+    console.log(`[tRPC] Headers:`, req.headers);
+    if (req.body) {
+      console.log(`[tRPC] Body:`, JSON.stringify(req.body).substring(0, 500));
+    }
+    next();
+  });
+
   app.use(
     "/api/trpc",
     createExpressMiddleware({
