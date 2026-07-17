@@ -27,7 +27,7 @@ import { useNetworkStatus } from "@/hooks/use-network-status";
 import { CameraView, useCameraPermissions } from "@/lib/camera-wrapper";
 import { GRADE_OPTIONS, GRADE_LABELS, loadGlobalGrade, saveGlobalGrade } from "@/lib/grade-levels";
 
-type ScanMode = "camera" | "preview" | "solving" | "web-picker";
+type ScanMode = "camera" | "preview" | "web-picker";
 
 function ScanScreenContent() {
   const colors = useColors();
@@ -44,9 +44,6 @@ function ScanScreenContent() {
   const { isOnline } = useNetworkStatus();
   const [gradeLevel, setGradeLevel] = useState<string | null>(null);
   const [showGradePicker, setShowGradePicker] = useState(false);
-  const [isTorchOn, setIsTorchOn] = useState(false);
-  const stabilityCheckRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const lastFrameTimeRef = useRef<number>(0);
 
   // Load global grade default on mount
   useEffect(() => {
@@ -67,13 +64,10 @@ function ScanScreenContent() {
   useFocusEffect(
     useCallback(() => {
       if (Platform.OS !== "web" && mode === "camera") {
+        // Activate camera once permission resolves (or if already granted)
         setIsCameraActive(true);
-        startStabilityCheck();
       }
-      return () => {
-        setIsCameraActive(false);
-        stopStabilityCheck();
-      };
+      return () => setIsCameraActive(false);
     }, [mode])
   );
 
@@ -81,14 +75,8 @@ function ScanScreenContent() {
   useEffect(() => {
     if (Platform.OS !== "web" && permission?.granted && mode === "camera") {
       setIsCameraActive(true);
-      startStabilityCheck();
     }
   }, [permission?.granted, mode]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => stopStabilityCheck();
-  }, []);
 
   const solveMutation = trpc.academic.solveFromImage.useMutation({
     onSuccess: async (data) => {
@@ -117,82 +105,8 @@ function ScanScreenContent() {
     onError: () => {
       H.notificationError();
       setIsProcessing(false);
-      setMode("camera");
-      startStabilityCheck();
     },
   });
-
-  // Start stability check for auto-capture
-  const startStabilityCheck = () => {
-    if (stabilityCheckRef.current) return;
-    stabilityCheckRef.current = setInterval(() => {
-      const now = Date.now();
-      if (now - lastFrameTimeRef.current > 800) {
-        autoCaptureAndSolve();
-      }
-    }, 1000);
-  };
-
-  const stopStabilityCheck = () => {
-    if (stabilityCheckRef.current) {
-      clearInterval(stabilityCheckRef.current);
-      stabilityCheckRef.current = null;
-    }
-  };
-
-  // Auto-capture when stable
-  const autoCaptureAndSolve = async () => {
-    if (!cameraRef.current || mode !== "camera") return;
-    stopStabilityCheck();
-    try {
-      H.impactMedium();
-      const photo = await cameraRef.current.takePictureAsync({
-        quality: 0.85,
-        base64: false,
-        skipProcessing: false,
-      });
-      if (photo?.uri) {
-        setMode("solving");
-        await submitImage(photo.uri);
-      }
-    } catch (_) {
-      setMode("camera");
-      startStabilityCheck();
-    }
-  };
-
-  // Submit image to solver
-  const submitImage = async (imageUri: string) => {
-    try {
-      let base64: string;
-      if (Platform.OS === "web") {
-        const response = await fetch(imageUri);
-        const blob = await response.blob();
-        base64 = await new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            const result = reader.result as string;
-            resolve(result.split(",")[1]);
-          };
-          reader.readAsDataURL(blob);
-        });
-      } else {
-        base64 = await FileSystem.readAsStringAsync(imageUri, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-      }
-      solveMutation.mutate({
-        imageBase64: base64,
-        mimeType: "image/jpeg",
-        subject: selectedSubject ?? "other",
-        gradeLevel: gradeLevel ?? undefined,
-      });
-    } catch (_) {
-      setMode("camera");
-      Alert.alert("Error", "Failed to process image. Please try again.");
-      startStabilityCheck();
-    }
-  };
 
   // --- Take photo with camera ---
   const takePicture = async () => {
@@ -225,10 +139,13 @@ function ScanScreenContent() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       quality: 0.9,
+      allowsEditing: true,
     });
     if (!result.canceled && result.assets[0]) {
-      setMode("solving");
-      await submitImage(result.assets[0].uri);
+      setSelectedImage(result.assets[0].uri);
+      setIsCameraActive(false);
+      setMode("preview");
+      solveMutation.reset();
     }
   };
 
@@ -364,26 +281,6 @@ function ScanScreenContent() {
           <View style={styles.galleryCircleBtn} />
         </View>
       </View>
-    );
-  }
-
-  // Solving overlay
-  if (mode === "solving") {
-    return (
-      <ScreenContainer className="items-center justify-center gap-4">
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={{ fontSize: 16, fontWeight: "600", color: colors.foreground }}>Solving your problem...</Text>
-        <TouchableOpacity
-          onPress={() => {
-            setMode("camera");
-            solveMutation.reset();
-            startStabilityCheck();
-          }}
-          style={{ paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: colors.border, marginTop: 12 }}
-        >
-          <Text style={{ fontSize: 14, fontWeight: "600", color: colors.primary }}>Cancel</Text>
-        </TouchableOpacity>
-      </ScreenContainer>
     );
   }
 
