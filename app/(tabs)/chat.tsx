@@ -108,6 +108,7 @@ import * as Auth from "@/lib/_core/auth";
 import { fetch as expoFetch } from "expo/fetch";
 import { scheduleDailyReminder, cancelDailyReminder, scheduleSessionSummaryNotification } from "@/lib/notifications";
 import { pinDefinition, readGlossary, unpinDefinition, clearGlossary, type GlossaryEntry } from "@/lib/glossary";
+import { cleanMathText } from "@/lib/clean-math-text";
 
 function getAppearanceSubjectKey(subjectId: string | null): string {
   if (!subjectId) return "Mathematics";
@@ -384,6 +385,64 @@ function BlinkingCursor({ color, fontSize }: { color: string; fontSize: number }
 
 // ─── Message Bubble ───────────────────────────────────────────────────────────
 
+// ─── One-tap copy button for AI responses ────────────────────────────────────
+function CopyButton({
+  content,
+  colors,
+  fs,
+}: {
+  content: string;
+  colors: ReturnType<typeof useColors>;
+  fs: (n: number) => number;
+}) {
+  const [copied, setCopied] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleCopy = async () => {
+    try {
+      const Clip = await import("expo-clipboard");
+      await Clip.setStringAsync(cleanMathText(content));
+      const Haptics = require("expo-haptics");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setCopied(true);
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // clipboard unavailable
+    }
+  };
+
+  return (
+    <TouchableOpacity
+      onPress={handleCopy}
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      style={[
+        copyBtnStyles.pill,
+        { backgroundColor: copied ? colors.primary : colors.surface, borderColor: copied ? colors.primary : colors.border },
+      ]}
+      accessibilityLabel="Copy response"
+    >
+      <Text style={[copyBtnStyles.label, { color: copied ? colors.background : colors.muted, fontSize: fs(11) }]}>
+        {copied ? "✓ Copied" : "Copy"}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
+const copyBtnStyles = StyleSheet.create({
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  label: {
+    fontWeight: '500',
+  },
+});
+
 function MessageBubble({
   message,
   isFirstInRun,
@@ -525,18 +584,23 @@ function MessageBubble({
               <BlinkingCursor color={colors.muted} fontSize={fs(15)} />
             )}
           </AIResponseErrorBoundary>
-          <View style={bubbleStyles.metaRow}>
-            <Text style={[bubbleStyles.timeText, { color: colors.muted, fontSize: fs(10) }]}>
-              {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </Text>
-            {!streaming && message.content.length > 80 && (
-              <Text style={[bubbleStyles.readingTime, { color: colors.muted, fontSize: fs(10) }]}>
-                {`  ·  ${Math.max(1, Math.ceil(message.content.split(/\s+/).length / 200))} min read`}
+          <View style={[bubbleStyles.metaRow, { justifyContent: 'space-between' }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={[bubbleStyles.timeText, { color: colors.muted, fontSize: fs(10) }]}>
+                {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </Text>
+              {!streaming && message.content.length > 80 && (
+                <Text style={[bubbleStyles.readingTime, { color: colors.muted, fontSize: fs(10) }]}>
+                  {`  ·  ${Math.max(1, Math.ceil(message.content.split(/\s+/).length / 200))} min read`}
+                </Text>
+              )}
+              {reaction ? (
+                <Text style={[bubbleStyles.reactionBadge, { fontSize: fs(13) }]}>{reaction}</Text>
+              ) : null}
+            </View>
+            {!streaming && message.content.length > 0 && (
+              <CopyButton content={message.content} colors={colors} fs={fs} />
             )}
-            {reaction ? (
-              <Text style={[bubbleStyles.reactionBadge, { fontSize: fs(13) }]}>{reaction}</Text>
-            ) : null}
           </View>
           </View>
         </View>
