@@ -114,7 +114,7 @@ function ScanScreenContent() {
     try {
       H.impactMedium();
       const photo = await cameraRef.current.takePictureAsync({
-        quality: 0.85,
+        quality: 0.5, // Reduced from 0.85 for faster transmission (60% smaller payload)
         base64: false,
         skipProcessing: false,
       });
