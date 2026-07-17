@@ -448,6 +448,14 @@ Respond with plain text (no JSON). Be thorough and educational.`;
       gradeLevel: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
+      // Check cache first
+      const practiceCacheKey = generateCacheKey(JSON.stringify(input), "practice", input.gradeLevel);
+      const cachedPractice = getCachedResponse(practiceCacheKey);
+      if (cachedPractice) {
+        console.log(`[Practice] Returning cached question for ${input.subject} ${input.difficulty}`);
+        return cachedPractice;
+      }
+      
       // Scale token budget by difficulty: easy=700, medium=1100, hard=1800
       const practiceTokens = input.difficulty === 'easy' ? 700 : input.difficulty === 'medium' ? 1100 : 1800;
       const practicePrompt = buildPracticePrompt(input.subject, input.difficulty) + gradeContext(input.gradeLevel);
@@ -463,7 +471,9 @@ Respond with plain text (no JSON). Be thorough and educational.`;
       const text = extractLLMContent(result);
       const jsonStr = extractJsonFromContent(text);
       try {
-        return JSON.parse(jsonStr);
+        const parsed = JSON.parse(jsonStr);
+      setCachedResponse(practiceCacheKey, parsed);
+      return parsed;
       } catch {
         // Try repair for truncated JSON
         try {
@@ -483,6 +493,14 @@ Respond with plain text (no JSON). Be thorough and educational.`;
       gradeLevel: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
+      // Check cache first
+      const quizCacheKey = generateCacheKey(JSON.stringify(input), "quiz", input.gradeLevel);
+      const cachedQuiz = getCachedResponse(quizCacheKey);
+      if (cachedQuiz) {
+        console.log(`[Quiz] Returning cached questions for ${input.subject} ${input.difficulty}`);
+        return cachedQuiz;
+      }
+      
       const quizPrompt = `You are TutorSnap, an expert academic tutor.${gradeContext(input.gradeLevel)}
 Generate exactly ${input.count} ${input.difficulty} multiple-choice questions for: ${input.subject}.
 Each question has 4 options (A-D), one correct answer, and a brief 1-sentence explanation.
@@ -504,7 +522,9 @@ Respond ONLY with this JSON:
       const jsonStr = extractJsonFromContent(text);
       let parsed: any;
       try { parsed = JSON.parse(jsonStr); } catch { throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid JSON in AI response" }); }
-      return parsed.questions ?? [];
+      const questions = parsed.questions ?? [];
+      setCachedResponse(quizCacheKey, questions);
+      return questions;
     }),
 
   cacheStats: publicProcedure
