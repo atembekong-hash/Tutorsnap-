@@ -39,11 +39,14 @@ export interface OpenAIResponse {
 }
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
+const OPENAI_API_BASE = process.env.OPENAI_API_BASE || process.env.OPENAI_BASE_URL || "https://api.openai.com/v1";
+const OPENAI_API_URL = `${OPENAI_API_BASE}/chat/completions`;
 
 if (!OPENAI_API_KEY) {
   console.warn("[OpenAI] OPENAI_API_KEY not set. Image solving will fail.");
 }
+
+console.log(`[OpenAI] Using API endpoint: ${OPENAI_API_URL}`);
 
 /**
  * Call OpenAI API with retry logic
