@@ -1,3 +1,4 @@
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import { ErrorBoundary } from "@/components/error-boundary";
 import {
   View,
@@ -5,8 +6,10 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
+  Image,
   Platform,
   Alert,
+  ScrollView,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
@@ -23,35 +26,33 @@ import { type SubjectId } from "@/lib/subjects";
 import { useNetworkStatus } from "@/hooks/use-network-status";
 import { CameraView, useCameraPermissions } from "@/lib/camera-wrapper";
 import { GRADE_OPTIONS, GRADE_LABELS, loadGlobalGrade, saveGlobalGrade } from "@/lib/grade-levels";
-import { useRef, useState, useEffect, useCallback } from "react";
+
+type ScanMode = "camera" | "preview" | "web-picker";
 
 function ScanScreenContent() {
   const colors = useColors();
   const router = useRouter();
   const cameraRef = useRef<any>(null);
-  const stabilityCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const lastFrameTimeRef = useRef<number>(0);
 
-  const [mode, setMode] = useState<"camera" | "solving" | "web-picker">(
-    Platform.OS !== "web" ? "camera" : "web-picker"
-  );
+  // On native, default to camera mode. On web, show gallery picker.
+  const [mode, setMode] = useState<ScanMode>(Platform.OS !== "web" ? "camera" : "web-picker");
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [selectedSubject, setSelectedSubject] = useState<SubjectId | null>(null);
   const [isCameraActive, setIsCameraActive] = useState(Platform.OS !== "web");
   const [facing, setFacing] = useState<"back" | "front">("back");
-  const [selectedSubject, setSelectedSubject] = useState<SubjectId | null>(null);
+  const { isOnline } = useNetworkStatus();
   const [gradeLevel, setGradeLevel] = useState<string | null>(null);
   const [showGradePicker, setShowGradePicker] = useState(false);
-  const [isTorchOn, setIsTorchOn] = useState(false);
-  const { isOnline } = useNetworkStatus();
-  const [permission, requestPermission] = useCameraPermissions();
 
-  // Load global grade on mount
+  // Load global grade default on mount
   useEffect(() => {
-    loadGlobalGrade().then((g: string | null) => {
-      if (g) setGradeLevel(g);
-    });
+    loadGlobalGrade().then((g: string | null) => { if (g) setGradeLevel(g); });
   }, []);
 
-  // Request camera permission on mount
+  const [permission, requestPermission] = useCameraPermissions();
+
+  // Request camera permission on mount (native only)
   useEffect(() => {
     if (Platform.OS === "web") return;
     if (!permission?.granted) {
@@ -59,25 +60,21 @@ function ScanScreenContent() {
     }
   }, []);
 
-  // Auto-activate camera on screen focus
+  // Manage camera active state when screen gains/loses focus
   useFocusEffect(
     useCallback(() => {
       if (Platform.OS !== "web" && mode === "camera") {
+        // Activate camera once permission resolves (or if already granted)
         setIsCameraActive(true);
-        startStabilityCheck();
       }
-      return () => {
-        setIsCameraActive(false);
-        stopStabilityCheck();
-      };
+      return () => setIsCameraActive(false);
     }, [mode])
   );
 
-  // Activate camera when permission is granted
+  // When permission resolves to granted, activate the camera viewfinder
   useEffect(() => {
     if (Platform.OS !== "web" && permission?.granted && mode === "camera") {
       setIsCameraActive(true);
-      startStabilityCheck();
     }
   }, [permission?.granted, mode]);
 
@@ -92,6 +89,7 @@ function ScanScreenContent() {
         steps: data.steps || [],
         conceptExplained: data.conceptExplained,
         tips: data.tips,
+        imageUri: selectedImage || undefined,
         solvedAt: Date.now(),
         gradeLevel: gradeLevel ?? undefined,
       };
@@ -100,42 +98,19 @@ function ScanScreenContent() {
         const history: HistoryItem[] = existing ? JSON.parse(existing) : [];
         history.unshift(historyItem);
         await AsyncStorage.setItem("math_history", JSON.stringify(history.slice(0, 100)));
-      } catch (_) {
-        /* non-critical */
-      }
-      setMode("camera");
+      } catch (_) { /* AsyncStorage write failed — non-critical */ }
+      setIsProcessing(false);
       router.push({ pathname: "/solution", params: { data: JSON.stringify(data) } });
     },
     onError: () => {
       H.notificationError();
-      setMode("camera");
-      Alert.alert("Error", "Couldn't solve that problem. Please try again.");
+      setIsProcessing(false);
     },
   });
 
-  // Start stability check for auto-capture
-  const startStabilityCheck = () => {
-    if (stabilityCheckIntervalRef.current) return;
-    stabilityCheckIntervalRef.current = setInterval(() => {
-      const now = Date.now();
-      // If no frame in last 800ms, camera is stable
-      if (now - lastFrameTimeRef.current > 800) {
-        autoCaptureAndSolve();
-      }
-    }, 1000);
-  };
-
-  const stopStabilityCheck = () => {
-    if (stabilityCheckIntervalRef.current) {
-      clearInterval(stabilityCheckIntervalRef.current);
-      stabilityCheckIntervalRef.current = null;
-    }
-  };
-
-  // Auto-capture when stable
-  const autoCaptureAndSolve = async () => {
-    if (!cameraRef.current || mode !== "camera") return;
-    stopStabilityCheck();
+  // --- Take photo with camera ---
+  const takePicture = async () => {
+    if (!cameraRef.current) return;
     try {
       H.impactMedium();
       const photo = await cameraRef.current.takePictureAsync({
@@ -144,21 +119,45 @@ function ScanScreenContent() {
         skipProcessing: false,
       });
       if (photo?.uri) {
-        setMode("solving");
-        await submitImage(photo.uri);
+        setSelectedImage(photo.uri);
+        setIsCameraActive(false);
+        setMode("preview");
+        solveMutation.reset();
       }
     } catch (_) {
-      setMode("camera");
-      startStabilityCheck();
+      Alert.alert("Error", "Failed to take photo. Please try again.");
     }
   };
 
-  // Submit image to solver
-  const submitImage = async (imageUri: string) => {
+  // --- Pick from gallery ---
+  const pickFromGallery = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Permission Required", "Photo library access is needed to select images.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      quality: 0.9,
+      allowsEditing: true,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setSelectedImage(result.assets[0].uri);
+      setIsCameraActive(false);
+      setMode("preview");
+      solveMutation.reset();
+    }
+  };
+
+  // --- Solve the image ---
+  const handleSolve = async () => {
+    if (!selectedImage) return;
+    setIsProcessing(true);
+    H.impactMedium();
     try {
       let base64: string;
       if (Platform.OS === "web") {
-        const response = await fetch(imageUri);
+        const response = await fetch(selectedImage);
         const blob = await response.blob();
         base64 = await new Promise((resolve) => {
           const reader = new FileReader();
@@ -169,7 +168,7 @@ function ScanScreenContent() {
           reader.readAsDataURL(blob);
         });
       } else {
-        base64 = await FileSystem.readAsStringAsync(imageUri, {
+        base64 = await FileSystem.readAsStringAsync(selectedImage, {
           encoding: FileSystem.EncodingType.Base64,
         });
       }
@@ -180,415 +179,410 @@ function ScanScreenContent() {
         gradeLevel: gradeLevel ?? undefined,
       });
     } catch (_) {
-      setMode("camera");
+      setIsProcessing(false);
       Alert.alert("Error", "Failed to process image. Please try again.");
-      startStabilityCheck();
     }
   };
 
-  // Pick from gallery
-  const pickFromGallery = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert("Permission Required", "Photo library access is needed.");
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
-      quality: 0.9,
-    });
-    if (!result.canceled && result.assets[0]) {
-      setMode("solving");
-      await submitImage(result.assets[0].uri);
+  // --- Retake: go back to camera ---
+  const handleRetake = () => {
+    setSelectedImage(null);
+    solveMutation.reset();
+    if (Platform.OS !== "web") {
+      setMode("camera");
+      setIsCameraActive(true);
+    } else {
+      setMode("web-picker");
     }
   };
 
-  // Permission denied screen
-  if (mode === "camera" && Platform.OS !== "web") {
+  // ===== CAMERA VIEW (native only — default view) =====
+  if (mode === "camera" && Platform.OS !== "web" && CameraView) {
+    // permission === null means still loading — show camera UI optimistically
+    // Only show permission screen when we know it's definitively denied
     const permissionDenied = permission !== null && !permission.granted;
     if (permissionDenied) {
       return (
-        <ScreenContainer className="items-center justify-center gap-4">
+        <View style={[styles.permissionContainer, { backgroundColor: colors.background }]}>
           <View style={[styles.permissionIcon, { backgroundColor: `${colors.primary}15` }]}>
             <IconSymbol size={48} name="camera.fill" color={colors.primary} />
           </View>
           <Text style={[styles.permissionTitle, { color: colors.foreground }]}>Camera Access Needed</Text>
           <Text style={[styles.permissionSubtitle, { color: colors.muted }]}>
-            Allow TutorSnap to scan problems from your textbook.
+            Allow TutorSnap to use your camera to scan problems from your textbook or notes.
           </Text>
           <TouchableOpacity
             onPress={requestPermission}
             style={[styles.permissionBtn, { backgroundColor: colors.primary }]}
+            activeOpacity={0.85}
           >
-            <Text style={styles.permissionBtnText}>Allow Camera</Text>
+            <Text style={styles.permissionBtnText}>Allow Camera Access</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={pickFromGallery}
             style={[styles.permissionGalleryBtn, { borderColor: colors.border }]}
+            activeOpacity={0.8}
           >
             <IconSymbol size={18} name="photo.on.rectangle" color={colors.primary} />
-            <Text style={[styles.permissionGalleryText, { color: colors.primary }]}>Choose from Gallery</Text>
+            <Text style={[styles.permissionGalleryText, { color: colors.primary }]}>Choose from Gallery Instead</Text>
           </TouchableOpacity>
-        </ScreenContainer>
+        </View>
       );
     }
-  }
 
-  // Camera view
-  if (mode === "camera" && Platform.OS !== "web" && CameraView) {
     return (
       <View style={styles.cameraContainer}>
-        {isCameraActive && permission?.granted && (
+        {(isCameraActive && permission?.granted) && (
           <CameraView
             ref={cameraRef}
             style={StyleSheet.absoluteFill}
             facing={facing}
-            enableTorch={isTorchOn}
-            onFrameUpdate={() => {
-              lastFrameTimeRef.current = Date.now();
-            }}
           />
         )}
 
         {/* Top bar */}
         <View style={styles.cameraTopBar}>
           <TouchableOpacity
+            accessibilityLabel="Toggle facing"
             onPress={() => setFacing(f => f === "back" ? "front" : "back")}
             style={styles.cameraTopBtn}
           >
             <IconSymbol size={22} name="arrow.triangle.2.circlepath.camera" color="#FFFFFF" />
           </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => setIsTorchOn(!isTorchOn)}
-            style={[styles.cameraTopBtn, isTorchOn && { backgroundColor: "#FFD70033" }]}
-          >
-            <IconSymbol size={22} name={isTorchOn ? "bolt.fill" : "bolt.slash.fill"} color={isTorchOn ? "#FFD700" : "#FFFFFF"} />
-          </TouchableOpacity>
+          <Text style={styles.cameraTitle}>Scan Problem</Text>
+          {/* Subject hint label */}
+          <View style={styles.cameraTopBtn} />
         </View>
 
-        {/* Stability indicator */}
-        <View style={styles.stabilityContainer}>
-          <View style={[styles.stabilityDot, { backgroundColor: colors.primary }]} />
-          <Text style={[styles.stabilityText, { color: colors.foreground }]}>Hold steady...</Text>
+        {/* Viewfinder corners */}
+        <View style={styles.viewfinderGuide}>
+          <View style={[styles.corner, styles.cornerTL]} />
+          <View style={[styles.corner, styles.cornerTR]} />
+          <View style={[styles.corner, styles.cornerBL]} />
+          <View style={[styles.corner, styles.cornerBR]} />
         </View>
 
-        {/* Bottom controls */}
-        <View style={styles.cameraBottomBar}>
-          <TouchableOpacity
-            onPress={pickFromGallery}
-            style={[styles.galleryBtn, { borderColor: colors.border }]}
-          >
-            <IconSymbol size={24} name="photo.on.rectangle" color={colors.primary} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => setShowGradePicker(true)}
-            style={[styles.gradeBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
-          >
-            <Text style={[styles.gradeBtnText, { color: colors.foreground }]}>
-              {gradeLevel ? GRADE_LABELS[gradeLevel as keyof typeof GRADE_LABELS] : "Grade"}
-            </Text>
-          </TouchableOpacity>
-          <SubjectPicker
-            selectedSubject={selectedSubject}
-            onSelect={setSelectedSubject}
-            trigger={
-              <TouchableOpacity
-                style={[styles.subjectBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
-              >
-                <Text style={[styles.subjectBtnText, { color: colors.foreground }]}>
-                  {selectedSubject ? selectedSubject.charAt(0).toUpperCase() + selectedSubject.slice(1) : "Subject"}
-                </Text>
-              </TouchableOpacity>
-            }
-          />
-        </View>
+        <Text style={styles.cameraHint}>Position the problem within the frame</Text>
 
-        {/* Grade picker modal */}
-        {showGradePicker && (
-          <View style={styles.modal}>
-            <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
-              <Text style={[styles.modalTitle, { color: colors.foreground }]}>Select Grade Level</Text>
-              {GRADE_OPTIONS.map((grade) => (
-                <TouchableOpacity
-                  key={grade}
-                  onPress={() => {
-                    setGradeLevel(grade);
-                    saveGlobalGrade(grade);
-                    setShowGradePicker(false);
-                  }}
-                  style={[
-                    styles.modalOption,
-                    gradeLevel === grade && { backgroundColor: `${colors.primary}20` },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.modalOptionText,
-                      { color: gradeLevel === grade ? colors.primary : colors.foreground },
-                    ]}
-                  >
-                    {GRADE_LABELS[grade as keyof typeof GRADE_LABELS]}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-              <TouchableOpacity
-                onPress={() => setShowGradePicker(false)}
-                style={[styles.modalClose, { backgroundColor: colors.primary }]}
-              >
-                <Text style={styles.modalCloseText}>Done</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
+        {/* Bottom controls: Gallery | Shutter | Flip */}
+        <View style={styles.bottomControls}>
+          {/* Gallery button */}
+          <TouchableOpacity onPress={pickFromGallery} style={styles.galleryCircleBtn} activeOpacity={0.8}>
+            <IconSymbol size={26} name="photo.on.rectangle" color="#FFFFFF" />
+            <Text style={styles.galleryCircleLabel}>Gallery</Text>
+          </TouchableOpacity>
+
+          {/* Shutter */}
+          <TouchableOpacity onPress={takePicture} style={styles.shutterBtn} activeOpacity={0.8}>
+            <View style={styles.shutterInner} />
+          </TouchableOpacity>
+
+          {/* Spacer to balance layout */}
+          <View style={styles.galleryCircleBtn} />
+        </View>
       </View>
     );
   }
 
-  // Solving overlay
-  if (mode === "solving") {
+  // ===== PREVIEW + SOLVE VIEW =====
+  if (mode === "preview" && selectedImage) {
     return (
-      <ScreenContainer className="items-center justify-center gap-4">
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={[styles.solvingText, { color: colors.foreground }]}>Solving your problem...</Text>
-        <TouchableOpacity
-          onPress={() => {
-            setMode("camera");
-            solveMutation.reset();
-            startStabilityCheck();
-          }}
-          style={[styles.cancelBtn, { borderColor: colors.border }]}
-        >
-          <Text style={[styles.cancelBtnText, { color: colors.primary }]}>Cancel</Text>
-        </TouchableOpacity>
+      <ScreenContainer>
+        <View style={[styles.header, { borderBottomColor: colors.border }]}>
+          <Text style={[styles.title, { color: colors.foreground }]}>Review Photo</Text>
+          <Text style={[styles.subtitle, { color: colors.muted }]}>
+            Looks good? Tap Solve to get the answer.
+          </Text>
+        </View>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+          <View style={[styles.imagePreview, { borderColor: colors.border }]}>
+            <Image source={{ uri: selectedImage }} style={styles.previewImage} resizeMode="contain" accessibilityLabel="Captured problem image" />
+            <TouchableOpacity
+              onPress={handleRetake}
+              style={[styles.clearOverlay, { backgroundColor: `${colors.error}E0` }]}
+            >
+              <IconSymbol size={16} name="xmark" color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
+
+          {solveMutation.isError && (
+            <View style={{ marginBottom: 12 }}>
+              <View style={[styles.errorBox, { backgroundColor: `${colors.error}15`, borderColor: `${colors.error}30` }]}>
+                <IconSymbol size={16} name="exclamationmark.triangle.fill" color={colors.error} />
+                <Text style={[styles.errorText, { color: colors.error }]}>
+                  Failed to analyze the image. Please try a clearer photo.
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => { solveMutation.reset(); handleSolve(); H.impactLight(); }}
+                style={{ backgroundColor: colors.error, paddingVertical: 10, paddingHorizontal: 20, borderRadius: 10, alignSelf: 'center', marginTop: 8 }}
+                activeOpacity={0.8}
+              >
+                <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '700' }}>Try Again</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          <View style={{ marginBottom: 16 }}>
+            <Text style={[styles.sectionLabel, { color: colors.muted }]}>SUBJECT HINT (OPTIONAL)</Text>
+            <Text style={[styles.sectionHint, { color: colors.muted }]}>Helps the AI give a more accurate answer.</Text>
+            <SubjectPicker value={selectedSubject} onChange={setSelectedSubject} showAll />
+          </View>
+
+          <View style={{ marginBottom: 16 }}>
+            <Text style={[styles.sectionLabel, { color: colors.muted }]}>GRADE LEVEL (OPTIONAL)</Text>
+            <Text style={[styles.sectionHint, { color: colors.muted }]}>Tailors the explanation depth to your level.</Text>
+            <TouchableOpacity
+              onPress={() => { setShowGradePicker(true); H.impactLight(); }}
+              style={[styles.gradePill, { backgroundColor: gradeLevel ? `${colors.primary}15` : colors.surface, borderColor: gradeLevel ? colors.primary : colors.border }]}
+              accessibilityLabel={gradeLevel ? `Level: ${GRADE_LABELS[gradeLevel]}. Tap to change.` : "Set level"}
+              accessibilityRole="button"
+            >
+              <IconSymbol size={14} name="graduationcap.fill" color={gradeLevel ? colors.primary : colors.muted} />
+              <Text style={[styles.gradePillText, { color: gradeLevel ? colors.primary : colors.muted }]}>
+                {gradeLevel ? GRADE_LABELS[gradeLevel] : "Any level"}
+              </Text>
+              <IconSymbol size={12} name="chevron.right" color={gradeLevel ? colors.primary : colors.muted} />
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity
+            accessibilityLabel="Solve problem"
+            onPress={handleSolve}
+            disabled={isProcessing || solveMutation.isPending || !isOnline}
+            style={[
+              styles.solveBtn,
+              { backgroundColor: isOnline ? colors.primary : colors.muted },
+              (isProcessing || solveMutation.isPending || !isOnline) && { opacity: 0.7 },
+            ]}
+            activeOpacity={0.85}
+          >
+            {isProcessing || solveMutation.isPending ? (
+              <>
+                <ActivityIndicator color="#FFFFFF" size="small" />
+                <Text style={styles.solveBtnText}>Analyzing Image...</Text>
+              </>
+            ) : !isOnline ? (
+              <>
+                <IconSymbol size={20} name="wifi.slash" color="#FFFFFF" />
+                <Text style={styles.solveBtnText}>No Internet Connection</Text>
+              </>
+            ) : (
+              <>
+                <IconSymbol size={20} name="wand.and.stars" color="#FFFFFF" />
+                <Text style={styles.solveBtnText}>Solve This Problem</Text>
+              </>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={handleRetake}
+            style={[styles.retakeBtn, { borderColor: colors.border }]}
+            activeOpacity={0.8}
+          >
+            <IconSymbol size={18} name="camera.fill" color={colors.muted} />
+            <Text style={[styles.retakeBtnText, { color: colors.muted }]}>
+              {Platform.OS !== "web" ? "Take Another Photo" : "Choose Another Image"}
+            </Text>
+          </TouchableOpacity>
+        </ScrollView>
       </ScreenContainer>
     );
   }
 
-  // Web gallery picker
-  if (mode === "web-picker") {
-    return (
-      <ScreenContainer className="items-center justify-center gap-4">
-        <View style={[styles.permissionIcon, { backgroundColor: `${colors.primary}15` }]}>
-          <IconSymbol size={48} name="photo.on.rectangle" color={colors.primary} />
-        </View>
-        <Text style={[styles.permissionTitle, { color: colors.foreground }]}>Pick a Problem</Text>
-        <Text style={[styles.permissionSubtitle, { color: colors.muted }]}>
-          Select an image of a math problem to solve.
+  // ===== WEB FALLBACK: Gallery-only picker =====
+  return (
+    <ScreenContainer>
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+        <Text style={[styles.title, { color: colors.foreground }]}>Scan Problem</Text>
+        <Text style={[styles.subtitle, { color: colors.muted }]}>
+          Upload an image to solve
         </Text>
+      </View>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
         <TouchableOpacity
           onPress={pickFromGallery}
-          style={[styles.permissionBtn, { backgroundColor: colors.primary }]}
+          style={[styles.galleryBtn, { borderColor: colors.primary, backgroundColor: `${colors.primary}08` }]}
+          activeOpacity={0.8}
         >
-          <Text style={styles.permissionBtnText}>Choose Image</Text>
+          <IconSymbol size={22} name="photo.on.rectangle" color={colors.primary} />
+          <Text style={[styles.galleryBtnText, { color: colors.foreground }]}>Choose from Gallery</Text>
+          <IconSymbol size={16} name="chevron.right" color={colors.muted} />
         </TouchableOpacity>
-      </ScreenContainer>
-    );
-  }
 
-  return null;
+        <View style={[styles.tipsBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={styles.tipsHeader}>
+            <IconSymbol size={16} name="lightbulb.fill" color={colors.warning} />
+            <Text style={[styles.tipsTitle, { color: colors.foreground }]}>Tips for Best Results</Text>
+          </View>
+          {[
+            "Ensure good lighting — avoid shadows",
+            "Keep the entire problem in frame",
+            "Avoid blurry or tilted images",
+            "Works with handwriting and printed text",
+            "Supports equations, graphs, and word problems",
+          ].map((tip, i) => (
+            <View key={i} style={styles.tipRow}>
+              <View style={[styles.tipDot, { backgroundColor: colors.success }]} />
+              <Text style={[styles.tipText, { color: colors.muted }]}>{tip}</Text>
+            </View>
+          ))}
+        </View>
+
+        <View style={{ marginTop: 16 }}>
+          <Text style={[styles.sectionLabel, { color: colors.muted }]}>SUBJECT HINT (OPTIONAL)</Text>
+          <Text style={[styles.sectionHint, { color: colors.muted }]}>Helps the AI give a more accurate answer. Leave blank for auto-detect.</Text>
+          <SubjectPicker value={selectedSubject} onChange={setSelectedSubject} showAll />
+        </View>
+
+        <View style={{ marginTop: 16, marginBottom: 8 }}>
+          <Text style={[styles.sectionLabel, { color: colors.muted }]}>GRADE LEVEL (OPTIONAL)</Text>
+          <Text style={[styles.sectionHint, { color: colors.muted }]}>Tailors the explanation depth to your level.</Text>
+          <TouchableOpacity
+            onPress={() => { setShowGradePicker(true); H.impactLight(); }}
+            style={[styles.gradePill, { backgroundColor: gradeLevel ? `${colors.primary}15` : colors.surface, borderColor: gradeLevel ? colors.primary : colors.border }]}
+            accessibilityLabel={gradeLevel ? `Level: ${GRADE_LABELS[gradeLevel]}. Tap to change.` : "Set level"}
+            accessibilityRole="button"
+          >
+            <IconSymbol size={14} name="graduationcap.fill" color={gradeLevel ? colors.primary : colors.muted} />
+            <Text style={[styles.gradePillText, { color: gradeLevel ? colors.primary : colors.muted }]}>
+              {gradeLevel ? GRADE_LABELS[gradeLevel] : "Any level"}
+            </Text>
+            <IconSymbol size={12} name="chevron.right" color={gradeLevel ? colors.primary : colors.muted} />
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+
+      {/* Grade Picker Sheet */}
+      {showGradePicker && (
+        <View style={StyleSheet.absoluteFillObject}>
+          <TouchableOpacity style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)" }} activeOpacity={1} onPress={() => setShowGradePicker(false)} />
+          <View style={[styles.gradeSheet, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={[styles.gradeSheetHandle, { backgroundColor: colors.border }]} />
+            <Text style={[styles.gradeSheetTitle, { color: colors.foreground }]}>Set your level</Text>
+            <Text style={{ color: colors.muted, fontSize: 13, marginBottom: 12 }}>Explanations will match your grade level.</Text>
+            <View style={styles.gradeGrid}>
+              {GRADE_OPTIONS.map((opt) => {
+                const isActive = gradeLevel === opt.id;
+                return (
+                  <TouchableOpacity
+                    key={opt.id}
+                    style={[styles.gradeCell, { backgroundColor: isActive ? `${colors.primary}18` : colors.background, borderColor: isActive ? colors.primary : colors.border }]}
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      const next = isActive ? null : opt.id;
+                      setGradeLevel(next);
+                      saveGlobalGrade(next);
+                      H.impactLight();
+                      setShowGradePicker(false);
+                    }}
+                  >
+                    <Text style={[styles.gradeCellLabel, { color: isActive ? colors.primary : colors.foreground }]}>{opt.label}</Text>
+                    <Text style={[styles.gradeCellSub, { color: colors.muted }]}>{opt.sub}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        </View>
+      )}
+        </ScreenContainer>
+  );
 }
-
 export default function ScanScreen() {
   return (
-    <ErrorBoundary>
+    <ErrorBoundary label="Scan">
       <ScanScreenContent />
     </ErrorBoundary>
   );
 }
-
 const styles = StyleSheet.create({
-  cameraContainer: {
-    flex: 1,
-    backgroundColor: "#000",
-  },
+  header: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 16, borderBottomWidth: 0.5 },
+  title: { fontSize: 26, fontWeight: "800", letterSpacing: -0.5 },
+  subtitle: { fontSize: 14, marginTop: 4 },
+  sectionLabel: { fontSize: 12, fontWeight: "600", marginBottom: 4, letterSpacing: 0.5 },
+  sectionHint: { fontSize: 13, marginBottom: 10, lineHeight: 18 },
+
+  // Permission screen
+  permissionContainer: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32 },
+  permissionIcon: { width: 96, height: 96, borderRadius: 28, alignItems: "center", justifyContent: "center", marginBottom: 24 },
+  permissionTitle: { fontSize: 22, fontWeight: "800", marginBottom: 12, textAlign: "center" },
+  permissionSubtitle: { fontSize: 15, lineHeight: 22, textAlign: "center", marginBottom: 32 },
+  permissionBtn: { width: "100%", padding: 16, borderRadius: 16, alignItems: "center", marginBottom: 12 },
+  permissionBtnText: { color: "#FFFFFF", fontSize: 17, fontWeight: "700" },
+  permissionGalleryBtn: { flexDirection: "row", alignItems: "center", gap: 8, padding: 14, borderRadius: 14, borderWidth: 1 },
+  permissionGalleryText: { fontSize: 15, fontWeight: "600" },
+
+  // Camera
+  cameraContainer: { flex: 1, backgroundColor: "#000" },
   cameraTopBar: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 8,
-    zIndex: 10,
+    position: "absolute", top: 0, left: 0, right: 0, zIndex: 10,
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    paddingTop: 56, paddingHorizontal: 20, paddingBottom: 16,
+    backgroundColor: "rgba(0,0,0,0.4)",
   },
   cameraTopBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#00000040",
-    justifyContent: "center",
-    alignItems: "center",
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    alignItems: "center", justifyContent: "center",
   },
-  stabilityContainer: {
-    position: "absolute",
-    top: "50%",
-    left: 0,
-    right: 0,
-    alignItems: "center",
-    zIndex: 5,
+  cameraTitle: { color: "#FFFFFF", fontSize: 17, fontWeight: "700" },
+  viewfinderGuide: { position: "absolute", top: "25%", left: "10%", right: "10%", bottom: "25%", zIndex: 5 },
+  corner: { position: "absolute", width: 28, height: 28, borderColor: "#FFFFFF" },
+  cornerTL: { top: 0, left: 0, borderTopWidth: 3, borderLeftWidth: 3, borderTopLeftRadius: 4 },
+  cornerTR: { top: 0, right: 0, borderTopWidth: 3, borderRightWidth: 3, borderTopRightRadius: 4 },
+  cornerBL: { bottom: 0, left: 0, borderBottomWidth: 3, borderLeftWidth: 3, borderBottomLeftRadius: 4 },
+  cornerBR: { bottom: 0, right: 0, borderBottomWidth: 3, borderRightWidth: 3, borderBottomRightRadius: 4 },
+  cameraHint: {
+    position: "absolute", bottom: "18%", left: 0, right: 0, textAlign: "center",
+    color: "rgba(255,255,255,0.8)", fontSize: 14, zIndex: 10,
   },
-  stabilityDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginBottom: 8,
+  bottomControls: {
+    position: "absolute", bottom: 48, left: 0, right: 0,
+    flexDirection: "row", alignItems: "center", justifyContent: "space-evenly",
+    zIndex: 10, paddingHorizontal: 24,
   },
-  stabilityText: {
-    fontSize: 14,
-    fontWeight: "600",
+  galleryCircleBtn: {
+    width: 56, height: 56, borderRadius: 28,
+    backgroundColor: "rgba(255,255,255,0.2)",
+    alignItems: "center", justifyContent: "center",
+    borderWidth: 1.5, borderColor: "rgba(255,255,255,0.4)",
   },
-  cameraBottomBar: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: "row",
-    justifyContent: "space-around",
-    alignItems: "center",
-    paddingVertical: 16,
-    paddingHorizontal: 12,
-    backgroundColor: "#00000060",
+  galleryCircleLabel: { color: "#FFFFFF", fontSize: 10, fontWeight: "600", marginTop: 2 },
+  shutterBtn: {
+    width: 76, height: 76, borderRadius: 38,
+    backgroundColor: "rgba(255,255,255,0.25)", borderWidth: 3, borderColor: "#FFFFFF",
+    alignItems: "center", justifyContent: "center",
   },
-  galleryBtn: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    borderWidth: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  gradeBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  gradeBtnText: {
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  subjectBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  subjectBtnText: {
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  modal: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "#00000080",
-    justifyContent: "flex-end",
-    zIndex: 20,
-  },
-  modalContent: {
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 24,
-  },
-  modalTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    marginBottom: 12,
-  },
-  modalOption: {
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  modalOptionText: {
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  modalClose: {
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: "center",
-    marginTop: 8,
-  },
-  modalCloseText: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  solvingText: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  cancelBtn: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-    borderWidth: 1,
-    marginTop: 12,
-  },
-  cancelBtnText: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  permissionContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 24,
-  },
-  permissionIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  permissionTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    marginBottom: 8,
-    textAlign: "center",
-  },
-  permissionSubtitle: {
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 24,
-    textAlign: "center",
-  },
-  permissionBtn: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-    marginBottom: 12,
-    width: "100%",
-  },
-  permissionBtnText: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "600",
-    textAlign: "center",
-  },
-  permissionGalleryBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    width: "100%",
-    gap: 8,
-  },
-  permissionGalleryText: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
+  shutterInner: { width: 58, height: 58, borderRadius: 29, backgroundColor: "#FFFFFF" },
+
+  // Gallery button (web)
+  galleryBtn: { flexDirection: "row", alignItems: "center", padding: 16, borderRadius: 16, borderWidth: 2, gap: 12, marginBottom: 20 },
+  galleryBtnText: { flex: 1, fontSize: 16, fontWeight: "600" },
+  tipsBox: { padding: 16, borderRadius: 16, borderWidth: 1, marginBottom: 16 },
+  tipsHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 },
+  tipsTitle: { fontSize: 15, fontWeight: "700" },
+  tipRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 8 },
+  tipDot: { width: 6, height: 6, borderRadius: 3 },
+  tipText: { fontSize: 14, lineHeight: 20, flex: 1 },
+
+  // Preview
+  imagePreview: { borderRadius: 20, borderWidth: 1, overflow: "hidden", marginBottom: 16, height: 280, position: "relative" },
+  previewImage: { width: "100%", height: "100%" },
+  clearOverlay: { position: "absolute", top: 12, right: 12, width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" },
+  errorBox: { flexDirection: "row", alignItems: "center", gap: 8, padding: 12, borderRadius: 12, borderWidth: 1, marginBottom: 12 },
+  errorText: { flex: 1, fontSize: 14 },
+  solveBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", padding: 16, borderRadius: 16, gap: 8, marginBottom: 12 },
+  solveBtnText: { fontSize: 17, fontWeight: "700", color: "#FFFFFF" },
+  retakeBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", padding: 14, borderRadius: 14, borderWidth: 1, gap: 8 },
+  retakeBtnText: { fontSize: 15, fontWeight: "600" },
+  gradePill: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12, borderWidth: 1 },
+  gradePillText: { fontSize: 14, fontWeight: "600", flex: 1 },
+  gradeSheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, borderWidth: 1, padding: 20, paddingBottom: 36 },
+  gradeSheetHandle: { width: 40, height: 4, borderRadius: 2, alignSelf: "center", marginBottom: 16 },
+  gradeSheetTitle: { fontSize: 18, fontWeight: "800", marginBottom: 4 },
+  gradeGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  gradeCell: { width: "30%", padding: 12, borderRadius: 14, borderWidth: 1.5, alignItems: "center", gap: 2 },
+  gradeCellLabel: { fontSize: 13, fontWeight: "700", textAlign: "center" },
+  gradeCellSub: { fontSize: 10, textAlign: "center" },
 });
