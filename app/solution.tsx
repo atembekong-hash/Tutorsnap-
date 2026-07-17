@@ -174,7 +174,7 @@ function WorkedExampleCopyButton({
   const problemTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const solutionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   return (
-    <View style={{ flexDirection: "row", gap: 6, flexShrink: 1, flexWrap: "wrap", justifyContent: "flex-end" }}>
+    <View style={{ flexDirection: "row", gap: 6 }}>
       <TouchableOpacity
         accessibilityLabel="Copy example problem to clipboard"
         accessibilityRole="button"
@@ -1553,9 +1553,9 @@ const styles = StyleSheet.create({
   answerLabel: { fontSize: 11, fontWeight: "700", letterSpacing: 1 },
   copyBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
   copyText: { fontSize: 13, fontWeight: "600" },
-  answerText: { fontSize: 22, fontWeight: "800", letterSpacing: -0.5, flexShrink: 1, flexWrap: "wrap" },
+  answerText: { fontSize: 22, fontWeight: "800", letterSpacing: -0.5 },
   stepsSection: { paddingHorizontal: 16, marginBottom: 16 },
-  sectionHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12, minWidth: 0 },
+  sectionHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 },
   sectionTitle: { fontSize: 16, fontWeight: "700" },
   stepCard: {
     borderRadius: 14,
@@ -1577,7 +1577,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   stepNumberText: { fontSize: 13, fontWeight: "800" },
-  stepTitle: { flex: 1, flexShrink: 1, minWidth: 0, fontSize: 14, fontWeight: "600" },
+  stepTitle: { flex: 1, flexShrink: 1, fontSize: 14, fontWeight: "600" },
   stepBody: { paddingHorizontal: 14, paddingBottom: 14 },
   expressionBox: {
     padding: 12,
@@ -1585,8 +1585,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginBottom: 10,
     flexDirection: "row",
-    alignItems: "flex-start",
-    minWidth: 0,
+    alignItems: "center",
   },
   expressionText: { fontSize: 16, fontWeight: "700", fontFamily: Platform.OS === "ios" ? "Courier New" : "monospace" },
   stepExplanation: { fontSize: 14, lineHeight: 22 },
@@ -1723,7 +1722,6 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 100,
     alignSelf: "center",
-    maxWidth: "90%",
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
