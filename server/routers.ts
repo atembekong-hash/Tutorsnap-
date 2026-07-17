@@ -2,6 +2,7 @@ import { z } from "zod";
 import { router, publicProcedure, protectedProcedure } from "./_core/trpc";
 import { invokeLLM } from "./_core/llm";
 import { invokeParallel } from "./_core/parallel-invoke";
+import { scoreConfidence, shouldRetry, generateRetryPrompt } from "./_core/confidence-scorer";
 import { systemRouter } from "./_core/systemRouter";
 import { COOKIE_NAME } from "../shared/const";
 import { transcribeAudio } from "./_core/voiceTranscription";
