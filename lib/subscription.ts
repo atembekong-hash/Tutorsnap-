@@ -64,12 +64,12 @@ export function getTrialDaysRemaining(trialStartMs: number): number {
 }
 
 // ─── Usage limits (free / trial tier) ────────────────────────────────────────
-// Free users get 4 solves/day, 6 quiz questions/day, 6 chat messages/session.
+// Free users get 2 solves/day, 3 quiz questions/day, 3 chat messages/session.
 // Premium (paid or trial) users have no limits.
 export const FREE_LIMITS = {
-  solvesPerDay: 4,
-  quizQuestionsPerDay: 6,
-  chatMessagesPerSession: 6,
+  solvesPerDay: 2,
+  quizQuestionsPerDay: 3,
+  chatMessagesPerSession: 3,
 } as const;
 
 const USAGE_KEY = (type: string) => `@tutorsnap/usage/${type}/${new Date().toDateString()}`;
