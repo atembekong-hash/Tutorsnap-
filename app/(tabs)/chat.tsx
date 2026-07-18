@@ -2805,7 +2805,7 @@ function ChatScreenContent() {
           style={chatStyles.scrollFabInner}
           activeOpacity={1}
         >
-          <IconSymbol size={25} name="chevron.up" color={colors.foreground} />
+          <IconSymbol size={12} name="chevron.up" color={colors.foreground} />
         </TouchableOpacity>
       </Animated.View>
 
@@ -2844,7 +2844,7 @@ function ChatScreenContent() {
           style={chatStyles.scrollFabInner}
           activeOpacity={1}
         >
-          <IconSymbol size={25} name="chevron.down" color={colors.foreground} />
+          <IconSymbol size={12} name="chevron.down" color={colors.foreground} />
         </TouchableOpacity>
       </Animated.View>
 
@@ -3847,9 +3847,9 @@ const chatStyles = StyleSheet.create({
   speedBadgeText: { color: "#fff", fontSize: 9, fontWeight: "800", letterSpacing: 0.3 },
   scrollFab: {
     position: "absolute",
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 15,
+    height: 15,
+    borderRadius: 7.5,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
@@ -3861,7 +3861,7 @@ const chatStyles = StyleSheet.create({
   },
   scrollFabLeft: { left: 0 },
   scrollFabRight: { right: 14 },
-  scrollFabInner: { width: 25, height: 25, alignItems: "center", justifyContent: "center" },
+  scrollFabInner: { width: 12.5, height: 12.5, alignItems: "center", justifyContent: "center" },
   transcriptToast: {
     position: "absolute",
     left: 20,
