@@ -19,6 +19,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { redeemReferralCode } from "@/lib/rewards";
+import { notifyReferralSuccess } from "@/lib/achievement-notifications";
 
 export default function RedeemCodeScreen() {
   const colors = useColors();
@@ -40,6 +41,7 @@ export default function RedeemCodeScreen() {
       
       if (result.success) {
         H.notificationAsync("success");
+        await notifyReferralSuccess(7);
         Alert.alert("Success!", result.message, [
           {
             text: "View Rewards",

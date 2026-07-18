@@ -1,17 +1,13 @@
 /**
  * Referral Code Validation Router
- * Handles server-side validation of referral codes to prevent fraud
+ * Handles server-side validation of referral codes with database persistence
  */
 
 import { router, publicProcedure } from "@/server/_core/trpc";
 import { z } from "zod";
-
-// In-memory store for valid referral codes (in production, use database)
-const VALID_CODES = new Map<string, { userId: string; uses: number; maxUses: number; expiresAt: Date }>();
-
-// Initialize some test codes
-VALID_CODES.set("WELCOME100", { userId: "admin", uses: 0, maxUses: 999, expiresAt: new Date("2027-12-31") });
-VALID_CODES.set("FRIEND50", { userId: "admin", uses: 0, maxUses: 50, expiresAt: new Date("2026-12-31") });
+import { db } from "@/server/db";
+import { referralCodes } from "@/drizzle/schema";
+import { eq, and, gt } from "drizzle-orm";
 
 export const referralRouter = router({
   /**
@@ -21,10 +17,16 @@ export const referralRouter = router({
     .input(z.object({ code: z.string().min(5).max(20) }))
     .mutation(async ({ input }) => {
       try {
-        const code = input.code.toUpperCase().trim();
-        const codeData = VALID_CODES.get(code);
+        const codeUpper = input.code.toUpperCase().trim();
+        
+        // Find code in database
+        const codeData = await db
+          .select()
+          .from(referralCodes)
+          .where(eq(referralCodes.code, codeUpper))
+          .limit(1);
 
-        if (!codeData) {
+        if (codeData.length === 0) {
           return {
             valid: false,
             message: "Invalid referral code",
@@ -32,8 +34,10 @@ export const referralRouter = router({
           };
         }
 
+        const code = codeData[0];
+
         // Check if code has expired
-        if (new Date() > codeData.expiresAt) {
+        if (new Date() > code.expiresAt) {
           return {
             valid: false,
             message: "Referral code has expired",
@@ -42,7 +46,7 @@ export const referralRouter = router({
         }
 
         // Check if code has reached max uses
-        if (codeData.uses >= codeData.maxUses) {
+        if (code.uses >= code.maxUses) {
           return {
             valid: false,
             message: "Referral code has reached maximum uses",
@@ -51,7 +55,10 @@ export const referralRouter = router({
         }
 
         // Code is valid - increment use count
-        codeData.uses += 1;
+        await db
+          .update(referralCodes)
+          .set({ uses: code.uses + 1 })
+          .where(eq(referralCodes.id, code.id));
 
         return {
           valid: true,
@@ -72,20 +79,23 @@ export const referralRouter = router({
    * Generate a new referral code for a user
    */
   generateCode: publicProcedure
-    .input(z.object({ userId: z.string() }))
+    .input(z.object({ userId: z.number() }))
     .mutation(async ({ input }) => {
       try {
         // Generate unique code
         const timestamp = Date.now().toString(36).toUpperCase();
         const random = Math.random().toString(36).substring(2, 8).toUpperCase();
-        const code = `${input.userId.substring(0, 3).toUpperCase()}${timestamp}${random}`;
+        const code = `${timestamp}${random}`;
 
-        // Store code
-        VALID_CODES.set(code, {
+        // Store code in database
+        const expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000); // 1 year
+        
+        await db.insert(referralCodes).values({
+          code,
           userId: input.userId,
           uses: 0,
           maxUses: 999,
-          expiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year
+          expiresAt,
         });
 
         return {
@@ -110,9 +120,13 @@ export const referralRouter = router({
     .input(z.object({ code: z.string() }))
     .query(async ({ input }) => {
       try {
-        const codeData = VALID_CODES.get(input.code.toUpperCase());
+        const codeData = await db
+          .select()
+          .from(referralCodes)
+          .where(eq(referralCodes.code, input.code.toUpperCase()))
+          .limit(1);
 
-        if (!codeData) {
+        if (codeData.length === 0) {
           return {
             found: false,
             uses: 0,
@@ -122,12 +136,13 @@ export const referralRouter = router({
           };
         }
 
+        const code = codeData[0];
         return {
           found: true,
-          uses: codeData.uses,
-          maxUses: codeData.maxUses,
-          remaining: codeData.maxUses - codeData.uses,
-          expiresAt: codeData.expiresAt.toISOString(),
+          uses: code.uses,
+          maxUses: code.maxUses,
+          remaining: code.maxUses - code.uses,
+          expiresAt: code.expiresAt.toISOString(),
         };
       } catch (error) {
         console.error("Referral stats error:", error);
@@ -137,6 +152,38 @@ export const referralRouter = router({
           maxUses: 0,
           remaining: 0,
           expiresAt: null,
+        };
+      }
+    }),
+
+  /**
+   * Get user's referral codes
+   */
+  getUserCodes: publicProcedure
+    .input(z.object({ userId: z.number() }))
+    .query(async ({ input }) => {
+      try {
+        const codes = await db
+          .select()
+          .from(referralCodes)
+          .where(eq(referralCodes.userId, input.userId));
+
+        return {
+          success: true,
+          codes: codes.map((c) => ({
+            code: c.code,
+            uses: c.uses,
+            maxUses: c.maxUses,
+            remaining: c.maxUses - c.uses,
+            expiresAt: c.expiresAt.toISOString(),
+            createdAt: c.createdAt.toISOString(),
+          })),
+        };
+      } catch (error) {
+        console.error("Get user codes error:", error);
+        return {
+          success: false,
+          codes: [],
         };
       }
     }),

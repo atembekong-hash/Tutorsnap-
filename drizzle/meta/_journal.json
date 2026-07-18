@@ -15,6 +15,13 @@
       "when": 1783976861273,
       "tag": "0001_noisy_pepper_potts",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1784409554750,
+      "tag": "0002_breezy_legion",
+      "breakpoints": true
     }
   ]
 }
