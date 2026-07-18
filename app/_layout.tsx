@@ -325,6 +325,8 @@ export default function RootLayout() {
               options={{
                 presentation: "card",
                 animation: "slide_from_right",
+                gestureEnabled: true,
+                gestureDirection: "horizontal",
               }}
             />
             <Stack.Screen
@@ -332,6 +334,8 @@ export default function RootLayout() {
               options={{
                 presentation: "card",
                 animation: "slide_from_right",
+                gestureEnabled: true,
+                gestureDirection: "horizontal",
               }}
             />
             <Stack.Screen
@@ -339,6 +343,8 @@ export default function RootLayout() {
               options={{
                 presentation: "card",
                 animation: "slide_from_right",
+                gestureEnabled: true,
+                gestureDirection: "horizontal",
               }}
             />
             <Stack.Screen
@@ -346,6 +352,8 @@ export default function RootLayout() {
               options={{
                 presentation: "card",
                 animation: "slide_from_right",
+                gestureEnabled: true,
+                gestureDirection: "horizontal",
               }}
             />
             <Stack.Screen
@@ -353,6 +361,8 @@ export default function RootLayout() {
               options={{
                 presentation: "card",
                 animation: "slide_from_right",
+                gestureEnabled: true,
+                gestureDirection: "horizontal",
               }}
             />
             <Stack.Screen
@@ -361,6 +371,8 @@ export default function RootLayout() {
                 presentation: "card",
                 animation: "slide_from_right",
                 headerShown: false,
+                gestureEnabled: true,
+                gestureDirection: "horizontal",
               }}
             />
             <Stack.Screen
@@ -368,6 +380,8 @@ export default function RootLayout() {
               options={{
                 presentation: "modal",
                 animation: "slide_from_bottom",
+                gestureEnabled: true,
+                gestureDirection: "vertical",
               }}
             />
             <Stack.Screen
@@ -385,6 +399,8 @@ export default function RootLayout() {
                 presentation: "card",
                 animation: "slide_from_right",
                 headerShown: false,
+                gestureEnabled: true,
+                gestureDirection: "horizontal",
               }}
             />
             <Stack.Screen
@@ -393,6 +409,8 @@ export default function RootLayout() {
                 presentation: "card",
                 animation: "slide_from_right",
                 headerShown: false,
+                gestureEnabled: true,
+                gestureDirection: "horizontal",
               }}
             />
             <Stack.Screen
@@ -401,6 +419,8 @@ export default function RootLayout() {
                 presentation: "card",
                 animation: "slide_from_right",
                 headerShown: false,
+                gestureEnabled: true,
+                gestureDirection: "horizontal",
               }}
             />
           </Stack>
