@@ -197,6 +197,10 @@ function HistoryScreenContent() {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerTop}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}
+            accessibilityLabel="Go back">
+            <IconSymbol size={24} name="chevron.left" color={colors.foreground} />
+          </TouchableOpacity>
           <Text style={[styles.title, { color: colors.foreground }]}>History</Text>
           {history.length > 0 && (
             <View style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
@@ -391,8 +395,9 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 8,
   },
-  headerTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  title: { fontSize: 28, fontWeight: "800", letterSpacing: -0.5 },
+  headerTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12 },
+  title: { fontSize: 28, fontWeight: "800", letterSpacing: -0.5, flex: 1 },
+  backBtn: { padding: 8, marginLeft: -8 },
   clearAllBtn: { padding: 4 },
   clearAllText: { fontSize: 14, fontWeight: "600" },
   subtitle: { fontSize: 14, marginTop: 4 },
