@@ -986,7 +986,7 @@ function ChatScreenContent() {
   }, [scrollToBottom]);
 
   // ── Swipe-to-show tab bar ───────────────────────────────────────────────────
-  const [tabBarVisible, setTabBarVisible] = useState(false);
+  const [tabBarVisible, setTabBarVisible] = useState(true); // Always show tab bar
   const tabBarTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const navigation = useNavigation();
   useEffect(() => {
@@ -1002,11 +1002,8 @@ function ChatScreenContent() {
     });
   }, [tabBarVisible, navigation, colors, insets]);
   const showTabBarBriefly = useCallback(() => {
-    if (!tutorSettings.swipeToShowTabBar) return;
-    setTabBarVisible(true);
-    if (tabBarTimeoutRef.current) clearTimeout(tabBarTimeoutRef.current);
-    tabBarTimeoutRef.current = setTimeout(() => setTabBarVisible(false), 3500);
-  }, [tutorSettings.swipeToShowTabBar]);
+    // Tab bar is always visible, no need to show/hide
+  }, []);
   const subjectAccent = selectedSubject
     ? getSubjectAccent(getAppearanceSubjectKey(selectedSubject), colorScheme)
     : colors.primary;
