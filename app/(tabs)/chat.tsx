@@ -2282,7 +2282,7 @@ function ChatScreenContent() {
               ]}
               activeOpacity={0.7}
             >
-              <IconSymbol size={24} name="plus" color={colors.primary} />
+              <IconSymbol size={24} name="pencil" color="#ffffff" />
             </TouchableOpacity>
           </View>
         </BlurView>
