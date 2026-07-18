@@ -1013,14 +1013,10 @@ function ChatScreenContent() {
   }, [messages.length, settleScrollToBottom]);
 
   // Auto-scroll during streaming: keep latest content visible
-  // IMPORTANT: Only scroll if user hasn't scrolled up. Stop immediately if they do.
   useEffect(() => {
     if (isStreaming && !isUserScrolledUpRef.current) {
       const streamingScrollTimer = setInterval(() => {
-        // Double-check user hasn't scrolled up before scrolling
-        if (!isUserScrolledUpRef.current) {
-          scrollToBottom(true);
-        }
+        scrollToBottom(true);
       }, 300);
       return () => clearInterval(streamingScrollTimer);
     }
@@ -2516,7 +2512,7 @@ function ChatScreenContent() {
               
               // Detect user scrolling: if distance from bottom increased significantly, user scrolled up
               const scrollDelta = Math.abs(contentOffset.y - lastScrollYRef.current);
-              const isUserScrolling = scrollDelta > 2; // More than 2px movement (more responsive)
+              const isUserScrolling = scrollDelta > 5; // More than 5px movement
               
               if (nearBottom) {
                 isUserScrolledUpRef.current = false;
@@ -2529,8 +2525,18 @@ function ChatScreenContent() {
               lastScrollYRef.current = contentOffset.y;
               lastScrollEventTimeRef.current = Date.now();
               // Auto-resume: if user has been idle for autoResumeDelay seconds while streaming, scroll back
-              // Auto-resume disabled: causes scroll resistance. Users can manually scroll to bottom.
-              if (!isStreaming || !isUserScrolledUpRef.current || tutorSettings.autoResumeDelay === 0) {
+              if (isStreaming && isUserScrolledUpRef.current && tutorSettings.autoResumeDelay > 0) {
+                if (scrollInactivityTimerRef.current) clearTimeout(scrollInactivityTimerRef.current);
+                // Debounce: wait for user to stop scrolling before auto-resuming
+                scrollInactivityTimerRef.current = setTimeout(() => {
+                  if (isUserScrolledUpRef.current) {
+                    isUserScrolledUpRef.current = false;
+                    setGeneratingPillVisible(false);
+                    scrollToBottom(true);
+                  }
+                  scrollInactivityTimerRef.current = null;
+                }, Math.max(tutorSettings.autoResumeDelay * 1000, 1500)); // Min 1.5s debounce
+              } else if (!isStreaming || !isUserScrolledUpRef.current || tutorSettings.autoResumeDelay === 0) {
                 if (scrollInactivityTimerRef.current) {
                   clearTimeout(scrollInactivityTimerRef.current);
                   scrollInactivityTimerRef.current = null;
