@@ -2155,30 +2155,11 @@ function ChatScreenContent() {
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
-    <ScreenContainer edges={["top", "left", "right", "bottom"]} containerClassName="">
-        {/* Swipe indicator pill — tap to briefly show tab bar */}
-        {tutorSettings.swipeToShowTabBar && !tabBarVisible && (
-          <TouchableOpacity
-            onPress={showTabBarBriefly}
-            style={{
-              position: "absolute",
-              bottom: 8,
-              alignSelf: "center",
-              zIndex: 999,
-              paddingVertical: 6,
-              paddingHorizontal: 20,
-              borderRadius: 12,
-              backgroundColor: `${colors.muted}20`,
-            }}
-            activeOpacity={0.5}
-          >
-            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: `${colors.muted}50` }} />
-          </TouchableOpacity>
-        )}
+    <ScreenContainer edges={["top", "left", "right"]} containerClassName="">
       {/* Plain background — no gradient to avoid tint/filter effect */}
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={{ flex: 1 }}
+        style={{ flex: 1, flexDirection: "column" }}
         keyboardVerticalOffset={0}
       >
         {/* ── Transparent header ── */}
@@ -2343,6 +2324,7 @@ function ChatScreenContent() {
         })()}
 
         {/* ── Message area ── */}
+        <View style={{ flex: 1, minHeight: 0 }}>
         {!sessionLoaded ? (
           <View style={chatStyles.loadingCenter}>
             <ActivityIndicator size="large" color={colors.primary} />
@@ -2467,7 +2449,7 @@ function ChatScreenContent() {
                 )}
               </View>
             )}
-            contentContainerStyle={{ paddingTop: 12, paddingBottom: composerHeight + 4 }}
+            contentContainerStyle={{ paddingTop: 12, paddingBottom: 12 }}
             showsVerticalScrollIndicator={false}
             scrollEventThrottle={16}
             onScrollBeginDrag={() => {
@@ -2537,11 +2519,12 @@ function ChatScreenContent() {
             }
           />
         )}
+        </View>
 
         {/* ── Pending queued message bubbles (shown while offline) ── */}
         {/* ── Pinned bottom dock: offline queue + input bar ── */}
         <View
-          style={chatStyles.bottomDock}
+          style={[chatStyles.bottomDock, { position: "relative", bottom: "auto", borderTopColor: colors.border }]}
           onLayout={(e) => {
             const h = Math.ceil(e.nativeEvent.layout.height);
             if (h > 0 && Math.abs(h - composerHeight) > 2) {
@@ -3571,10 +3554,12 @@ const chatStyles = StyleSheet.create({
     paddingVertical: 10,
   },
   bottomDock: {
-    position: "absolute",
+    position: "relative",
     left: 0,
     right: 0,
-    bottom: Platform.OS === "web" ? 0 : 68, // Account for full tab bar height (60 + min 8px bottom padding)
+    bottom: 0,
+    flexShrink: 0,
+    borderTopWidth: 0.5,
   },
   floatingBarWrapper: {
     paddingHorizontal: 12,
