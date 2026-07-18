@@ -70,6 +70,14 @@ CRITICAL RULES:
 - Tips must be detailed, actionable, and specific (4-6 sentences each). Include at least 4 tips.
 - The workedExample.solution must be a LONG narrative (at least 300 words) walking through every single step.
 
+FORMATTING RULES (CRITICAL - FOLLOW EXACTLY):
+- ALL mathematical expressions MUST be wrapped in LaTeX delimiters: $...$ for inline math, $$...$$ for block math.
+- NEVER use raw LaTeX commands outside $...$ or $$...$$ delimiters. Never write \\text{}, \\frac{}, \\sqrt{}, \\rightarrow outside math delimiters.
+- Use proper Markdown: **bold**, *italic*, backticks for code, dashes for lists, hashes for headings.
+- NEVER use stray backslashes, asterisks, or underscores outside their proper context.
+- The "expression" field should contain ONLY the mathematical expression wrapped in $...$ or $$...$$ delimiters.
+- All text fields should use clean Markdown with proper math delimiters.
+
 Always respond with valid JSON in this exact format:
 {
   "problem": "the original question or problem, reproduced exactly",
@@ -112,6 +120,14 @@ CRITICAL RULES:
 - The answer field must be a FULL paragraph (5-8 sentences) restating the result, interpreting it, and noting any important caveats or special cases.
 - Tips must be detailed, actionable, and specific (4-6 sentences each). Include at least 4 tips.
 - The workedExample.solution must be a LONG narrative (at least 300 words) walking through every single step.
+
+FORMATTING RULES (CRITICAL - FOLLOW EXACTLY):
+- ALL mathematical expressions MUST be wrapped in LaTeX delimiters: $...$ for inline math, $$...$$ for block math.
+- NEVER use raw LaTeX commands outside $...$ or $$...$$ delimiters. Never write \\text{}, \\frac{}, \\sqrt{}, \\rightarrow outside math delimiters.
+- Use proper Markdown: **bold**, *italic*, backticks for code, dashes for lists, hashes for headings.
+- NEVER use stray backslashes, asterisks, or underscores outside their proper context.
+- The "expression" field should contain ONLY the mathematical expression wrapped in $...$ or $$...$$ delimiters.
+- All text fields should use clean Markdown with proper math delimiters.
 
 Always respond with valid JSON in this exact format:
 {
@@ -213,7 +229,13 @@ const CHAT_SYSTEM_PROMPT = `You are TutorSnap, a friendly and expert academic tu
 You help students understand concepts across Mathematics, English/Language Arts, Science, and Social Studies.
 Be encouraging, clear, and pedagogical. Use examples when helpful.
 Format mathematical expressions clearly. Keep responses concise but complete.
-Adapt your tone and vocabulary to the subject: precise for math/science, analytical for literature/history.`;
+Adapt your tone and vocabulary to the subject: precise for math/science, analytical for literature/history.
+
+FORMATTING RULES (CRITICAL):
+- ALL mathematical expressions MUST be wrapped in LaTeX delimiters: $...$ for inline math, $$...$$ for block math.
+- NEVER use raw LaTeX commands outside $...$ or $$...$$ delimiters. Never write \\text{}, \\frac{}, \\sqrt{}, \\rightarrow outside math delimiters.
+- Use proper Markdown: **bold**, *italic*, backticks for code, dashes for lists, hashes for headings.
+- NEVER use stray backslashes, asterisks, or underscores outside their proper context.`;
 
 const GRADE_LEVEL_DESCRIPTIONS: Record<string, string> = {
   grade1:     "Grade 1 (age 6-7): Use very simple words, very short sentences, and fun real-world examples a young child would understand. Avoid all jargon.",

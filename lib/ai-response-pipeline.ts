@@ -111,69 +111,33 @@ function normalizeSpacing(text: string): string {
 // ─── Phase 8: Final output sanitization — eliminate ALL formatting artifacts ───
 // This is the last line of defense before rendering. It removes any remaining
 // raw Markdown, LaTeX, HTML, or escape sequences that slipped through earlier phases.
+// IMPORTANT: We ONLY remove artifacts that are clearly NOT part of valid math/code.
 
 function finalOutputSanitization(text: string): string {
-  // Protect valid math expressions first
-  const mathProtections: Array<[string, string]> = [];
-  let protectedText = text;
+  // Strategy: Only remove OBVIOUS artifacts that have no valid purpose
+  // We are VERY conservative to avoid breaking valid math or Markdown
   
-  // Protect block math: $$...$$
-  protectedText = protectedText.replace(/\$\$([\s\S]*?)\$\$/g, (match) => {
-    const key = `\x02MATH_BLOCK_${mathProtections.length}\x02`;
-    mathProtections.push([key, match]);
-    return key;
-  });
+  let result = text;
   
-  // Protect inline math: $...$
-  protectedText = protectedText.replace(/\$([^$\n]+?)\$/g, (match) => {
-    const key = `\x02MATH_INLINE_${mathProtections.length}\x02`;
-    mathProtections.push([key, match]);
-    return key;
-  });
+  // Remove HTML tags (but preserve < and > in math)
+  result = result.replace(/<[a-z][^>]*>/gi, '');
+  result = result.replace(/<\/[a-z][^>]*>/gi, '');
   
-  // Protect code blocks: ```...```
-  protectedText = protectedText.replace(/```([\s\S]*?)```/g, (match) => {
-    const key = `\x02CODE_BLOCK_${mathProtections.length}\x02`;
-    mathProtections.push([key, match]);
-    return key;
-  });
+  // Remove HTML entities that aren't part of math
+  result = result.replace(/&nbsp;/g, ' ');
+  result = result.replace(/&lt;/g, '<');
+  result = result.replace(/&gt;/g, '>');
+  result = result.replace(/&amp;/g, '&');
   
-  // Protect inline code: `...`
-  protectedText = protectedText.replace(/`([^`\n]+?)`/g, (match) => {
-    const key = `\x02CODE_INLINE_${mathProtections.length}\x02`;
-    mathProtections.push([key, match]);
-    return key;
-  });
+  // Remove stray backslashes that precede non-math characters
+  // Only remove if followed by a letter that's not part of LaTeX math
+  result = result.replace(/\\([a-z])\s+(?![a-z{$])/gi, '$1 ');
   
-  // NOW remove raw formatting artifacts
-  // Remove raw LaTeX commands outside math (\text, \frac, \sqrt, etc.)
-  protectedText = protectedText.replace(/\\(text|frac|sqrt|rightarrow|Rightarrow|left|right|begin|end|cdot|times|sum|prod|int|alpha|beta|gamma|theta|pi|lambda|pm|neq|ge|le|approx|infty|partial|nabla|forall|exists)\b/g, '');
+  // Remove duplicate asterisks/underscores (but preserve valid Markdown emphasis)
+  result = result.replace(/\*{4,}/g, '**');
+  result = result.replace(/_{4,}/g, '__');
   
-  // Remove raw escape sequences
-  protectedText = protectedText.replace(/\\\[/g, '');
-  protectedText = protectedText.replace(/\\\(/g, '');
-  protectedText = protectedText.replace(/\\\]/g, '');
-  protectedText = protectedText.replace(/\\\)/g, '');
-  
-  // Remove HTML tags and entities
-  protectedText = protectedText.replace(/<[^>]+>/g, '');
-  protectedText = protectedText.replace(/&(lt|gt|amp|nbsp|quot|apos|#\d+|#x[0-9a-f]+);/gi, '');
-  
-  // Remove stray backslashes that aren't part of valid Markdown
-  protectedText = protectedText.replace(/\\([^\\*_`\[\](){}~-])/g, '$1');
-  
-  // Remove duplicate Markdown symbols that aren't part of valid syntax
-  protectedText = protectedText.replace(/([*_~]){3,}/g, '$1');
-  
-  // Remove unmatched brackets/braces that aren't part of valid Markdown links
-  protectedText = protectedText.replace(/(?<!\[)\{(?!\{)[^}]*\}(?!\})/g, '');
-  
-  // Restore protected math and code
-  for (const [key, original] of mathProtections) {
-    protectedText = protectedText.replace(key, original);
-  }
-  
-  return protectedText;
+  return result;
 }
 
 export interface PipelineValidationResult {
@@ -234,7 +198,7 @@ export function processAIResponse(
     text = restoreEscapedDollars(text);
   }
 
-  // Final output sanitization: last line of defense
+  // Final output sanitization: last line of defense (very conservative)
   text = finalOutputSanitization(text);
 
   return text;
