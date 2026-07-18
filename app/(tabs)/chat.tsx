@@ -177,7 +177,7 @@ function getPromptsForSubject(subject: SubjectId | null) {
 
 // ─── Animated three-dot typing indicator ─────────────────────────────────────
 
-function TypingDots({ color, showLabel = true }: { color: string; showLabel?: boolean }) {
+function TypingDots({ color, showLabel = true, showEstimate = true }: { color: string; showLabel?: boolean; showEstimate?: boolean }) {
   const dots = [
     useRef(new Animated.Value(0)).current,
     useRef(new Animated.Value(0)).current,
@@ -219,9 +219,16 @@ function TypingDots({ color, showLabel = true }: { color: string; showLabel?: bo
   return (
     <View style={typingStyles.container}>
       {showLabel && (
-        <Text style={[typingStyles.label, { color: colors.muted, fontSize: fs(12) }]}>
-          🤔 Thinking
-        </Text>
+        <View style={typingStyles.labelContainer}>
+          <Text style={[typingStyles.label, { color: colors.muted, fontSize: fs(12) }]}>
+            🤔 Thinking
+          </Text>
+          {showEstimate && (
+            <Text style={[typingStyles.estimate, { color: colors.muted, fontSize: fs(10) }]}>
+              usually 2-3 seconds
+            </Text>
+          )}
+        </View>
       )}
       <View style={typingStyles.row}>
         {dots.map((dot, i) => (
@@ -260,7 +267,9 @@ function TypingDots({ color, showLabel = true }: { color: string; showLabel?: bo
 
 const typingStyles = StyleSheet.create({
   container: { flexDirection: "column", gap: 4, paddingVertical: 4 },
-  label: { fontWeight: "500", marginBottom: 2 },
+  labelContainer: { flexDirection: "column", gap: 2, marginBottom: 2 },
+  label: { fontWeight: "500" },
+  estimate: { fontStyle: "italic", opacity: 0.8 },
   row: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 6, paddingHorizontal: 4 },
   dot: { width: 9, height: 9, borderRadius: 4.5 },
 });
@@ -1013,10 +1022,14 @@ function ChatScreenContent() {
   }, [messages.length, settleScrollToBottom]);
 
   // Auto-scroll during streaming: keep latest content visible
+  // IMPORTANT: Only scroll if user hasn't scrolled up. Stop immediately if they do.
   useEffect(() => {
     if (isStreaming && !isUserScrolledUpRef.current) {
       const streamingScrollTimer = setInterval(() => {
-        scrollToBottom(true);
+        // Double-check user hasn't scrolled up before scrolling
+        if (!isUserScrolledUpRef.current) {
+          scrollToBottom(true);
+        }
       }, 300);
       return () => clearInterval(streamingScrollTimer);
     }
@@ -2512,7 +2525,7 @@ function ChatScreenContent() {
               
               // Detect user scrolling: if distance from bottom increased significantly, user scrolled up
               const scrollDelta = Math.abs(contentOffset.y - lastScrollYRef.current);
-              const isUserScrolling = scrollDelta > 5; // More than 5px movement
+              const isUserScrolling = scrollDelta > 2; // More than 2px movement (more responsive)
               
               if (nearBottom) {
                 isUserScrolledUpRef.current = false;
@@ -2525,18 +2538,8 @@ function ChatScreenContent() {
               lastScrollYRef.current = contentOffset.y;
               lastScrollEventTimeRef.current = Date.now();
               // Auto-resume: if user has been idle for autoResumeDelay seconds while streaming, scroll back
-              if (isStreaming && isUserScrolledUpRef.current && tutorSettings.autoResumeDelay > 0) {
-                if (scrollInactivityTimerRef.current) clearTimeout(scrollInactivityTimerRef.current);
-                // Debounce: wait for user to stop scrolling before auto-resuming
-                scrollInactivityTimerRef.current = setTimeout(() => {
-                  if (isUserScrolledUpRef.current) {
-                    isUserScrolledUpRef.current = false;
-                    setGeneratingPillVisible(false);
-                    scrollToBottom(true);
-                  }
-                  scrollInactivityTimerRef.current = null;
-                }, Math.max(tutorSettings.autoResumeDelay * 1000, 1500)); // Min 1.5s debounce
-              } else if (!isStreaming || !isUserScrolledUpRef.current || tutorSettings.autoResumeDelay === 0) {
+              // Auto-resume disabled: causes scroll resistance. Users can manually scroll to bottom.
+              if (!isStreaming || !isUserScrolledUpRef.current || tutorSettings.autoResumeDelay === 0) {
                 if (scrollInactivityTimerRef.current) {
                   clearTimeout(scrollInactivityTimerRef.current);
                   scrollInactivityTimerRef.current = null;
