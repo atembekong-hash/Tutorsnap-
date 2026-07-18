@@ -177,7 +177,7 @@ function getPromptsForSubject(subject: SubjectId | null) {
 
 // ─── Animated three-dot typing indicator ─────────────────────────────────────
 
-function TypingDots({ color }: { color: string }) {
+function TypingDots({ color, showLabel = true }: { color: string; showLabel?: boolean }) {
   const dots = [
     useRef(new Animated.Value(0)).current,
     useRef(new Animated.Value(0)).current,
@@ -212,10 +212,19 @@ function TypingDots({ color }: { color: string }) {
   }, []);
 
   const dotColors = ["#6366F1", "#7C3AED", "#4F46E5"];
+  const { settings } = useAppearance();
+  const colors = useColors();
+  const fs = useFontSize();
 
   return (
-    <View style={typingStyles.row}>
-      {dots.map((dot, i) => (
+    <View style={typingStyles.container}>
+      {showLabel && (
+        <Text style={[typingStyles.label, { color: colors.muted, fontSize: fs(12) }]}>
+          🤔 Thinking
+        </Text>
+      )}
+      <View style={typingStyles.row}>
+        {dots.map((dot, i) => (
         <Animated.View
           key={i}
           style={[
@@ -244,11 +253,14 @@ function TypingDots({ color }: { color: string }) {
           ]}
         />
       ))}
+      </View>
     </View>
   );
 }
 
 const typingStyles = StyleSheet.create({
+  container: { flexDirection: "column", gap: 4, paddingVertical: 4 },
+  label: { fontWeight: "500", marginBottom: 2 },
   row: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 6, paddingHorizontal: 4 },
   dot: { width: 9, height: 9, borderRadius: 4.5 },
 });
