@@ -68,7 +68,6 @@ import { useNetworkStatus } from "@/hooks/use-network-status";
 
 import { useFontSize } from "@/lib/font-size-provider";
 import { ErrorBoundary } from "@/components/error-boundary";
-import { ChatDebugWrapper } from "@/components/chat-debug-wrapper";
 import { VoiceButton } from "@/components/voice-button";
 import {
   AIResponseRenderer,
@@ -3564,9 +3563,7 @@ function ChatScreenContent() {
 export default function ChatScreen() {
   return (
     <ErrorBoundary label="Chat">
-      <ChatDebugWrapper>
-        <ChatScreenContent />
-      </ChatDebugWrapper>
+      <ChatScreenContent />
     </ErrorBoundary>
   );
 }
