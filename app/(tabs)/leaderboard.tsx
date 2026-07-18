@@ -16,8 +16,10 @@ import {
   TouchableOpacity,
   RefreshControl,
 } from "react-native";
+import { useRouter } from "expo-router";
 import * as H from "@/lib/haptics";
 import { ScreenContainer } from "@/components/screen-container";
+import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { getProgress } from "@/lib/progress";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -183,7 +185,13 @@ export default function LeaderboardScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={[styles.title, { color: colors.foreground }]}>Leaderboard</Text>
+          <View style={styles.headerTop}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}
+              accessibilityLabel="Go back">
+              <IconSymbol size={24} name="chevron.left" color={colors.foreground} />
+            </TouchableOpacity>
+            <Text style={[styles.title, { color: colors.foreground }]}>Leaderboard</Text>
+          </View>
           <Text style={[styles.subtitle, { color: colors.muted }]}>Week of {weekLabel}</Text>
         </View>
 
@@ -295,7 +303,9 @@ export default function LeaderboardScreen() {
 const styles = StyleSheet.create({
   content: { padding: 16, paddingBottom: 48, gap: 16 },
   header: { paddingTop: 8, gap: 4 },
-  title: { fontSize: 26, fontWeight: "800", letterSpacing: -0.5 },
+  headerTop: { flexDirection: "row", alignItems: "center", gap: 12 },
+  title: { fontSize: 26, fontWeight: "800", letterSpacing: -0.5, flex: 1 },
+  backBtn: { padding: 8, marginLeft: -8 },
   subtitle: { fontSize: 13 },
   myRankCard: { flexDirection: "row", alignItems: "center", gap: 14, borderRadius: 16, borderWidth: 1, padding: 16 },
   myRankEmoji: { fontSize: 32 },
