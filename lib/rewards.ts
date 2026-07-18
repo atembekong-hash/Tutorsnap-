@@ -120,10 +120,13 @@ export async function getUserRewards(): Promise<UserRewards> {
 /**
  * Add a referral and update tier progress
  */
-export async function addReferral(): Promise<UserRewards> {
+export async function addReferral(): Promise<{ rewards: UserRewards; tierUnlocked?: RewardTier }> {
   try {
     let rewards = await getUserRewards();
+    const previousTier = rewards.currentTier;
     rewards.referralsInCurrentTier += 1;
+
+    let tierUnlocked: RewardTier | undefined;
 
     // Check if user advanced to next tier
     const nextTier = getNextRewardTier(rewards.currentTier);
@@ -131,6 +134,7 @@ export async function addReferral(): Promise<UserRewards> {
       rewards.currentTier = nextTier.tier;
       rewards.unclaimedRewards += nextTier.freeDaysReward;
       rewards.referralsInCurrentTier = 0;
+      tierUnlocked = nextTier;
     }
 
     // Update progress for current tier
@@ -143,10 +147,11 @@ export async function addReferral(): Promise<UserRewards> {
     }
 
     await AsyncStorage.setItem(REWARDS_KEY, JSON.stringify(rewards));
-    return rewards;
+    return { rewards, tierUnlocked };
   } catch (error) {
     console.warn("Failed to add referral:", error);
-    return getUserRewards();
+    const rewards = await getUserRewards();
+    return { rewards };
   }
 }
 
