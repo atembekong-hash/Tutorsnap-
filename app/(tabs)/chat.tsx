@@ -2721,10 +2721,6 @@ function ChatScreenContent() {
 
             <Animated.View style={[
               { transform: [{ scale: sendBtnScaleAnim }] },
-              // Amber ring when connection is slow
-              connectionQuality === "slow" && isOnline && !isStreaming
-                ? { borderRadius: 24, borderWidth: 2, borderColor: colors.warning, padding: 1 }
-                : null,
             ]}>
               {isStreaming ? (
                 <TouchableOpacity
