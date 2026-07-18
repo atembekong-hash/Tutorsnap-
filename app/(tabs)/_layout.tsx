@@ -129,8 +129,15 @@ export default function TabLayout() {
         options={{
           title: "AI Tutor",
           tabBarIcon: ({ color, focused }) => <ChatTabIcon color={color} focused={focused} />,
-          // Hide tab bar when chat is active — immersive full-screen experience
-          tabBarStyle: { display: "none" },
+          // Show tab bar with standard styling
+          tabBarStyle: {
+            paddingTop: 8,
+            paddingBottom: bottomPadding,
+            height: tabBarHeight,
+            backgroundColor: colors.background,
+            borderTopColor: colors.border,
+            borderTopWidth: 0.5,
+          },
         }}
       />
       <Tabs.Screen
