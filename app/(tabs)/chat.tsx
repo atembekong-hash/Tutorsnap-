@@ -2205,21 +2205,6 @@ function ChatScreenContent() {
           ]}
         >
           <View style={chatStyles.headerLeft}>
-            {/* Close / back button */}
-            <TouchableOpacity
-              onPress={() => {
-                if (router.canGoBack()) {
-                  router.back();
-                } else {
-                  router.replace("/(tabs)" as any);
-                }
-              }}
-              style={{ marginRight: 8, padding: 4 }}
-              activeOpacity={0.7}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <IconSymbol name="xmark" size={15} color={colors.foreground} />
-            </TouchableOpacity>
             <View style={{ flex: 1, minWidth: 0 }}>
               <Text
                 style={[chatStyles.headerTitle, { color: colors.foreground }]}
