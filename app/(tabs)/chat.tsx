@@ -978,12 +978,37 @@ function ChatScreenContent() {
     });
   }, []);
 
+  // Improved settle scroll: smooth animation with proper timing
   const settleScrollToBottom = useCallback(() => {
+    // Clear any pending scroll operations
+    if (scrollPendingRef.current) {
+      clearTimeout(scrollPendingRef.current);
+    }
+    // Immediate scroll (no animation) to ensure we're at bottom
     scrollToBottom(false);
-    setTimeout(() => scrollToBottom(false), 40);
-    setTimeout(() => scrollToBottom(true), 140);
-    setTimeout(() => scrollToBottom(false), 260);
+    // Then smooth scroll to settle any layout shifts
+    scrollPendingRef.current = setTimeout(() => {
+      scrollToBottom(true);
+      scrollPendingRef.current = null;
+    }, 100);
   }, [scrollToBottom]);
+
+  // Auto-scroll on new messages: scroll to bottom when new messages arrive
+  useEffect(() => {
+    if (messages.length > 0 && !isUserScrolledUpRef.current) {
+      settleScrollToBottom();
+    }
+  }, [messages.length, settleScrollToBottom]);
+
+  // Auto-scroll during streaming: keep latest content visible
+  useEffect(() => {
+    if (isStreaming && !isUserScrolledUpRef.current) {
+      const streamingScrollTimer = setInterval(() => {
+        scrollToBottom(true);
+      }, 300);
+      return () => clearInterval(streamingScrollTimer);
+    }
+  }, [isStreaming, scrollToBottom]);
 
   // ── Swipe-to-show tab bar ───────────────────────────────────────────────────
   const [tabBarVisible, setTabBarVisible] = useState(true); // Always show tab bar
@@ -2470,16 +2495,27 @@ function ChatScreenContent() {
             onScroll={(e) => {
               const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
               const distanceFromBottom = contentSize.height - contentOffset.y - layoutMeasurement.height;
-              const nearBottom = distanceFromBottom < 80;
+              // Threshold: if within 100px of bottom, consider "at bottom"
+              const nearBottom = distanceFromBottom < 100;
+              
+              // Detect user scrolling: if distance from bottom increased significantly, user scrolled up
+              const scrollDelta = Math.abs(contentOffset.y - lastScrollYRef.current);
+              const isUserScrolling = scrollDelta > 5; // More than 5px movement
+              
               if (nearBottom) {
                 isUserScrolledUpRef.current = false;
                 if (generatingPillVisible) setGeneratingPillVisible(false);
+              } else if (isUserScrolling) {
+                // User manually scrolled away from bottom
+                isUserScrolledUpRef.current = true;
               }
+              
               lastScrollYRef.current = contentOffset.y;
               lastScrollEventTimeRef.current = Date.now();
               // Auto-resume: if user has been idle for autoResumeDelay seconds while streaming, scroll back
               if (isStreaming && isUserScrolledUpRef.current && tutorSettings.autoResumeDelay > 0) {
                 if (scrollInactivityTimerRef.current) clearTimeout(scrollInactivityTimerRef.current);
+                // Debounce: wait for user to stop scrolling before auto-resuming
                 scrollInactivityTimerRef.current = setTimeout(() => {
                   if (isUserScrolledUpRef.current) {
                     isUserScrolledUpRef.current = false;
@@ -2487,7 +2523,7 @@ function ChatScreenContent() {
                     scrollToBottom(true);
                   }
                   scrollInactivityTimerRef.current = null;
-                }, tutorSettings.autoResumeDelay * 1000);
+                }, Math.max(tutorSettings.autoResumeDelay * 1000, 1500)); // Min 1.5s debounce
               } else if (!isStreaming || !isUserScrolledUpRef.current || tutorSettings.autoResumeDelay === 0) {
                 if (scrollInactivityTimerRef.current) {
                   clearTimeout(scrollInactivityTimerRef.current);
