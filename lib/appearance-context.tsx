@@ -348,6 +348,47 @@ export const PRESET_THEMES: PresetTheme[] = [
   },
 ];
 
+// ─── Speed Presets ────────────────────────────────────────────────────────────
+
+export interface SpeedPreset {
+  id: string;
+  label: string;
+  description: string;
+  emoji: string;
+  typingSpeed: TypingSpeed;
+}
+
+export const SPEED_PRESETS: SpeedPreset[] = [
+  {
+    id: "reading-mode",
+    label: "Reading Mode",
+    description: "Slow, deliberate typing for careful reading.",
+    emoji: "📖",
+    typingSpeed: "slow",
+  },
+  {
+    id: "normal-speed",
+    label: "Normal",
+    description: "Balanced typing speed for comfortable learning.",
+    emoji: "⚡",
+    typingSpeed: "normal",
+  },
+  {
+    id: "fast-speed",
+    label: "Fast",
+    description: "Quick typing for efficient review.",
+    emoji: "🚀",
+    typingSpeed: "fast",
+  },
+  {
+    id: "quick-answers",
+    label: "Quick Answers",
+    description: "Instant display for rapid question answering.",
+    emoji: "⚡⚡",
+    typingSpeed: "very_fast",
+  },
+];
+
 // ─── AppearanceSettings interface ─────────────────────────────────────────────
 
 export interface AppearanceSettings {
@@ -502,6 +543,8 @@ interface AppearanceContextValue {
   resetSettings: () => void;
   /** Apply a named preset theme (merges preset settings into current settings) */
   applyPreset: (presetId: string) => void;
+  /** Apply a speed preset (updates typing speed) */
+  applySpeedPreset: (presetId: string) => void;
   /** Reset only per-subject accent colour overrides to their defaults */
   resetSubjectAccents: () => void;
   /** Save current settings as the Custom preset */
@@ -534,6 +577,7 @@ const AppearanceContext = createContext<AppearanceContextValue>({
   updateSetting: () => {},
   resetSettings: () => {},
   applyPreset: () => {},
+  applySpeedPreset: () => {},
   resetSubjectAccents: () => {},
   saveCustomPreset: () => {},
   renameCustomPreset: () => {},
@@ -546,6 +590,7 @@ const AppearanceContext = createContext<AppearanceContextValue>({
   isWidgetVisible: () => true,
   visibleWidgetOrder: [...DEFAULT_WIDGET_ORDER],
 });
+
 
 export function AppearanceProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = useState<AppearanceSettings>(DEFAULT_APPEARANCE);
@@ -733,6 +778,12 @@ export function AppearanceProvider({ children }: { children: React.ReactNode }) 
     (id) => settings.widgetVisibility[id] ?? true,
   );
 
+  const applySpeedPreset = useCallback((presetId: string) => {
+    const preset = SPEED_PRESETS.find((p) => p.id === presetId);
+    if (!preset) return;
+    updateSetting("typingSpeed", preset.typingSpeed);
+  }, [updateSetting]);
+
   // Don't render children until settings are loaded to avoid flash of defaults
   if (!loaded) return null;
 
@@ -743,6 +794,7 @@ export function AppearanceProvider({ children }: { children: React.ReactNode }) 
         updateSetting,
         resetSettings,
         applyPreset,
+        applySpeedPreset,
         resetSubjectAccents,
         saveCustomPreset,
         renameCustomPreset,

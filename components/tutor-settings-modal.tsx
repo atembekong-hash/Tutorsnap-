@@ -853,6 +853,43 @@ export function TutorSettingsModal({
                 </Text>
               )}
             </View>
+            {/* Speed Presets — Quick access buttons */}
+            <View style={{ marginHorizontal: 16, marginBottom: 16, marginTop: 8 }}>
+              <Text style={{ fontSize: 12, fontWeight: "600", color: colors.muted, marginBottom: 8 }}>Quick Presets</Text>
+              <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
+                {[{ id: "reading-mode", label: "📖 Reading", speed: "slow" as const },
+                  { id: "normal-speed", label: "⚡ Normal", speed: "normal" as const },
+                  { id: "fast-speed", label: "🚀 Fast", speed: "fast" as const },
+                  { id: "quick-answers", label: "⚡⚡ Instant", speed: "very_fast" as const }].map((preset) => (
+                  <TouchableOpacity
+                    key={preset.id}
+                    onPress={() => {
+                      onUpdate({ typingSpeed: preset.speed });
+                      if (settings.typingAnimation) runPreview(preset.speed as "slow" | "normal" | "fast" | "very_fast");
+                    }}
+                    style={{
+                      flex: 1,
+                      minWidth: "45%",
+                      paddingVertical: 10,
+                      paddingHorizontal: 12,
+                      borderRadius: 8,
+                      borderWidth: 1.5,
+                      borderColor: settings.typingSpeed === preset.speed ? colors.primary : colors.border,
+                      backgroundColor: settings.typingSpeed === preset.speed ? `${colors.primary}15` : colors.background,
+                      alignItems: "center",
+                    }}
+                  >
+                    <Text style={{
+                      fontSize: 13,
+                      fontWeight: settings.typingSpeed === preset.speed ? "600" : "500",
+                      color: settings.typingSpeed === preset.speed ? colors.primary : colors.foreground,
+                    }}>
+                      {preset.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
             <ToggleRow
               icon="arrow.down.to.line"
               label="Auto-scroll"
