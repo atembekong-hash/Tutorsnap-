@@ -1002,9 +1002,12 @@ function ChatScreenContent() {
 
   // Auto-scroll during streaming: keep latest content visible
   useEffect(() => {
-    if (isStreaming && !isUserScrolledUpRef.current) {
+    if (isStreaming) {
       const streamingScrollTimer = setInterval(() => {
-        scrollToBottom(true);
+        // Only auto-scroll if user hasn't manually scrolled up
+        if (!isUserScrolledUpRef.current) {
+          scrollToBottom(true);
+        }
       }, 300);
       return () => clearInterval(streamingScrollTimer);
     }
@@ -2500,7 +2503,7 @@ function ChatScreenContent() {
               
               // Detect user scrolling: if distance from bottom increased significantly, user scrolled up
               const scrollDelta = Math.abs(contentOffset.y - lastScrollYRef.current);
-              const isUserScrolling = scrollDelta > 5; // More than 5px movement
+              const isUserScrolling = scrollDelta > 2; // More than 2px movement (more responsive)
               
               if (nearBottom) {
                 isUserScrolledUpRef.current = false;
