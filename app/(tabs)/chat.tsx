@@ -2563,7 +2563,7 @@ function ChatScreenContent() {
         <View
           style={[
             chatStyles.floatingBarWrapper,
-            { paddingBottom: Math.max(insets.bottom, 2) },
+            { paddingBottom: 6 },
           ]}
         >
           {/* Limit nudge strip */}
@@ -2747,17 +2747,7 @@ function ChatScreenContent() {
             </Animated.View>
           </View>
 
-          {userMessageCount > 0 && (
-            <TouchableOpacity
-              onPress={handleClearChat}
-              style={chatStyles.clearRow}
-              activeOpacity={0.6}
-            >
-              <Text style={[chatStyles.clearText, { color: colors.muted, fontSize: fs(11) }]}>
-                Clear conversation
-              </Text>
-            </TouchableOpacity>
-          )}
+
         </View>
         </View>{/* end bottomDock */}
       </KeyboardAvoidingView>
@@ -3187,6 +3177,25 @@ function ChatScreenContent() {
                   )}
                 </View>
                 <Text style={[chatStyles.moreMenuLabel, { color: colors.foreground, fontSize: fs(14) }]}>Export PDF</Text>
+                <IconSymbol size={13} name="chevron.right" color={colors.muted} />
+              </TouchableOpacity>
+            )}
+
+            {/* Clear Conversation */}
+            {userMessageCount > 0 && (
+              <TouchableOpacity
+                style={[chatStyles.moreMenuItem, { borderBottomWidth: 0.5, borderBottomColor: colors.border }]}
+                activeOpacity={0.7}
+                onPress={() => {
+                  setShowMoreMenu(false);
+                  H.impactLight();
+                  handleClearChat();
+                }}
+              >
+                <View style={[chatStyles.moreMenuIcon, { backgroundColor: `${colors.error}18` }]}>
+                  <IconSymbol size={16} name="trash.fill" color={colors.error} />
+                </View>
+                <Text style={[chatStyles.moreMenuLabel, { color: colors.error, fontSize: fs(14) }]}>Clear Conversation</Text>
                 <IconSymbol size={13} name="chevron.right" color={colors.muted} />
               </TouchableOpacity>
             )}
