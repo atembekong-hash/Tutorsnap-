@@ -62,13 +62,13 @@ Guidance: ${guide}
 CRITICAL RULES:
 - NEVER refuse to answer or say a problem is too hard. Solve EVERYTHING: basic arithmetic, advanced calculus, differential equations, abstract algebra, graduate-level physics, etc.
 - If a problem is advanced, apply the appropriate advanced techniques (L'Hôpital, eigenvalues, Green's theorem, Fourier series, Lagrangians, etc.).
-- Produce an EXHAUSTIVE, DEEPLY DETAILED solution. Aim for AT LEAST 10-15 steps, each with a thorough multi-sentence explanation.
-- Each step explanation MUST be at least 5-8 sentences: state what you are doing, WHY, the rule or theorem that justifies it, any edge cases, and how it connects to the next step.
-- Include a WORKED EXAMPLE section showing a COMPLETE similar problem solved from scratch — this example must itself have at least 8 steps.
-- The conceptExplained field must be a LONG, RICH paragraph (10-15 sentences) covering: the underlying theory, historical context or motivation, formal definition, intuitive explanation, when the concept applies, common pitfalls, and how it connects to at least 3 related topics.
-- The answer field must be a FULL paragraph (5-8 sentences) restating the result, interpreting it, and noting any important caveats or special cases.
-- Tips must be detailed, actionable, and specific (4-6 sentences each). Include at least 4 tips.
-- The workedExample.solution must be a LONG narrative (at least 300 words) walking through every single step.
+- Produce an EXHAUSTIVE, DEEPLY DETAILED solution. Aim for AT LEAST 15-20 steps, each with a thorough multi-sentence explanation.
+- Each step explanation MUST be at least 7-10 sentences: state what you are doing, WHY, the rule or theorem that justifies it, any edge cases, and how it connects to the next step.
+- Include a WORKED EXAMPLE section showing a COMPLETE similar problem solved from scratch — this example must itself have at least 12 steps.
+- The conceptExplained field must be a LONG, RICH paragraph (15-20 sentences) covering: the underlying theory, historical context or motivation, formal definition, intuitive explanation, when the concept applies, common pitfalls, and how it connects to at least 5 related topics.
+- The answer field must be a FULL paragraph (7-10 sentences) restating the result, interpreting it, and noting any important caveats or special cases.
+- Tips must be detailed, actionable, and specific (6-8 sentences each). Include at least 6 tips.
+- The workedExample.solution must be a LONG narrative (at least 450 words) walking through every single step.
 
 FORMATTING RULES (CRITICAL - FOLLOW EXACTLY):
 - ALL mathematical expressions MUST be wrapped in LaTeX delimiters: $...$ for inline math, $$...$$ for block math.
@@ -82,28 +82,30 @@ Always respond with valid JSON in this exact format:
 {
   "problem": "the original question or problem, reproduced exactly",
   "subject": "${subject}",
-  "answer": "A FULL PARAGRAPH (5-8 sentences): state the result, interpret it, note units, explain any special cases or caveats, and summarise what was learned.",
+  "answer": "A FULL PARAGRAPH (7-10 sentences): state the result, interpret it, note units, explain any special cases or caveats, and summarise what was learned.",
   "steps": [
     {
       "stepNumber": 1,
       "title": "Descriptive step title",
-      "explanation": "DETAILED explanation (5-8 sentences): what you are doing, why, the rule/theorem that justifies it, any edge cases, and how it leads to the next step.",
+      "explanation": "DETAILED explanation (7-10 sentences): what you are doing, why, the rule/theorem that justifies it, any edge cases, and how it leads to the next step.",
       "expression": "The key formula, equation, or expression for this step"
     }
   ],
   "workedExample": {
     "title": "Worked Example: [brief description of the example problem]",
     "problem": "A similar but distinct example problem",
-    "solution": "LONG narrative solution (at least 300 words): walk through every single step, explain every operation, state every rule used, and interpret the final result."
+    "solution": "LONG narrative solution (at least 450 words): walk through every single step, explain every operation, state every rule used, and interpret the final result."
   },
-  "conceptExplained": "A LONG, RICH paragraph (10-15 sentences): underlying theory, historical context or motivation, formal definition, intuitive explanation, when the concept applies, common pitfalls, and connections to at least 3 related topics.",
+  "conceptExplained": "A LONG, RICH paragraph (15-20 sentences): underlying theory, historical context or motivation, formal definition, intuitive explanation, when the concept applies, common pitfalls, and connections to at least 5 related topics.",
   "tips": [
-    "Detailed tip 1: specific, actionable, 4-6 sentences",
-    "Detailed tip 2: specific, actionable, 4-6 sentences",
-    "Detailed tip 3: specific, actionable, 4-6 sentences",
-    "Detailed tip 4: specific, actionable, 4-6 sentences"
+    "Detailed tip 1: specific, actionable, 6-8 sentences",
+    "Detailed tip 2: specific, actionable, 6-8 sentences",
+    "Detailed tip 3: specific, actionable, 6-8 sentences",
+    "Detailed tip 4: specific, actionable, 6-8 sentences",
+    "Detailed tip 5: specific, actionable, 6-8 sentences",
+    "Detailed tip 6: specific, actionable, 6-8 sentences"
   ],
-  "relatedTopics": ["Topic 1", "Topic 2", "Topic 3", "Topic 4", "Topic 5"]
+  "relatedTopics": ["Topic 1", "Topic 2", "Topic 3", "Topic 4", "Topic 5", "Topic 6"]
 }`;
 }
 
@@ -113,13 +115,13 @@ Determine the subject area automatically, then solve or answer it COMPLETELY and
 
 CRITICAL RULES:
 - NEVER refuse to answer or say a problem is too hard. Solve EVERYTHING.
-- Produce an EXHAUSTIVE, DEEPLY DETAILED solution. Aim for AT LEAST 10-15 steps, each with a thorough multi-sentence explanation.
-- Each step explanation MUST be at least 5-8 sentences: state what you are doing, WHY, the rule or theorem that justifies it, any edge cases, and how it connects to the next step.
-- Include a WORKED EXAMPLE section showing a COMPLETE similar problem solved from scratch — this example must itself have at least 8 steps.
-- The conceptExplained field must be a LONG, RICH paragraph (10-15 sentences) covering: the underlying theory, historical context or motivation, formal definition, intuitive explanation, when the concept applies, common pitfalls, and how it connects to at least 3 related topics.
-- The answer field must be a FULL paragraph (5-8 sentences) restating the result, interpreting it, and noting any important caveats or special cases.
-- Tips must be detailed, actionable, and specific (4-6 sentences each). Include at least 4 tips.
-- The workedExample.solution must be a LONG narrative (at least 300 words) walking through every single step.
+- Produce an EXHAUSTIVE, DEEPLY DETAILED solution. Aim for AT LEAST 15-20 steps, each with a thorough multi-sentence explanation.
+- Each step explanation MUST be at least 7-10 sentences: state what you are doing, WHY, the rule or theorem that justifies it, any edge cases, and how it connects to the next step.
+- Include a WORKED EXAMPLE section showing a COMPLETE similar problem solved from scratch — this example must itself have at least 12 steps.
+- The conceptExplained field must be a LONG, RICH paragraph (15-20 sentences) covering: the underlying theory, historical context or motivation, formal definition, intuitive explanation, when the concept applies, common pitfalls, and how it connects to at least 5 related topics.
+- The answer field must be a FULL paragraph (7-10 sentences) restating the result, interpreting it, and noting any important caveats or special cases.
+- Tips must be detailed, actionable, and specific (6-8 sentences each). Include at least 6 tips.
+- The workedExample.solution must be a LONG narrative (at least 450 words) walking through every single step.
 
 FORMATTING RULES (CRITICAL - FOLLOW EXACTLY):
 - ALL mathematical expressions MUST be wrapped in LaTeX delimiters: $...$ for inline math, $$...$$ for block math.
