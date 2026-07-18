@@ -2275,14 +2275,10 @@ function ChatScreenContent() {
             <TouchableOpacity
               onPress={() => { H.impactLight(); handleNewChat(); }}
               accessibilityLabel="New chat"
-              style={[
-                chatStyles.headerBtn,
-                chatStyles.newChatBtn,
-                { backgroundColor: `${colors.primary}22` },
-              ]}
+              style={chatStyles.headerBtn}
               activeOpacity={0.7}
             >
-              <IconSymbol size={24} name="pencil" color="#ffffff" />
+              <IconSymbol size={22} name="pencil" color={colors.foreground} />
             </TouchableOpacity>
           </View>
         </BlurView>
