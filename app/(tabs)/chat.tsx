@@ -2787,7 +2787,7 @@ function ChatScreenContent() {
         style={[
           chatStyles.scrollFab,
           chatStyles.scrollFabLeft,
-          { backgroundColor: colors.surface, borderColor: colors.border, bottom: 200, opacity: scrollTopOpacity, transform: [{ scale: scrollTopScaleAnim }] },
+          { backgroundColor: colors.surface, borderColor: colors.border, bottom: 220, opacity: scrollTopOpacity, transform: [{ scale: scrollTopScaleAnim }] },
         ]}
       >
         <TouchableOpacity
@@ -2805,7 +2805,7 @@ function ChatScreenContent() {
           style={chatStyles.scrollFabInner}
           activeOpacity={1}
         >
-          <IconSymbol size={18} name="chevron.up" color={colors.foreground} />
+          <IconSymbol size={14} name="chevron.up" color={colors.foreground} />
         </TouchableOpacity>
       </Animated.View>
 
@@ -2814,7 +2814,7 @@ function ChatScreenContent() {
         style={[
           chatStyles.scrollFab,
           chatStyles.scrollFabLeft,
-          { backgroundColor: colors.surface, borderColor: colors.border, bottom: 152, opacity: scrollBottomOpacity, transform: [{ scale: scrollBottomScaleAnim }] },
+          { backgroundColor: colors.surface, borderColor: colors.border, bottom: 130, opacity: scrollBottomOpacity, transform: [{ scale: scrollBottomScaleAnim }] },
         ]}
       >
         <TouchableOpacity
@@ -2844,7 +2844,7 @@ function ChatScreenContent() {
           style={chatStyles.scrollFabInner}
           activeOpacity={1}
         >
-          <IconSymbol size={18} name="chevron.down" color={colors.foreground} />
+          <IconSymbol size={14} name="chevron.down" color={colors.foreground} />
         </TouchableOpacity>
       </Animated.View>
 
