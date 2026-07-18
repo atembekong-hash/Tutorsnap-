@@ -653,7 +653,7 @@ const bubbleStyles = StyleSheet.create({
     opacity: 0.25,
     alignSelf: 'stretch',
   },
-  aiContent: { flex: 1, paddingRight: 0 },
+  aiContent: { flex: 1, paddingRight: 0, paddingLeft: 8 },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
