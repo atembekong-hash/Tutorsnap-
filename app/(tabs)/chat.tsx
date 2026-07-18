@@ -2258,7 +2258,7 @@ function ChatScreenContent() {
               style={chatStyles.headerBtn}
               activeOpacity={0.7}
             >
-              <IconSymbol size={19} name="ellipsis" color={colors.foreground} />
+              <IconSymbol size={24} name="ellipsis" color={colors.foreground} />
             </TouchableOpacity>
 
             {/* Tutor settings gear */}
@@ -2268,7 +2268,7 @@ function ChatScreenContent() {
               style={chatStyles.headerBtn}
               activeOpacity={0.7}
             >
-              <IconSymbol size={19} name="gearshape.fill" color={colors.foreground} />
+              <IconSymbol size={24} name="gearshape.fill" color={colors.foreground} />
             </TouchableOpacity>
 
             {/* New chat */}
@@ -2282,7 +2282,7 @@ function ChatScreenContent() {
               ]}
               activeOpacity={0.7}
             >
-              <IconSymbol size={19} name="plus" color={colors.primary} />
+              <IconSymbol size={24} name="plus" color={colors.primary} />
             </TouchableOpacity>
           </View>
         </BlurView>
