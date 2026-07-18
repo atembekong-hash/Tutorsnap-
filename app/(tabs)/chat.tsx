@@ -3574,7 +3574,7 @@ const chatStyles = StyleSheet.create({
     position: "absolute",
     left: 0,
     right: 0,
-    bottom: 0,
+    bottom: Platform.OS === "web" ? 0 : 56, // Account for tab bar height on mobile
   },
   floatingBarWrapper: {
     paddingHorizontal: 12,
