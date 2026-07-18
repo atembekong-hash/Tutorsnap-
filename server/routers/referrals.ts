@@ -8,16 +8,41 @@ import { z } from "zod";
 import { db } from "@/server/db";
 import { referralCodes } from "@/drizzle/schema";
 import { eq, and, gt } from "drizzle-orm";
+import { checkFraud, logRedemptionAttempt } from "@/server/services/fraud-detection";
 
 export const referralRouter = router({
   /**
    * Validate a referral code
    */
   validateCode: publicProcedure
-    .input(z.object({ code: z.string().min(5).max(20) }))
+    .input(z.object({ code: z.string().min(5).max(20), userId: z.number(), ipAddress: z.string().optional(), deviceId: z.string().optional() }))
     .mutation(async ({ input }) => {
       try {
         const codeUpper = input.code.toUpperCase().trim();
+        
+        // Check for fraud patterns
+        const fraudCheck = await checkFraud({
+          userId: input.userId,
+          code: codeUpper,
+          ipAddress: input.ipAddress,
+          deviceId: input.deviceId,
+        });
+
+        if (fraudCheck.shouldBlock) {
+          await logRedemptionAttempt({
+            userId: input.userId,
+            code: codeUpper,
+            ipAddress: input.ipAddress,
+            deviceId: input.deviceId,
+            success: false,
+            failureReason: "Fraud detected",
+          });
+          return {
+            valid: false,
+            message: "This account has been flagged for suspicious activity. Please contact support.",
+            freeDaysReward: 0,
+          };
+        }
         
         // Find code in database
         const codeData = await db
@@ -59,6 +84,15 @@ export const referralRouter = router({
           .update(referralCodes)
           .set({ uses: code.uses + 1 })
           .where(eq(referralCodes.id, code.id));
+
+        // Log successful redemption
+        await logRedemptionAttempt({
+          userId: input.userId,
+          code: codeUpper,
+          ipAddress: input.ipAddress,
+          deviceId: input.deviceId,
+          success: true,
+        });
 
         return {
           valid: true,
