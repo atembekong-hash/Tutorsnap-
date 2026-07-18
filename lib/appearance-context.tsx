@@ -416,7 +416,7 @@ export const DEFAULT_APPEARANCE: AppearanceSettings = {
   subjectAccentColors: { ...DEFAULT_SUBJECT_ACCENT_COLORS },
   chatBubbleStyle: "rounded",
   messageDensity: "comfortable",
-  typingSpeed: "slow",
+  typingSpeed: "fast",
   typingSpeedMultiplier: 3,
   subjectSpeedOverrides: {},
   stepStyle: "cards",
