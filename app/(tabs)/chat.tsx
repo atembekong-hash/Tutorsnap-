@@ -3847,9 +3847,9 @@ const chatStyles = StyleSheet.create({
   speedBadgeText: { color: "#fff", fontSize: 9, fontWeight: "800", letterSpacing: 0.3 },
   scrollFab: {
     position: "absolute",
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
