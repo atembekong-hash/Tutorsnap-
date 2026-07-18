@@ -1,9 +1,9 @@
 /**
  * Sound effects manager for screen transitions.
  * Provides subtle audio cues for navigation with optional toggle in settings.
+ * Uses Web Audio API (built-in, no external dependencies).
  */
 
-import { Audio } from "expo-av";
 import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -29,7 +29,7 @@ function initWebAudio() {
 }
 
 /**
- * Play a subtle transition sound on web using Web Audio API
+ * Play a subtle transition sound using Web Audio API
  */
 function playWebTransitionSound() {
   if (!audioContext) return;
@@ -54,23 +54,6 @@ function playWebTransitionSound() {
     osc.stop(now + 0.1);
   } catch (e) {
     console.warn("Failed to play transition sound:", e);
-  }
-}
-
-/**
- * Play a subtle transition sound on native using expo-audio
- */
-async function playNativeTransitionSound() {
-  try {
-    // Create a simple beep sound using sine wave
-    const { sound } = await Audio.Sound.createAsync(
-      { uri: "data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEAQB8AAAB9AAACABAAZGF0YQIAAAAAAA==" },
-      { shouldPlay: true, volume: 0.3 }
-    );
-    await sound.playAsync();
-    setTimeout(() => sound.unloadAsync(), 200);
-  } catch (e) {
-    console.warn("Failed to play native transition sound:", e);
   }
 }
 
@@ -107,9 +90,9 @@ export async function playTransitionSound(): Promise<void> {
   if (Platform.OS === "web") {
     initWebAudio();
     playWebTransitionSound();
-  } else {
-    await playNativeTransitionSound();
   }
+  // Native platforms: sound effects not available without expo-av
+  // Users can still toggle the setting, but sounds won't play on native
 }
 
 /**

@@ -68,14 +68,6 @@ export default function RootLayout() {
   const [insets, setInsets] = useState<EdgeInsets>(initialInsets);
   const [frame, setFrame] = useState<Rect>(initialFrame);
 
-  // Play transition sound on navigation
-  useEffect(() => {
-    const unsubscribe = router.addEventListener("beforeRemove", () => {
-      playTransitionSound().catch(() => {});
-    });
-    return () => unsubscribe?.();
-  }, [router]);
-
   // Load premium fonts — Inter for body text, JetBrains Mono for code
   const [_fontsLoaded] = useFonts({
     Inter_400Regular,
