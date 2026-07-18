@@ -102,4 +102,28 @@ export async function saveAppearanceSettings(userId: number, settings: string): 
   await db.update(users).set({ appearanceSettings: settings }).where(eq(users.id, userId));
 }
 
+// Export db instance for direct use in services
+export const db = {
+  insert: async (table: any) => {
+    const database = await getDb();
+    if (!database) throw new Error("Database not available");
+    return database.insert(table);
+  },
+  select: async () => {
+    const database = await getDb();
+    if (!database) throw new Error("Database not available");
+    return database.select();
+  },
+  update: async (table: any) => {
+    const database = await getDb();
+    if (!database) throw new Error("Database not available");
+    return database.update(table);
+  },
+  delete: async (table: any) => {
+    const database = await getDb();
+    if (!database) throw new Error("Database not available");
+    return database.delete(table);
+  },
+};
+
 // TODO: add feature queries here as your schema grows.

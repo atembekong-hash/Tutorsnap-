@@ -3,9 +3,9 @@
  * Tracks redemption patterns and flags suspicious activity
  */
 
-import { db } from "@/server/db";
+import { getDb } from "@/server/db";
 import { fraudAlerts, redemptionHistory } from "@/drizzle/schema";
-import { eq, and, gt, gte } from "drizzle-orm";
+import { eq, and, gte } from "drizzle-orm";
 
 interface RedemptionContext {
   userId: number;
@@ -26,6 +26,9 @@ interface FraudCheckResult {
  * Check for rapid redemption patterns (multiple codes in short time)
  */
 async function checkRapidRedemption(userId: number): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+
   const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
   
   const recentRedemptions = await db
@@ -48,6 +51,9 @@ async function checkRapidRedemption(userId: number): Promise<boolean> {
  */
 async function checkMultipleIPs(userId: number, currentIP?: string): Promise<boolean> {
   if (!currentIP) return false;
+
+  const db = await getDb();
+  if (!db) return false;
 
   const last24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000);
   
@@ -76,6 +82,9 @@ async function checkMultipleIPs(userId: number, currentIP?: string): Promise<boo
  * Check for suspicious device patterns
  */
 async function checkSuspiciousDevices(userId: number): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+
   const last24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000);
   
   const redemptions = await db
@@ -103,6 +112,9 @@ async function checkSuspiciousDevices(userId: number): Promise<boolean> {
  * Check for high-value code abuse
  */
 async function checkHighValueCodeAbuse(code: string, userId: number): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+
   const last1Hour = new Date(Date.now() - 60 * 60 * 1000);
   
   const recentAttempts = await db
@@ -185,6 +197,9 @@ export async function logFraudAlert(alert: {
   description?: string;
 }): Promise<void> {
   try {
+    const db = await getDb();
+    if (!db) return;
+
     await db.insert(fraudAlerts).values({
       userId: alert.userId,
       alertType: alert.alertType,
@@ -204,6 +219,9 @@ export async function logFraudAlert(alert: {
  */
 export async function logRedemptionAttempt(context: RedemptionContext & { success: boolean; failureReason?: string }): Promise<void> {
   try {
+    const db = await getDb();
+    if (!db) return;
+
     await db.insert(redemptionHistory).values({
       userId: context.userId,
       code: context.code,
@@ -223,6 +241,9 @@ export async function logRedemptionAttempt(context: RedemptionContext & { succes
  */
 export async function getUserFraudAlerts(userId: number): Promise<any[]> {
   try {
+    const db = await getDb();
+    if (!db) return [];
+
     return await db
       .select()
       .from(fraudAlerts)
@@ -238,6 +259,9 @@ export async function getUserFraudAlerts(userId: number): Promise<any[]> {
  */
 export async function resolveFraudAlert(alertId: number, actionTaken: string): Promise<void> {
   try {
+    const db = await getDb();
+    if (!db) return;
+
     await db
       .update(fraudAlerts)
       .set({ resolved: true, actionTaken })
@@ -252,6 +276,9 @@ export async function resolveFraudAlert(alertId: number, actionTaken: string): P
  */
 export async function getUserRedemptionHistory(userId: number, limit: number = 50): Promise<any[]> {
   try {
+    const db = await getDb();
+    if (!db) return [];
+
     return await db
       .select()
       .from(redemptionHistory)

@@ -5,7 +5,7 @@
 
 import { router, publicProcedure } from "@/server/_core/trpc";
 import { z } from "zod";
-import { db } from "@/server/db";
+import { getDb } from "@/server/db";
 import { referralCodes } from "@/drizzle/schema";
 import { eq, and, gt } from "drizzle-orm";
 import { checkFraud, logRedemptionAttempt } from "@/server/services/fraud-detection";
@@ -18,6 +18,15 @@ export const referralRouter = router({
     .input(z.object({ code: z.string().min(5).max(20), userId: z.number(), ipAddress: z.string().optional(), deviceId: z.string().optional() }))
     .mutation(async ({ input }) => {
       try {
+        const db = await getDb();
+        if (!db) {
+          return {
+            valid: false,
+            message: "Database unavailable. Please try again later.",
+            freeDaysReward: 0,
+          };
+        }
+
         const codeUpper = input.code.toUpperCase().trim();
         
         // Check for fraud patterns
