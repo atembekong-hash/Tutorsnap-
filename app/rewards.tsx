@@ -24,6 +24,7 @@ import {
   getNextTierProgress,
   claimRewards,
   getRewardSummary,
+  getTierPerks,
 } from "@/lib/rewards";
 
 const { width } = Dimensions.get("window");
@@ -42,6 +43,7 @@ export default function RewardsScreen() {
   const colors = useColors();
   const router = useRouter();
   const [summary, setSummary] = useState<RewardSummary | null>(null);
+  const [perks, setPerks] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const progressAnim = new Animated.Value(0);
 
@@ -52,7 +54,9 @@ export default function RewardsScreen() {
   const loadRewards = async () => {
     try {
       const data = await getRewardSummary();
+      const tierPerks = await getTierPerks();
       setSummary(data);
+      setPerks(tierPerks);
       
       // Animate progress bar
       Animated.timing(progressAnim, {
@@ -198,16 +202,71 @@ export default function RewardsScreen() {
           </View>
         )}
 
-        {/* Share Button */}
-        <TouchableOpacity
-          onPress={handleShareReferral}
-          style={[styles.shareBtn, { backgroundColor: colors.primary, marginTop: 24 }]}
-        >
-          <IconSymbol size={20} name="paperplane.fill" color="#FFFFFF" />
-          <Text style={{ color: "#FFFFFF", fontWeight: "600", marginLeft: 8 }}>
-            Share Referral Link
-          </Text>
-        </TouchableOpacity>
+        {/* Buttons Row */}
+        <View style={{ flexDirection: "row", gap: 12, marginTop: 24 }}>
+          <TouchableOpacity
+            onPress={handleShareReferral}
+            style={[styles.shareBtn, { backgroundColor: colors.primary, flex: 1 }]}
+          >
+            <IconSymbol size={20} name="paperplane.fill" color="#FFFFFF" />
+            <Text style={{ color: "#FFFFFF", fontWeight: "600", marginLeft: 8 }}>
+              Share
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => router.push("/redeem-code" as any)}
+            style={[styles.shareBtn, { backgroundColor: `${colors.primary}40`, flex: 1 }]}
+          >
+            <IconSymbol size={20} name="checkmark.circle.fill" color={colors.primary} />
+            <Text style={{ color: colors.primary, fontWeight: "600", marginLeft: 8 }}>
+              Redeem
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Tier Perks */}
+        {perks && (
+          <View style={{ marginTop: 32, gap: 12 }}>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+              Your Perks
+            </Text>
+            {[
+              { key: "adFree", label: "Ad-Free Experience", icon: "checkmark.circle.fill" },
+              { key: "unlimitedDailySolves", label: "Unlimited Daily Solves", icon: "checkmark.circle.fill" },
+              { key: "customThemes", label: "Custom Themes", icon: "checkmark.circle.fill" },
+              { key: "prioritySupport", label: "Priority Support", icon: "checkmark.circle.fill" },
+              { key: "advancedAnalytics", label: "Advanced Analytics", icon: "checkmark.circle.fill" },
+            ].map((perk) => (
+              <View
+                key={perk.key}
+                style={[
+                  styles.perkItem,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                    opacity: perks[perk.key] ? 1 : 0.4,
+                  },
+                ]}
+              >
+                <IconSymbol
+                  size={20}
+                  name={perk.icon as any}
+                  color={perks[perk.key] ? colors.success : colors.muted}
+                />
+                <Text
+                  style={[
+                    styles.perkLabel,
+                    {
+                      color: perks[perk.key] ? colors.foreground : colors.muted,
+                    },
+                  ]}
+                >
+                  {perk.label}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
 
         {/* Tier List */}
         <View style={{ marginTop: 32, gap: 12 }}>
@@ -318,7 +377,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 14,
+    paddingVertical: 12,
     borderRadius: 10,
   },
   tierListItem: {
@@ -336,5 +395,17 @@ const styles = StyleSheet.create({
   tierListDesc: {
     fontSize: 12,
     marginTop: 2,
+  },
+  perkItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    padding: 12,
+  },
+  perkLabel: {
+    fontSize: 13,
+    fontWeight: "600",
   },
 });

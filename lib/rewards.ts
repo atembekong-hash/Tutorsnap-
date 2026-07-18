@@ -238,6 +238,78 @@ export async function getRewardSummary(): Promise<{
 }
 
 /**
+ * Redeem a referral code
+ */
+export async function redeemReferralCode(code: string): Promise<{ success: boolean; message: string; freeDaysAdded?: number }> {
+  try {
+    // Validate code format
+    if (!code || code.length < 5) {
+      return { success: false, message: "Invalid referral code format" };
+    }
+
+    // In production, this would verify the code with the backend
+    // For now, we'll accept any valid-looking code and award bonus days
+    const rewards = await getUserRewards();
+    const bonusFreeDays = 7; // Bonus for redeeming a referral code
+    
+    rewards.totalFreeDaysEarned += bonusFreeDays;
+    rewards.unclaimedRewards += bonusFreeDays;
+    
+    await AsyncStorage.setItem(REWARDS_KEY, JSON.stringify(rewards));
+    
+    return {
+      success: true,
+      message: `Referral code redeemed! +${bonusFreeDays} free days`,
+      freeDaysAdded: bonusFreeDays,
+    };
+  } catch (error) {
+    console.warn("Failed to redeem referral code:", error);
+    return { success: false, message: "Failed to redeem code. Try again." };
+  }
+}
+
+/**
+ * Get tier-based perks for current tier
+ */
+export async function getTierPerks(): Promise<{
+  unlimitedDailySolves: boolean;
+  prioritySupport: boolean;
+  adFree: boolean;
+  customThemes: boolean;
+  advancedAnalytics: boolean;
+}> {
+  try {
+    const rewards = await getUserRewards();
+    const tier = rewards.currentTier;
+
+    return {
+      unlimitedDailySolves: tier >= 3, // Champion and above
+      prioritySupport: tier >= 4, // Legend and above
+      adFree: tier >= 2, // Rising Star and above
+      customThemes: tier >= 3, // Champion and above
+      advancedAnalytics: tier >= 4, // Legend and above
+    };
+  } catch (error) {
+    console.warn("Failed to get tier perks:", error);
+    return {
+      unlimitedDailySolves: false,
+      prioritySupport: false,
+      adFree: false,
+      customThemes: false,
+      advancedAnalytics: false,
+    };
+  }
+}
+
+/**
+ * Check if user has a specific perk
+ */
+export async function hasPerk(perk: keyof ReturnType<typeof getTierPerks>): Promise<boolean> {
+  const perks = await getTierPerks();
+  return perks[perk] || false;
+}
+
+/**
  * Reset rewards (for testing)
  */
 export async function resetRewards(): Promise<void> {
