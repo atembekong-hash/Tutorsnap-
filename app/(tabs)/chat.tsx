@@ -3859,7 +3859,7 @@ const chatStyles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 4,
   },
-  scrollFabLeft: { left: 14 },
+  scrollFabLeft: { left: 4 },
   scrollFabRight: { right: 14 },
   scrollFabInner: { width: 38, height: 38, alignItems: "center", justifyContent: "center" },
   transcriptToast: {
