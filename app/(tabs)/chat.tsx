@@ -177,7 +177,7 @@ function getPromptsForSubject(subject: SubjectId | null) {
 
 // ─── Animated three-dot typing indicator ─────────────────────────────────────
 
-function TypingDots({ color, showLabel = true }: { color: string; showLabel?: boolean }) {
+function TypingDots({ color, showLabel = true, showEstimate = true }: { color: string; showLabel?: boolean; showEstimate?: boolean }) {
   const dots = [
     useRef(new Animated.Value(0)).current,
     useRef(new Animated.Value(0)).current,
@@ -219,9 +219,16 @@ function TypingDots({ color, showLabel = true }: { color: string; showLabel?: bo
   return (
     <View style={typingStyles.container}>
       {showLabel && (
-        <Text style={[typingStyles.label, { color: colors.muted, fontSize: fs(12) }]}>
-          🤔 Thinking
-        </Text>
+        <View style={typingStyles.labelContainer}>
+          <Text style={[typingStyles.label, { color: colors.muted, fontSize: fs(12) }]}>
+            🤔 Thinking
+          </Text>
+          {showEstimate && (
+            <Text style={[typingStyles.estimate, { color: colors.muted, fontSize: fs(10) }]}>
+              usually 2-3 seconds
+            </Text>
+          )}
+        </View>
       )}
       <View style={typingStyles.row}>
         {dots.map((dot, i) => (
@@ -260,7 +267,9 @@ function TypingDots({ color, showLabel = true }: { color: string; showLabel?: bo
 
 const typingStyles = StyleSheet.create({
   container: { flexDirection: "column", gap: 4, paddingVertical: 4 },
-  label: { fontWeight: "500", marginBottom: 2 },
+  labelContainer: { flexDirection: "column", gap: 2, marginBottom: 2 },
+  label: { fontWeight: "500" },
+  estimate: { fontStyle: "italic", opacity: 0.8 },
   row: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 6, paddingHorizontal: 4 },
   dot: { width: 9, height: 9, borderRadius: 4.5 },
 });
