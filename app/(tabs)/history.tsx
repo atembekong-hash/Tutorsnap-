@@ -197,7 +197,14 @@ function HistoryScreenContent() {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerTop}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}
+          <TouchableOpacity onPress={() => {
+            H.impactLight();
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.push("/(tabs)/index" as any);
+            }
+          }} style={styles.backBtn}
             accessibilityLabel="Go back">
             <IconSymbol size={24} name="chevron.left" color={colors.foreground} />
           </TouchableOpacity>
