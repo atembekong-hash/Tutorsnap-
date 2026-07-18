@@ -288,65 +288,6 @@ function AnimatedWordSpan({ word, delay }: { word: string; delay: number }) {
   return <Animated.Text style={{ opacity }}>{word}</Animated.Text>;
 }
 
-// ─── Spinning Globe Component ─────────────────────────────────────────────────
-
-function SpinningGlobe() {
-  const spinAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.loop(
-      Animated.timing(spinAnim, {
-        toValue: 1,
-        duration: 8000,
-        easing: Easing.linear,
-        useNativeDriver: true,
-      })
-    ).start();
-  }, [spinAnim]);
-
-  const rotation = spinAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
-  });
-
-  return (
-    <Animated.View
-      style={[{
-        width: 120,
-        height: 120,
-        borderRadius: 60,
-        alignItems: 'center',
-        justifyContent: 'center',
-        transform: [{ rotate: rotation }],
-      }]}
-    >
-      <LinearGradient
-        colors={['#1E40AF', '#3B82F6', '#60A5FA']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={{
-          width: 120,
-          height: 120,
-          borderRadius: 60,
-          alignItems: 'center',
-          justifyContent: 'center',
-          overflow: 'hidden',
-        }}
-      >
-        <View style={{ position: 'absolute', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
-          <View style={{ position: 'absolute', width: '90%', height: 1, backgroundColor: 'rgba(255,255,255,0.3)' }} />
-          <View style={{ position: 'absolute', width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(34, 197, 94, 0.6)', top: '20%', left: '15%' }} />
-          <View style={{ position: 'absolute', width: 25, height: 25, borderRadius: 12.5, backgroundColor: 'rgba(34, 197, 94, 0.5)', top: '35%', right: '20%' }} />
-          <View style={{ position: 'absolute', width: 20, height: 20, borderRadius: 10, backgroundColor: 'rgba(34, 197, 94, 0.6)', bottom: '25%', left: '25%' }} />
-        </View>
-        <Text style={{ fontSize: 14, fontWeight: '700', color: '#FFFFFF', textAlign: 'center', letterSpacing: 0.5 }}>
-          AI TUTOR
-        </Text>
-      </LinearGradient>
-    </Animated.View>
-  );
-}
-
 // ─── AI Avatar — animated gradient orb ─────────────────────────────────────
 
 function AIAvatar({ size = 30, pulsing = false, moodRing = false }: { size?: number; pulsing?: boolean; moodRing?: boolean }) {
@@ -776,8 +717,8 @@ function WelcomeCard({
 
   return (
     <Animated.View style={[welcomeStyles.container, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-      {/* Spinning globe */}
-      <SpinningGlobe />
+      {/* Large animated pulsing orb */}
+      <AIAvatar size={80} pulsing />
       <View style={{ gap: 6, alignItems: "center", marginTop: 8 }}>
         <Text style={[welcomeStyles.title, { color: colors.foreground, fontSize: fs(24) }]}>
           {greeting}
