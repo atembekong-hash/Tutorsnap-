@@ -2207,7 +2207,7 @@ function ChatScreenContent() {
           <View style={chatStyles.headerLeft}>
             <View style={{ flex: 1, minWidth: 0 }}>
               <Text
-                style={[chatStyles.headerTitle, { color: colors.foreground, marginLeft: -8 }]}
+                style={[chatStyles.headerTitle, { color: colors.foreground, marginLeft: 0 }]}
                 numberOfLines={1}
               >
                 AI Tutor
