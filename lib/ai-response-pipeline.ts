@@ -205,6 +205,36 @@ export function processAIResponse(
 }
 
 /**
+ * Detect incomplete math expressions during streaming.
+ * Returns the text with incomplete math expressions removed (they'll complete in the next chunk).
+ * This prevents rendering errors from partial LaTeX like "$x^" without closing "$".
+ */
+function handleIncompleteStreamingMath(text: string): string {
+  // Count unmatched $ delimiters
+  const inlineMathCount = (text.match(/(?<!\\)\$/g) || []).length;
+  
+  // If odd number of $, the last one is incomplete — remove it and everything after
+  if (inlineMathCount % 2 === 1) {
+    const lastDollarIndex = text.lastIndexOf('$');
+    // Check if this is an escaped dollar
+    if (lastDollarIndex > 0 && text[lastDollarIndex - 1] !== '\\') {
+      text = text.substring(0, lastDollarIndex);
+    }
+  }
+  
+  // Similarly for block math ($$...$$)
+  const blockMathCount = (text.match(/(?<!\\)\$\$/g) || []).length;
+  if (blockMathCount % 2 === 1) {
+    const lastBlockIndex = text.lastIndexOf('$$');
+    if (lastBlockIndex > 0 && text[lastBlockIndex - 1] !== '\\') {
+      text = text.substring(0, lastBlockIndex);
+    }
+  }
+  
+  return text;
+}
+
+/**
  * Process a streaming chunk — lighter pipeline for incremental updates.
  */
 export function processStreamingChunk(chunk: string): string {
@@ -215,6 +245,8 @@ export function processStreamingChunk(chunk: string): string {
   text = removeInvisibleCharacters(text);
   text = normalizeLaTeXDelimiters(text);
   text = restoreEscapedDollars(text);
+  // Handle incomplete math expressions during streaming
+  text = handleIncompleteStreamingMath(text);
   // Apply final sanitization to streaming chunks too
   text = finalOutputSanitization(text);
   return text;
