@@ -2805,7 +2805,7 @@ function ChatScreenContent() {
           style={chatStyles.scrollFabInner}
           activeOpacity={1}
         >
-          <IconSymbol size={5} name="chevron.up" color={colors.foreground} />
+          <IconSymbol size={25} name="chevron.up" color={colors.foreground} />
         </TouchableOpacity>
       </Animated.View>
 
@@ -2844,7 +2844,7 @@ function ChatScreenContent() {
           style={chatStyles.scrollFabInner}
           activeOpacity={1}
         >
-          <IconSymbol size={5} name="chevron.down" color={colors.foreground} />
+          <IconSymbol size={25} name="chevron.down" color={colors.foreground} />
         </TouchableOpacity>
       </Animated.View>
 
