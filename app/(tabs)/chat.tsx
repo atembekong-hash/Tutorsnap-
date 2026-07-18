@@ -214,41 +214,46 @@ function TypingDots({ color }: { color: string }) {
   const dotColors = ["#6366F1", "#7C3AED", "#4F46E5"];
 
   return (
-    <View style={typingStyles.row}>
-      {dots.map((dot, i) => (
-        <Animated.View
-          key={i}
-          style={[
-            typingStyles.dot,
-            { backgroundColor: dotColors[i] },
-            {
-              transform: [
-                {
-                  translateY: dot.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [0, -7],
-                  }),
-                },
-                {
-                  scale: dot.interpolate({
-                    inputRange: [0, 0.5, 1],
-                    outputRange: [1, 1.2, 1],
-                  }),
-                },
-              ],
-              opacity: dot.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0.35, 1],
-              }),
-            },
-          ]}
-        />
-      ))}
+    <View style={typingStyles.container}>
+      <Text style={[typingStyles.label, { color }]}>🤔 Thinking</Text>
+      <View style={typingStyles.row}>
+        {dots.map((dot, i) => (
+          <Animated.View
+            key={i}
+            style={[
+              typingStyles.dot,
+              { backgroundColor: dotColors[i] },
+              {
+                transform: [
+                  {
+                    translateY: dot.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0, -7],
+                    }),
+                  },
+                  {
+                    scale: dot.interpolate({
+                      inputRange: [0, 0.5, 1],
+                      outputRange: [1, 1.2, 1],
+                    }),
+                  },
+                ],
+                opacity: dot.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.35, 1],
+                }),
+              },
+            ]}
+          />
+        ))}
+      </View>
     </View>
   );
 }
 
 const typingStyles = StyleSheet.create({
+  container: { flexDirection: "column", alignItems: "flex-start", gap: 4 },
+  label: { fontSize: 13, fontWeight: "500", marginBottom: 2 },
   row: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 6, paddingHorizontal: 4 },
   dot: { width: 9, height: 9, borderRadius: 4.5 },
 });
