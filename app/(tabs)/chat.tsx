@@ -3571,8 +3571,8 @@ const chatStyles = StyleSheet.create({
   statusText: { fontWeight: "500" },
   statusSep: { fontSize: 10, marginHorizontal: 2 },
   headerActions: { flexDirection: "row", alignItems: "center", gap: 4 },
-  headerBtn: { padding: 10 },
-  newChatBtn: { borderRadius: 10, padding: 9 },
+  headerBtn: { padding: 11 },
+  newChatBtn: { borderRadius: 10, padding: 10 },
   loadingCenter: { flex: 1, alignItems: "center", justifyContent: "center" },
   typingRow: {
     flexDirection: "row",
