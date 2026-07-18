@@ -51,6 +51,7 @@ import { getSubscriptionStatus,
 } from "@/lib/subscription";
 import { TutorSettingsModal } from "@/components/tutor-settings-modal";
 import { useTutorSettings } from "@/components/tutor-settings-modal";
+import { isSoundEffectsEnabled, setSoundEffectsEnabled } from "@/lib/sound-effects";
 
 const GOAL_OPTIONS = [1, 2, 3, 5, 7, 10];
 const HOUR_OPTIONS = Array.from({ length: 18 }, (_, i) => i + 6);
@@ -192,6 +193,17 @@ export default function SettingsScreen() {
   const [redeemLoading, setRedeemLoading] = useState(false);
   const [showTutorSettings, setShowTutorSettings] = useState(false);
   const { settings: tutorSettings, update: updateTutorSetting, reset: resetTutorSettings } = useTutorSettings();
+  const [soundEffectsEnabled, setSoundEffectsEnabledState] = useState(true);
+
+  useEffect(() => {
+    isSoundEffectsEnabled().then(setSoundEffectsEnabledState);
+  }, []);
+
+  const handleToggleSoundEffects = async (value: boolean) => {
+    H.impactMedium();
+    setSoundEffectsEnabledState(value);
+    await setSoundEffectsEnabled(value);
+  };
 
   const handleToggleBackupReminder = async (value: boolean) => {
     if (value) {
@@ -1107,6 +1119,22 @@ export default function SettingsScreen() {
                 onValueChange={handleToggleTheme}
                 trackColor={{ false: colors.border, true: `${colors.primary}80` }}
                 thumbColor={isDark ? colors.primary : "#FFFFFF"}
+              />
+            }
+          />
+        )}
+        {ms("Sound Effects", "navigation") && (
+          <SettingsRow
+            icon="speaker.wave.2.fill"
+            label="Sound Effects"
+            subtitle={soundEffectsEnabled ? "Enabled on screen transitions" : "Disabled"}
+            colors={colors}
+            right={
+              <Switch
+                value={soundEffectsEnabled}
+                onValueChange={handleToggleSoundEffects}
+                trackColor={{ false: colors.border, true: `${colors.primary}80` }}
+                thumbColor={soundEffectsEnabled ? colors.primary : "#FFFFFF"}
               />
             }
           />

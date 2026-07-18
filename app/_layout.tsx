@@ -39,6 +39,7 @@ import { initRevenueCat, getSubscriptionStatus } from "@/lib/subscription";
 import { recordFirstLaunch } from "@/lib/review-prompt";
 import { getOrCreateReferralCode, scheduleWeeklyAffiliateDigest } from "@/lib/affiliate";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { playTransitionSound } from "@/lib/sound-effects";
 
 // Show notifications as banners when app is in foreground
 if (Platform.OS !== "web") {
@@ -66,6 +67,14 @@ export default function RootLayout() {
   const initialFrame = initialWindowMetrics?.frame ?? DEFAULT_WEB_FRAME;
   const [insets, setInsets] = useState<EdgeInsets>(initialInsets);
   const [frame, setFrame] = useState<Rect>(initialFrame);
+
+  // Play transition sound on navigation
+  useEffect(() => {
+    const unsubscribe = router.addEventListener("beforeRemove", () => {
+      playTransitionSound().catch(() => {});
+    });
+    return () => unsubscribe?.();
+  }, [router]);
 
   // Load premium fonts — Inter for body text, JetBrains Mono for code
   const [_fontsLoaded] = useFonts({
