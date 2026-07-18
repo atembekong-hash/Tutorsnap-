@@ -40,6 +40,7 @@ import { recordFirstLaunch } from "@/lib/review-prompt";
 import { getOrCreateReferralCode, scheduleWeeklyAffiliateDigest } from "@/lib/affiliate";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { playTransitionSound } from "@/lib/sound-effects";
+import { AuthProvider } from "@/lib/auth-context";
 
 // Show notifications as banners when app is in foreground
 if (Platform.OS !== "web") {
@@ -212,8 +213,9 @@ export default function RootLayout() {
 
   const content = (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <trpc.Provider client={trpcClient} queryClient={queryClient}>
-        <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <trpc.Provider client={trpcClient} queryClient={queryClient}>
+          <QueryClientProvider client={queryClient}>
           <OfflineBanner />
           <UpdatePromptModal
             visible={updateAvailable}
@@ -431,8 +433,9 @@ export default function RootLayout() {
             />
           </Stack>
           <StatusBar style="auto" />
-        </QueryClientProvider>
-      </trpc.Provider>
+          </QueryClientProvider>
+        </trpc.Provider>
+      </AuthProvider>
     </GestureHandlerRootView>
   );
 

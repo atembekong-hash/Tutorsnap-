@@ -3,6 +3,7 @@ import { router, publicProcedure, protectedProcedure } from "./_core/trpc";
 import { invokeLLM } from "./_core/llm";
 import { systemRouter } from "./_core/systemRouter";
 import { referralRouter } from "./routers/referrals";
+import { oauthRouter } from "./routers/oauth";
 import { COOKIE_NAME } from "../shared/const";
 import { transcribeAudio } from "./_core/voiceTranscription";
 import { storagePut } from "./storage";
@@ -729,6 +730,7 @@ export const appRouter = router({
   system: systemRouter,
   voice: voiceRouter,
   referral: referralRouter,
+  oauth: oauthRouter,
 });
 
 export type AppRouter = typeof appRouter;
