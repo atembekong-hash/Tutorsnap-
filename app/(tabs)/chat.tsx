@@ -2467,7 +2467,7 @@ function ChatScreenContent() {
                 )}
               </View>
             )}
-            contentContainerStyle={{ paddingTop: 12, paddingBottom: composerHeight + 16 }}
+            contentContainerStyle={{ paddingTop: 12, paddingBottom: composerHeight + 4 }}
             showsVerticalScrollIndicator={false}
             scrollEventThrottle={16}
             onScrollBeginDrag={() => {
