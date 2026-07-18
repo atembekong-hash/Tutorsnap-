@@ -2813,7 +2813,7 @@ function ChatScreenContent() {
         pointerEvents={showScrollBottom ? "auto" : "none"}
         style={[
           chatStyles.scrollFab,
-          chatStyles.scrollFabRight,
+          chatStyles.scrollFabLeft,
           { backgroundColor: colors.surface, borderColor: colors.border, bottom: 152, opacity: scrollBottomOpacity, transform: [{ scale: scrollBottomScaleAnim }] },
         ]}
       >
