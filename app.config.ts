@@ -41,37 +41,12 @@ const config: ExpoConfig = {
   icon: "./assets/images/icon.png",
   scheme: env.scheme,
   userInterfaceStyle: "automatic",
-  linking: {
-    prefixes: [
-      env.scheme + "://",
-      `https://${PRODUCTION_DOMAIN}`,
-      "https://tutorsnap.app", // Legacy fallback
-    ],
-    config: {
-      screens: {
-        "(tabs)/index": "solve",
-        "(tabs)/practice": "practice",
-        "(tabs)/scan": "scan",
-        "(tabs)/chat": "tutor",
-        "(tabs)/classroom": "classroom",
-        "(tabs)/leaderboard": "leaderboard",
-        "(tabs)/history": "history",
-        "solution/:id": "solution/:id",
-        "bookmarks": "bookmarks",
-        "*": "*",
-      },
-    },
-  },
   newArchEnabled: true,
   description: "TutorSnap is your AI-powered academic tutor for every subject — from Algebra and Calculus to Chemistry, History, and Grammar. Snap a photo of any problem, type it in, or ask the AI tutor directly. Get step-by-step solutions, practice quizzes, flashcards, a study planner, and a classroom sharing tool for teachers and students.",
-  githubUrl: `https://${PRODUCTION_DOMAIN}`,
-  privacyUrl: `https://${PRODUCTION_DOMAIN}/privacy`,
-  supportUrl: `https://${PRODUCTION_DOMAIN}/support`,
-  termsUrl: `https://${PRODUCTION_DOMAIN}/terms`,
   ios: {
     supportsTablet: true,
     bundleIdentifier: env.iosBundleId,
-    appStoreUrl: "https://apps.apple.com/app/tutorsnap/id0000000000",
+
     associatedDomains: [
       `applinks:${PRODUCTION_DOMAIN}`,
       `applinks:www.${PRODUCTION_DOMAIN}`,

@@ -125,6 +125,15 @@ export const referralRouter = router({
     .input(z.object({ userId: z.number() }))
     .mutation(async ({ input }) => {
       try {
+        const db = await getDb();
+        if (!db) {
+          return {
+            success: false,
+            code: null,
+            message: "Database unavailable",
+          };
+        }
+
         // Generate unique code
         const timestamp = Date.now().toString(36).toUpperCase();
         const random = Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -163,6 +172,17 @@ export const referralRouter = router({
     .input(z.object({ code: z.string() }))
     .query(async ({ input }) => {
       try {
+        const db = await getDb();
+        if (!db) {
+          return {
+            found: false,
+            uses: 0,
+            maxUses: 0,
+            remaining: 0,
+            expiresAt: null,
+          };
+        }
+
         const codeData = await db
           .select()
           .from(referralCodes)
@@ -206,6 +226,14 @@ export const referralRouter = router({
     .input(z.object({ userId: z.number() }))
     .query(async ({ input }) => {
       try {
+        const db = await getDb();
+        if (!db) {
+          return {
+            success: false,
+            codes: [],
+          };
+        }
+
         const codes = await db
           .select()
           .from(referralCodes)
@@ -213,7 +241,7 @@ export const referralRouter = router({
 
         return {
           success: true,
-          codes: codes.map((c) => ({
+          codes: codes.map((c: any) => ({
             code: c.code,
             uses: c.uses,
             maxUses: c.maxUses,

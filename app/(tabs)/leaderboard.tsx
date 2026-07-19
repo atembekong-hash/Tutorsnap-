@@ -123,6 +123,7 @@ function rankMedal(rank: number): string {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function LeaderboardScreen() {
+  const router = useRouter();
   const colors = useColors();
   const [board, setBoard] = useState<LeaderboardEntry[]>([]);
   const [refreshing, setRefreshing] = useState(false);

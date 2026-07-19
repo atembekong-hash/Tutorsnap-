@@ -309,9 +309,9 @@ export async function getTierPerks(): Promise<{
 /**
  * Check if user has a specific perk
  */
-export async function hasPerk(perk: keyof ReturnType<typeof getTierPerks>): Promise<boolean> {
+export async function hasPerk(perk: keyof Awaited<ReturnType<typeof getTierPerks>>): Promise<boolean> {
   const perks = await getTierPerks();
-  return perks[perk] || false;
+  return (perks as any)[perk] || false;
 }
 
 /**

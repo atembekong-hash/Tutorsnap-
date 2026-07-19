@@ -33,7 +33,7 @@ export function TierAchievementModal({
 
   useEffect(() => {
     if (visible && tier) {
-      H.notificationAsync("success");
+      H.notificationSuccess();
       
       Animated.sequence([
         Animated.parallel([

@@ -7,13 +7,17 @@ import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 
 // Configure notification handler
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
+if (Platform.OS !== "web") {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+}
 
 /**
  * Request notification permissions
@@ -114,10 +118,10 @@ export async function scheduleDailyReminder(): Promise<void> {
         sound: "default",
       },
       trigger: {
-        type: "daily",
+        type: "daily" as any,
         hour: 9,
         minute: 0,
-      },
+      } as any,
     });
   } catch (error) {
     console.warn("Failed to schedule daily reminder:", error);

@@ -40,7 +40,7 @@ export default function RedeemCodeScreen() {
       const result = await redeemReferralCode(code.trim());
       
       if (result.success) {
-        H.notificationAsync("success");
+        H.notificationSuccess();
         await notifyReferralSuccess(7);
         Alert.alert("Success!", result.message, [
           {
@@ -54,11 +54,11 @@ export default function RedeemCodeScreen() {
         ]);
         setCode("");
       } else {
-        H.notificationAsync("error");
+        H.notificationError();
         Alert.alert("Error", result.message);
       }
     } catch (error) {
-      H.notificationAsync("error");
+      H.notificationError();
       Alert.alert("Error", "Failed to redeem code. Please try again.");
       console.warn("Redemption error:", error);
     } finally {

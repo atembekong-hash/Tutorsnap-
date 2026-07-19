@@ -13,8 +13,7 @@ import { JetBrainsMono_400Regular } from "@expo-google-fonts/jetbrains-mono/400R
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-reanimated";
 import { Platform , Alert } from "react-native";
-import { CardStyleInterpolators } from "@react-navigation/stack";
-import { swipeBackInterpolator } from "@/lib/swipe-back-interpolator";
+// Removed: React Navigation Stack is not compatible with Expo Router
 import "@/lib/_core/nativewind-pressable";
 import { ThemeProvider } from "@/lib/theme-provider";
 import {
@@ -225,7 +224,6 @@ export default function RootLayout() {
           />
           <Stack screenOptions={{
             headerShown: false,
-            cardStyleInterpolator: swipeBackInterpolator,
           }}>
             <Stack.Screen name="(tabs)" />
             <Stack.Screen
