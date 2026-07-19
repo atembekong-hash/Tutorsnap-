@@ -183,8 +183,13 @@ async function signInWithGoogleWeb(config: GoogleSignInConfig): Promise<OAuthCre
     const nonce = generateRandomNonce();
 
     // Store state and nonce for verification
-    await SecureStore.setItemAsync("google_oauth_state", state);
-    await SecureStore.setItemAsync("google_oauth_nonce", nonce);
+    if (Platform.OS === "web") {
+      localStorage.setItem("google_oauth_state", state);
+      localStorage.setItem("google_oauth_nonce", nonce);
+    } else {
+      await SecureStore.setItemAsync("google_oauth_state", state);
+      await SecureStore.setItemAsync("google_oauth_nonce", nonce);
+    }
 
     // Build authorization URL
     const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
@@ -210,7 +215,9 @@ async function signInWithGoogleWeb(config: GoogleSignInConfig): Promise<OAuthCre
       const returnedState = url.searchParams.get("state");
 
       // Verify state
-      const storedState = await SecureStore.getItemAsync("google_oauth_state");
+      const storedState = Platform.OS === "web" 
+        ? localStorage.getItem("google_oauth_state")
+        : await SecureStore.getItemAsync("google_oauth_state");
       if (returnedState !== storedState) {
         throw new Error("OAuth state mismatch - possible CSRF attack");
       }
@@ -251,8 +258,13 @@ export async function signOutGoogle(): Promise<void> {
 
     console.log("[GoogleSignIn] Signing out");
     // Clear stored tokens
-    await SecureStore.deleteItemAsync("google_oauth_state");
-    await SecureStore.deleteItemAsync("google_oauth_nonce");
+    if (Platform.OS === "web") {
+      localStorage.removeItem("google_oauth_state");
+      localStorage.removeItem("google_oauth_nonce");
+    } else {
+      await SecureStore.deleteItemAsync("google_oauth_state");
+      await SecureStore.deleteItemAsync("google_oauth_nonce");
+    }
   } catch (error) {
     console.error("[GoogleSignIn] Sign-out error:", error);
     throw error;
