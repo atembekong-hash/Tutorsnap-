@@ -82,18 +82,17 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
       setError(null);
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-      // Placeholder: In production, this would use expo-apple-authentication
+      // Use real Apple Sign-In
+      const { signInWithApple } = await import("@/lib/apple-signin");
       console.log("[Auth] Apple Sign-In initiated");
 
-      // Mock OAuth response for testing
-      const mockResponse = {
-        provider: "apple" as const,
-        idToken: "mock_apple_token_" + Date.now(),
-        email: "user@icloud.com",
-        name: "Apple User",
-      };
+      const credentials = await signInWithApple();
+      if (!credentials) {
+        setError("Apple Sign-In cancelled");
+        return;
+      }
 
-      const result = await validateOAuthCredentials(mockResponse);
+      const result = await validateOAuthCredentials(credentials);
 
       if (result.success && result.user) {
         await setUserInfo({
@@ -106,7 +105,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
           lastSignedIn: new Date(),
         });
 
-        await setSessionToken(mockResponse.idToken);
+        await setSessionToken(credentials.idToken);
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
         onAuthSuccess?.();
