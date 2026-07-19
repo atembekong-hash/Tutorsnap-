@@ -15,9 +15,10 @@ import * as SecureStore from "expo-secure-store";
 import { OAuthCredentials } from "./oauth-service";
 
 // Placeholder credential keys - replace with actual values
-const GOOGLE_ANDROID_CLIENT_ID = process.env.GOOGLE_ANDROID_CLIENT_ID || "PLACEHOLDER_ANDROID_CLIENT_ID";
-const GOOGLE_IOS_CLIENT_ID = process.env.GOOGLE_IOS_CLIENT_ID || "PLACEHOLDER_IOS_CLIENT_ID";
-const GOOGLE_WEB_CLIENT_ID = process.env.GOOGLE_WEB_CLIENT_ID || "PLACEHOLDER_WEB_CLIENT_ID";
+// Note: EXPO_PUBLIC_ prefix is required for client-side access in React Native
+const GOOGLE_ANDROID_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || "PLACEHOLDER_ANDROID_CLIENT_ID";
+const GOOGLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || "PLACEHOLDER_IOS_CLIENT_ID";
+const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || "PLACEHOLDER_WEB_CLIENT_ID";
 
 // Deep link configuration
 const REDIRECT_SCHEME = "tutorsnap";
