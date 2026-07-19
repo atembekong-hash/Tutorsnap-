@@ -6,36 +6,31 @@ import type { ExpoConfig } from "expo/config";
 // e.g., "my-app" created at 2024-01-15 10:30:45 -> "space.manus.my.app.t20240115103045"
 // Bundle ID can only contain letters, numbers, and dots
 // Android requires each dot-separated segment to start with a letter
-const rawBundleId = "com.tutorsnap.app";
-const bundleId =
-  rawBundleId
-    .replace(/[-_]/g, ".") // Replace hyphens/underscores with dots
-    .replace(/[^a-zA-Z0-9.]/g, "") // Remove invalid chars
-    .replace(/\.+/g, ".") // Collapse consecutive dots
-    .replace(/^\.+|\.+$/g, "") // Trim leading/trailing dots
-    .toLowerCase()
-    .split(".")
-    .map((segment) => {
-      // Android requires each segment to start with a letter
-      // Prefix with 'x' if segment starts with a digit
-      return /^[a-zA-Z]/.test(segment) ? segment : "x" + segment;
-    })
-    .join(".") || "space.manus.app";
-// Extract timestamp from bundle ID and prefix with "manus" for deep link scheme
-// e.g., "space.manus.my.app.t20240115103045" -> "manus20240115103045"
-const timestamp = bundleId.split(".").pop()?.replace(/^t/, "") ?? "";
-const schemeFromBundleId = `manus${timestamp}`;
+// Production configuration
+const PRODUCTION_DOMAIN = "tutorsnapai.tech";
+const PRODUCTION_API_URL = `https://api.${PRODUCTION_DOMAIN}`;
+const PRODUCTION_MOBILE_SCHEME = "tutorsnap";
+
+// Bundle ID - fixed for production
+const bundleId = "com.tutorsnap.app";
+
+// Determine environment and scheme
+const isProduction = process.env.NODE_ENV === "production";
+const mobileScheme = isProduction ? PRODUCTION_MOBILE_SCHEME : "manus";
+const scheme = mobileScheme;
 
 const env = {
-  // App branding - update these values directly (do not use env vars)
+  // App branding
   appName: "TutorSnap",
   appSlug: "mathgenius-ai",
-  // S3 URL of the app logo - set this to the URL returned by generate_image when creating custom logo
-  // Leave empty to use the default icon from assets/images/icon.png
   logoUrl: "https://files.manuscdn.com/user_upload_by_module/session_file/310519663631387285/OgColqtMKjfePObm.png",
-  scheme: schemeFromBundleId,
+  scheme,
   iosBundleId: bundleId,
   androidPackage: bundleId,
+  // Production URLs
+  productionDomain: PRODUCTION_DOMAIN,
+  productionApiUrl: PRODUCTION_API_URL,
+  productionMobileScheme: PRODUCTION_MOBILE_SCHEME,
 };
 
 const config: ExpoConfig = {
@@ -47,7 +42,11 @@ const config: ExpoConfig = {
   scheme: env.scheme,
   userInterfaceStyle: "automatic",
   linking: {
-    prefixes: [env.scheme + "://", "https://tutorsnap.app"],
+    prefixes: [
+      env.scheme + "://",
+      `https://${PRODUCTION_DOMAIN}`,
+      "https://tutorsnap.app", // Legacy fallback
+    ],
     config: {
       screens: {
         "(tabs)/index": "solve",
@@ -65,11 +64,19 @@ const config: ExpoConfig = {
   },
   newArchEnabled: true,
   description: "TutorSnap is your AI-powered academic tutor for every subject — from Algebra and Calculus to Chemistry, History, and Grammar. Snap a photo of any problem, type it in, or ask the AI tutor directly. Get step-by-step solutions, practice quizzes, flashcards, a study planner, and a classroom sharing tool for teachers and students.",
-  githubUrl: "https://tutorsnapai.tech",
+  githubUrl: `https://${PRODUCTION_DOMAIN}`,
+  privacyUrl: `https://${PRODUCTION_DOMAIN}/privacy`,
+  supportUrl: `https://${PRODUCTION_DOMAIN}/support`,
+  termsUrl: `https://${PRODUCTION_DOMAIN}/terms`,
   ios: {
     supportsTablet: true,
     bundleIdentifier: env.iosBundleId,
     appStoreUrl: "https://apps.apple.com/app/tutorsnap/id0000000000",
+    associatedDomains: [
+      `applinks:${PRODUCTION_DOMAIN}`,
+      `applinks:www.${PRODUCTION_DOMAIN}`,
+      `webcredentials:${PRODUCTION_DOMAIN}`,
+    ],
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
       NSPhotoLibraryUsageDescription: "TutorSnap uses your photo library to scan math and science problems.",
@@ -117,6 +124,11 @@ const config: ExpoConfig = {
           {
             scheme: env.scheme,
             host: "*",
+          },
+          {
+            scheme: "https",
+            host: PRODUCTION_DOMAIN,
+            pathPrefix: "/",
           },
         ],
         category: ["BROWSABLE", "DEFAULT"],

@@ -3,9 +3,10 @@ import * as ReactNative from "react-native";
 
 // Extract scheme from bundle ID (last segment timestamp, prefixed with "manus")
 // e.g., "space.manus.my.app.t20240115103045" -> "manus20240115103045"
-const bundleId = "com.tutorsnap.app";
-const timestamp = bundleId.split(".").pop()?.replace(/^t/, "") ?? "";
-const schemeFromBundleId = `manus${timestamp}`;
+// Production OAuth configuration
+const OAUTH_PRODUCTION_DOMAIN = "tutorsnapai.tech";
+const OAUTH_PRODUCTION_API_URL = `https://api.${OAUTH_PRODUCTION_DOMAIN}`;
+const OAUTH_PRODUCTION_MOBILE_SCHEME = "tutorsnap";
 
 const env = {
   portal: process.env.EXPO_PUBLIC_OAUTH_PORTAL_URL ?? "",
@@ -14,7 +15,10 @@ const env = {
   ownerId: process.env.EXPO_PUBLIC_OWNER_OPEN_ID ?? "",
   ownerName: process.env.EXPO_PUBLIC_OWNER_NAME ?? "",
   apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL ?? "",
-  deepLinkScheme: schemeFromBundleId,
+  deepLinkScheme: process.env.NODE_ENV === "production" ? OAUTH_PRODUCTION_MOBILE_SCHEME : "manus",
+  productionDomain: OAUTH_PRODUCTION_DOMAIN,
+  productionApiUrl: OAUTH_PRODUCTION_API_URL,
+  productionMobileScheme: OAUTH_PRODUCTION_MOBILE_SCHEME,
 };
 
 export const OAUTH_PORTAL_URL = env.portal;
@@ -80,6 +84,10 @@ const encodeState = (value: string) => {
  */
 export const getRedirectUri = () => {
   if (ReactNative.Platform.OS === "web") {
+    // Production: use production domain; preview: use dynamic API URL
+    if (process.env.NODE_ENV === "production") {
+      return `${env.productionApiUrl}/api/oauth/callback`;
+    }
     return `${getApiBaseUrl()}/api/oauth/callback`;
   } else {
     return Linking.createURL("/oauth/callback", {
