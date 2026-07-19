@@ -173,6 +173,13 @@ const config: ExpoConfig = {
       },
     ],
     [
+      "@react-native-google-signin/google-signin",
+      {
+        // Google Sign-In configuration for native Android/iOS
+        // Uses the native Google Sign-In SDK, not web OAuth
+      },
+    ],
+    [
       "expo-build-properties",
       {
         android: {
@@ -182,6 +189,10 @@ const config: ExpoConfig = {
           targetSdkVersion: 34,
           kotlinVersion: "2.0.21",
           ndkVersion: "27.1.12297006",
+          // Google Play Services required for Google Sign-In
+          extraMavenRepos: [
+            "https://maven.google.com",
+          ],
         },
       },
     ],
