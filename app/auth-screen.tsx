@@ -9,7 +9,7 @@ import { useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { cn } from "@/lib/utils";
-import { setUserInfo, setAuthTokens } from "@/lib/_core/auth-enhanced";
+import { setUserInfo, setSessionToken } from "@/lib/_core/auth-enhanced";
 import { validateOAuthCredentials } from "@/lib/oauth-service";
 import * as Haptics from "expo-haptics";
 
@@ -52,14 +52,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
           lastSignedIn: new Date(),
         });
 
-        // Store tokens using the correct auth token storage
-        await setAuthTokens({
-          accessToken: credentials.idToken,
-          refreshToken: credentials.idToken, // Use ID token as refresh token for OAuth
-          expiresAt: Date.now() + (3600 * 1000), // 1 hour
-          refreshExpiresAt: Date.now() + (7 * 24 * 3600 * 1000), // 7 days
-        });
-
+        await setSessionToken(credentials.idToken);
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
         onAuthSuccess?.();
@@ -112,14 +105,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
           lastSignedIn: new Date(),
         });
 
-        // Store tokens using the correct auth token storage
-        await setAuthTokens({
-          accessToken: credentials.idToken,
-          refreshToken: credentials.idToken, // Use ID token as refresh token for OAuth
-          expiresAt: Date.now() + (3600 * 1000), // 1 hour
-          refreshExpiresAt: Date.now() + (7 * 24 * 3600 * 1000), // 7 days
-        });
-
+        await setSessionToken(credentials.idToken);
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
         onAuthSuccess?.();

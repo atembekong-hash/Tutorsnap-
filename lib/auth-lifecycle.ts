@@ -85,11 +85,7 @@ export function getTokenExpiryTime(token: string): number {
  */
 export async function saveSession(session: StoredSession): Promise<void> {
   try {
-    if (Platform.OS === "web") {
-      localStorage.setItem("tutorsnap_session", JSON.stringify(session));
-    } else {
-      await SecureStore.setItemAsync("tutorsnap_session", JSON.stringify(session));
-    }
+    await SecureStore.setItemAsync("tutorsnap_session", JSON.stringify(session));
     console.log("[Auth] Session saved securely");
   } catch (error) {
     console.error("[Auth] Failed to save session:", error);
@@ -102,9 +98,7 @@ export async function saveSession(session: StoredSession): Promise<void> {
  */
 export async function getStoredSession(): Promise<StoredSession | null> {
   try {
-    const sessionStr = Platform.OS === "web"
-      ? localStorage.getItem("tutorsnap_session")
-      : await SecureStore.getItemAsync("tutorsnap_session");
+    const sessionStr = await SecureStore.getItemAsync("tutorsnap_session");
     if (!sessionStr) return null;
 
     const session = JSON.parse(sessionStr) as StoredSession;
@@ -128,17 +122,10 @@ export async function getStoredSession(): Promise<StoredSession | null> {
  */
 export async function clearSession(): Promise<void> {
   try {
-    if (Platform.OS === "web") {
-      localStorage.removeItem("tutorsnap_session");
-      localStorage.removeItem("google_id_token");
-      localStorage.removeItem("google_access_token");
-      localStorage.removeItem("google_refresh_token");
-    } else {
-      await SecureStore.deleteItemAsync("tutorsnap_session");
-      await SecureStore.deleteItemAsync("google_id_token");
-      await SecureStore.deleteItemAsync("google_access_token");
-      await SecureStore.deleteItemAsync("google_refresh_token");
-    }
+    await SecureStore.deleteItemAsync("tutorsnap_session");
+    await SecureStore.deleteItemAsync("google_id_token");
+    await SecureStore.deleteItemAsync("google_access_token");
+    await SecureStore.deleteItemAsync("google_refresh_token");
     console.log("[Auth] Session cleared");
   } catch (error) {
     console.error("[Auth] Failed to clear session:", error);

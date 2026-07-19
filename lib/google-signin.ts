@@ -15,10 +15,9 @@ import * as SecureStore from "expo-secure-store";
 import { OAuthCredentials } from "./oauth-service";
 
 // Placeholder credential keys - replace with actual values
-// Note: EXPO_PUBLIC_ prefix is required for client-side access in React Native
-const GOOGLE_ANDROID_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || "PLACEHOLDER_ANDROID_CLIENT_ID";
-const GOOGLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || "PLACEHOLDER_IOS_CLIENT_ID";
-const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || "PLACEHOLDER_WEB_CLIENT_ID";
+const GOOGLE_ANDROID_CLIENT_ID = process.env.GOOGLE_ANDROID_CLIENT_ID || "PLACEHOLDER_ANDROID_CLIENT_ID";
+const GOOGLE_IOS_CLIENT_ID = process.env.GOOGLE_IOS_CLIENT_ID || "PLACEHOLDER_IOS_CLIENT_ID";
+const GOOGLE_WEB_CLIENT_ID = process.env.GOOGLE_WEB_CLIENT_ID || "PLACEHOLDER_WEB_CLIENT_ID";
 
 // Deep link configuration
 const REDIRECT_SCHEME = "tutorsnap";
@@ -183,13 +182,8 @@ async function signInWithGoogleWeb(config: GoogleSignInConfig): Promise<OAuthCre
     const nonce = generateRandomNonce();
 
     // Store state and nonce for verification
-    if (Platform.OS === "web") {
-      localStorage.setItem("google_oauth_state", state);
-      localStorage.setItem("google_oauth_nonce", nonce);
-    } else {
-      await SecureStore.setItemAsync("google_oauth_state", state);
-      await SecureStore.setItemAsync("google_oauth_nonce", nonce);
-    }
+    await SecureStore.setItemAsync("google_oauth_state", state);
+    await SecureStore.setItemAsync("google_oauth_nonce", nonce);
 
     // Build authorization URL
     const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
@@ -215,9 +209,7 @@ async function signInWithGoogleWeb(config: GoogleSignInConfig): Promise<OAuthCre
       const returnedState = url.searchParams.get("state");
 
       // Verify state
-      const storedState = Platform.OS === "web" 
-        ? localStorage.getItem("google_oauth_state")
-        : await SecureStore.getItemAsync("google_oauth_state");
+      const storedState = await SecureStore.getItemAsync("google_oauth_state");
       if (returnedState !== storedState) {
         throw new Error("OAuth state mismatch - possible CSRF attack");
       }
@@ -258,13 +250,8 @@ export async function signOutGoogle(): Promise<void> {
 
     console.log("[GoogleSignIn] Signing out");
     // Clear stored tokens
-    if (Platform.OS === "web") {
-      localStorage.removeItem("google_oauth_state");
-      localStorage.removeItem("google_oauth_nonce");
-    } else {
-      await SecureStore.deleteItemAsync("google_oauth_state");
-      await SecureStore.deleteItemAsync("google_oauth_nonce");
-    }
+    await SecureStore.deleteItemAsync("google_oauth_state");
+    await SecureStore.deleteItemAsync("google_oauth_nonce");
   } catch (error) {
     console.error("[GoogleSignIn] Sign-out error:", error);
     throw error;

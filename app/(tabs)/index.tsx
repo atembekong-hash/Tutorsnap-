@@ -595,28 +595,12 @@ function SolveScreenContent() {
           .then((reqs: unknown[]) => setPendingNotifCount(reqs.length))
           .catch(() => {});
       }
-      // Check authentication first
-      (async () => {
-        try {
-          const { isAuthenticated } = await import("@/lib/_core/auth-enhanced");
-          const isAuth = await isAuthenticated();
-          if (!isAuth) {
-            console.log("[Auth] User not authenticated, redirecting to auth screen");
-            router.replace("/auth-screen" as any);
-            return;
-          }
-        } catch (error) {
-          console.error("[Auth] Failed to check authentication:", error);
-          router.replace("/auth-screen" as any);
-          return;
-        }
-        
-        // Check if onboarding has been completed
-        const done = await AsyncStorage.getItem("@tutorsnap/onboardingDone");
+      // Check if onboarding has been completed
+      AsyncStorage.getItem("@tutorsnap/onboardingDone").then((done) => {
         if (!done) {
           router.replace("/onboarding" as any);
         }
-      })();
+      });
     }, [])
   );
 
