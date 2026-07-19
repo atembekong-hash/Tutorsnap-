@@ -173,6 +173,9 @@ const config: ExpoConfig = {
       },
     ],
     [
+      "@react-native-google-signin/google-signin",
+    ],
+    [
       "expo-build-properties",
       {
         android: {
@@ -182,6 +185,9 @@ const config: ExpoConfig = {
           targetSdkVersion: 34,
           kotlinVersion: "2.0.21",
           ndkVersion: "27.1.12297006",
+          extraMavenRepos: [
+            "https://maven.google.com",
+          ],
         },
       },
     ],

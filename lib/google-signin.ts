@@ -1,82 +1,67 @@
 /**
- * Google Sign-In Integration
- * Production-grade implementation for Android and iOS
+ * Native Google Sign-In Integration
+ * Uses @react-native-google-signin/google-signin for Android and iOS
+ * 
+ * NO web browser fallbacks - native SDK only
  * 
  * Requires:
- * - GOOGLE_ANDROID_CLIENT_ID: OAuth 2.0 Client ID for Android
- * - GOOGLE_IOS_CLIENT_ID: OAuth 2.0 Client ID for iOS
- * - GOOGLE_WEB_CLIENT_ID: (Optional) OAuth 2.0 Client ID for Web (for backend verification)
+ * - EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID: OAuth 2.0 Client ID for Android
+ * - EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID: OAuth 2.0 Client ID for iOS
+ * - EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: Web Client ID for backend token verification
  */
 
 import { Platform } from "react-native";
-import * as WebBrowser from "expo-web-browser";
-import * as Linking from "expo-linking";
 import * as SecureStore from "expo-secure-store";
 import { OAuthCredentials } from "./oauth-service";
 
-// Placeholder credential keys - replace with actual values
-const GOOGLE_ANDROID_CLIENT_ID = process.env.GOOGLE_ANDROID_CLIENT_ID || "PLACEHOLDER_ANDROID_CLIENT_ID";
-const GOOGLE_IOS_CLIENT_ID = process.env.GOOGLE_IOS_CLIENT_ID || "PLACEHOLDER_IOS_CLIENT_ID";
-const GOOGLE_WEB_CLIENT_ID = process.env.GOOGLE_WEB_CLIENT_ID || "PLACEHOLDER_WEB_CLIENT_ID";
-
-// Deep link configuration
-const REDIRECT_SCHEME = "tutorsnap";
-const REDIRECT_PATH = "oauth/callback";
-const REDIRECT_URL = `${REDIRECT_SCHEME}://${REDIRECT_PATH}`;
-
-interface GoogleSignInConfig {
-  clientId: string;
-  redirectUrl: string;
-  scopes: string[];
-}
+// Credentials - EXPO_PUBLIC_ prefix required for client-side access
+const GOOGLE_ANDROID_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || "";
+const GOOGLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || "";
+const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || "";
 
 /**
- * Get platform-specific Google Sign-In configuration
- */
-function getGoogleConfig(): GoogleSignInConfig {
-  const clientId = Platform.OS === "ios" ? GOOGLE_IOS_CLIENT_ID : GOOGLE_ANDROID_CLIENT_ID;
-  
-  return {
-    clientId,
-    redirectUrl: REDIRECT_URL,
-    scopes: [
-      "openid",
-      "profile",
-      "email",
-    ],
-  };
-}
-
-/**
- * Check if credentials are configured (not placeholders)
+ * Check if credentials are configured (not empty)
  */
 function isConfigured(): boolean {
-  const config = getGoogleConfig();
-  return !config.clientId.includes("PLACEHOLDER");
+  if (Platform.OS === "android") {
+    return GOOGLE_ANDROID_CLIENT_ID.length > 0 && GOOGLE_WEB_CLIENT_ID.length > 0;
+  } else if (Platform.OS === "ios") {
+    return GOOGLE_IOS_CLIENT_ID.length > 0 && GOOGLE_WEB_CLIENT_ID.length > 0;
+  }
+  return false;
 }
 
 /**
- * Perform Google Sign-In
- * Uses native Google Sign-In SDK on Android/iOS
+ * Get error message for unconfigured credentials
+ */
+function getConfigurationError(): string {
+  if (Platform.OS === "android") {
+    return "Google Sign-In not configured. Please set EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID and EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID environment variables.";
+  } else if (Platform.OS === "ios") {
+    return "Google Sign-In not configured. Please set EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID and EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID environment variables.";
+  }
+  return "Google Sign-In not supported on this platform.";
+}
+
+/**
+ * Perform native Google Sign-In
+ * Uses @react-native-google-signin/google-signin SDK
+ * No web browser, no OAuth redirect URLs
  */
 export async function signInWithGoogle(): Promise<OAuthCredentials | null> {
   try {
-    const config = getGoogleConfig();
-
     // Check if credentials are configured
     if (!isConfigured()) {
-      throw new Error(
-        `Google Sign-In not configured. Please set ${Platform.OS === "ios" ? "GOOGLE_IOS_CLIENT_ID" : "GOOGLE_ANDROID_CLIENT_ID"} environment variable.`
-      );
+      throw new Error(getConfigurationError());
     }
 
     // Platform-specific implementation
     if (Platform.OS === "android") {
-      return await signInWithGoogleAndroid(config);
+      return await signInWithGoogleAndroid();
     } else if (Platform.OS === "ios") {
-      return await signInWithGoogleIOS(config);
+      return await signInWithGoogleIOS();
     } else if (Platform.OS === "web") {
-      return await signInWithGoogleWeb(config);
+      throw new Error("Google Sign-In not available on web platform. Use email authentication instead.");
     } else {
       throw new Error(`Unsupported platform: ${Platform.OS}`);
     }
@@ -88,31 +73,34 @@ export async function signInWithGoogle(): Promise<OAuthCredentials | null> {
 
 /**
  * Android-specific Google Sign-In
- * Uses @react-native-google-signin/google-signin
+ * Uses native Google Sign-In SDK
  */
-async function signInWithGoogleAndroid(config: GoogleSignInConfig): Promise<OAuthCredentials | null> {
+async function signInWithGoogleAndroid(): Promise<OAuthCredentials | null> {
   try {
     // Dynamically import to avoid breaking web builds
-    const { GoogleSignin } = await import('@react-native-google-signin/google-signin');
+    const { GoogleSignin } = await import("@react-native-google-signin/google-signin");
 
-    // Configure Google Sign-In
+    // Configure native Google Sign-In
     GoogleSignin.configure({
       webClientId: GOOGLE_WEB_CLIENT_ID,
       offlineAccess: true,
-      scopes: config.scopes,
-    } as any);
+      scopes: ["openid", "profile", "email"],
+    });
 
-    // Perform sign-in
+    // Show native Google account selector
+    // This opens the native account picker, NOT a browser
     const userInfo = (await GoogleSignin.signIn()) as any;
 
     if (!userInfo.idToken) {
       throw new Error("No ID token received from Google Sign-In");
     }
 
-    // Store ID token securely
-    await SecureStore.setItemAsync("google_id_token", userInfo.idToken);
+    // Store ID token securely for session restoration
+    if (Platform.OS !== "web") {
+      await SecureStore.setItemAsync("google_id_token", userInfo.idToken);
+    }
 
-    // Extract user info from response (varies by SDK version)
+    // Extract user info from response
     const user = userInfo.user || userInfo;
 
     return {
@@ -131,31 +119,33 @@ async function signInWithGoogleAndroid(config: GoogleSignInConfig): Promise<OAut
 
 /**
  * iOS-specific Google Sign-In
- * Uses @react-native-google-signin/google-signin
+ * Uses native Google Sign-In SDK
  */
-async function signInWithGoogleIOS(config: GoogleSignInConfig): Promise<OAuthCredentials | null> {
+async function signInWithGoogleIOS(): Promise<OAuthCredentials | null> {
   try {
     // Dynamically import to avoid breaking web builds
-    const { GoogleSignin } = await import('@react-native-google-signin/google-signin');
+    const { GoogleSignin } = await import("@react-native-google-signin/google-signin");
 
-    // Configure Google Sign-In
+    // Configure native Google Sign-In
     GoogleSignin.configure({
       webClientId: GOOGLE_WEB_CLIENT_ID,
       offlineAccess: true,
-      scopes: config.scopes,
-    } as any);
+      scopes: ["openid", "profile", "email"],
+    });
 
-    // Perform sign-in
+    // Show native Google account selector
     const userInfo = (await GoogleSignin.signIn()) as any;
 
     if (!userInfo.idToken) {
       throw new Error("No ID token received from Google Sign-In");
     }
 
-    // Store ID token securely
-    await SecureStore.setItemAsync("google_id_token", userInfo.idToken);
+    // Store ID token securely for session restoration
+    if (Platform.OS !== "web") {
+      await SecureStore.setItemAsync("google_id_token", userInfo.idToken);
+    }
 
-    // Extract user info from response (varies by SDK version)
+    // Extract user info from response
     const user = userInfo.user || userInfo;
 
     return {
@@ -173,102 +163,39 @@ async function signInWithGoogleIOS(config: GoogleSignInConfig): Promise<OAuthCre
 }
 
 /**
- * Web-specific Google Sign-In
- * Uses OAuth 2.0 Authorization Code Flow
- */
-async function signInWithGoogleWeb(config: GoogleSignInConfig): Promise<OAuthCredentials | null> {
-  try {
-    const state = generateRandomState();
-    const nonce = generateRandomNonce();
-
-    // Store state and nonce for verification
-    await SecureStore.setItemAsync("google_oauth_state", state);
-    await SecureStore.setItemAsync("google_oauth_nonce", nonce);
-
-    // Build authorization URL
-    const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
-    authUrl.searchParams.append("client_id", config.clientId);
-    authUrl.searchParams.append("redirect_uri", config.redirectUrl);
-    authUrl.searchParams.append("response_type", "code");
-    authUrl.searchParams.append("scope", config.scopes.join(" "));
-    authUrl.searchParams.append("state", state);
-    authUrl.searchParams.append("nonce", nonce);
-    authUrl.searchParams.append("access_type", "offline");
-    authUrl.searchParams.append("prompt", "consent");
-
-    // Open browser
-    const result = await WebBrowser.openAuthSessionAsync(
-      authUrl.toString(),
-      config.redirectUrl
-    );
-
-    if (result.type === "success" && result.url) {
-      // Parse authorization code from redirect URL
-      const url = new URL(result.url);
-      const code = url.searchParams.get("code");
-      const returnedState = url.searchParams.get("state");
-
-      // Verify state
-      const storedState = await SecureStore.getItemAsync("google_oauth_state");
-      if (returnedState !== storedState) {
-        throw new Error("OAuth state mismatch - possible CSRF attack");
-      }
-
-      if (!code) {
-        throw new Error("No authorization code received");
-      }
-
-      // In production, exchange code for tokens on backend
-      // The backend would use GOOGLE_WEB_CLIENT_ID and client secret
-      return {
-        provider: "google",
-        idToken: code, // Backend will exchange this for actual token
-        email: undefined,
-        name: undefined,
-      };
-    } else if (result.type === "cancel") {
-      throw new Error("Google Sign-In cancelled by user");
-    } else if (result.type === "dismiss") {
-      throw new Error("Google Sign-In dismissed");
-    }
-
-    return null;
-  } catch (error) {
-    console.error("[GoogleSignIn] Web error:", error);
-    throw error;
-  }
-}
-
-/**
  * Sign out from Google
  */
-export async function signOutGoogle(): Promise<void> {
+export async function signOutFromGoogle(): Promise<void> {
   try {
-    // In production, this would use:
-    // import { GoogleSignin } from '@react-native-google-signin/google-signin';
-    // await GoogleSignin.signOut();
+    if (Platform.OS === "web") {
+      // Web: clear localStorage
+      localStorage.removeItem("google_id_token");
+      return;
+    }
 
-    console.log("[GoogleSignIn] Signing out");
-    // Clear stored tokens
-    await SecureStore.deleteItemAsync("google_oauth_state");
-    await SecureStore.deleteItemAsync("google_oauth_nonce");
+    // Native: use GoogleSignin SDK
+    const { GoogleSignin } = await import("@react-native-google-signin/google-signin");
+    await GoogleSignin.signOut();
+
+    // Clear stored token
+    await SecureStore.deleteItemAsync("google_id_token");
   } catch (error) {
-    console.error("[GoogleSignIn] Sign-out error:", error);
+    console.error("[GoogleSignIn] Sign out error:", error);
     throw error;
   }
 }
 
 /**
- * Get current signed-in user (if available)
+ * Get current signed-in user
  */
-export async function getCurrentGoogleUser(): Promise<OAuthCredentials | null> {
+export async function getCurrentGoogleUser(): Promise<any | null> {
   try {
-    // In production, this would use:
-    // import { GoogleSignin } from '@react-native-google-signin/google-signin';
-    // const user = await GoogleSignin.getCurrentUser();
+    if (Platform.OS === "web") {
+      return null;
+    }
 
-    console.log("[GoogleSignIn] Getting current user");
-    return null;
+    const { GoogleSignin } = await import("@react-native-google-signin/google-signin");
+    return await GoogleSignin.getCurrentUser();
   } catch (error) {
     console.error("[GoogleSignIn] Get current user error:", error);
     return null;
@@ -276,34 +203,20 @@ export async function getCurrentGoogleUser(): Promise<OAuthCredentials | null> {
 }
 
 /**
- * Generate random state for OAuth CSRF protection
+ * Revoke Google access
  */
-function generateRandomState(): string {
-  const array = new Uint8Array(32);
-  crypto.getRandomValues(array);
-  return Array.from(array, (byte) => byte.toString(16).padStart(2, "0")).join("");
-}
+export async function revokeGoogleAccess(): Promise<void> {
+  try {
+    if (Platform.OS === "web") {
+      localStorage.removeItem("google_id_token");
+      return;
+    }
 
-/**
- * Generate random nonce for OpenID Connect
- */
-function generateRandomNonce(): string {
-  const array = new Uint8Array(32);
-  crypto.getRandomValues(array);
-  return Array.from(array, (byte) => byte.toString(16).padStart(2, "0")).join("");
+    const { GoogleSignin } = await import("@react-native-google-signin/google-signin");
+    await GoogleSignin.revokeAccess();
+    await SecureStore.deleteItemAsync("google_id_token");
+  } catch (error) {
+    console.error("[GoogleSignIn] Revoke access error:", error);
+    throw error;
+  }
 }
-
-/**
- * Export configuration for documentation
- */
-export const googleSignInConfig = {
-  requiredCredentials: {
-    android: "GOOGLE_ANDROID_CLIENT_ID",
-    ios: "GOOGLE_IOS_CLIENT_ID",
-    web: "GOOGLE_WEB_CLIENT_ID (optional)",
-  },
-  redirectUrl: REDIRECT_URL,
-  redirectScheme: REDIRECT_SCHEME,
-  scopes: ["openid", "profile", "email"],
-  isConfigured,
-};
