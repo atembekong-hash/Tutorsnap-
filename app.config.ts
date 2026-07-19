@@ -16,7 +16,7 @@ const bundleId = "com.tutorsnap.app";
 
 // Determine environment and scheme
 const isProduction = process.env.NODE_ENV === "production";
-const mobileScheme = isProduction ? PRODUCTION_MOBILE_SCHEME : "manus";
+const mobileScheme = PRODUCTION_MOBILE_SCHEME; // Always use tutorsnap for consistent deep linking
 const scheme = mobileScheme;
 
 const env = {
