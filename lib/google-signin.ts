@@ -92,23 +92,37 @@ export async function signInWithGoogle(): Promise<OAuthCredentials | null> {
  */
 async function signInWithGoogleAndroid(config: GoogleSignInConfig): Promise<OAuthCredentials | null> {
   try {
-    // In production, this would use:
-    // import { GoogleSignin } from '@react-native-google-signin/google-signin';
-    // GoogleSignin.configure({
-    //   webClientId: GOOGLE_WEB_CLIENT_ID,
-    //   androidClientId: config.clientId,
-    //   offlineAccess: true,
-    //   scopes: config.scopes,
-    // });
-    // const userInfo = await GoogleSignin.signIn();
+    // Dynamically import to avoid breaking web builds
+    const { GoogleSignin } = await import('@react-native-google-signin/google-signin');
 
-    console.log("[GoogleSignIn] Android: Placeholder implementation");
-    console.log("[GoogleSignIn] Android Client ID:", config.clientId);
-    console.log("[GoogleSignIn] To enable real sign-in, install @react-native-google-signin/google-signin");
+    // Configure Google Sign-In
+    GoogleSignin.configure({
+      webClientId: GOOGLE_WEB_CLIENT_ID,
+      offlineAccess: true,
+      scopes: config.scopes,
+    } as any);
 
-    throw new Error(
-      "Google Sign-In SDK not installed. Install @react-native-google-signin/google-signin and configure with your credentials."
-    );
+    // Perform sign-in
+    const userInfo = (await GoogleSignin.signIn()) as any;
+
+    if (!userInfo.idToken) {
+      throw new Error("No ID token received from Google Sign-In");
+    }
+
+    // Store ID token securely
+    await SecureStore.setItemAsync("google_id_token", userInfo.idToken);
+
+    // Extract user info from response (varies by SDK version)
+    const user = userInfo.user || userInfo;
+
+    return {
+      provider: "google",
+      idToken: userInfo.idToken,
+      accessToken: userInfo.accessToken || undefined,
+      email: user.email || undefined,
+      name: user.name || undefined,
+      photoUrl: user.photo || undefined,
+    };
   } catch (error) {
     console.error("[GoogleSignIn] Android error:", error);
     throw error;
@@ -121,23 +135,37 @@ async function signInWithGoogleAndroid(config: GoogleSignInConfig): Promise<OAut
  */
 async function signInWithGoogleIOS(config: GoogleSignInConfig): Promise<OAuthCredentials | null> {
   try {
-    // In production, this would use:
-    // import { GoogleSignin } from '@react-native-google-signin/google-signin';
-    // GoogleSignin.configure({
-    //   webClientId: GOOGLE_WEB_CLIENT_ID,
-    //   iosClientId: config.clientId,
-    //   offlineAccess: true,
-    //   scopes: config.scopes,
-    // });
-    // const userInfo = await GoogleSignin.signIn();
+    // Dynamically import to avoid breaking web builds
+    const { GoogleSignin } = await import('@react-native-google-signin/google-signin');
 
-    console.log("[GoogleSignIn] iOS: Placeholder implementation");
-    console.log("[GoogleSignIn] iOS Client ID:", config.clientId);
-    console.log("[GoogleSignIn] To enable real sign-in, install @react-native-google-signin/google-signin");
+    // Configure Google Sign-In
+    GoogleSignin.configure({
+      webClientId: GOOGLE_WEB_CLIENT_ID,
+      offlineAccess: true,
+      scopes: config.scopes,
+    } as any);
 
-    throw new Error(
-      "Google Sign-In SDK not installed. Install @react-native-google-signin/google-signin and configure with your credentials."
-    );
+    // Perform sign-in
+    const userInfo = (await GoogleSignin.signIn()) as any;
+
+    if (!userInfo.idToken) {
+      throw new Error("No ID token received from Google Sign-In");
+    }
+
+    // Store ID token securely
+    await SecureStore.setItemAsync("google_id_token", userInfo.idToken);
+
+    // Extract user info from response (varies by SDK version)
+    const user = userInfo.user || userInfo;
+
+    return {
+      provider: "google",
+      idToken: userInfo.idToken,
+      accessToken: userInfo.accessToken || undefined,
+      email: user.email || undefined,
+      name: user.name || undefined,
+      photoUrl: user.photo || undefined,
+    };
   } catch (error) {
     console.error("[GoogleSignIn] iOS error:", error);
     throw error;

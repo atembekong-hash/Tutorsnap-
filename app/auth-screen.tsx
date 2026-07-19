@@ -29,21 +29,17 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
       setError(null);
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-      // Placeholder: In production, this would use:
-      // - @react-native-google-signin/google-signin on native
-      // - @react-oauth/google on web
+      // Use real Google Sign-In
+      const { signInWithGoogle } = await import("@/lib/google-signin");
       console.log("[Auth] Google Sign-In initiated");
 
-      // Mock OAuth response for testing
-      const mockResponse = {
-        provider: "google" as const,
-        idToken: "mock_google_token_" + Date.now(),
-        email: "user@gmail.com",
-        name: "Test User",
-        photoUrl: "https://via.placeholder.com/150",
-      };
+      const credentials = await signInWithGoogle();
+      if (!credentials) {
+        setError("Google Sign-In cancelled");
+        return;
+      }
 
-      const result = await validateOAuthCredentials(mockResponse);
+      const result = await validateOAuthCredentials(credentials);
 
       if (result.success && result.user) {
         await setUserInfo({
@@ -56,7 +52,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
           lastSignedIn: new Date(),
         });
 
-        await setSessionToken(mockResponse.idToken);
+        await setSessionToken(credentials.idToken);
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
         onAuthSuccess?.();

@@ -17,28 +17,59 @@ interface OAuthUser {
 }
 
 /**
- * Validate OAuth credentials (simplified - real implementation would verify with OAuth provider)
+ * Verify Google ID Token
  */
-async function validateOAuthToken(provider: string, idToken: string): Promise<OAuthUser | null> {
+async function verifyGoogleToken(idToken: string): Promise<OAuthUser | null> {
   try {
-    // In production, verify the token with the OAuth provider
-    // For now, this is a placeholder that would be implemented with:
-    // - Google: google-auth-library
-    // - Apple: jsonwebtoken + Apple's public keys
+    // Use google-auth-library to verify the token
+    const { OAuth2Client } = await import("google-auth-library");
+    const client = new OAuth2Client(process.env.GOOGLE_WEB_CLIENT_ID);
 
-    console.log(`[OAuth] Validating ${provider} token`);
+    const ticket = await client.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_WEB_CLIENT_ID,
+    });
 
-    // Placeholder: decode and validate token structure
-    if (!idToken || idToken.length < 10) {
+    const payload = ticket.getPayload();
+    if (!payload) {
+      console.error("[OAuth] Google token payload is empty");
       return null;
     }
 
-    // This would be replaced with actual OAuth provider verification
     return {
-      id: `${provider}_${Date.now()}`,
-      email: "user@example.com",
-      name: "User Name",
+      id: payload.sub,
+      email: payload.email || "",
+      name: payload.name || "",
+      picture: payload.picture,
     };
+  } catch (error) {
+    console.error("[OAuth] Google token verification failed:", error);
+    return null;
+  }
+}
+
+/**
+ * Validate OAuth credentials with provider verification
+ */
+async function validateOAuthToken(provider: string, idToken: string): Promise<OAuthUser | null> {
+  try {
+    console.log(`[OAuth] Validating ${provider} token`);
+
+    if (!idToken || idToken.length < 10) {
+      console.error(`[OAuth] Invalid token format for ${provider}`);
+      return null;
+    }
+
+    if (provider === "google") {
+      return await verifyGoogleToken(idToken);
+    } else if (provider === "apple") {
+      // Apple token verification will be implemented separately
+      console.warn("[OAuth] Apple token verification not yet implemented");
+      return null;
+    } else {
+      console.error(`[OAuth] Unknown provider: ${provider}`);
+      return null;
+    }
   } catch (error) {
     console.error(`[OAuth] Token validation failed:`, error);
     return null;
