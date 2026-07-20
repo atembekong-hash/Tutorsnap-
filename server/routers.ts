@@ -4,6 +4,7 @@ import { invokeLLM } from "./_core/llm";
 import { systemRouter } from "./_core/systemRouter";
 import { referralRouter } from "./routers/referrals";
 import { oauthRouter } from "./routers/oauth";
+import { emailAuthRouter } from "./routers/email-auth";
 import { COOKIE_NAME } from "../shared/const";
 import { transcribeAudio } from "./_core/voiceTranscription";
 import { storagePut } from "./storage";
@@ -731,6 +732,7 @@ export const appRouter = router({
   voice: voiceRouter,
   referral: referralRouter,
   oauth: oauthRouter,
+  emailAuth: emailAuthRouter,
 });
 
 export type AppRouter = typeof appRouter;

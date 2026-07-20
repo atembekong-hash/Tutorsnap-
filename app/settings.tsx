@@ -24,6 +24,7 @@ import { useColors } from "@/hooks/use-colors";
 import { useThemeContext } from "@/lib/theme-provider";
 import { getProgress, setDailyGoal } from "@/lib/progress";
 import { logout } from "@/lib/_core/auth-enhanced";
+import { stopTokenRefreshTimer } from "@/lib/token-refresh";
 import {
   getReminderSettings,
   saveReminderSettings,
@@ -570,6 +571,7 @@ export default function SettingsScreen() {
           style: "destructive",
           onPress: async () => {
             try {
+              stopTokenRefreshTimer();
               await logout();
               H.notificationSuccess();
               router.replace("/auth-screen" as any);

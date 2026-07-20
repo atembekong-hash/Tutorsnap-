@@ -87,8 +87,12 @@ export default function RootLayout() {
     // Schedule weekly affiliate digest (Monday 9 AM)
     scheduleWeeklyAffiliateDigest().catch(() => {});
     // Initialise RevenueCat and check trial / subscription status
+    // Only show paywall for users who are already signed in — never interrupt the sign-in flow
     initRevenueCat().then(async () => {
       try {
+        const { isAuthenticated } = await import("@/lib/_core/auth-enhanced");
+        const authed = await isAuthenticated();
+        if (!authed) return; // Not signed in — paywall will be shown after sign-in/onboarding
         const status = await getSubscriptionStatus();
         // If trial has expired and user is not premium, show paywall
         if (!status.isPremium && !status.isTrialActive && !status.isDevMode) {
