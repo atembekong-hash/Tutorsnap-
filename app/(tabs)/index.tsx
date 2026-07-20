@@ -595,24 +595,31 @@ function SolveScreenContent() {
           .then((reqs: unknown[]) => setPendingNotifCount(reqs.length))
           .catch(() => {});
       }
-      // Check onboarding (auth check is handled separately in a one-time useEffect below)
-      AsyncStorage.getItem("@tutorsnap/onboardingDone").then((done) => {
-        if (!done) {
-          router.replace("/onboarding" as any);
-        }
-      });
+      // Onboarding check intentionally removed from here.
+      // auth-screen.tsx calls getPostAuthRoute() after sign-in which routes to
+      // /onboarding if needed. Checking here caused a race condition where
+      // onboarding appeared before the sign-in screen on first launch.
     }, [])
   );
 
-  // One-time auth check on mount — runs only once, not on every focus
+  // One-time startup check on mount — runs only once, not on every focus
+  // Order: 1) auth check  2) onboarding check  3) show dashboard
   useEffect(() => {
     (async () => {
       try {
         const { isAuthenticated } = await import("@/lib/_core/auth-enhanced");
         const authed = await isAuthenticated();
         if (!authed) {
+          // Not signed in — go to sign-in screen first
           router.replace("/auth-screen" as any);
+          return;
         }
+        // Signed in — check if onboarding is complete
+        const onboardingDone = await AsyncStorage.getItem("@tutorsnap/onboardingDone");
+        if (!onboardingDone) {
+          router.replace("/onboarding" as any);
+        }
+        // Otherwise stay on dashboard
       } catch { /* ignore — treat as authenticated */ }
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
