@@ -15,9 +15,10 @@ import * as SecureStore from "expo-secure-store";
 import { OAuthCredentials } from "./oauth-service";
 
 // Credentials - EXPO_PUBLIC_ prefix required for client-side access
-const GOOGLE_ANDROID_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || "";
-const GOOGLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || "";
-const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || "";
+// Fallback values are used when env vars are not available (e.g. EAS production builds)
+const GOOGLE_ANDROID_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || "1033519152070-hahmfpjroc27vicq029mc3skbgue76qg.apps.googleusercontent.com";
+const GOOGLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || "1033519152070-il07ntgt9f4jqoov8f3opju2s051io82.apps.googleusercontent.com";
+const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || "1033519152070-5p86rjmo7bfjr51vqvfjaj1ltctpjltv.apps.googleusercontent.com";
 
 /**
  * Check if credentials are configured (not empty)
@@ -81,6 +82,7 @@ async function signInWithGoogleAndroid(): Promise<OAuthCredentials | null> {
     const { GoogleSignin } = await import("@react-native-google-signin/google-signin");
 
     // Configure native Google Sign-In
+    // webClientId must be the Web application OAuth client ID
     GoogleSignin.configure({
       webClientId: GOOGLE_WEB_CLIENT_ID,
       offlineAccess: true,
@@ -88,25 +90,40 @@ async function signInWithGoogleAndroid(): Promise<OAuthCredentials | null> {
     });
 
     // Show native Google account selector
-    // This opens the native account picker, NOT a browser
-    const userInfo = (await GoogleSignin.signIn()) as any;
+    // v16 API: signIn() returns { type: 'success', data: User } or { type: 'cancelled' }
+    const response = (await GoogleSignin.signIn()) as any;
 
-    if (!userInfo.idToken) {
+    // Handle cancelled
+    if (response.type === "cancelled") {
+      return null;
+    }
+
+    // Extract user data from v16 response shape
+    const userData = response.data || response;
+    const user = userData.user || userData;
+
+    // v16: idToken may be null on signIn() — use getTokens() to reliably get it
+    let idToken = userData.idToken || null;
+    let accessToken = userData.accessToken || undefined;
+
+    if (!idToken) {
+      // getTokens() always returns a fresh idToken
+      const tokens = await GoogleSignin.getTokens();
+      idToken = tokens.idToken;
+      accessToken = tokens.accessToken;
+    }
+
+    if (!idToken) {
       throw new Error("No ID token received from Google Sign-In");
     }
 
     // Store ID token securely for session restoration
-    if (Platform.OS !== "web") {
-      await SecureStore.setItemAsync("google_id_token", userInfo.idToken);
-    }
-
-    // Extract user info from response
-    const user = userInfo.user || userInfo;
+    await SecureStore.setItemAsync("google_id_token", idToken);
 
     return {
       provider: "google",
-      idToken: userInfo.idToken,
-      accessToken: userInfo.accessToken || undefined,
+      idToken,
+      accessToken,
       email: user.email || undefined,
       name: user.name || undefined,
       photoUrl: user.photo || undefined,
@@ -129,29 +146,44 @@ async function signInWithGoogleIOS(): Promise<OAuthCredentials | null> {
     // Configure native Google Sign-In
     GoogleSignin.configure({
       webClientId: GOOGLE_WEB_CLIENT_ID,
+      iosClientId: GOOGLE_IOS_CLIENT_ID,
       offlineAccess: true,
       scopes: ["openid", "profile", "email"],
     });
 
-    // Show native Google account selector
-    const userInfo = (await GoogleSignin.signIn()) as any;
+    // v16 API: signIn() returns { type: 'success', data: User } or { type: 'cancelled' }
+    const response = (await GoogleSignin.signIn()) as any;
 
-    if (!userInfo.idToken) {
+    // Handle cancelled
+    if (response.type === "cancelled") {
+      return null;
+    }
+
+    // Extract user data from v16 response shape
+    const userData = response.data || response;
+    const user = userData.user || userData;
+
+    // v16: idToken may be null on signIn() — use getTokens() to reliably get it
+    let idToken = userData.idToken || null;
+    let accessToken = userData.accessToken || undefined;
+
+    if (!idToken) {
+      const tokens = await GoogleSignin.getTokens();
+      idToken = tokens.idToken;
+      accessToken = tokens.accessToken;
+    }
+
+    if (!idToken) {
       throw new Error("No ID token received from Google Sign-In");
     }
 
     // Store ID token securely for session restoration
-    if (Platform.OS !== "web") {
-      await SecureStore.setItemAsync("google_id_token", userInfo.idToken);
-    }
-
-    // Extract user info from response
-    const user = userInfo.user || userInfo;
+    await SecureStore.setItemAsync("google_id_token", idToken);
 
     return {
       provider: "google",
-      idToken: userInfo.idToken,
-      accessToken: userInfo.accessToken || undefined,
+      idToken,
+      accessToken,
       email: user.email || undefined,
       name: user.name || undefined,
       photoUrl: user.photo || undefined,

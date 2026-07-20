@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "1033519152070",
+    "project_id": "rare-gist-502908-b5",
+    "storage_bucket": "rare-gist-502908-b5.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1033519152070:android:3d088285b2be27cb6b50c7",
+        "android_client_info": {
+          "package_name": "com.tutorsnap.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1033519152070-hahmfpjroc27vicq029mc3skbgue76qg.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.tutorsnap.app",
+            "certificate_hash": "089e01182a8f9278e4b9d6c2653b20a924cc2a63"
+          }
+        },
+        {
+          "client_id": "1033519152070-5p86rjmo7bfjr51vqvfjaj1ltctpjltv.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDZlUmMdnSD3i_6rVkSEzpVSls7WUlJObc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1033519152070-5p86rjmo7bfjr51vqvfjaj1ltctpjltv.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1033519152070-il07ntgt9f4jqoov8f3opju2s051io82.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.tutorsnap.app"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

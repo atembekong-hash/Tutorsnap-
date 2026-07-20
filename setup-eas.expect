@@ -1,0 +1,36 @@
+#!/usr/bin/expect -f
+set timeout 120
+set send_human {0.05 0 1 0 0.02}
+
+spawn bash -c "EXPO_TOKEN=$::env(EXPO_TOKEN) eas init --id ce53088c-980c-49a0-ae2b-0427d8dc97c2"
+
+expect {
+    "already configured" {
+        puts "✅ Project already configured"
+        exit 0
+    }
+    "Use existing project" {
+        send -h "y\r"
+        exp_continue
+    }
+    "Configuring EAS project" {
+        puts "✅ Configuring EAS project..."
+        exp_continue
+    }
+    "EAS project configured" {
+        puts "✅ EAS project configured successfully"
+        exit 0
+    }
+    "error" {
+        puts "❌ Error occurred"
+        exit 1
+    }
+    eof {
+        puts "✅ Init completed"
+        exit 0
+    }
+    timeout {
+        puts "❌ Timeout waiting for response"
+        exit 1
+    }
+}

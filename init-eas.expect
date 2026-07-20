@@ -1,0 +1,17 @@
+#!/usr/bin/expect -f
+set timeout 60
+spawn eas init --id ce53088c-980c-49a0-ae2b-0427d8dc97c2
+expect {
+    "Use existing project" {
+        send "y\r"
+        exp_continue
+    }
+    "eof" {
+        puts "✅ EAS init completed"
+        exit 0
+    }
+    timeout {
+        puts "❌ Timeout"
+        exit 1
+    }
+}

@@ -41,34 +41,46 @@ export async function validateOAuthCredentials(credentials: OAuthCredentials): P
       throw new Error("API base URL not configured");
     }
 
-    const response = await fetch(`${apiUrl}/api/oauth/validate`, {
+    // tRPC v11 single-procedure POST format: POST /api/trpc/oauth.validate
+    // Body: {"json":{...input...}} — server responds with {"result":{"data":{"json":{...}}}}
+    const response = await fetch(`${apiUrl}/api/trpc/oauth.validate`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        provider: credentials.provider,
-        idToken: credentials.idToken,
-        accessToken: credentials.accessToken,
-        email: credentials.email,
-        name: credentials.name,
-        photoUrl: credentials.photoUrl,
+        json: {
+          provider: credentials.provider,
+          idToken: credentials.idToken,
+          accessToken: credentials.accessToken,
+          email: credentials.email,
+          name: credentials.name,
+          photoUrl: credentials.photoUrl,
+        }
       }),
     });
 
     if (!response.ok) {
-      const error = await response.json();
+      const errorText = await response.text();
+      console.error("[OAuth] tRPC validate HTTP error:", response.status, errorText);
       return {
         success: false,
-        error: error.error || "OAuth validation failed",
-        message: error.message,
+        error: "OAuth validation failed (HTTP " + response.status + ")",
       };
     }
 
-    const data = await response.json();
+    const raw = await response.json();
+    // tRPC single response: {result:{data:{json:{...}}}}
+    const result = raw?.result?.data?.json;
+    if (!result) {
+      console.error("[OAuth] Unexpected tRPC response shape:", JSON.stringify(raw).slice(0, 200));
+      return { success: false, error: "Unexpected server response" };
+    }
     return {
-      success: true,
-      user: data.user,
+      success: result.success,
+      user: result.user,
+      error: result.error,
+      message: result.message,
     };
   } catch (error) {
     console.error("[OAuth] Validation failed:", error);

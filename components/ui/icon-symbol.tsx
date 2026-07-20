@@ -104,6 +104,7 @@ const MAPPING = {
   "square.and.arrow.up.on.square.fill": "upload-file",
   "square.and.arrow.down.fill": "download",
   "person.crop.circle.badge.minus": "person-remove",
+  "rectangle.portrait.and.arrow.right": "logout",
   "person.crop.circle.fill": "account-circle",
   // Code
   "chevron.left.forwardslash.chevron.right": "code",

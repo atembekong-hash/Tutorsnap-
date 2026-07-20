@@ -90,6 +90,7 @@ const config: ExpoConfig = {
     edgeToEdgeEnabled: true,
     predictiveBackGestureEnabled: false,
     package: env.androidPackage,
+    googleServicesFile: "./google-services.json",
     permissions: ["POST_NOTIFICATIONS"],
     intentFilters: [
       {
@@ -172,9 +173,7 @@ const config: ExpoConfig = {
         },
       },
     ],
-    [
-      "@react-native-google-signin/google-signin",
-    ],
+    "@react-native-google-signin/google-signin",
     [
       "expo-build-properties",
       {
@@ -195,6 +194,11 @@ const config: ExpoConfig = {
   experiments: {
     typedRoutes: true,
     reactCompiler: false,
+  },
+  extra: {
+    eas: {
+      projectId: "ce53088c-980c-49a0-ae2b-0427d8dc97c2",
+    },
   },
 };
 

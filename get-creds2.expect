@@ -1,0 +1,25 @@
+#!/usr/bin/expect -f
+set timeout 120
+spawn bash -c "EXPO_TOKEN=$::env(EXPO_TOKEN) eas credentials --platform android"
+expect {
+    "Configure this project?" {
+        send "y\r"
+        exp_continue
+    }
+    "SHA-1" {
+        puts "SHA-1 found!"
+        exp_continue
+    }
+    "Keystore" {
+        puts "Keystore found!"
+        exp_continue
+    }
+    eof {
+        puts "Done"
+        exit 0
+    }
+    timeout {
+        puts "Timeout"
+        exit 1
+    }
+}

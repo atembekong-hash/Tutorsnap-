@@ -1,0 +1,35 @@
+#!/usr/bin/expect -f
+
+# Set timeout for all interactions
+set timeout 300
+
+# Start the EAS build command
+spawn eas build --platform android --profile preview --non-interactive
+
+# Wait for the process to complete
+expect {
+    "Build has been created" {
+        puts "✅ Build created successfully!"
+        exp_continue
+    }
+    "Build ID:" {
+        puts "Build ID received"
+        exp_continue
+    }
+    "https://expo.dev" {
+        puts "Build link received"
+        exp_continue
+    }
+    "error" {
+        puts "❌ Error occurred during build"
+        exit 1
+    }
+    eof {
+        puts "✅ Build process completed"
+        exit 0
+    }
+    timeout {
+        puts "❌ Build timed out after 5 minutes"
+        exit 1
+    }
+}

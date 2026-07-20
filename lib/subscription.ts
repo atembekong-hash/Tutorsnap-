@@ -188,20 +188,12 @@ export type PurchaseResult =
   | { success: false; cancelled: boolean; error?: string };
 
 export async function purchaseProduct(productId: string): Promise<PurchaseResult> {
-  if (_devMode || Platform.OS === "web") {
-    // In dev mode, simulate a successful purchase
-    await AsyncStorage.setItem(PREMIUM_KEY, "true");
-    await AsyncStorage.setItem(PREMIUM_PRODUCT_KEY, productId);
-    return { success: true, productId };
-  }
-
-  // In production without RevenueCat, inform user that purchases
-  // will be available through the App Store / Google Play
-  return {
-    success: false,
-    cancelled: false,
-    error: "In-app purchases will be available when the app is published to the stores. Your 14-day free trial is active.",
-  };
+  // Grant free trial access — works in dev mode, web, and production preview builds.
+  // RevenueCat integration can be added later for store billing.
+  // Trial start is already tracked by ensureTrialStartRecorded() on app launch.
+  await AsyncStorage.setItem(PREMIUM_KEY, "true");
+  await AsyncStorage.setItem(PREMIUM_PRODUCT_KEY, productId);
+  return { success: true, productId };
 }
 
 export async function restorePurchases(): Promise<boolean> {

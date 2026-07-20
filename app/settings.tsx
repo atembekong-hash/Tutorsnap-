@@ -23,6 +23,7 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { useThemeContext } from "@/lib/theme-provider";
 import { getProgress, setDailyGoal } from "@/lib/progress";
+import { logout } from "@/lib/_core/auth-enhanced";
 import {
   getReminderSettings,
   saveReminderSettings,
@@ -556,6 +557,30 @@ export default function SettingsScreen() {
     }
   };
 
+  // ── Sign Out ────────────────────────────────────────────────────────────────
+  const handleSignOut = () => {
+    H.impactLight();
+    Alert.alert(
+      "Sign Out",
+      "Are you sure you want to sign out?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Sign Out",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await logout();
+              H.notificationSuccess();
+              router.replace("/auth-screen" as any);
+            } catch {
+              Alert.alert("Error", "Could not sign out. Please try again.");
+            }
+          },
+        },
+      ]
+    );
+  };
   // ── Delete Account ─────────────────────────────────────────────────────────
   const handleDeleteAccount = () => {
     H.impactLight();
@@ -1447,6 +1472,14 @@ export default function SettingsScreen() {
             danger
           />
         )}
+        <SettingsRow
+          icon="rectangle.portrait.and.arrow.right"
+          label="Sign Out"
+          subtitle="Sign out of your account"
+          colors={colors}
+          onPress={handleSignOut}
+          danger
+        />
         {ms("Delete Account", "Permanently erase") && (
           <SettingsRow
             icon="person.crop.circle.badge.minus"
