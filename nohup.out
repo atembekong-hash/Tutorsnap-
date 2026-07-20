@@ -18,3 +18,21 @@ Compressing project files and uploading to EAS Build. Learn more: https://expo.f
 
 See logs: https://expo.dev/accounts/vvault07/projects/mathgenius-ai/builds/f7ae843c-20b7-4afb-a0ac-d9ac4f6f621b
 
+(node:72589) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Resolved "production" environment for the build. Learn more: https://docs.expo.dev/eas/environment-variables/#setting-the-environment-for-your-builds
+No environment variables with visibility "Plain text" and "Sensitive" found for the "production" environment on EAS.
+
+
+
+✔ Using remote Android credentials (Expo server)
+✔ Using Keystore from configuration: Build Credentials RQndGZ8SJm (default)
+
+Compressing project files and uploading to EAS Build. Learn more: https://expo.fyi/eas-build-archive
+- Uploading to EAS Build (0 / 3.3 MB)
+✔ Uploaded to EAS 
+- Computing project fingerprint
+✔ Computed project fingerprint
+
+See logs: https://expo.dev/accounts/vvault07/projects/mathgenius-ai/builds/ea8f045a-b887-4bf5-acc8-1f9c853b8f28
+

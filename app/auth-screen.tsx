@@ -9,7 +9,7 @@ import { useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { cn } from "@/lib/utils";
-import { setUserInfo, setSessionToken } from "@/lib/_core/auth-enhanced";
+import { setUserInfo, setSessionToken, setAuthTokens } from "@/lib/_core/auth-enhanced";
 import { validateOAuthCredentials } from "@/lib/oauth-service";
 import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -59,6 +59,13 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
         });
 
         await setSessionToken(credentials.idToken);
+        // Also store as auth_token so isAuthenticated() returns true
+        await setAuthTokens({
+          accessToken: credentials.idToken,
+          refreshToken: credentials.idToken,
+          expiresAt: Date.now() + 60 * 60 * 1000,        // 1 hour
+          refreshExpiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000, // 30 days
+        });
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
         onAuthSuccess?.();
@@ -113,6 +120,13 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
         });
 
         await setSessionToken(credentials.idToken);
+        // Also store as auth_token so isAuthenticated() returns true
+        await setAuthTokens({
+          accessToken: credentials.idToken,
+          refreshToken: credentials.idToken,
+          expiresAt: Date.now() + 60 * 60 * 1000,        // 1 hour
+          refreshExpiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000, // 30 days
+        });
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
         onAuthSuccess?.();
