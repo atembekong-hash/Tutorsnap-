@@ -4,25 +4,23 @@
  * Implements a 6-digit OTP flow:
  *   1. Client calls `sendOtp` with an email address
  *      → Server generates a 6-digit code, stores it (hashed) with a 10-min TTL,
- *        and sends it via the Manus notification service (owner-visible) OR
- *        falls back to a simple in-memory store for dev.
+ *        and sends it via Resend (falls back to server log if RESEND_API_KEY is absent).
  *   2. Client calls `verifyOtp` with the email + code
- *      → Server validates the code, creates/finds the user, returns a session token.
- *
- * NOTE: The Manus platform does not expose a user-facing SMTP service, so we
- * use a server-side in-memory store (Map) for the OTP during development.
- * In production this should be replaced with a proper email delivery service
- * (SendGrid, Resend, etc.) configured via environment variables.
+ *      → Server validates the code, creates/finds the user, returns user object.
+ *   3. Client calls `changeEmail` (protected) with new email + OTP
+ *      → Verifies OTP for the new address, updates the user record.
  */
 
-import { router, publicProcedure } from "@/server/_core/trpc";
+import { router, publicProcedure, protectedProcedure } from "@/server/_core/trpc";
 import { z } from "zod";
 import { getDb } from "@/server/db";
 import { users } from "@/drizzle/schema";
 import { eq } from "drizzle-orm";
 import { createHash, randomInt } from "crypto";
 
-// ─── In-memory OTP store (replace with Redis/DB in production) ───────────────
+// ─── In-memory OTP store ──────────────────────────────────────────────────────
+// Keyed by email address. Sufficient for a single-instance server; swap for
+// Redis or a DB table if you run multiple instances.
 interface OtpEntry {
   hashedCode: string;
   expiresAt: number;
@@ -41,52 +39,129 @@ function generateOtp(): string {
   return String(randomInt(100000, 999999));
 }
 
+// ─── Resend email delivery ────────────────────────────────────────────────────
+
+async function sendOtpEmail(to: string, code: string): Promise<boolean> {
+  const apiKey = process.env.RESEND_API_KEY;
+  const fromEmail = process.env.RESEND_FROM_EMAIL || "onboarding@resend.dev";
+
+  if (!apiKey) {
+    console.warn(`[EmailAuth] RESEND_API_KEY not set — OTP for ${to}: ${code}`);
+    return false; // Caller will fall back to server log
+  }
+
+  try {
+    const { Resend } = await import("resend");
+    const resend = new Resend(apiKey);
+
+    const { error } = await resend.emails.send({
+      from: `TutorSnap <${fromEmail}>`,
+      to,
+      subject: `Your TutorSnap sign-in code: ${code}`,
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 24px;">
+          <h1 style="font-size: 24px; font-weight: 700; color: #11181C; margin: 0 0 8px;">TutorSnap</h1>
+          <p style="color: #687076; margin: 0 0 32px;">Your AI tutor for math, science, and more</p>
+
+          <p style="color: #11181C; margin: 0 0 16px;">Here is your sign-in code:</p>
+
+          <div style="background: #f5f5f5; border-radius: 12px; padding: 24px; text-align: center; margin: 0 0 24px;">
+            <span style="font-size: 40px; font-weight: 700; letter-spacing: 12px; color: #0a7ea4;">${code}</span>
+          </div>
+
+          <p style="color: #687076; font-size: 14px; margin: 0 0 8px;">This code expires in <strong>10 minutes</strong>.</p>
+          <p style="color: #687076; font-size: 14px; margin: 0;">If you did not request this code, you can safely ignore this email.</p>
+        </div>
+      `,
+      text: `Your TutorSnap sign-in code is: ${code}\n\nThis code expires in 10 minutes.\n\nIf you did not request this, ignore this email.`,
+    });
+
+    if (error) {
+      console.error("[EmailAuth] Resend error:", error);
+      return false;
+    }
+
+    console.log(`[EmailAuth] OTP email sent to ${to}`);
+    return true;
+  } catch (err) {
+    console.error("[EmailAuth] Failed to send OTP email:", err);
+    return false;
+  }
+}
+
+// ─── Shared: store + send OTP ─────────────────────────────────────────────────
+
+async function issueOtp(email: string): Promise<{ sent: boolean; devCode?: string }> {
+  const code = generateOtp();
+  otpStore.set(email, {
+    hashedCode: hashCode(code),
+    expiresAt: Date.now() + OTP_TTL_MS,
+    attempts: 0,
+  });
+
+  const sent = await sendOtpEmail(email, code);
+
+  // In non-production builds, return the code so the UI can display it
+  const devCode = process.env.NODE_ENV !== "production" ? code : undefined;
+  return { sent, devCode };
+}
+
+// ─── Shared: validate OTP ─────────────────────────────────────────────────────
+
+type OtpValidationResult =
+  | { ok: true }
+  | { ok: false; error: string };
+
+function validateOtp(email: string, code: string): OtpValidationResult {
+  const entry = otpStore.get(email);
+
+  if (!entry) {
+    return { ok: false, error: "No code found for this email. Please request a new one." };
+  }
+  if (Date.now() > entry.expiresAt) {
+    otpStore.delete(email);
+    return { ok: false, error: "Code has expired. Please request a new one." };
+  }
+  if (entry.attempts >= MAX_ATTEMPTS) {
+    otpStore.delete(email);
+    return { ok: false, error: "Too many incorrect attempts. Please request a new code." };
+  }
+  if (hashCode(code) !== entry.hashedCode) {
+    entry.attempts += 1;
+    return {
+      ok: false,
+      error: `Incorrect code. ${MAX_ATTEMPTS - entry.attempts} attempt(s) remaining.`,
+    };
+  }
+
+  otpStore.delete(email); // Consume
+  return { ok: true };
+}
+
 // ─── Router ──────────────────────────────────────────────────────────────────
 
 export const emailAuthRouter = router({
   /**
-   * Step 1: Send a 6-digit OTP to the given email address.
+   * Step 1 (sign-in): Send a 6-digit OTP to the given email address.
    */
   sendOtp: publicProcedure
     .input(z.object({ email: z.string().email() }))
     .mutation(async ({ input }) => {
       const email = input.email.toLowerCase().trim();
-      const code = generateOtp();
-      const hashedCode = hashCode(code);
-
-      // Store OTP (overwrite any previous entry for this email)
-      otpStore.set(email, {
-        hashedCode,
-        expiresAt: Date.now() + OTP_TTL_MS,
-        attempts: 0,
-      });
-
-      // Log code to server console (visible in dev logs / Manus dashboard)
-      // In production, replace this with a real email delivery call.
-      console.log(`[EmailAuth] OTP for ${email}: ${code} (expires in 10 min)`);
-
-      // Attempt to notify the app owner so the code is visible during testing
-      try {
-        const { notifyOwner } = await import("@/server/_core/notification");
-        await notifyOwner({
-          title: `TutorSnap Email OTP`,
-          content: `Sign-in code for ${email}: **${code}**\n\nExpires in 10 minutes.`,
-        });
-      } catch {
-        // Non-critical — code is still in the server log
-      }
+      const { sent, devCode } = await issueOtp(email);
 
       return {
         success: true,
-        message: "OTP sent. Check your email (or server logs in development).",
-        // In development, return the code directly so the UI can show it
-        // Remove this in production!
-        devCode: process.env.NODE_ENV !== "production" ? code : undefined,
+        sent,
+        message: sent
+          ? "A 6-digit code has been sent to your email."
+          : "Could not send email. Check server logs for the code (dev mode).",
+        devCode,
       };
     }),
 
   /**
-   * Step 2: Verify the OTP and sign in / register the user.
+   * Step 2 (sign-in): Verify the OTP and sign in / register the user.
    */
   verifyOtp: publicProcedure
     .input(
@@ -98,51 +173,18 @@ export const emailAuthRouter = router({
     )
     .mutation(async ({ input }) => {
       const email = input.email.toLowerCase().trim();
-      const entry = otpStore.get(email);
+      const validation = validateOtp(email, input.code);
+      if (!validation.ok) return { success: false, error: validation.error };
 
-      if (!entry) {
-        return { success: false, error: "No OTP found for this email. Please request a new code." };
-      }
-
-      if (Date.now() > entry.expiresAt) {
-        otpStore.delete(email);
-        return { success: false, error: "OTP has expired. Please request a new code." };
-      }
-
-      if (entry.attempts >= MAX_ATTEMPTS) {
-        otpStore.delete(email);
-        return { success: false, error: "Too many incorrect attempts. Please request a new code." };
-      }
-
-      if (hashCode(input.code) !== entry.hashedCode) {
-        entry.attempts += 1;
-        return {
-          success: false,
-          error: `Incorrect code. ${MAX_ATTEMPTS - entry.attempts} attempt(s) remaining.`,
-        };
-      }
-
-      // Code is valid — consume it
-      otpStore.delete(email);
-
-      // Create or find user in DB
       try {
         const db = await getDb();
-        if (!db) {
-          return { success: false, error: "Database unavailable" };
-        }
+        if (!db) return { success: false, error: "Database unavailable" };
 
         const openId = `email:${email}`;
-        const existingRows = await db
-          .select()
-          .from(users)
-          .where(eq(users.openId, openId))
-          .limit(1);
-
+        const existingRows = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
         let user = existingRows[0];
 
         if (!user) {
-          // Register new user
           await db.insert(users).values({
             openId,
             email,
@@ -150,19 +192,11 @@ export const emailAuthRouter = router({
             loginMethod: "email",
             lastSignedIn: new Date(),
           });
-          const newRows = await db
-            .select()
-            .from(users)
-            .where(eq(users.openId, openId))
-            .limit(1);
+          const newRows = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
           user = newRows[0];
           console.log(`[EmailAuth] New user registered: ${openId}`);
         } else {
-          // Update last sign-in
-          await db
-            .update(users)
-            .set({ lastSignedIn: new Date() })
-            .where(eq(users.openId, openId));
+          await db.update(users).set({ lastSignedIn: new Date() }).where(eq(users.openId, openId));
           console.log(`[EmailAuth] User signed in: ${openId}`);
         }
 
@@ -179,6 +213,70 @@ export const emailAuthRouter = router({
       } catch (error) {
         console.error("[EmailAuth] DB error:", error);
         return { success: false, error: "Failed to sign in. Please try again." };
+      }
+    }),
+
+  /**
+   * Change-email step 1: Send an OTP to the new email address for verification.
+   * The user must be signed in.
+   */
+  sendChangeEmailOtp: protectedProcedure
+    .input(z.object({ newEmail: z.string().email() }))
+    .mutation(async ({ input }) => {
+      const newEmail = input.newEmail.toLowerCase().trim();
+
+      // Check the new email is not already taken
+      try {
+        const db = await getDb();
+        if (db) {
+          const existing = await db
+            .select({ id: users.id })
+            .from(users)
+            .where(eq(users.email, newEmail))
+            .limit(1);
+          if (existing.length > 0) {
+            return { success: false, error: "That email address is already in use." };
+          }
+        }
+      } catch {
+        // Non-fatal — proceed with sending
+      }
+
+      const { sent, devCode } = await issueOtp(newEmail);
+      return {
+        success: true,
+        sent,
+        message: sent
+          ? `A verification code has been sent to ${newEmail}.`
+          : "Could not send email. Check server logs for the code (dev mode).",
+        devCode,
+      };
+    }),
+
+  /**
+   * Change-email step 2: Verify the OTP and update the user's email.
+   */
+  verifyChangeEmail: protectedProcedure
+    .input(z.object({ newEmail: z.string().email(), code: z.string().length(6) }))
+    .mutation(async ({ ctx, input }) => {
+      const newEmail = input.newEmail.toLowerCase().trim();
+      const validation = validateOtp(newEmail, input.code);
+      if (!validation.ok) return { success: false, error: validation.error };
+
+      try {
+        const db = await getDb();
+        if (!db) return { success: false, error: "Database unavailable" };
+
+        await db
+          .update(users)
+          .set({ email: newEmail, updatedAt: new Date() })
+          .where(eq(users.id, ctx.user.id));
+
+        console.log(`[EmailAuth] Email changed for user ${ctx.user.id} → ${newEmail}`);
+        return { success: true, newEmail };
+      } catch (error) {
+        console.error("[EmailAuth] Change email DB error:", error);
+        return { success: false, error: "Failed to update email. Please try again." };
       }
     }),
 });

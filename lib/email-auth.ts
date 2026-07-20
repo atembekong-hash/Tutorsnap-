@@ -78,3 +78,82 @@ export async function verifyEmailOtp(
     };
   }
 }
+
+export interface ChangeEmailResult {
+  success: boolean;
+  error?: string;
+  message?: string;
+  sent?: boolean;
+  devCode?: string;
+}
+
+export interface VerifyChangeEmailResult {
+  success: boolean;
+  error?: string;
+  newEmail?: string;
+}
+
+/**
+ * Send an OTP to a new email address for change-email verification.
+ * Requires the user to be signed in (passes the auth token in the header).
+ */
+export async function sendChangeEmailOtp(
+  newEmail: string,
+  authToken: string
+): Promise<ChangeEmailResult> {
+  try {
+    const apiUrl = getApiBaseUrl();
+    const response = await fetch(`${apiUrl}/api/trpc/emailAuth.sendChangeEmailOtp`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authToken}`,
+      },
+      body: JSON.stringify({ json: { newEmail } }),
+    });
+    if (!response.ok) {
+      const text = await response.text().catch(() => "");
+      throw new Error(`HTTP ${response.status}: ${text}`);
+    }
+    const raw = await response.json();
+    return (raw?.result?.data?.json ?? { success: false, error: "Unexpected response" }) as ChangeEmailResult;
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to send code",
+    };
+  }
+}
+
+/**
+ * Verify the OTP and update the user's email address.
+ * Requires the user to be signed in.
+ */
+export async function verifyChangeEmail(
+  newEmail: string,
+  code: string,
+  authToken: string
+): Promise<VerifyChangeEmailResult> {
+  try {
+    const apiUrl = getApiBaseUrl();
+    const response = await fetch(`${apiUrl}/api/trpc/emailAuth.verifyChangeEmail`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authToken}`,
+      },
+      body: JSON.stringify({ json: { newEmail, code } }),
+    });
+    if (!response.ok) {
+      const text = await response.text().catch(() => "");
+      throw new Error(`HTTP ${response.status}: ${text}`);
+    }
+    const raw = await response.json();
+    return (raw?.result?.data?.json ?? { success: false, error: "Unexpected response" }) as VerifyChangeEmailResult;
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to verify code",
+    };
+  }
+}

@@ -23,8 +23,10 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { useThemeContext } from "@/lib/theme-provider";
 import { getProgress, setDailyGoal } from "@/lib/progress";
-import { logout } from "@/lib/_core/auth-enhanced";
+import { logout, getUserInfo, setUserInfo } from "@/lib/_core/auth-enhanced";
 import { stopTokenRefreshTimer } from "@/lib/token-refresh";
+import { sendChangeEmailOtp, verifyChangeEmail } from "@/lib/email-auth";
+import { getSessionToken } from "@/lib/_core/auth";
 import {
   getReminderSettings,
   saveReminderSettings,
@@ -197,6 +199,16 @@ export default function SettingsScreen() {
   const { settings: tutorSettings, update: updateTutorSetting, reset: resetTutorSettings } = useTutorSettings();
   const [soundEffectsEnabled, setSoundEffectsEnabledState] = useState(true);
 
+  // Change-email flow
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [showChangeEmailModal, setShowChangeEmailModal] = useState(false);
+  const [changeEmailStep, setChangeEmailStep] = useState<"enterEmail" | "enterCode">("enterEmail");
+  const [newEmailInput, setNewEmailInput] = useState("");
+  const [changeEmailCode, setChangeEmailCode] = useState("");
+  const [changeEmailLoading, setChangeEmailLoading] = useState(false);
+  const [changeEmailError, setChangeEmailError] = useState<string | null>(null);
+  const [changeEmailDevCode, setChangeEmailDevCode] = useState<string | null>(null);
+
   useEffect(() => {
     isSoundEffectsEnabled().then(setSoundEffectsEnabledState);
   }, []);
@@ -291,6 +303,7 @@ export default function SettingsScreen() {
     getSubscriptionStatus().then(setSubStatus).catch(() => {});
     loadGlobalGrade().then((g: string | null) => setGradeLevelState(g));
     AsyncStorage.getItem("@tutorsnap/userName").then((n: string | null) => setUserNameState(n || null));
+    getUserInfo().then((u) => { if (u?.email) setUserEmail(u.email); });
     isBackupReminderEnabled().then(setBackupReminderEnabled);
     getBackupReminderSettings().then(setBackupReminderSettings);
     AsyncStorage.getItem("@tutorsnap/lastExportedAt").then((v) => setLastExportedAt(v));
@@ -1123,6 +1136,24 @@ export default function SettingsScreen() {
           />
         )}
 
+        {ms("Email Address", "Change your sign-in email") && (
+          <SettingsRow
+            icon="envelope.fill"
+            label="Email Address"
+            subtitle={userEmail || "Not set"}
+            colors={colors}
+            onPress={() => {
+              H.impactLight();
+              setNewEmailInput("");
+              setChangeEmailCode("");
+              setChangeEmailError(null);
+              setChangeEmailDevCode(null);
+              setChangeEmailStep("enterEmail");
+              setShowChangeEmailModal(true);
+            }}
+          />
+        )}
+
         {/* ── APPEARANCE ──────────────────────────────────────────────────── */}
         {(ms("Appearance & Personalisation", "Fonts, colors, widgets") || ms("Dark Mode")) && <SectionHeader title="APPEARANCE" colors={colors} />}
         {ms("Appearance & Personalisation", "Fonts, colors, widgets, chat style, accessibility") && (
@@ -1917,6 +1948,158 @@ export default function SettingsScreen() {
 
 
       {/* ── Name Edit Modal ─────────────────────────────────────────────────── */}
+      {/* ── Change Email Modal ──────────────────────────────────────────── */}
+      <Modal
+        visible={showChangeEmailModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowChangeEmailModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalSheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.foreground }]}>Change Email</Text>
+              <TouchableOpacity onPress={() => setShowChangeEmailModal(false)} accessibilityLabel="Close" accessibilityRole="button">
+                <IconSymbol size={22} name="xmark.circle.fill" color={colors.muted} />
+              </TouchableOpacity>
+            </View>
+
+            {changeEmailError ? (
+              <View style={{ backgroundColor: `${colors.error}18`, borderWidth: 1, borderColor: colors.error, borderRadius: 8, padding: 10, marginBottom: 10 }}>
+                <Text style={{ color: colors.error, fontSize: 13 }}>{changeEmailError}</Text>
+              </View>
+            ) : null}
+
+            {changeEmailDevCode ? (
+              <View style={{ backgroundColor: `${colors.success}18`, borderWidth: 1, borderColor: colors.success, borderRadius: 8, padding: 10, marginBottom: 10 }}>
+                <Text style={{ color: colors.success, fontSize: 13, fontWeight: "600", textAlign: "center" }}>Dev build — your code is: {changeEmailDevCode}</Text>
+              </View>
+            ) : null}
+
+            {changeEmailStep === "enterEmail" ? (
+              <>
+                <Text style={[styles.modalSubtitle, { color: colors.muted }]}>
+                  Enter your new email address. We’ll send a 6-digit verification code.
+                </Text>
+                <TextInput
+                  value={newEmailInput}
+                  onChangeText={setNewEmailInput}
+                  placeholder="new@example.com"
+                  placeholderTextColor={colors.muted}
+                  autoFocus
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="email-address"
+                  returnKeyType="done"
+                  onSubmitEditing={async () => {
+                    const email = newEmailInput.trim().toLowerCase();
+                    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                      setChangeEmailError("Please enter a valid email address");
+                      return;
+                    }
+                    setChangeEmailLoading(true);
+                    setChangeEmailError(null);
+                    const token = await getSessionToken();
+                    const result = await sendChangeEmailOtp(email, token || "");
+                    setChangeEmailLoading(false);
+                    if (result.success) {
+                      setChangeEmailStep("enterCode");
+                      if (result.devCode) setChangeEmailDevCode(result.devCode);
+                    } else {
+                      setChangeEmailError(result.error || "Failed to send code");
+                    }
+                  }}
+                  style={[styles.nameInput, { color: colors.foreground, backgroundColor: colors.surface, borderColor: colors.border }]}
+                />
+                <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
+                  <TouchableOpacity onPress={() => setShowChangeEmailModal(false)} style={[styles.nameModalBtn, { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 }]}>
+                    <Text style={[styles.nameModalBtnText, { color: colors.foreground }]}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    disabled={changeEmailLoading}
+                    onPress={async () => {
+                      const email = newEmailInput.trim().toLowerCase();
+                      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                        setChangeEmailError("Please enter a valid email address");
+                        return;
+                      }
+                      setChangeEmailLoading(true);
+                      setChangeEmailError(null);
+                      const token = await getSessionToken();
+                      const result = await sendChangeEmailOtp(email, token || "");
+                      setChangeEmailLoading(false);
+                      if (result.success) {
+                        setChangeEmailStep("enterCode");
+                        if (result.devCode) setChangeEmailDevCode(result.devCode);
+                      } else {
+                        setChangeEmailError(result.error || "Failed to send code");
+                      }
+                    }}
+                    style={[styles.nameModalBtn, { backgroundColor: changeEmailLoading ? colors.border : colors.primary, flex: 1 }]}
+                  >
+                    <Text style={[styles.nameModalBtnText, { color: changeEmailLoading ? colors.muted : "#fff" }]}>
+                      {changeEmailLoading ? "Sending…" : "Send Code"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            ) : (
+              <>
+                <Text style={[styles.modalSubtitle, { color: colors.muted }]}>
+                  Enter the 6-digit code sent to {newEmailInput.trim()}.
+                </Text>
+                <TextInput
+                  value={changeEmailCode}
+                  onChangeText={(t) => setChangeEmailCode(t.replace(/\D/g, "").slice(0, 6))}
+                  placeholder="000000"
+                  placeholderTextColor={colors.muted}
+                  autoFocus
+                  keyboardType="number-pad"
+                  maxLength={6}
+                  returnKeyType="done"
+                  style={[styles.nameInput, { color: colors.foreground, backgroundColor: colors.surface, borderColor: colors.border, fontSize: 24, fontWeight: "700", textAlign: "center", letterSpacing: 8 }]}
+                />
+                <View style={{ flexDirection: "row", gap: 10, marginTop: 16 }}>
+                  <TouchableOpacity
+                    onPress={() => { setChangeEmailStep("enterEmail"); setChangeEmailCode(""); setChangeEmailError(null); }}
+                    style={[styles.nameModalBtn, { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 }]}
+                  >
+                    <Text style={[styles.nameModalBtnText, { color: colors.foreground }]}>← Back</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    disabled={changeEmailLoading || changeEmailCode.length !== 6}
+                    onPress={async () => {
+                      setChangeEmailLoading(true);
+                      setChangeEmailError(null);
+                      const token = await getSessionToken();
+                      const result = await verifyChangeEmail(newEmailInput.trim().toLowerCase(), changeEmailCode, token || "");
+                      setChangeEmailLoading(false);
+                      if (result.success && result.newEmail) {
+                        setUserEmail(result.newEmail);
+                        // Update cached user info
+                        const u = await getUserInfo();
+                        if (u) await setUserInfo({ ...u, email: result.newEmail });
+                        setShowChangeEmailModal(false);
+                        H.notificationSuccess();
+                        Alert.alert("Email Updated", `Your email has been changed to ${result.newEmail}.`);
+                      } else {
+                        setChangeEmailError(result.error || "Verification failed");
+                        H.notificationError();
+                      }
+                    }}
+                    style={[styles.nameModalBtn, { backgroundColor: changeEmailLoading || changeEmailCode.length !== 6 ? colors.border : colors.primary, flex: 1 }]}
+                  >
+                    <Text style={[styles.nameModalBtnText, { color: changeEmailLoading || changeEmailCode.length !== 6 ? colors.muted : "#fff" }]}>
+                      {changeEmailLoading ? "Verifying…" : "Verify & Save"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
+
       <Modal
         visible={showNameModal}
         transparent
