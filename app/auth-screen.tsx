@@ -12,6 +12,12 @@ import { cn } from "@/lib/utils";
 import { setUserInfo, setSessionToken } from "@/lib/_core/auth-enhanced";
 import { validateOAuthCredentials } from "@/lib/oauth-service";
 import * as Haptics from "expo-haptics";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+async function getPostAuthRoute(): Promise<string> {
+  const onboardingDone = await AsyncStorage.getItem("@tutorsnap/onboardingDone");
+  return onboardingDone ? "/(tabs)" : "/onboarding";
+}
 
 interface AuthScreenProps {
   onAuthSuccess?: () => void;
@@ -56,7 +62,8 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
         onAuthSuccess?.();
-        router.replace("/(tabs)");
+        const route = await getPostAuthRoute();
+        router.replace(route as any);
       } else {
         setError(result.error || "Google Sign-In failed");
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -109,7 +116,8 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
         onAuthSuccess?.();
-        router.replace("/(tabs)");
+        const route = await getPostAuthRoute();
+        router.replace(route as any);
       } else {
         setError(result.error || "Apple Sign-In failed");
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);

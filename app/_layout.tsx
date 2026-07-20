@@ -382,6 +382,15 @@ export default function RootLayout() {
               }}
             />
             <Stack.Screen
+              name="auth-screen"
+              options={{
+                presentation: "fullScreenModal",
+                animation: "fade",
+                gestureEnabled: false,
+                headerShown: false,
+              }}
+            />
+            <Stack.Screen
               name="paywall"
               options={{
                 presentation: "modal",

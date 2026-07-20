@@ -52,10 +52,10 @@ export function getApiBaseUrl(): string {
     }
   }
 
-  // For native apps (iOS/Android), use current sandbox API URL
-  // This ensures APK builds have a working API endpoint with all keys configured
+  // For native apps (iOS/Android), use the stable published production URL.
+  // This URL is permanent and does not change between sandbox sessions.
   if (ReactNative.Platform.OS !== "web") {
-    return "https://3000-iibrquf83kwoezz3f8edy-ca431c8f.us2.manus.computer";
+    return "https://mathgenius-g8jxpbar.manus.space";
   }
 
   // Fallback to empty (will use relative URL)

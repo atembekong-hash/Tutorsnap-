@@ -595,12 +595,23 @@ function SolveScreenContent() {
           .then((reqs: unknown[]) => setPendingNotifCount(reqs.length))
           .catch(() => {});
       }
-      // Check if onboarding has been completed
-      AsyncStorage.getItem("@tutorsnap/onboardingDone").then((done) => {
-        if (!done) {
-          router.replace("/onboarding" as any);
-        }
-      });
+      // Check auth state first, then onboarding
+      (async () => {
+        try {
+          const { isAuthenticated } = await import("@/lib/_core/auth-enhanced");
+          const authed = await isAuthenticated();
+          if (!authed) {
+            router.replace("/auth-screen" as any);
+            return;
+          }
+        } catch { /* ignore — treat as authenticated to avoid blocking existing users */ }
+        // Check if onboarding has been completed
+        AsyncStorage.getItem("@tutorsnap/onboardingDone").then((done) => {
+          if (!done) {
+            router.replace("/onboarding" as any);
+          }
+        });
+      })();
     }, [])
   );
 
