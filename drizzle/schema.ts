@@ -81,4 +81,23 @@ export type InsertFraudAlert = typeof fraudAlerts.$inferInsert;
 export type RedemptionRecord = typeof redemptionHistory.$inferSelect;
 export type InsertRedemptionRecord = typeof redemptionHistory.$inferInsert;
 
-// TODO: Add your tables here
+/**
+ * OTP codes table for email sign-in and change-email verification.
+ * Replaces the in-memory Map so codes survive server restarts.
+ * Rows are automatically cleaned up after verification or expiry.
+ */
+export const otpCodes = mysqlTable("otp_codes", {
+  id: int("id").autoincrement().primaryKey(),
+  /** The email address the code was issued for. */
+  email: varchar("email", { length: 320 }).notNull(),
+  /** SHA-256 hash of the 6-digit code. Never store the raw code. */
+  hashedCode: varchar("hashedCode", { length: 64 }).notNull(),
+  /** Unix timestamp (ms) after which the code is invalid. */
+  expiresAt: timestamp("expiresAt").notNull(),
+  /** Number of failed verification attempts. */
+  attempts: int("attempts").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type OtpCode = typeof otpCodes.$inferSelect;
+export type InsertOtpCode = typeof otpCodes.$inferInsert;

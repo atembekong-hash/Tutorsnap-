@@ -49,9 +49,68 @@ async function verifyGoogleToken(idToken: string): Promise<OAuthUser | null> {
 }
 
 /**
+ * Verify Apple Identity Token
+ *
+ * Apple identity tokens are signed JWTs. We verify them against Apple's
+ * public keys fetched from https://appleid.apple.com/auth/keys.
+ * The `apple-signin-auth` library handles key fetching, caching, and JWT
+ * verification so we don't need to manage Apple's JWKS manually.
+ */
+async function verifyAppleToken(
+  idToken: string,
+  clientId?: string
+): Promise<OAuthUser | null> {
+  try {
+    const appleSignin = await import("apple-signin-auth");
+    const verifyFn =
+      // The library exports either a default object or named exports
+      typeof appleSignin.default?.verifyIdToken === "function"
+        ? appleSignin.default.verifyIdToken.bind(appleSignin.default)
+        : typeof appleSignin.verifyIdToken === "function"
+        ? appleSignin.verifyIdToken
+        : null;
+
+    if (!verifyFn) {
+      console.error("[OAuth] apple-signin-auth: verifyIdToken not found");
+      return null;
+    }
+
+    // clientId must match the audience in the token
+    // For iOS apps this is the app bundle ID; for web it's the Services ID
+    const audience = clientId ||
+      process.env.APPLE_CLIENT_ID ||
+      process.env.APPLE_BUNDLE_ID ||
+      undefined;
+
+    const payload = await verifyFn(idToken, {
+      audience,
+      ignoreExpiration: false,
+    });
+
+    if (!payload || !payload.sub) {
+      console.error("[OAuth] Apple token payload missing 'sub'");
+      return null;
+    }
+
+    return {
+      id: payload.sub,
+      email: payload.email || "",
+      name: "", // Apple only sends name on first sign-in (passed separately by client)
+    };
+  } catch (error) {
+    console.error("[OAuth] Apple token verification failed:", error);
+    return null;
+  }
+}
+
+/**
  * Validate OAuth credentials with provider verification
  */
-async function validateOAuthToken(provider: string, idToken: string): Promise<OAuthUser | null> {
+async function validateOAuthToken(
+  provider: string,
+  idToken: string,
+  clientId?: string
+): Promise<OAuthUser | null> {
   try {
     console.log(`[OAuth] Validating ${provider} token`);
 
@@ -63,9 +122,7 @@ async function validateOAuthToken(provider: string, idToken: string): Promise<OA
     if (provider === "google") {
       return await verifyGoogleToken(idToken);
     } else if (provider === "apple") {
-      // Apple token verification will be implemented separately
-      console.warn("[OAuth] Apple token verification not yet implemented");
-      return null;
+      return await verifyAppleToken(idToken, clientId);
     } else {
       console.error(`[OAuth] Unknown provider: ${provider}`);
       return null;
@@ -89,6 +146,8 @@ export const oauthRouter = router({
         email: z.string().email().optional(),
         name: z.string().optional(),
         photoUrl: z.string().url().optional(),
+        // For Apple: pass the iOS bundle ID so the audience check passes
+        clientId: z.string().optional(),
       })
     )
     .mutation(async ({ input }) => {
@@ -102,7 +161,7 @@ export const oauthRouter = router({
         }
 
         // Validate token with OAuth provider
-        const oauthUser = await validateOAuthToken(input.provider, input.idToken);
+        const oauthUser = await validateOAuthToken(input.provider, input.idToken, input.clientId);
         if (!oauthUser) {
           return {
             success: false,
