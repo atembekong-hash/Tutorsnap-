@@ -8,21 +8,33 @@
     "preview": {
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://mathgenius-g8jxpbar.manus.space"
       }
     },
     "preview2": {
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://mathgenius-g8jxpbar.manus.space"
       }
     },
     "preview3": {
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://mathgenius-g8jxpbar.manus.space"
       }
     },
     "production": {
       "android": {
         "buildType": "app-bundle"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://mathgenius-g8jxpbar.manus.space"
       }
     }
   },

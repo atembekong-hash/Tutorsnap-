@@ -50,10 +50,11 @@ export function getApiBaseUrl(): string {
     }
   }
 
-  // For native apps (iOS/Android), use the stable published production URL.
-  // This URL is permanent and does not change between sandbox sessions.
+  // For native apps (iOS/Android), use the deployed API URL.
+  // EXPO_PUBLIC_API_BASE_URL is baked into the bundle at EAS build time via eas.json env.
+  // This hardcoded fallback is a safety net only — it should never be reached in production builds.
   if (ReactNative.Platform.OS !== "web") {
-    return `https://api.${OAUTH_PRODUCTION_DOMAIN}`;  // Production API URL
+    return "https://mathgenius-g8jxpbar.manus.space";
   }
 
   // Fallback to empty (will use relative URL)
