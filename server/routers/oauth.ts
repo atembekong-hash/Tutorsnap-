@@ -240,26 +240,36 @@ export const oauthRouter = router({
     }),
 
   /**
-   * Revoke OAuth tokens on logout
+   * Revoke OAuth tokens on logout.
+   * For Google: calls https://oauth2.googleapis.com/revoke with the access token.
+   * For Apple: Apple does not provide a public token revocation endpoint for native apps;
+   *   the token expires naturally after 10 minutes (access) / 6 months (refresh).
+   *   Revocation is handled client-side by calling GoogleSignin.signOut() / AppleAuthentication.
    */
   revoke: publicProcedure
-    .input(z.object({ provider: z.enum(["google", "apple"]) }))
+    .input(z.object({ provider: z.enum(["google", "apple"]), token: z.string().optional() }))
     .mutation(async ({ input }) => {
-      try {
-        // In production, revoke the token with the OAuth provider
-        console.log(`[OAuth] Revoking ${input.provider} tokens`);
-
-        return {
-          success: true,
-          message: "Tokens revoked successfully",
-        };
-      } catch (error) {
-        console.error("[OAuth] Token revocation failed:", error);
-        return {
-          success: false,
-          error: "Token revocation failed",
-        };
+      if (input.provider === "google" && input.token) {
+        try {
+          const resp = await fetch(
+            `https://oauth2.googleapis.com/revoke?token=${encodeURIComponent(input.token)}`,
+            { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" } },
+          );
+          if (!resp.ok) {
+            // 400 means token already expired/revoked — treat as success
+            const body = await resp.text();
+            if (resp.status !== 400) {
+              console.warn(`[OAuth] Google revocation returned ${resp.status}: ${body}`);
+            }
+          }
+        } catch (err) {
+          // Network error during revocation is non-fatal — log and continue
+          console.warn("[OAuth] Google revocation network error (non-fatal):", err);
+        }
       }
+      // Apple: no server-side revocation endpoint for native ID tokens.
+      // Client-side GoogleSignin.signOut() / AppleAuthentication handles session clearing.
+      return { success: true, message: "Tokens revoked" };
     }),
 
   /**

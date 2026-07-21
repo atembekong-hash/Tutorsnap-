@@ -229,14 +229,46 @@ export async function clearUserInfo(): Promise<void> {
 }
 
 /**
- * Complete logout - clear all auth data
+ * Complete logout - clear all auth data and revoke server-side tokens.
+ *
+ * Steps:
+ * 1. Revoke Google access token with Google's revocation endpoint (non-fatal).
+ * 2. Sign out of Google SDK so the account picker shows next time.
+ * 3. Clear all local tokens from SecureStore/AsyncStorage.
+ * 4. Clear session cookie via the backend auth.logout mutation.
  */
 export async function logout(): Promise<void> {
   try {
+    // 1. Revoke Google token server-side (non-fatal)
+    const accessToken = await getAuthToken();
+    if (accessToken) {
+      try {
+        const { getApiBaseUrl } = await import("@/constants/oauth");
+        await fetch(`${getApiBaseUrl()}/api/trpc/oauth.revoke`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ json: { provider: "google", token: accessToken } }),
+        });
+      } catch {
+        // Non-fatal: token will expire naturally
+      }
+    }
+
+    // 2. Sign out of Google SDK
+    try {
+      const { GoogleSignin } = await import("@react-native-google-signin/google-signin");
+      const currentUser = await GoogleSignin.getCurrentUser();
+      if (currentUser) {
+        await GoogleSignin.signOut();
+      }
+    } catch {
+      // Non-fatal: SDK may not be initialised if user signed in via email
+    }
+
+    // 3. Clear all local credentials
     await clearAuthTokens();
     await removeSessionToken();
     await clearUserInfo();
-    console.log("[Auth] User logged out successfully");
   } catch (error) {
     console.error("[Auth] Failed to logout:", error);
     throw error;

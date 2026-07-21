@@ -50,9 +50,12 @@ export function getApiBaseUrl(): string {
     }
   }
 
-  // For native apps (iOS/Android), use the deployed API URL.
+  // For native apps (iOS/Android), use the permanent Manus-hosted production API URL.
   // EXPO_PUBLIC_API_BASE_URL is baked into the bundle at EAS build time via eas.json env.
-  // This hardcoded fallback is a safety net only — it should never be reached in production builds.
+  // This hardcoded fallback is a safety net — it should never be reached in production builds
+  // because eas.json always bakes in EXPO_PUBLIC_API_BASE_URL.
+  // "mathgenius-g8jxpbar.manus.space" is the permanent Manus Cloud Run deployment URL
+  // for this project. It is NOT a sandbox/preview URL — it is stable across sessions.
   if (ReactNative.Platform.OS !== "web") {
     return "https://mathgenius-g8jxpbar.manus.space";
   }

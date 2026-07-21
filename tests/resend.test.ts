@@ -5,7 +5,7 @@
 import { describe, it, expect } from "vitest";
 
 describe("Resend API key", () => {
-  it("should be set and accepted by the Resend API", async () => {
+  it("should be set and accepted by the Resend API", { timeout: 15000 }, async () => {
     const key = process.env.RESEND_API_KEY;
     expect(key, "RESEND_API_KEY must be set").toBeTruthy();
 
