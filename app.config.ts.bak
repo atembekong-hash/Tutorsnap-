@@ -184,24 +184,6 @@ const config: ExpoConfig = {
             "https://maven.google.com",
           ],
         },
-        ios: {
-          // AppCheckCore (used by Firebase/Google Sign-In) depends on GoogleUtilities
-          // and RecaptchaInterop as static libraries that do not define modules.
-          // Setting modular_headers for these pods resolves the Swift compilation error:
-          // "The Swift pod AppCheckCore depends upon GoogleUtilities and RecaptchaInterop,
-          //  which do not define modules."
-          useFrameworks: "static",
-          extraPods: [
-            {
-              name: "GoogleUtilities",
-              modular_headers: true,
-            },
-            {
-              name: "RecaptchaInterop",
-              modular_headers: true,
-            },
-          ],
-        },
       },
     ],
   ],
