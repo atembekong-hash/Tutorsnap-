@@ -92,10 +92,17 @@ export const otpCodes = mysqlTable("otp_codes", {
   email: varchar("email", { length: 320 }).notNull(),
   /** SHA-256 hash of the 6-digit code. Never store the raw code. */
   hashedCode: varchar("hashedCode", { length: 64 }).notNull(),
-  /** Unix timestamp (ms) after which the code is invalid. */
+  /**
+   * Purpose binding: "signin" or "change_email".
+   * A code issued for one purpose cannot be used for another.
+   */
+  purpose: varchar("purpose", { length: 20 }).notNull().default("signin"),
+  /** Timestamp after which the code is invalid (10 minutes from issue). */
   expiresAt: timestamp("expiresAt").notNull(),
-  /** Number of failed verification attempts. */
+  /** Number of failed verification attempts. Locked out at 5. */
   attempts: int("attempts").default(0).notNull(),
+  /** IP address of the requester for per-IP rate limiting. */
+  ipAddress: varchar("ipAddress", { length: 45 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 

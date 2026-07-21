@@ -1,8 +1,6 @@
 import * as Linking from "expo-linking";
 import * as ReactNative from "react-native";
 
-// Extract scheme from bundle ID (last segment timestamp, prefixed with "manus")
-// e.g., "space.manus.my.app.t20240115103045" -> "manus20240115103045"
 // Production OAuth configuration
 const OAUTH_PRODUCTION_DOMAIN = "tutorsnapai.tech";
 const OAUTH_PRODUCTION_API_URL = `https://api.${OAUTH_PRODUCTION_DOMAIN}`;
@@ -15,7 +13,7 @@ const env = {
   ownerId: process.env.EXPO_PUBLIC_OWNER_OPEN_ID ?? "",
   ownerName: process.env.EXPO_PUBLIC_OWNER_NAME ?? "",
   apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL ?? "",
-  deepLinkScheme: process.env.NODE_ENV === "production" ? OAUTH_PRODUCTION_MOBILE_SCHEME : "manus",
+  deepLinkScheme: OAUTH_PRODUCTION_MOBILE_SCHEME, // Always use tutorsnap scheme
   productionDomain: OAUTH_PRODUCTION_DOMAIN,
   productionApiUrl: OAUTH_PRODUCTION_API_URL,
   productionMobileScheme: OAUTH_PRODUCTION_MOBILE_SCHEME,
@@ -55,7 +53,7 @@ export function getApiBaseUrl(): string {
   // For native apps (iOS/Android), use the stable published production URL.
   // This URL is permanent and does not change between sandbox sessions.
   if (ReactNative.Platform.OS !== "web") {
-    return "https://mathgenius-g8jxpbar.manus.space";
+    return `https://api.${OAUTH_PRODUCTION_DOMAIN}`;  // Production API URL
   }
 
   // Fallback to empty (will use relative URL)
@@ -63,7 +61,7 @@ export function getApiBaseUrl(): string {
 }
 
 export const SESSION_TOKEN_KEY = "app_session_token";
-export const USER_INFO_KEY = "manus-runtime-user-info";
+export const USER_INFO_KEY = "tutorsnap-user-info";
 
 const encodeState = (value: string) => {
   if (typeof globalThis.btoa === "function") {

@@ -75,12 +75,24 @@ async function verifyAppleToken(
       return null;
     }
 
-    // clientId must match the audience in the token
-    // For iOS apps this is the app bundle ID; for web it's the Services ID
-    const audience = clientId ||
-      process.env.APPLE_CLIENT_ID ||
+    // For native iOS Sign in with Apple, the audience in the identity token
+    // is always the iOS bundle ID (APPLE_BUNDLE_ID).
+    // APPLE_CLIENT_ID (Services ID) is only for web/backend OAuth flows and
+    // must NOT be used here — it would cause audience mismatch on device.
+    const audience =
+      clientId ||
       process.env.APPLE_BUNDLE_ID ||
       undefined;
+
+    if (!audience) {
+      console.error(
+        "[OAuth] APPLE_BUNDLE_ID is not set. " +
+        "Set it to your iOS bundle ID (e.g. com.tutorsnap.app) to verify Apple tokens."
+      );
+      return null;
+    }
+
+    console.log(`[OAuth] Verifying Apple token with audience: ${audience}`);
 
     const payload = await verifyFn(idToken, {
       audience,
