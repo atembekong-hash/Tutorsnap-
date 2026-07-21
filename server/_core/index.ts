@@ -72,27 +72,18 @@ async function startServer() {
     res.json({ ok: true, timestamp: Date.now() });
   });
 
-  /**
-   * Scheduled OTP cleanup endpoint.
-   * Called by the heartbeat cron every 30 minutes to delete expired and
-   * consumed OTP rows from the otp_codes table.
-   * Only accepts requests from localhost (the cron scheduler).
-   */
-  app.post("/api/scheduled/otp-cleanup", async (req, res) => {
-    // Accept from localhost or the internal scheduler (no external auth needed
-    // because the path is only reachable via the heartbeat service callback).
+// OTP cleanup is handled by the singleton scheduler in email-auth.ts.
+  // The /api/scheduled/otp-cleanup endpoint is kept for manual/monitoring use only.
+  app.post("/api/scheduled/otp-cleanup", async (_req, res) => {
     try {
       const { getDb } = await import("../db.js");
       const { otpCodes } = await import("../../drizzle/schema.js");
       const { lt } = await import("drizzle-orm");
       const db = await getDb();
-      if (!db) {
-        res.status(503).json({ ok: false, error: "DB unavailable" });
-        return;
-      }
+      if (!db) { res.status(503).json({ ok: false, error: "DB unavailable" }); return; }
       const result = await db.delete(otpCodes).where(lt(otpCodes.expiresAt, new Date()));
       const deleted = (result as any)[0]?.affectedRows ?? 0;
-      console.log(`[OTP Cleanup] Deleted ${deleted} expired/consumed OTP rows`);
+      console.log(`[OTP Cleanup] Manual cleanup: deleted ${deleted} expired rows`);
       res.json({ ok: true, deleted });
     } catch (err) {
       console.error("[OTP Cleanup] Error:", err);
@@ -145,30 +136,18 @@ async function startServer() {
 startServer().catch(console.error);
 
 /**
- * Register the OTP cleanup cron job on startup (idempotent — uses upsert semantics).
- * Runs every 30 minutes to delete expired otp_codes rows.
- * Errors are non-fatal: the opportunistic cleanup in issueOtp() is the primary mechanism.
+ * Start the OTP cleanup singleton scheduler.
+ * Uses the scheduler_locks MySQL table to ensure only ONE server instance
+ * runs the cleanup job at a time across horizontal scaling.
+ * Replaces the heartbeat-based cron approach.
  */
-async function registerOtpCleanupCron() {
+async function startCleanupScheduler() {
   try {
-    const { createHeartbeatJob } = await import("./heartbeat.js");
-    await createHeartbeatJob(
-      {
-        name: "otp-cleanup",
-        cron: "0 */30 * * * *",  // every 30 minutes
-        path: "/api/scheduled/otp-cleanup",
-        method: "POST",
-        description: "Delete expired and consumed OTP rows from otp_codes table",
-      },
-      "" // empty string = project owner identity
-    );
-    console.log("[OTP Cleanup] Cron job registered (every 30 min)");
+    const { startOtpCleanupScheduler } = await import("../routers/email-auth.js");
+    await startOtpCleanupScheduler();
   } catch (err: any) {
-    // 409 Conflict = job already exists; that's fine
-    if (!String(err?.message ?? "").includes("409") && !String(err?.message ?? "").includes("already")) {
-      console.warn("[OTP Cleanup] Could not register cron job (non-fatal):", err?.message ?? err);
-    }
+    console.warn("[OTP Cleanup] Could not start scheduler (non-fatal):", err?.message ?? err);
   }
 }
 
-registerOtpCleanupCron();
+startCleanupScheduler();

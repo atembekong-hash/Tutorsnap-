@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, boolean } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, boolean, index } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -83,28 +83,100 @@ export type InsertRedemptionRecord = typeof redemptionHistory.$inferInsert;
 
 /**
  * OTP codes table for email sign-in and change-email verification.
- * Replaces the in-memory Map so codes survive server restarts.
- * Rows are automatically cleaned up after verification or expiry.
+ * Stores only the HMAC-SHA-256 hash of the code (never the raw code).
+ * Rows are consumed (deleted) on first valid verification.
+ *
+ * Rate limits are tracked in otp_audit (separate table) so deleting a
+ * consumed/expired code does NOT reset the rate-limit counters.
+ *
+ * Indexes:
+ *   - idx_otp_email_purpose: supports cooldown check and prior-code invalidation
+ *   - idx_otp_expires: supports scheduled cleanup
  */
-export const otpCodes = mysqlTable("otp_codes", {
-  id: int("id").autoincrement().primaryKey(),
-  /** The email address the code was issued for. */
-  email: varchar("email", { length: 320 }).notNull(),
-  /** SHA-256 hash of the 6-digit code. Never store the raw code. */
-  hashedCode: varchar("hashedCode", { length: 64 }).notNull(),
-  /**
-   * Purpose binding: "signin" or "change_email".
-   * A code issued for one purpose cannot be used for another.
-   */
-  purpose: varchar("purpose", { length: 20 }).notNull().default("signin"),
-  /** Timestamp after which the code is invalid (10 minutes from issue). */
-  expiresAt: timestamp("expiresAt").notNull(),
-  /** Number of failed verification attempts. Locked out at 5. */
-  attempts: int("attempts").default(0).notNull(),
-  /** IP address of the requester for per-IP rate limiting. */
-  ipAddress: varchar("ipAddress", { length: 45 }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+export const otpCodes = mysqlTable(
+  "otp_codes",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    /** The email address the code was issued for. */
+    email: varchar("email", { length: 320 }).notNull(),
+    /**
+     * HMAC-SHA-256 of the 6-digit code, keyed with OTP_PEPPER.
+     * Never store the raw code.
+     */
+    hashedCode: varchar("hashedCode", { length: 64 }).notNull(),
+    /**
+     * Purpose binding: "signin" or "change_email".
+     * A code issued for one purpose cannot be used for another.
+     */
+    purpose: varchar("purpose", { length: 20 }).notNull().default("signin"),
+    /** Timestamp after which the code is invalid (10 minutes from issue). */
+    expiresAt: timestamp("expiresAt").notNull(),
+    /** Number of failed verification attempts. Locked out at 5. */
+    attempts: int("attempts").default(0).notNull(),
+    /** IP address of the requester (trusted-proxy extracted). */
+    ipAddress: varchar("ipAddress", { length: 45 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (t) => ({
+    idxEmailPurpose: index("idx_otp_email_purpose").on(t.email, t.purpose, t.createdAt),
+    idxExpires: index("idx_otp_expires").on(t.expiresAt),
+  })
+);
 
 export type OtpCode = typeof otpCodes.$inferSelect;
 export type InsertOtpCode = typeof otpCodes.$inferInsert;
+
+/**
+ * OTP audit log — durable record of every OTP send request.
+ *
+ * This table is NEVER deleted from during normal operation. It is the
+ * authoritative source for rate-limit enforcement:
+ *   - Per-email: max 5 sends per 10-minute window
+ *   - Per-IP: max 10 sends per 10-minute window
+ *
+ * Rows older than 24 hours are pruned by the scheduled cleanup job.
+ * Deleting consumed/expired rows from otp_codes does NOT affect rate limits.
+ *
+ * Indexes:
+ *   - idx_audit_email_created: per-email rate-limit query (O(log n))
+ *   - idx_audit_ip_created: per-IP rate-limit query (O(log n))
+ */
+export const otpAudit = mysqlTable(
+  "otp_audit",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    /** Email the OTP was issued for. */
+    email: varchar("email", { length: 320 }).notNull(),
+    /** Purpose: "signin" or "change_email". */
+    purpose: varchar("purpose", { length: 20 }).notNull().default("signin"),
+    /** Trusted-proxy extracted IP address of the requester. */
+    ipAddress: varchar("ipAddress", { length: 45 }),
+    /** Outcome: "sent" | "rate_limited_email" | "rate_limited_ip" | "cooldown" | "error" */
+    outcome: varchar("outcome", { length: 30 }).notNull().default("sent"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (t) => ({
+    idxAuditEmailCreated: index("idx_audit_email_created").on(t.email, t.createdAt),
+    idxAuditIpCreated: index("idx_audit_ip_created").on(t.ipAddress, t.createdAt),
+  })
+);
+
+export type OtpAuditEntry = typeof otpAudit.$inferSelect;
+export type InsertOtpAuditEntry = typeof otpAudit.$inferInsert;
+
+/**
+ * Scheduler lock table — prevents duplicate cron workers across server instances.
+ * A worker acquires the lock by inserting a row; it releases it on completion.
+ * Rows older than the lock TTL are considered stale and can be overwritten.
+ */
+export const schedulerLocks = mysqlTable("scheduler_locks", {
+  /** Unique job name (e.g., "otp-cleanup"). */
+  jobName: varchar("jobName", { length: 100 }).notNull().primaryKey(),
+  /** Instance identifier (hostname + PID). */
+  instanceId: varchar("instanceId", { length: 200 }).notNull(),
+  /** Lock expiry — stale locks older than this are ignored. */
+  expiresAt: timestamp("expiresAt").notNull(),
+  acquiredAt: timestamp("acquiredAt").defaultNow().notNull(),
+});
+
+export type SchedulerLock = typeof schedulerLocks.$inferSelect;

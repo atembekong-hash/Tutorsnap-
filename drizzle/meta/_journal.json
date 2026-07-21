@@ -43,6 +43,13 @@
       "when": 1784603902688,
       "tag": "0005_neat_hairball",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1784611319310,
+      "tag": "0006_petite_quicksilver",
+      "breakpoints": true
     }
   ]
 }
