@@ -747,3 +747,4 @@
 
 ### Production Audit
 - [x] A3: Increment build number in app.config.ts (buildNumber: "3", versionCode: 3)
+- [x] A4: Fix EAS Android production AAB build failure — generated package-lock.json (lockfileVersion 3), added legacy-peer-deps=true to .npmrc, confirmed eas.json production profile has buildType: app-bundle
