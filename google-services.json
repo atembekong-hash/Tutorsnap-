@@ -22,6 +22,14 @@
           }
         },
         {
+          "client_id": "1033519152070-r01dhenu1466k7790tako6jqrc0rb537.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.tutorsnap.app",
+            "certificate_hash": "ca3fd5074118505bb9a4b17ebed25754db75017a"
+          }
+        },
+        {
           "client_id": "1033519152070-5p86rjmo7bfjr51vqvfjaj1ltctpjltv.apps.googleusercontent.com",
           "client_type": 3
         }
