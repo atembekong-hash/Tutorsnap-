@@ -326,7 +326,10 @@ async function verifyOtpCode(
   const db = await getDb();
   if (!db) return { ok: false, error: "Database unavailable. Please try again." };
 
-  // Use a serializable transaction to prevent concurrent reuse
+  // Use a transaction to prevent concurrent reuse.
+  // Note: TiDB does not support SERIALIZABLE isolation; the atomic
+  // UPDATE ... WHERE attempts < MAX_ATTEMPTS pattern below provides
+  // equivalent single-use protection without needing serializable.
   return await (db as any).transaction(
     async (tx: typeof db) => {
       const rows = await tx
@@ -397,7 +400,6 @@ async function verifyOtpCode(
 
       return { ok: true };
     },
-    { isolationLevel: "serializable" }
   );
 }
 
