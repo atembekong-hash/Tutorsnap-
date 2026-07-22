@@ -16,7 +16,8 @@
     "db:push": "drizzle-kit generate && drizzle-kit migrate",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "qr": "node scripts/generate_qr.mjs"
+    "qr": "node scripts/generate_qr.mjs",
+    "eas-build-pre-install": "bash scripts/eas-pre-install.sh"
   },
   "dependencies": {
     "@expo-google-fonts/inter": "^0.4.2",
