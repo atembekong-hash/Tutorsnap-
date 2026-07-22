@@ -86,7 +86,7 @@ export function getTokenExpiryTime(token: string): number {
 export async function saveSession(session: StoredSession): Promise<void> {
   try {
     await SecureStore.setItemAsync("tutorsnap_session", JSON.stringify(session));
-    console.log("[Auth] Session saved securely");
+    // console.log("[Auth] Session saved securely");
   } catch (error) {
     console.error("[Auth] Failed to save session:", error);
     throw error;
@@ -126,7 +126,7 @@ export async function clearSession(): Promise<void> {
     await SecureStore.deleteItemAsync("google_id_token");
     await SecureStore.deleteItemAsync("google_access_token");
     await SecureStore.deleteItemAsync("google_refresh_token");
-    console.log("[Auth] Session cleared");
+    // console.log("[Auth] Session cleared");
   } catch (error) {
     console.error("[Auth] Failed to clear session:", error);
   }
@@ -158,7 +158,7 @@ export async function refreshGoogleSession(): Promise<boolean> {
       return false;
     }
 
-    console.log("[Auth] Session valid, no refresh needed");
+    // console.log("[Auth] Session valid, no refresh needed");
     return true;
   } catch (error) {
     console.error("[Auth] Session refresh failed:", error);
@@ -186,7 +186,7 @@ export async function revokeGoogleToken(accessToken: string): Promise<boolean> {
       return false;
     }
 
-    console.log("[Auth] Google token revoked successfully");
+    // console.log("[Auth] Google token revoked successfully");
     return true;
   } catch (error) {
     console.error("[Auth] Token revocation error:", error);
@@ -214,7 +214,7 @@ export async function logout(): Promise<void> {
           "@react-native-google-signin/google-signin"
         );
         await GoogleSignin.signOut();
-        console.log("[Auth] Signed out from Google SDK");
+        // console.log("[Auth] Signed out from Google SDK");
       } catch (error) {
         console.warn("[Auth] Google SDK sign-out failed:", error);
       }
@@ -222,7 +222,7 @@ export async function logout(): Promise<void> {
 
     // Clear local session
     await clearSession();
-    console.log("[Auth] Logout complete");
+    // console.log("[Auth] Logout complete");
   } catch (error) {
     console.error("[Auth] Logout error:", error);
     // Always clear local session even if revocation fails
@@ -237,7 +237,7 @@ export async function validateSessionOnStartup(): Promise<StoredSession | null> 
   try {
     const session = await getStoredSession();
     if (!session) {
-      console.log("[Auth] No session found on startup");
+      // console.log("[Auth] No session found on startup");
       return null;
     }
 
@@ -255,7 +255,7 @@ export async function validateSessionOnStartup(): Promise<StoredSession | null> 
       return session;
     }
 
-    console.log("[Auth] Stored session valid on startup");
+    // console.log("[Auth] Stored session valid on startup");
     return session;
   } catch (error) {
     console.error("[Auth] Session validation on startup failed:", error);

@@ -9,6 +9,7 @@ import { useColors } from "@/hooks/use-colors";
 import { SchemeColors } from "@/constants/theme";
 import { useChatBadge } from "@/hooks/use-chat-badge";
 import { Text } from "react-native";
+import { useAppearance } from "@/lib/appearance-context";
 
 function ScanTabIcon({ color: _color, focused: _focused }: { color: string; focused: boolean }) {
   const colors = useColors();
@@ -66,6 +67,21 @@ export default function TabLayout() {
   const insets = useSafeAreaInsets();
   const bottomPadding = Platform.OS === "web" ? 12 : Math.max(insets.bottom, 8);
   const tabBarHeight = 60 + bottomPadding;
+  const { settings } = useAppearance();
+
+  const standardTabBarStyle = {
+    paddingTop: 8,
+    paddingBottom: bottomPadding,
+    height: tabBarHeight,
+    backgroundColor: colors.background,
+    borderTopColor: colors.border,
+    borderTopWidth: 0.5,
+  } as const;
+
+  // When hideTabBarOnChat is enabled, the chat tab bar is hidden (display: none)
+  const chatTabBarStyle = settings.hideTabBarOnChat
+    ? { display: "none" as const }
+    : standardTabBarStyle;
 
   return (
     <Tabs
@@ -129,15 +145,7 @@ export default function TabLayout() {
         options={{
           title: "AI Tutor",
           tabBarIcon: ({ color, focused }) => <ChatTabIcon color={color} focused={focused} />,
-          // Show tab bar with standard styling
-          tabBarStyle: {
-            paddingTop: 8,
-            paddingBottom: bottomPadding,
-            height: tabBarHeight,
-            backgroundColor: colors.background,
-            borderTopColor: colors.border,
-            borderTopWidth: 0.5,
-          },
+          tabBarStyle: chatTabBarStyle,
         }}
       />
       <Tabs.Screen

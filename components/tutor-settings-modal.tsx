@@ -33,6 +33,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
+import { useAppearance } from "@/lib/appearance-context";
 
 // ─── Storage key ─────────────────────────────────────────────────────────────
 export const TUTOR_SETTINGS_KEY = "@tutorsnap/tutorSettings";
@@ -489,6 +490,7 @@ export function TutorSettingsModal({
 }: TutorSettingsModalProps) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const appearance = useAppearance();
   const slideAnim = useRef(new Animated.Value(0)).current;
   const [showSystemPrompt, setShowSystemPrompt] = useState(false);
 
@@ -1097,6 +1099,13 @@ export function TutorSettingsModal({
               sub="Reduce padding and margins in structured blocks for a denser layout"
               value={settings.compactBlocks}
               onChange={(v) => onUpdate({ compactBlocks: v })}
+            />
+            <ToggleRow
+              icon="rectangle.bottomthird.inset.filled"
+              label="Hide Tab Bar in Chat"
+              sub="Automatically hide the navigation bar when the chat screen is open"
+              value={appearance.settings.hideTabBarOnChat}
+              onChange={(v) => appearance.updateSetting("hideTabBarOnChat", v)}
               last
             />
           </SettingsCard>

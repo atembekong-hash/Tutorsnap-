@@ -103,9 +103,10 @@ function normalizeSpacing(text: string): string {
     .replace(/[ \t]{3,}(?![\t])/g, ' ')
     // Remove duplicate punctuation (!! → !, ?? → ?)
     .replace(/([!?])\1+/g, '$1')
+    // Per user preference: replace em dashes (\u2014) and en dashes (\u2013) with plain hyphens.
+    .replace(/\u2014/g, '-')
+    .replace(/\u2013/g, '-')
     .trim();
-  // NOTE: We intentionally do NOT convert em-dashes, smart quotes, or ellipsis —
-  // these are valid typographic characters that should render as-is.
 }
 
 // ─── Phase 8: Final output sanitization — eliminate ALL formatting artifacts ───

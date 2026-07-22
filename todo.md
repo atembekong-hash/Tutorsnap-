@@ -728,3 +728,22 @@
 - [ ] Remove scroll resistance and scroll-fighting during and after AI response generation for a smooth, seamless feel
 - [ ] Refactor the chat layout so the composer height is reserved correctly in the message list
 
+
+## Release Candidate Polish (2026-07-22)
+
+### UI/UX
+- [ ] U2: Add "Continue with Apple" button on iOS in auth-screen.tsx
+- [ ] U3: Hide tab bar when chat screen is open
+- [x] U8: Strip em/en dashes from AI response text
+- [ ] U9: Ensure paywall dev mode banner never shows in production
+
+### Localization
+- [ ] L1: Install i18next + react-i18next + expo-localization
+- [ ] L2: Extract all user-facing strings into locales/en.json
+
+### Code Quality
+- [x] Q1: Remove all console.log from production app/lib code
+- [ ] Q5: Fix paywall timer in _layout.tsx to use longer delay and auth gate
+
+### Production Audit
+- [x] A3: Increment build number in app.config.ts (buildNumber: "3", versionCode: 3)

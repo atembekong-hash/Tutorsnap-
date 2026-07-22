@@ -117,7 +117,7 @@ export async function sequentialFallback(
       const result = await invokeModelWithTimeout(model, config, startTime);
       return result;
     } catch (error) {
-      console.log(`Model ${model} failed, trying next...`);
+      // console.log(`Model ${model} failed, trying next...`);
       continue;
     }
   }

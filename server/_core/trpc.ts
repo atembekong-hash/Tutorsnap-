@@ -9,30 +9,30 @@ const t = initTRPC.context<TrpcContext>().create({
 
 const loggingMiddleware = t.middleware(async (opts) => {
   const { path, type, input } = opts;
-  console.log('[tRPC Server Request]', {
-    timestamp: new Date().toISOString(),
-    type,
-    path,
-    input: JSON.stringify(input),
-    inputType: typeof input,
-    inputIsUndefined: input === undefined,
-  });
+  // console.log('[tRPC Server Request]', {
+    // timestamp: new Date().toISOString(),
+    // type,
+    // path,
+    // input: JSON.stringify(input),
+    // inputType: typeof input,
+    // inputIsUndefined: input === undefined,
+  // });
   try {
     const result = await opts.next();
-    console.log('[tRPC Server Response]', {
-      timestamp: new Date().toISOString(),
-      type,
-      path,
-      success: true,
-    });
+    // console.log('[tRPC Server Response]', {
+      // timestamp: new Date().toISOString(),
+      // type,
+      // path,
+      // success: true,
+    // });
     return result;
   } catch (error) {
-    console.log('[tRPC Server Error]', {
-      timestamp: new Date().toISOString(),
-      type,
-      path,
-      error: error instanceof Error ? error.message : String(error),
-    });
+    // console.log('[tRPC Server Error]', {
+      // timestamp: new Date().toISOString(),
+      // type,
+      // path,
+      // error: error instanceof Error ? error.message : String(error),
+    // });
     throw error;
   }
 });

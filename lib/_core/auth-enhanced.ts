@@ -94,7 +94,7 @@ export async function setAuthTokens(tokens: AuthToken): Promise<void> {
       await SecureStore.setItemAsync(TOKEN_EXPIRY_KEY, tokens.expiresAt.toString());
       await SecureStore.setItemAsync(REFRESH_EXPIRY_KEY, tokens.refreshExpiresAt.toString());
     }
-    console.log("[Auth] Tokens stored successfully");
+    // console.log("[Auth] Tokens stored successfully");
   } catch (error) {
     console.error("[Auth] Failed to store tokens:", error);
     throw error;
@@ -117,7 +117,7 @@ export async function clearAuthTokens(): Promise<void> {
       await SecureStore.deleteItemAsync(TOKEN_EXPIRY_KEY);
       await SecureStore.deleteItemAsync(REFRESH_EXPIRY_KEY);
     }
-    console.log("[Auth] Tokens cleared successfully");
+    // console.log("[Auth] Tokens cleared successfully");
   } catch (error) {
     console.error("[Auth] Failed to clear tokens:", error);
   }
@@ -148,7 +148,7 @@ export async function setSessionToken(token: string): Promise<void> {
     } else {
       await SecureStore.setItemAsync(SESSION_TOKEN_KEY, token);
     }
-    console.log("[Auth] Session token stored successfully");
+    // console.log("[Auth] Session token stored successfully");
   } catch (error) {
     console.error("[Auth] Failed to set session token:", error);
     throw error;
@@ -165,7 +165,7 @@ export async function removeSessionToken(): Promise<void> {
     } else {
       await SecureStore.deleteItemAsync(SESSION_TOKEN_KEY);
     }
-    console.log("[Auth] Session token removed successfully");
+    // console.log("[Auth] Session token removed successfully");
   } catch (error) {
     console.error("[Auth] Failed to remove session token:", error);
   }
@@ -184,11 +184,11 @@ export async function getUserInfo(): Promise<User | null> {
     }
 
     if (!info) {
-      console.log("[Auth] No user info found");
+      // console.log("[Auth] No user info found");
       return null;
     }
     const user = JSON.parse(info);
-    console.log("[Auth] User info retrieved");
+    // console.log("[Auth] User info retrieved");
     return user;
   } catch (error) {
     console.error("[Auth] Failed to get user info:", error);
@@ -206,7 +206,7 @@ export async function setUserInfo(user: User): Promise<void> {
     } else {
       await SecureStore.setItemAsync(USER_INFO_KEY, JSON.stringify(user));
     }
-    console.log("[Auth] User info stored successfully");
+    // console.log("[Auth] User info stored successfully");
   } catch (error) {
     console.error("[Auth] Failed to set user info:", error);
   }
@@ -222,7 +222,7 @@ export async function clearUserInfo(): Promise<void> {
     } else {
       await SecureStore.deleteItemAsync(USER_INFO_KEY);
     }
-    console.log("[Auth] User info cleared successfully");
+    // console.log("[Auth] User info cleared successfully");
   } catch (error) {
     console.error("[Auth] Failed to clear user info:", error);
   }

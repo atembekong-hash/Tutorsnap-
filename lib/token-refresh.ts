@@ -42,7 +42,7 @@ export async function refreshGoogleToken(): Promise<boolean> {
       refreshExpiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000, // 30 days
     });
 
-    console.log("[TokenRefresh] Google ID token refreshed successfully");
+    // console.log("[TokenRefresh] Google ID token refreshed successfully");
     return true;
   } catch (error) {
     // Token refresh failure is non-fatal — the user will be prompted to sign in
@@ -64,7 +64,7 @@ export function startTokenRefreshTimer(): void {
     try {
       const expired = await isTokenExpired();
       if (expired) {
-        console.log("[TokenRefresh] Token expired — attempting refresh");
+        // console.log("[TokenRefresh] Token expired — attempting refresh");
         await refreshGoogleToken();
       } else {
         // Proactively refresh 5 min before expiry
@@ -73,7 +73,7 @@ export function startTokenRefreshTimer(): void {
     } catch { /* non-critical */ }
   }, REFRESH_INTERVAL_MS);
 
-  console.log("[TokenRefresh] Token refresh timer started (interval: 55 min)");
+  // console.log("[TokenRefresh] Token refresh timer started (interval: 55 min)");
 }
 
 /**
@@ -84,7 +84,7 @@ export function stopTokenRefreshTimer(): void {
   if (_refreshTimer !== null) {
     clearInterval(_refreshTimer);
     _refreshTimer = null;
-    console.log("[TokenRefresh] Token refresh timer stopped");
+    // console.log("[TokenRefresh] Token refresh timer stopped");
   }
 }
 
@@ -99,7 +99,7 @@ export async function refreshTokenIfNeeded(): Promise<void> {
     if (!token) return; // Not signed in
     const expired = await isTokenExpired();
     if (expired) {
-      console.log("[TokenRefresh] Token expired on resume — refreshing");
+      // console.log("[TokenRefresh] Token expired on resume — refreshing");
       await refreshGoogleToken();
     }
   } catch { /* non-critical */ }

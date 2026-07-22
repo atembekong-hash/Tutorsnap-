@@ -80,7 +80,7 @@ export async function signInWithApple(): Promise<OAuthCredentials | null> {
     };
   } catch (error) {
     if ((error as any).code === "ERR_CANCELED") {
-      console.log("[AppleSignIn] User cancelled sign-in");
+      // console.log("[AppleSignIn] User cancelled sign-in");
       throw new Error("Apple Sign-In cancelled by user");
     }
     console.error("[AppleSignIn] Error:", error);
@@ -96,7 +96,7 @@ export async function signOutApple(): Promise<void> {
   try {
     // Clear stored tokens
     await SecureStore.deleteItemAsync("apple_identity_token");
-    console.log("[AppleSignIn] Signed out successfully");
+    // console.log("[AppleSignIn] Signed out successfully");
   } catch (error) {
     console.error("[AppleSignIn] Sign-out error:", error);
     throw error;

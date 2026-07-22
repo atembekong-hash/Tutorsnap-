@@ -210,7 +210,7 @@ async function sendOtpEmail(to: string, code: string, purpose: OtpPurpose): Prom
       return false;
     }
 
-    console.log(`[EmailAuth] OTP email (${purpose}) sent to ${to}`);
+    // console.log(`[EmailAuth] OTP email (${purpose}) sent to ${to}`);
     return true;
   } catch (err) {
     console.error("[EmailAuth] Failed to send OTP email:", err);
@@ -458,10 +458,10 @@ export const emailAuthRouter = router({
           });
           const newRows = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
           user = newRows[0];
-          console.log(`[EmailAuth] New user registered: ${openId}`);
+          // console.log(`[EmailAuth] New user registered: ${openId}`);
         } else {
           await db.update(users).set({ lastSignedIn: new Date() }).where(eq(users.openId, openId));
-          console.log(`[EmailAuth] User signed in: ${openId}`);
+          // console.log(`[EmailAuth] User signed in: ${openId}`);
         }
 
         return {
@@ -536,7 +536,7 @@ export const emailAuthRouter = router({
           .set({ email: newEmail, updatedAt: new Date() })
           .where(eq(users.id, ctx.user.id));
 
-        console.log(`[EmailAuth] Email changed for user ${ctx.user.id} → ${newEmail}`);
+        // console.log(`[EmailAuth] Email changed for user ${ctx.user.id} → ${newEmail}`);
         return { success: true, newEmail };
       } catch (error) {
         console.error("[EmailAuth] Change email DB error:", error);
@@ -560,7 +560,7 @@ export async function startOtpCleanupScheduler(): Promise<void> {
   // Run once immediately on startup, then on interval
   await runCleanupIfLockAcquired();
   setInterval(runCleanupIfLockAcquired, CLEANUP_INTERVAL_MS);
-  console.log(`[OTP Cleanup] Singleton scheduler started (instance: ${INSTANCE_ID}, interval: 30min)`);
+  // console.log(`[OTP Cleanup] Singleton scheduler started (instance: ${INSTANCE_ID}, interval: 30min)`);
 }
 
 async function runCleanupIfLockAcquired(): Promise<void> {
@@ -605,7 +605,7 @@ async function runCleanupIfLockAcquired(): Promise<void> {
     const auditResult = await db.delete(otpAudit).where(lt(otpAudit.createdAt, auditCutoff));
     const auditDeleted = (auditResult as any)[0]?.affectedRows ?? 0;
 
-    console.log(`[OTP Cleanup] Deleted ${otpDeleted} expired OTP rows, ${auditDeleted} audit rows older than 24h`);
+    // console.log(`[OTP Cleanup] Deleted ${otpDeleted} expired OTP rows, ${auditDeleted} audit rows older than 24h`);
   } catch (err: any) {
     // Non-fatal — opportunistic cleanup in issueOtp is the fallback
     console.warn("[OTP Cleanup] Scheduler error (non-fatal):", err?.message ?? err);

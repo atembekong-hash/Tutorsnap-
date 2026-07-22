@@ -83,7 +83,7 @@ async function startServer() {
       if (!db) { res.status(503).json({ ok: false, error: "DB unavailable" }); return; }
       const result = await db.delete(otpCodes).where(lt(otpCodes.expiresAt, new Date()));
       const deleted = (result as any)[0]?.affectedRows ?? 0;
-      console.log(`[OTP Cleanup] Manual cleanup: deleted ${deleted} expired rows`);
+      // console.log(`[OTP Cleanup] Manual cleanup: deleted ${deleted} expired rows`);
       res.json({ ok: true, deleted });
     } catch (err) {
       console.error("[OTP Cleanup] Error:", err);
@@ -125,11 +125,11 @@ async function startServer() {
   const port = await findAvailablePort(preferredPort);
 
   if (port !== preferredPort) {
-    console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
+    // console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
   }
 
   server.listen(port, () => {
-    console.log(`[api] server listening on port ${port}`);
+    // console.log(`[api] server listening on port ${port}`);
   });
 }
 

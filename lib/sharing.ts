@@ -72,7 +72,7 @@ export async function copyLeaderboardLink(): Promise<void> {
     if (Platform.OS === "web") {
       await WebClipboard.setStringAsync(link);
     } else {
-      console.log("Leaderboard link:", link);
+      // console.log("Leaderboard link:", link);
     }
   } catch (error) {
     console.warn("Failed to copy leaderboard link:", error);
@@ -122,7 +122,7 @@ export async function copySolutionLink(solutionId: string): Promise<void> {
     if (Platform.OS === "web") {
       await WebClipboard.setStringAsync(link);
     } else {
-      console.log("Solution link:", link);
+      // console.log("Solution link:", link);
     }
   } catch (error) {
     console.warn("Failed to copy solution link:", error);
@@ -191,7 +191,7 @@ export async function copyReferralLink(): Promise<void> {
     if (Platform.OS === "web") {
       await WebClipboard.setStringAsync(link);
     } else {
-      console.log("Referral link:", link);
+      // console.log("Referral link:", link);
     }
   } catch (error) {
     console.warn("Failed to copy referral link:", error);

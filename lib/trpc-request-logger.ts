@@ -13,40 +13,40 @@ export const trpcRequestLoggerLink: TRPCLink<any> = () => {
       const { type, path, input } = op;
 
       // Log outgoing request
-      console.log("[tRPC Request]", {
-        timestamp: new Date().toISOString(),
-        type,
-        path,
-        input: JSON.stringify(input, null, 2),
-        inputType: typeof input,
-        inputIsUndefined: input === undefined,
-        inputIsNull: input === null,
-      });
+      // console.log("[tRPC Request]", {
+        // timestamp: new Date().toISOString(),
+        // type,
+        // path,
+        // input: JSON.stringify(input, null, 2),
+        // inputType: typeof input,
+        // inputIsUndefined: input === undefined,
+        // inputIsNull: input === null,
+      // });
 
       return next(op).subscribe({
         next(result: any) {
           const duration = Date.now() - startTime;
-          console.log("[tRPC Response]", {
-            timestamp: new Date().toISOString(),
-            type,
-            path,
-            duration: `${duration}ms`,
-            resultType: result.type,
-            hasError: result.type === "error",
-            error: result.type === "error" ? result.error.message : undefined,
-          });
+          // console.log("[tRPC Response]", {
+            // timestamp: new Date().toISOString(),
+            // type,
+            // path,
+            // duration: `${duration}ms`,
+            // resultType: result.type,
+            // hasError: result.type === "error",
+            // error: result.type === "error" ? result.error.message : undefined,
+          // });
           observer.next(result);
         },
         error(error: any) {
           const duration = Date.now() - startTime;
-          console.log("[tRPC Error]", {
-            timestamp: new Date().toISOString(),
-            type,
-            path,
-            duration: `${duration}ms`,
-            error: error.message,
-            errorCode: error.code,
-          });
+          // console.log("[tRPC Error]", {
+            // timestamp: new Date().toISOString(),
+            // type,
+            // path,
+            // duration: `${duration}ms`,
+            // error: error.message,
+            // errorCode: error.code,
+          // });
           observer.error(error);
         },
         complete() {

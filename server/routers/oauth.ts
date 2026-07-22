@@ -92,7 +92,7 @@ async function verifyAppleToken(
       return null;
     }
 
-    console.log(`[OAuth] Verifying Apple token with audience: ${audience}`);
+    // console.log(`[OAuth] Verifying Apple token with audience: ${audience}`);
 
     const payload = await verifyFn(idToken, {
       audience,
@@ -124,7 +124,7 @@ async function validateOAuthToken(
   clientId?: string
 ): Promise<OAuthUser | null> {
   try {
-    console.log(`[OAuth] Validating ${provider} token`);
+    // console.log(`[OAuth] Validating ${provider} token`);
 
     if (!idToken || idToken.length < 10) {
       console.error(`[OAuth] Invalid token format for ${provider}`);
@@ -197,7 +197,7 @@ export const oauthRouter = router({
         if (existingUser.length > 0) {
           // Update existing user
           user = existingUser[0];
-          console.log(`[OAuth] User exists: ${openId}`);
+          // console.log(`[OAuth] User exists: ${openId}`);
         } else {
           // Create new user
           const result = await db.insert(users).values({
@@ -216,7 +216,7 @@ export const oauthRouter = router({
             .limit(1);
 
           user = newUser[0];
-          console.log(`[OAuth] New user created: ${openId}`);
+          // console.log(`[OAuth] New user created: ${openId}`);
         }
 
         return {

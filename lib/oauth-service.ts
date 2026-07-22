@@ -99,12 +99,12 @@ export async function initiateGoogleSignIn(): Promise<OAuthCredentials | null> {
   try {
     if (Platform.OS === "web") {
       // Web implementation would use @react-oauth/google
-      console.log("[OAuth] Google Sign-In on web requires @react-oauth/google component");
+      // console.log("[OAuth] Google Sign-In on web requires @react-oauth/google component");
       return null;
     }
 
     // Native implementation would use @react-native-google-signin/google-signin
-    console.log("[OAuth] Google Sign-In on native requires platform-specific setup");
+    // console.log("[OAuth] Google Sign-In on native requires platform-specific setup");
     return null;
   } catch (error) {
     console.error("[OAuth] Google Sign-In failed:", error);
@@ -119,12 +119,12 @@ export async function initiateGoogleSignIn(): Promise<OAuthCredentials | null> {
 export async function initiateAppleSignIn(): Promise<OAuthCredentials | null> {
   try {
     if (Platform.OS !== "ios") {
-      console.log("[OAuth] Apple Sign-In is only available on iOS");
+      // console.log("[OAuth] Apple Sign-In is only available on iOS");
       return null;
     }
 
     // Native implementation would use expo-apple-authentication
-    console.log("[OAuth] Apple Sign-In on iOS requires expo-apple-authentication setup");
+    // console.log("[OAuth] Apple Sign-In on iOS requires expo-apple-authentication setup");
     return null;
   } catch (error) {
     console.error("[OAuth] Apple Sign-In failed:", error);
@@ -140,7 +140,7 @@ export async function handleOAuthCallback(url: string): Promise<OAuthResponse> {
     const parsed = Linking.parse(url);
     const { path, queryParams } = parsed;
 
-    console.log("[OAuth] Handling callback:", { path, queryParams });
+    // console.log("[OAuth] Handling callback:", { path, queryParams });
 
     if (!queryParams) {
       return {

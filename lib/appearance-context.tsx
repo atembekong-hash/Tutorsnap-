@@ -422,6 +422,9 @@ export interface AppearanceSettings {
   subjectSpeedOverrides: Record<string, number>;
   // Solution
   stepStyle: StepStyle;
+  // AI Tutor
+  /** Hide the tab bar when the AI Tutor (chat) screen is open. Adjustable in Settings. */
+  hideTabBarOnChat: boolean;
   // Accessibility
   reduceMotion: boolean;
   highContrast: boolean;
@@ -461,6 +464,7 @@ export const DEFAULT_APPEARANCE: AppearanceSettings = {
   typingSpeedMultiplier: 3,
   subjectSpeedOverrides: {},
   stepStyle: "cards",
+  hideTabBarOnChat: true,
   reduceMotion: false,
   highContrast: false,
   largeTapTargets: false,
