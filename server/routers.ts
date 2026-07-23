@@ -624,6 +624,40 @@ Respond ONLY with this JSON:
       }
     }),
 
+  explainDifferently: publicProcedure
+    .input(z.object({
+      problem: z.string().min(1),
+      answer: z.string(),
+      subject: z.string().default("other"),
+      gradeLevel: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const gradeCtx = gradeContext(input.gradeLevel);
+      const systemPrompt = `You are TutorSnap, an expert academic tutor.${gradeCtx}
+Your job is to re-explain a solved problem using a DIFFERENT approach or a simpler analogy than the standard method.
+Rules:
+- Be concise: 4-6 sentences total.
+- Use plain, student-friendly language.
+- Do NOT repeat the original solution method; use a fresh angle, analogy, or shortcut.
+- Format math with LaTeX: $...$ for inline, $$...$$ for block.
+- Output plain text only, no JSON.`;
+      const userMsg = `Problem: ${input.problem.slice(0, 400)}
+Original answer: ${input.answer.slice(0, 300)}
+
+Now re-explain this differently.`;
+      const result = await invokeLLM({
+        model: "claude-haiku-4-5",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userMsg },
+        ],
+        max_tokens: 450,
+      });
+      const text = (result as any)?.error ? "" : (result.choices?.[0]?.message?.content ?? "");
+      const explanation = typeof text === "string" ? text.trim() : JSON.stringify(text);
+      return { explanation: explanation || "Could not generate an alternative explanation. Please try again." };
+    }),
+
   generateSimilar: publicProcedure
     .input(z.object({
       problem: z.string(),

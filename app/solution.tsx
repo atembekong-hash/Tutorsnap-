@@ -302,7 +302,7 @@ export default function SolutionScreen() {
   const [explainDiffLoading, setExplainDiffLoading] = useState(false);
   const [altExplanation, setAltExplanation] = useState<string | null>(null);
   const [showAltExplanation, setShowAltExplanation] = useState(false);
-  const explainDiffMutation = trpc.math.solve.useMutation();
+  const explainDiffMutation = trpc.math.explainDifferently.useMutation();
 
   // Auto-solve state: triggered when a feed card has no cached solution
   const solveMutation = trpc.math.solve.useMutation();
@@ -1436,11 +1436,12 @@ export default function SolutionScreen() {
             setExplainDiffLoading(true);
             try {
               const result = await explainDiffMutation.mutateAsync({
-                problem: `Re-explain the following problem using a simpler analogy or a completely different method than the standard approach. Be concise and use plain language a student would understand.\n\nProblem: ${solution.problem}\n\nOriginal answer: ${solution.answer}`,
+                problem: solution.problem,
+                answer: solution.answer,
                 subject: solution.subject as any,
                 gradeLevel: gradeLevel ?? undefined,
               });
-              const alt = (result as any)?.conceptExplained || (result as any)?.answer || "No alternative explanation available.";
+              const alt = result?.explanation || "No alternative explanation available.";
               setAltExplanation(alt);
               setShowAltExplanation(true);
               H.notificationSuccess()
