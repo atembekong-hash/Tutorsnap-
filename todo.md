@@ -830,3 +830,7 @@
 - [ ] First-launch onboarding screen: name, grade level, preferred subjects
 - [ ] Add photo upload step to onboarding (after name slide)
 - [ ] Polish onboarding UI: gradient backgrounds, smoother transitions, dot indicators
+
+## Round 43: Confetti + Re-run Setup Wizard
+- [x] Add rich confetti burst to onboarding final slide (Start Free Trial tap)
+- [x] Add Re-run Setup Wizard row to Settings profile section (clears only onboarding flag)

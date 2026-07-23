@@ -45,6 +45,7 @@ import { SUBJECT_CATEGORIES, type SubjectCategory } from "@/lib/subjects";
 import { useFontSize } from "@/lib/font-size-provider";
 import { SUPPORT_EMAIL } from "@/constants/app";
 import { GRADE_OPTIONS, GRADE_LABELS, loadGlobalGrade, saveGlobalGrade } from "@/lib/grade-levels";
+import { ONBOARDING_DONE_KEY } from "@/app/onboarding";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import * as DocumentPicker from "expo-document-picker";
@@ -1153,6 +1154,33 @@ export default function SettingsScreen() {
               </TouchableOpacity>
             )}
           </View>
+
+          {/* Re-run Setup Wizard */}
+          <TouchableOpacity
+            onPress={() => {
+              H.impactLight();
+              Alert.alert(
+                "Re-run Setup Wizard",
+                "This will take you back through the onboarding flow to update your name, photo, grade, and subjects. Your progress and notes will not be deleted.",
+                [
+                  { text: "Cancel", style: "cancel" },
+                  {
+                    text: "Re-run",
+                    onPress: async () => {
+                      await AsyncStorage.removeItem(ONBOARDING_DONE_KEY);
+                      router.replace("/onboarding" as any);
+                    },
+                  },
+                ]
+              );
+            }}
+            style={[styles.rerunWizardBtn, { borderColor: colors.primary + "40", backgroundColor: colors.primary + "0D" }]}
+            activeOpacity={0.75}
+          >
+            <Text style={{ fontSize: 18 }}>🧙</Text>
+            <Text style={[styles.rerunWizardText, { color: colors.primary }]}>Re-run Setup Wizard</Text>
+            <Text style={[styles.rerunWizardChevron, { color: colors.primary }]}>›</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Stats row below profile */}
@@ -2789,5 +2817,24 @@ const styles = StyleSheet.create({
   removePhotoText: {
     fontSize: 13,
     fontWeight: "500",
+  },
+  rerunWizardBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  rerunWizardText: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  rerunWizardChevron: {
+    fontSize: 22,
+    fontWeight: "300",
   },
 });

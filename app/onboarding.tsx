@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -22,7 +22,52 @@ import { TUTOR_SETTINGS_KEY, DEFAULT_TUTOR_SETTINGS } from "@/components/tutor-s
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const { width: SCREEN_WIDTH, height: SCREEN_H } = Dimensions.get("window");
+
+// ─── Confetti particle ────────────────────────────────────────────────────────
+const CONFETTI_COLORS = [
+  "#F59E0B", "#6366F1", "#10B981", "#EF4444",
+  "#3B82F6", "#EC4899", "#14B8A6", "#F97316",
+  "#8B5CF6", "#22D3EE", "#A3E635", "#FB7185",
+];
+const CONFETTI_SHAPES = ["square", "rect", "circle"] as const;
+function ConfettiParticle({ index }: { index: number }) {
+  const x = useRef(new Animated.Value((Math.random() * SCREEN_WIDTH * 1.2) - SCREEN_WIDTH * 0.1)).current;
+  const y = useRef(new Animated.Value(-30 - Math.random() * 60)).current;
+  const rotate = useRef(new Animated.Value(0)).current;
+  const opacity = useRef(new Animated.Value(1)).current;
+  const scale = useRef(new Animated.Value(0.4 + Math.random() * 0.8)).current;
+  const color = CONFETTI_COLORS[index % CONFETTI_COLORS.length];
+  const size = 7 + Math.random() * 10;
+  const shape = CONFETTI_SHAPES[index % CONFETTI_SHAPES.length];
+  const duration = 1600 + Math.random() * 1400;
+  const delay = Math.random() * 600;
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(y, { toValue: SCREEN_H + 40, duration, delay, useNativeDriver: true }),
+      Animated.timing(rotate, { toValue: 720 * (Math.random() > 0.5 ? 1 : -1), duration, delay, useNativeDriver: true }),
+      Animated.timing(scale, { toValue: 0.3 + Math.random() * 0.5, duration: duration * 0.6, delay, useNativeDriver: true }),
+      Animated.sequence([
+        Animated.delay(delay + duration * 0.65),
+        Animated.timing(opacity, { toValue: 0, duration: duration * 0.35, useNativeDriver: true }),
+      ]),
+    ]).start();
+  }, []);
+  const spin = rotate.interpolate({ inputRange: [0, 720], outputRange: ["0deg", "720deg"] });
+  return (
+    <Animated.View
+      style={{
+        position: "absolute",
+        width: shape === "rect" ? size * 2 : size,
+        height: shape === "rect" ? size * 0.45 : size,
+        borderRadius: shape === "circle" ? size / 2 : 2,
+        backgroundColor: color,
+        transform: [{ translateX: x }, { translateY: y }, { rotate: spin }, { scale }],
+        opacity,
+      }}
+    />
+  );
+}
 
 export const ONBOARDING_DONE_KEY = "@tutorsnap/onboardingDone";
 export const USER_NAME_KEY = "@tutorsnap/userName";
@@ -112,6 +157,7 @@ export default function OnboardingScreen() {
   const [selectedGrade, setSelectedGrade] = useState<string | null>(null);
   const [userName, setUserName] = useState("");
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
+  const [showConfetti, setShowConfetti] = useState(false);
   // Animated value for dot indicator
   const dotAnim = useRef(new Animated.Value(0)).current;
 
@@ -233,12 +279,16 @@ export default function OnboardingScreen() {
 
   const finishOnboardingAndShowPaywall = async () => {
     H.notificationSuccess();
+    setShowConfetti(true);
     await AsyncStorage.setItem(ONBOARDING_DONE_KEY, "true");
     await persistOnboardingChoices();
-    router.replace("/(tabs)" as any);
+    // Brief confetti display before navigating
     setTimeout(() => {
-      router.push("/paywall" as any);
-    }, 300);
+      router.replace("/(tabs)" as any);
+      setTimeout(() => {
+        router.push("/paywall" as any);
+      }, 300);
+    }, 1800);
   };
 
   const finishOnboarding = async () => {
@@ -597,6 +647,23 @@ export default function OnboardingScreen() {
               {isLastSlide ? "Start Free Trial" : "Next"}
             </Text>
           </TouchableOpacity>
+        )}
+        {/* Confetti burst on completion */}
+        {showConfetti && (
+          <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, pointerEvents: "none" }}>
+            {Array.from({ length: 60 }).map((_, i) => (
+              <ConfettiParticle key={i} index={i} />
+            ))}
+            <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+              <Text style={{ fontSize: 72, marginBottom: 16 }}>🎉</Text>
+              <Text style={{ fontSize: 26, fontWeight: "800", color: "#fff", textAlign: "center", textShadowColor: "rgba(0,0,0,0.3)", textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8 }}>
+                You're all set!
+              </Text>
+              <Text style={{ fontSize: 16, color: "rgba(255,255,255,0.85)", marginTop: 8, textAlign: "center" }}>
+                Let's start learning 🚀
+              </Text>
+            </View>
+          </View>
         )}
       </SafeAreaView>
     </LinearGradient>
