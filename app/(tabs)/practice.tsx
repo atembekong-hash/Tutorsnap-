@@ -145,6 +145,8 @@ function PracticeScreenContent() {
   const [weeklyData, setWeeklyData] = useState<WeeklyData | null>(null);
   const [cheatSheetExpanded, setCheatSheetExpanded] = useState(false);
   const [copiedFormula, setCopiedFormula] = useState<string | null>(null);
+  // Show skeleton on initial mount until first prefetch or question is ready
+  const [practiceInitialLoading, setPracticeInitialLoading] = useState(true);
   const { isOnline } = useNetworkStatus();
 
   useFocusEffect(
@@ -167,7 +169,11 @@ function PracticeScreenContent() {
   // ── Pre-fetch: keep a queued-up next problem ready ───────────────────────────
   const prefetchedRef = useRef<PracticeQuestion | null>(null);
   const prefetchMutation = trpc.academic.generatePractice.useMutation({
-    onSuccess: (data) => { prefetchedRef.current = data as PracticeQuestion; },
+    onSuccess: (data) => {
+      prefetchedRef.current = data as PracticeQuestion;
+      setPracticeInitialLoading(false);
+    },
+    onError: () => setPracticeInitialLoading(false),
   });
 
   const triggerPrefetch = useCallback(() => {
@@ -183,11 +189,13 @@ function PracticeScreenContent() {
       setCurrentQuestion(data as PracticeQuestion);
       setShowAnswer(false);
       setHintsShown(0);
+      setPracticeInitialLoading(false);
       // Haptic: skeleton → content arrived
       if (Platform.OS !== "web") H.impactLight();
       // Start pre-fetching the next problem in the background
       triggerPrefetch();
     },
+    onError: () => setPracticeInitialLoading(false),
   });
 
   const handleGenerate = () => {
@@ -711,8 +719,8 @@ function PracticeScreenContent() {
           </View>
         )}
 
-        {/* Skeleton loading card — shown while generating (no prefetch available) */}
-        {generateMutation.isPending && (
+        {/* Skeleton loading card — shown while generating (no prefetch available) or on initial mount */}
+        {(generateMutation.isPending || practiceInitialLoading) && (
           <View style={{ marginTop: 4 }}>
             <PracticeSkeletonCard />
           </View>

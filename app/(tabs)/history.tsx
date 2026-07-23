@@ -9,6 +9,7 @@ import {
   Alert,
   Platform,
   TextInput,
+  RefreshControl,
 } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import * as H from "@/lib/haptics";
@@ -46,6 +47,7 @@ function HistoryScreenContent() {
   const [filterSubject, setFilterSubject] = useState<MathSubject | "all">("all");
   const [filterGrade, setFilterGrade] = useState<string | "all">("all");
   const [historyLoading, setHistoryLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const loadHistory = async () => {
     try {
@@ -59,7 +61,14 @@ function HistoryScreenContent() {
       // ignore
     } finally {
       setHistoryLoading(false);
+      setRefreshing(false);
     }
+  };
+
+  const handleRefresh = () => {
+    H.impactLight();
+    setRefreshing(true);
+    loadHistory();
   };
 
   const handleQuickBookmark = async (item: HistoryItem) => {
@@ -384,6 +393,14 @@ function HistoryScreenContent() {
           }
           contentContainerStyle={{ paddingBottom: 40 }}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={colors.primary}
+              colors={[colors.primary]}
+            />
+          }
         />
       ) : (
         <FlatList
@@ -394,6 +411,14 @@ function HistoryScreenContent() {
           contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }}
           showsVerticalScrollIndicator={false}
           ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={colors.primary}
+              colors={[colors.primary]}
+            />
+          }
         />
       )}
     </ScreenContainer>

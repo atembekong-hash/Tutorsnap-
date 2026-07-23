@@ -853,3 +853,8 @@
 - [x] SolvingOverlay: branded brain emoji + DotsLoader replaces plain ActivityIndicator on Solution screen
 - [x] DotsLoader: replaces ActivityIndicator in Solve button (index.tsx) and AI Tutor session loading
 - [x] QuizLoadingScreen: upgraded to use ShimmerBox progress bar
+
+## Round 47: Screen Transitions + Practice Skeleton + History Pull-to-Refresh
+- [x] Screen push transition: FadeIn + SlideInRight animation when navigating Home -> Solution
+- [x] Practice tab: show PracticeSkeletonCard on initial mount before first load
+- [x] History tab: pull-to-refresh with RefreshControl + skeleton animation
