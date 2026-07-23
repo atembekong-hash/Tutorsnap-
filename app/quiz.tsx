@@ -166,7 +166,10 @@ function ScoreSummary({
       duration: 600,
       delay: 200,
       useNativeDriver: false,
-    }).start();
+    }).start(() => {
+      // Fire haptic when count-up completes
+      H.notificationSuccess();
+    });
     return () => scoreAnim.removeListener(listener);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

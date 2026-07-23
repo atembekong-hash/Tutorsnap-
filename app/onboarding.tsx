@@ -363,16 +363,18 @@ export default function OnboardingScreen() {
           </TouchableOpacity>
         )}
 
-        {/* Skip button */}
-        <TouchableOpacity
-          style={styles.skipBtn}
-          onPress={finishOnboarding}
-          activeOpacity={0.7}
-          accessibilityLabel="Skip onboarding"
-          accessibilityRole="button"
-        >
-          <Text style={[styles.skipText, { color: colors.muted }]}>Skip</Text>
-        </TouchableOpacity>
+        {/* Skip button — hidden on first and last slide */}
+        {!isFirstSlide && !isLastSlide && (
+          <TouchableOpacity
+            style={styles.skipBtn}
+            onPress={finishOnboarding}
+            activeOpacity={0.7}
+            accessibilityLabel="Skip onboarding"
+            accessibilityRole="button"
+          >
+            <Text style={[styles.skipText, { color: colors.muted }]}>Skip</Text>
+          </TouchableOpacity>
+        )}
 
         {/* Slide counter */}
         <Text style={[styles.slideCounter, { color: colors.muted }]}>

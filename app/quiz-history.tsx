@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from "react";
+import { EmptyState } from "@/components/empty-state";
 import {
   View,
   Text,
@@ -231,21 +232,7 @@ export default function QuizHistoryScreen() {
           </TouchableOpacity>
         </View>
       ) : history.length === 0 ? (
-        <View style={styles.center}>
-          <Text style={styles.emptyEmoji}>🎯</Text>
-          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No Quizzes Yet</Text>
-          <Text style={[styles.emptySub, { color: colors.muted }]}>
-            Complete a quiz in the Practice tab to see your results here.
-          </Text>
-          <TouchableOpacity
-            onPress={() => router.back()}
-            accessibilityLabel="Go to Practice"
-            accessibilityRole="button"
-            style={[styles.startBtn, { backgroundColor: colors.primary }]}
-          >
-            <Text style={styles.startBtnText}>Go to Practice</Text>
-          </TouchableOpacity>
-        </View>
+        <EmptyState variant="quiz-history" onAction={() => router.back()} />
       ) : (
         <>
           {/* Subject filter chips */}

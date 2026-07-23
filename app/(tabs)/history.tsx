@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from "react";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { EmptyState } from "@/components/empty-state";
 import {
   View,
   Text,
@@ -377,19 +378,9 @@ function HistoryScreenContent() {
           renderItem={null}
           ListHeaderComponent={ListHeader}
           ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <View style={[styles.emptyIcon, { backgroundColor: `${colors.primary}15` }]}>
-                <IconSymbol size={40} name="clock.fill" color={colors.primary} />
-              </View>
-              <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
-                {history.length === 0 ? "No History Yet" : "No Results Found"}
-              </Text>
-              <Text style={[styles.emptySubtitle, { color: colors.muted }]}>
-                {history.length === 0
-                  ? "Solve your first problem to see it here"
-                  : "Try a different search or filter"}
-              </Text>
-            </View>
+            history.length === 0
+              ? <EmptyState variant="history" onAction={() => router.push("/")} />
+              : <View style={{ padding: 32, alignItems: "center" }}><Text style={{ color: colors.muted, fontSize: 15 }}>No results found. Try a different search or filter.</Text></View>
           }
           contentContainerStyle={{ paddingBottom: 40 }}
           showsVerticalScrollIndicator={false}

@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useMemo } from "react";
+import { EmptyState } from "@/components/empty-state";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import * as FileSystem from "expo-file-system/legacy";
@@ -501,21 +502,7 @@ export default function BookmarksScreen() {
       )}
 
       {bookmarks.length === 0 ? (
-        <View style={styles.emptyState}>
-          <View style={[styles.emptyIcon, { backgroundColor: `${colors.warning}15` }]}>
-            <Text style={{ fontSize: 40 }}>🔖</Text>
-          </View>
-          <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No Bookmarks Yet</Text>
-          <Text style={[styles.emptySubtitle, { color: colors.muted }]}>
-            Bookmark solutions you want to review later. Tap the bookmark icon on any solution screen.
-          </Text>
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={[styles.startBtn, { backgroundColor: colors.primary }]}
-          >
-            <Text style={styles.startBtnText}>Solve a Problem</Text>
-          </TouchableOpacity>
-        </View>
+        <EmptyState variant="bookmarks" onAction={() => router.back()} />
       ) : (
         <>
           {/* Search Bar */}

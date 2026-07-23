@@ -871,3 +871,11 @@
 - [x] Animated score count-up reveal on Quiz Results (0 to final pct over 600ms)
 - [x] Fix onboarding dark mode (background now uses colors.background with LinearGradient overlay)
 - [x] Build APK 1.1.6
+
+## Round 50: Haptics, Empty States, Onboarding Skip
+
+- [x] Haptic feedback at end of quiz score count-up animation (NotificationFeedbackType.Success)
+- [x] Empty state illustrations for Bookmarks screen (open book SVG + CTA)
+- [x] Empty state illustrations for History screen (magnifying glass SVG + CTA)
+- [x] Empty state illustrations for Quiz History screen (trophy SVG + CTA)
+- [x] Onboarding skip button (top-right, bypasses remaining slides, hidden on first/last slide)
