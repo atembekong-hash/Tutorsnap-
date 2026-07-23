@@ -14,6 +14,7 @@ import {
   Animated,
   Linking,
   Modal,
+  Image,
 } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -366,11 +367,13 @@ export default function SolutionScreen() {
   const [liveSolution, setLiveSolution] = useState<MathSolution | null>(null);
   const [gradeLevel, setGradeLevel] = useState<string | null>(null);
   const [progressData, setProgressData] = useState<ProgressData | null>(null);
+  const [avatarUri, setAvatarUri] = useState<string | null>(null);
 
-  // Load global grade and progress on mount
+  // Load global grade, progress, and avatar on mount
   useEffect(() => {
     loadGlobalGrade().then((g: string | null) => { if (g) setGradeLevel(g); });
     getProgress().then(setProgressData);
+    AsyncStorage.getItem("@tutorsnap/avatarUri").then((uri) => setAvatarUri(uri || null));
   }, []);
 
   // Restore persisted explain style preference
@@ -1268,7 +1271,15 @@ export default function SolutionScreen() {
             activeOpacity={0.75}
             accessibilityLabel="View progress"
           >
-            <Text style={styles.navProgressEmoji}>{getStreakEmoji(progressData.streak.currentStreak)}</Text>
+            {/* Avatar or streak emoji */}
+            {avatarUri ? (
+              <Image
+                source={{ uri: avatarUri }}
+                style={{ width: 22, height: 22, borderRadius: 11, marginRight: 2 }}
+              />
+            ) : (
+              <Text style={styles.navProgressEmoji}>{getStreakEmoji(progressData.streak.currentStreak)}</Text>
+            )}
             {progressData.streak.currentStreak > 0 && (
               <Text style={[styles.navProgressText, { color: colors.warning }]}>
                 {progressData.streak.currentStreak}-day streak

@@ -824,3 +824,9 @@
 - [x] Auto-expand user's grade group in Try Examples on Solve tab load
 - [x] Add avatar circle to Practice tab header
 - [x] Bump version and trigger EAS APK build
+
+## Round 42: Avatar in Solution Strip + Onboarding Flow
+- [ ] Show user avatar in solution.tsx progress nudge strip (replace streak emoji with avatar)
+- [ ] First-launch onboarding screen: name, grade level, preferred subjects
+- [ ] Add photo upload step to onboarding (after name slide)
+- [ ] Polish onboarding UI: gradient backgrounds, smoother transitions, dot indicators

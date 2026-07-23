@@ -7,7 +7,9 @@ import {
   StyleSheet,
   Dimensions,
   ScrollView,
+  Image,
   Platform,
+  Animated,
 } from "react-native";
 import { useRouter } from "expo-router";
 import * as H from "@/lib/haptics";
@@ -17,17 +19,39 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { SUBJECT_CATEGORIES, type SubjectCategory } from "@/lib/subjects";
 import { GRADE_OPTIONS, saveGlobalGrade } from "@/lib/grade-levels";
 import { TUTOR_SETTINGS_KEY, DEFAULT_TUTOR_SETTINGS } from "@/components/tutor-settings-modal";
+import * as ImagePicker from "expo-image-picker";
+import { LinearGradient } from "expo-linear-gradient";
+
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 export const ONBOARDING_DONE_KEY = "@tutorsnap/onboardingDone";
 export const USER_NAME_KEY = "@tutorsnap/userName";
+
+// Per-slide gradient colours [top, bottom]
+const SLIDE_GRADIENTS: Record<string, [string, string]> = {
+  name:          ["#0a7ea420", "#0a7ea405"],
+  photo:         ["#7C3AED20", "#7C3AED05"],
+  welcome:       ["#0a7ea420", "#0a7ea405"],
+  solve:         ["#059669" + "20", "#059669" + "05"],
+  practice:      ["#F59E0B20", "#F59E0B05"],
+  subjects:      ["#3B82F620", "#3B82F605"],
+  grade:         ["#8B5CF620", "#8B5CF605"],
+  "tutor-preview": ["#0a7ea420", "#0a7ea405"],
+  trial:         ["#F59E0B20", "#F59E0B05"],
+};
 
 const SLIDES = [
   {
     id: "name",
     emoji: "👋",
     title: "What's your name?",
-    subtitle: "We’ll use it to personalise your experience.",
+    subtitle: "We'll use it to personalise your experience.",
+  },
+  {
+    id: "photo",
+    emoji: "🖼️",
+    title: "Add a Profile Photo",
+    subtitle: "Optional — you can always add or change it later in Settings.",
   },
   {
     id: "welcome",
@@ -87,21 +111,74 @@ export default function OnboardingScreen() {
   const [selectedCategories, setSelectedCategories] = useState<Set<SubjectCategory>>(new Set());
   const [selectedGrade, setSelectedGrade] = useState<string | null>(null);
   const [userName, setUserName] = useState("");
+  const [avatarUri, setAvatarUri] = useState<string | null>(null);
+  // Animated value for dot indicator
+  const dotAnim = useRef(new Animated.Value(0)).current;
 
   const isLastSlide = currentSlide === SLIDES.length - 1;
-  const _isTrialSlide = SLIDES[currentSlide]?.id === "trial";
-  const _isSubjectsSlide = SLIDES[currentSlide]?.id === "subjects";
+
+  const animateDot = (toIndex: number) => {
+    Animated.spring(dotAnim, {
+      toValue: toIndex,
+      useNativeDriver: false,
+      tension: 80,
+      friction: 10,
+    }).start();
+  };
 
   const goNext = () => {
-    H.impactLight()
+    H.impactLight();
     if (isLastSlide) {
-      // On the trial slide, push to paywall first so users can start their trial
-      // finishOnboarding is called after the paywall is dismissed (or skipped)
       finishOnboardingAndShowPaywall();
     } else {
       const next = currentSlide + 1;
       setCurrentSlide(next);
+      animateDot(next);
       scrollRef.current?.scrollTo({ x: next * SCREEN_WIDTH, animated: true });
+    }
+  };
+
+  const handlePickPhoto = async () => {
+    H.impactLight();
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      // Try camera as fallback
+      const camStatus = await ImagePicker.requestCameraPermissionsAsync();
+      if (camStatus.status !== "granted") return;
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ["images"],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+      if (!result.canceled && result.assets[0]) {
+        setAvatarUri(result.assets[0].uri);
+      }
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setAvatarUri(result.assets[0].uri);
+    }
+  };
+
+  const handleTakePhoto = async () => {
+    H.impactLight();
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== "granted") return;
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setAvatarUri(result.assets[0].uri);
     }
   };
 
@@ -116,6 +193,7 @@ export default function OnboardingScreen() {
     if (selectedGrade) await saveGlobalGrade(selectedGrade);
     const name = userName.trim();
     if (name) await AsyncStorage.setItem(USER_NAME_KEY, name);
+    if (avatarUri) await AsyncStorage.setItem("@tutorsnap/avatarUri", avatarUri);
 
     // Pre-fill TutorSettings with onboarding values so the AI tutor is personalised
     // from the very first message, without requiring the user to re-enter them.
@@ -123,12 +201,10 @@ export default function OnboardingScreen() {
       const raw = await AsyncStorage.getItem(TUTOR_SETTINGS_KEY);
       const existing = raw ? { ...DEFAULT_TUTOR_SETTINGS, ...JSON.parse(raw) } : { ...DEFAULT_TUTOR_SETTINGS };
 
-      // Only overwrite if the user hasn't already customised these fields
       const patch: Partial<typeof existing> = {};
       if (name && !existing.nickname) patch.nickname = name;
       if (selectedGrade && !existing.gradeLevel) patch.gradeLevel = selectedGrade;
 
-      // Map the first selected category to a representative default subject
       if (selectedCategories.size > 0 && !existing.defaultSubject) {
         const categoryToSubject: Record<SubjectCategory, string> = {
           math:    "algebra",
@@ -143,16 +219,14 @@ export default function OnboardingScreen() {
       if (Object.keys(patch).length > 0) {
         await AsyncStorage.setItem(TUTOR_SETTINGS_KEY, JSON.stringify({ ...existing, ...patch }));
       }
-    } catch { /* non-critical — ignore */ }
+    } catch { /* non-critical */ }
   };
 
   const finishOnboardingAndShowPaywall = async () => {
     H.notificationSuccess();
     await AsyncStorage.setItem(ONBOARDING_DONE_KEY, "true");
     await persistOnboardingChoices();
-    // Replace to home first, then push paywall so dismissing paywall lands on home
     router.replace("/(tabs)" as any);
-    // Small delay so the tab navigator is mounted before pushing the modal
     setTimeout(() => {
       router.push("/paywall" as any);
     }, 300);
@@ -166,7 +240,7 @@ export default function OnboardingScreen() {
   };
 
   const toggleCategory = (cat: SubjectCategory) => {
-    H.impactLight()
+    H.impactLight();
     setSelectedCategories((prev) => {
       const next = new Set(prev);
       if (next.has(cat)) next.delete(cat);
@@ -177,255 +251,338 @@ export default function OnboardingScreen() {
 
   const handleScroll = (e: { nativeEvent: { contentOffset: { x: number } } }) => {
     const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
-    if (idx !== currentSlide) setCurrentSlide(idx);
+    if (idx !== currentSlide) {
+      setCurrentSlide(idx);
+      animateDot(idx);
+    }
   };
 
+  const currentGradient = SLIDE_GRADIENTS[SLIDES[currentSlide]?.id] ?? ["#0a7ea420", "#0a7ea405"];
+
   return (
-    <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]} edges={["top", "bottom", "left", "right"]}>
-      {/* Skip button */}
-      <TouchableOpacity
-        style={styles.skipBtn}
-        onPress={finishOnboarding}
-        activeOpacity={0.7}
-        accessibilityLabel="Skip onboarding"
-        accessibilityRole="button"
-      >
-        <Text style={[styles.skipText, { color: colors.muted }]}>Skip</Text>
-      </TouchableOpacity>
+    <LinearGradient
+      colors={[currentGradient[0], currentGradient[1], "transparent"]}
+      style={styles.gradientRoot}
+    >
+      <SafeAreaView style={[styles.root, { backgroundColor: "transparent" }]} edges={["top", "bottom", "left", "right"]}>
+        {/* Skip button */}
+        <TouchableOpacity
+          style={styles.skipBtn}
+          onPress={finishOnboarding}
+          activeOpacity={0.7}
+          accessibilityLabel="Skip onboarding"
+          accessibilityRole="button"
+        >
+          <Text style={[styles.skipText, { color: colors.muted }]}>Skip</Text>
+        </TouchableOpacity>
 
-      {/* Slides */}
-      <ScrollView
-        ref={scrollRef}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        scrollEventThrottle={16}
-        onMomentumScrollEnd={handleScroll}
-        style={{ flex: 1 }}
-        contentContainerStyle={{ alignItems: "center" }}
-      >
-        {SLIDES.map((slide, _idx) => (
-          <View key={slide.id} style={[styles.slide, { width: SCREEN_WIDTH }]}>
-            {/* Emoji illustration */}
-            <View style={[styles.emojiCircle, { backgroundColor: slide.id === "trial" ? "#F59E0B18" : `${colors.primary}15` }]}>
-              <Text style={styles.emojiText}>{slide.emoji}</Text>
-            </View>
+        {/* Slide counter */}
+        <Text style={[styles.slideCounter, { color: colors.muted }]}>
+          {currentSlide + 1} / {SLIDES.length}
+        </Text>
 
-            <Text style={[styles.slideTitle, { color: colors.foreground }]}>{slide.title}</Text>
-            <Text style={[styles.slideSubtitle, { color: colors.muted }]}>{slide.subtitle}</Text>
+        {/* Slides */}
+        <ScrollView
+          ref={scrollRef}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          scrollEventThrottle={16}
+          onMomentumScrollEnd={handleScroll}
+          style={{ flex: 1 }}
+          contentContainerStyle={{ alignItems: "center" }}
+        >
+          {SLIDES.map((slide) => (
+            <View key={slide.id} style={[styles.slide, { width: SCREEN_WIDTH }]}>
+              {/* Emoji or avatar illustration */}
+              {slide.id === "photo" && avatarUri ? (
+                <TouchableOpacity onPress={handlePickPhoto} activeOpacity={0.85} style={styles.avatarCircle}>
+                  <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
+                  <View style={[styles.avatarEditBadge, { backgroundColor: colors.primary }]}>
+                    <Text style={styles.avatarEditIcon}>✎</Text>
+                  </View>
+                </TouchableOpacity>
+              ) : (
+                <View style={[styles.emojiCircle, { backgroundColor: (SLIDE_GRADIENTS[slide.id]?.[0] ?? `${colors.primary}15`) }]}>
+                  <Text style={styles.emojiText}>{slide.emoji}</Text>
+                </View>
+              )}
 
-            {/* Name input on name slide */}
-            {slide.id === "name" && (
-              <View style={{ width: "100%", marginTop: 32 }}>
-                <TextInput
-                  value={userName}
-                  onChangeText={setUserName}
-                  placeholder="Your first name"
-                  placeholderTextColor={colors.muted}
-                  returnKeyType="done"
-                  maxLength={40}
-                  autoFocus
-                  accessibilityLabel="Enter your first name"
-                  style={[styles.nameInput, { color: colors.foreground, backgroundColor: colors.surface, borderColor: userName.trim() ? colors.primary : colors.border }]}
-                />
-                {userName.trim().length > 0 && (
-                  <Text style={[styles.nameHint, { color: colors.muted }]}>Hi, {userName.trim()}! 👋</Text>
-                )}
-              </View>
-            )}
+              <Text style={[styles.slideTitle, { color: colors.foreground }]}>{slide.title}</Text>
+              <Text style={[styles.slideSubtitle, { color: colors.muted }]}>{slide.subtitle}</Text>
 
-            {/* Subject category picker on subjects slide */}
-            {slide.id === "subjects" && (
-              <View style={styles.categoryGrid}>
-                {CATEGORY_ORDER.map((cat) => {
-                  const def = SUBJECT_CATEGORIES[cat];
-                  const selected = selectedCategories.has(cat);
-                  return (
-                    <TouchableOpacity
-                      key={cat}
-                      onPress={() => toggleCategory(cat)}
-                      activeOpacity={0.8}
-                      accessibilityLabel={`${selected ? 'Deselect' : 'Select'} ${def.label} category`}
-                      accessibilityRole="checkbox"
-                      accessibilityState={{ checked: selected }}
-                      style={[
-                        styles.categoryCard,
-                        {
-                          backgroundColor: selected ? `${def.color}20` : colors.surface,
-                          borderColor: selected ? def.color : colors.border,
-                        },
-                      ]}
-                    >
-                      <Text style={styles.categoryEmoji}>{def.emoji}</Text>
-                      <Text
+              {/* Name input */}
+              {slide.id === "name" && (
+                <View style={{ width: "100%", marginTop: 32 }}>
+                  <TextInput
+                    value={userName}
+                    onChangeText={setUserName}
+                    placeholder="Your first name"
+                    placeholderTextColor={colors.muted}
+                    returnKeyType="done"
+                    maxLength={40}
+                    autoFocus
+                    accessibilityLabel="Enter your first name"
+                    style={[styles.nameInput, { color: colors.foreground, backgroundColor: colors.surface, borderColor: userName.trim() ? colors.primary : colors.border }]}
+                  />
+                  {userName.trim().length > 0 && (
+                    <Text style={[styles.nameHint, { color: colors.muted }]}>Hi, {userName.trim()}! 👋</Text>
+                  )}
+                </View>
+              )}
+
+              {/* Photo upload step */}
+              {slide.id === "photo" && (
+                <View style={styles.photoPickerArea}>
+                  {!avatarUri ? (
+                    <>
+                      <TouchableOpacity
+                        onPress={handlePickPhoto}
+                        activeOpacity={0.85}
+                        style={[styles.photoBtn, { backgroundColor: colors.primary }]}
+                        accessibilityLabel="Choose from library"
+                      >
+                        <Text style={styles.photoBtnText}>📷  Choose from Library</Text>
+                      </TouchableOpacity>
+                      {Platform.OS !== "web" && (
+                        <TouchableOpacity
+                          onPress={handleTakePhoto}
+                          activeOpacity={0.85}
+                          style={[styles.photoBtn, { backgroundColor: colors.surface, borderWidth: 1.5, borderColor: colors.border }]}
+                          accessibilityLabel="Take a photo"
+                        >
+                          <Text style={[styles.photoBtnText, { color: colors.foreground }]}>📸  Take a Photo</Text>
+                        </TouchableOpacity>
+                      )}
+                      <TouchableOpacity
+                        onPress={goNext}
+                        activeOpacity={0.7}
+                        style={styles.skipPhotoBtn}
+                        accessibilityLabel="Skip photo"
+                      >
+                        <Text style={[styles.skipPhotoText, { color: colors.muted }]}>Skip for now</Text>
+                      </TouchableOpacity>
+                    </>
+                  ) : (
+                    <View style={styles.photoConfirmArea}>
+                      <Text style={[styles.photoConfirmText, { color: colors.success }]}>
+                        ✓ Photo added!
+                      </Text>
+                      <TouchableOpacity
+                        onPress={handlePickPhoto}
+                        activeOpacity={0.7}
+                        style={styles.skipPhotoBtn}
+                      >
+                        <Text style={[styles.skipPhotoText, { color: colors.muted }]}>Change photo</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+              )}
+
+              {/* Subject category picker */}
+              {slide.id === "subjects" && (
+                <View style={styles.categoryGrid}>
+                  {CATEGORY_ORDER.map((cat) => {
+                    const def = SUBJECT_CATEGORIES[cat];
+                    const selected = selectedCategories.has(cat);
+                    return (
+                      <TouchableOpacity
+                        key={cat}
+                        onPress={() => toggleCategory(cat)}
+                        activeOpacity={0.8}
+                        accessibilityLabel={`${selected ? "Deselect" : "Select"} ${def.label} category`}
+                        accessibilityRole="checkbox"
+                        accessibilityState={{ checked: selected }}
                         style={[
-                          styles.categoryLabel,
-                          { color: selected ? def.color : colors.foreground },
+                          styles.categoryCard,
+                          {
+                            backgroundColor: selected ? `${def.color}20` : colors.surface,
+                            borderColor: selected ? def.color : colors.border,
+                          },
                         ]}
                       >
-                        {def.label}
-                      </Text>
-                      {selected && (
-                        <View style={[styles.checkBadge, { backgroundColor: def.color }]}>
-                          <Text style={styles.checkText}>✓</Text>
-                        </View>
-                      )}
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            )}
+                        <Text style={styles.categoryEmoji}>{def.emoji}</Text>
+                        <Text style={[styles.categoryLabel, { color: selected ? def.color : colors.foreground }]}>
+                          {def.label}
+                        </Text>
+                        {selected && (
+                          <View style={[styles.checkBadge, { backgroundColor: def.color }]}>
+                            <Text style={styles.checkText}>✓</Text>
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              )}
 
-            {/* Grade level picker on grade slide */}
-            {slide.id === "grade" && (
-              <ScrollView
-                style={{ width: "100%", marginTop: 20 }}
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ gap: 8, paddingBottom: 8 }}
-              >
-                {GRADE_OPTIONS.map((opt) => {
-                  const isActive = selectedGrade === opt.id;
-                  return (
-                    <TouchableOpacity
-                      key={opt.id}
-                      onPress={() => { H.impactLight(); setSelectedGrade(opt.id); }}
-                      activeOpacity={0.8}
-                      accessibilityLabel={opt.label}
-                      accessibilityRole="radio"
-                      accessibilityState={{ checked: isActive }}
-                      style={[
-                        styles.gradeCard,
-                        {
-                          backgroundColor: isActive ? `${colors.primary}15` : colors.surface,
-                          borderColor: isActive ? colors.primary : colors.border,
-                        },
-                      ]}
+              {/* Grade level picker */}
+              {slide.id === "grade" && (
+                <ScrollView
+                  style={{ width: "100%", marginTop: 20 }}
+                  showsVerticalScrollIndicator={false}
+                  contentContainerStyle={{ gap: 8, paddingBottom: 8 }}
+                >
+                  {GRADE_OPTIONS.map((opt) => {
+                    const isActive = selectedGrade === opt.id;
+                    return (
+                      <TouchableOpacity
+                        key={opt.id}
+                        onPress={() => { H.impactLight(); setSelectedGrade(opt.id); }}
+                        activeOpacity={0.8}
+                        accessibilityLabel={opt.label}
+                        accessibilityRole="radio"
+                        accessibilityState={{ checked: isActive }}
+                        style={[
+                          styles.gradeCard,
+                          {
+                            backgroundColor: isActive ? `${colors.primary}15` : colors.surface,
+                            borderColor: isActive ? colors.primary : colors.border,
+                          },
+                        ]}
+                      >
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.gradeCardLabel, { color: isActive ? colors.primary : colors.foreground }]}>{opt.label}</Text>
+                          <Text style={[styles.gradeCardSub, { color: colors.muted }]}>{opt.sub}</Text>
+                        </View>
+                        {isActive && (
+                          <View style={[styles.gradeCheck, { backgroundColor: colors.primary }]}>
+                            <Text style={styles.gradeCheckText}>✓</Text>
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+              )}
+
+              {/* Tutor personality preview */}
+              {slide.id === "tutor-preview" && (
+                <View style={{ width: "100%", marginTop: 24, gap: 12 }}>
+                  {[
+                    {
+                      emoji: "🎓",
+                      label: "Grade",
+                      value: selectedGrade
+                        ? GRADE_OPTIONS.find((g) => g.id === selectedGrade)?.label ?? selectedGrade
+                        : "Not set - you can change this anytime",
+                    },
+                    {
+                      emoji: "📚",
+                      label: "Subjects",
+                      value: selectedCategories.size > 0
+                        ? Array.from(selectedCategories).map((c) => SUBJECT_CATEGORIES[c]?.label).join(", ")
+                        : "All subjects",
+                    },
+                    {
+                      emoji: "💬",
+                      label: "Tone",
+                      value: "Friendly & encouraging",
+                    },
+                    {
+                      emoji: "🔢",
+                      label: "Style",
+                      value: "Step-by-step with full working shown",
+                    },
+                    {
+                      emoji: "🌍",
+                      label: "Language",
+                      value: "English (change in Tutor Settings)",
+                    },
+                  ].map((row) => (
+                    <View
+                      key={row.label}
+                      style={[styles.previewRow, { backgroundColor: colors.surface, borderColor: colors.border }]}
                     >
+                      <Text style={styles.previewEmoji}>{row.emoji}</Text>
                       <View style={{ flex: 1 }}>
-                        <Text style={[styles.gradeCardLabel, { color: isActive ? colors.primary : colors.foreground }]}>{opt.label}</Text>
-                        <Text style={[styles.gradeCardSub, { color: colors.muted }]}>{opt.sub}</Text>
+                        <Text style={[styles.previewLabel, { color: colors.muted }]}>{row.label}</Text>
+                        <Text style={[styles.previewValue, { color: colors.foreground }]}>{row.value}</Text>
                       </View>
-                      {isActive && (
-                        <View style={[styles.gradeCheck, { backgroundColor: colors.primary }]}>
-                          <Text style={styles.gradeCheckText}>✓</Text>
-                        </View>
-                      )}
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-            )}
-
-            {/* Tutor personality preview slide */}
-            {slide.id === "tutor-preview" && (
-              <View style={{ width: "100%", marginTop: 24, gap: 12 }}>
-                {[
-                  {
-                    emoji: "🎓",
-                    label: "Grade",
-                    value: selectedGrade
-                      ? GRADE_OPTIONS.find((g) => g.id === selectedGrade)?.label ?? selectedGrade
-                      : "Not set - you can change this anytime",
-                  },
-                  {
-                    emoji: "📚",
-                    label: "Subjects",
-                    value: selectedCategories.size > 0
-                      ? Array.from(selectedCategories).map((c) => SUBJECT_CATEGORIES[c]?.label).join(", ")
-                      : "All subjects",
-                  },
-                  {
-                    emoji: "💬",
-                    label: "Tone",
-                    value: "Friendly & encouraging",
-                  },
-                  {
-                    emoji: "🔢",
-                    label: "Style",
-                    value: "Step-by-step with full working shown",
-                  },
-                  {
-                    emoji: "🌍",
-                    label: "Language",
-                    value: "English (change in Tutor Settings)",
-                  },
-                ].map((row) => (
-                  <View
-                    key={row.label}
-                    style={[styles.previewRow, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                  >
-                    <Text style={styles.previewEmoji}>{row.emoji}</Text>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.previewLabel, { color: colors.muted }]}>{row.label}</Text>
-                      <Text style={[styles.previewValue, { color: colors.foreground }]}>{row.value}</Text>
                     </View>
-                  </View>
-                ))}
-                <Text style={[styles.previewHint, { color: colors.muted }]}>
-                  You can fine-tune all of this in Tutor Settings inside the chat.
-                </Text>
-              </View>
-            )}
+                  ))}
+                  <Text style={[styles.previewHint, { color: colors.muted }]}>
+                    You can fine-tune all of this in Tutor Settings inside the chat.
+                  </Text>
+                </View>
+              )}
 
-            {/* Trial slide feature list */}
-            {slide.id === "trial" && (
-              <View style={styles.trialFeatureList}>
-                {[
-                  { emoji: "♾️", text: "Unlimited solves, quizzes & AI chat" },
-                  { emoji: "📸", text: "Photo homework solver" },
-                  { emoji: "🧠", text: "Step-by-step explanations" },
-                  { emoji: "📈", text: "Progress tracking & streaks" },
-                  { emoji: "🎖️", text: "14-day free trial, cancel anytime" },
-                ].map((item) => (
-                  <View key={item.text} style={styles.trialFeatureRow}>
-                    <Text style={styles.trialFeatureEmoji}>{item.emoji}</Text>
-                    <Text style={[styles.trialFeatureText, { color: colors.foreground }]}>{item.text}</Text>
-                  </View>
-                ))}
-                <Text style={[styles.trialPriceNote, { color: colors.muted }]}>
-                  Then $9.99/mo or $69.99/yr · Cancel anytime
-                </Text>
-              </View>
-            )}
-          </View>
-        ))}
-      </ScrollView>
+              {/* Trial slide */}
+              {slide.id === "trial" && (
+                <View style={styles.trialFeatureList}>
+                  {[
+                    { emoji: "♾️", text: "Unlimited solves, quizzes & AI chat" },
+                    { emoji: "📸", text: "Photo homework solver" },
+                    { emoji: "🧠", text: "Step-by-step explanations" },
+                    { emoji: "📈", text: "Progress tracking & streaks" },
+                    { emoji: "🎖️", text: "14-day free trial, cancel anytime" },
+                  ].map((item) => (
+                    <View key={item.text} style={styles.trialFeatureRow}>
+                      <Text style={styles.trialFeatureEmoji}>{item.emoji}</Text>
+                      <Text style={[styles.trialFeatureText, { color: colors.foreground }]}>{item.text}</Text>
+                    </View>
+                  ))}
+                  <Text style={[styles.trialPriceNote, { color: colors.muted }]}>
+                    Then $9.99/mo or $69.99/yr · Cancel anytime
+                  </Text>
+                </View>
+              )}
+            </View>
+          ))}
+        </ScrollView>
 
-      {/* Dot indicators */}
-      <View style={styles.dotsRow}>
-        {SLIDES.map((_, idx) => (
-          <View
-            key={idx}
-            style={[
-              styles.dot,
-              {
-                backgroundColor:
-                  idx === currentSlide ? colors.primary : `${colors.primary}30`,
-                width: idx === currentSlide ? 24 : 8,
-              },
-            ]}
-          />
-        ))}
-      </View>
+        {/* Animated dot indicators */}
+        <View style={styles.dotsRow}>
+          {SLIDES.map((_, idx) => {
+            const isActive = idx === currentSlide;
+            return (
+              <TouchableOpacity
+                key={idx}
+                onPress={() => {
+                  H.impactLight();
+                  setCurrentSlide(idx);
+                  animateDot(idx);
+                  scrollRef.current?.scrollTo({ x: idx * SCREEN_WIDTH, animated: true });
+                }}
+                activeOpacity={0.7}
+                accessibilityLabel={`Go to slide ${idx + 1}`}
+              >
+                <View
+                  style={[
+                    styles.dot,
+                    {
+                      backgroundColor: isActive ? colors.primary : `${colors.primary}30`,
+                      width: isActive ? 24 : 8,
+                    },
+                  ]}
+                />
+              </TouchableOpacity>
+            );
+          })}
+        </View>
 
-      {/* CTA button */}
-      <TouchableOpacity
-        onPress={goNext}
-        activeOpacity={0.85}
-        style={[styles.ctaButton, { backgroundColor: colors.primary }]}
-        accessibilityLabel={isLastSlide ? "Get Started" : "Next slide"}
-        accessibilityRole="button"
-      >
-        <Text style={styles.ctaText}>
-          {isLastSlide ? "Start Free Trial" : "Next"}
-        </Text>
-      </TouchableOpacity>
-
-    </SafeAreaView>
+        {/* CTA button — hide on photo slide when no photo (Skip for now is the CTA) */}
+        {!(SLIDES[currentSlide]?.id === "photo" && !avatarUri) && (
+          <TouchableOpacity
+            onPress={goNext}
+            activeOpacity={0.85}
+            style={[styles.ctaButton, { backgroundColor: colors.primary }]}
+            accessibilityLabel={isLastSlide ? "Get Started" : "Next slide"}
+            accessibilityRole="button"
+          >
+            <Text style={styles.ctaText}>
+              {isLastSlide ? "Start Free Trial" : "Next"}
+            </Text>
+          </TouchableOpacity>
+        )}
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
+  gradientRoot: { flex: 1 },
   root: { flex: 1 },
   skipBtn: {
     position: "absolute",
@@ -435,6 +592,14 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   skipText: { fontSize: 15, fontWeight: "600" },
+  slideCounter: {
+    position: "absolute",
+    top: 60,
+    left: 24,
+    zIndex: 10,
+    fontSize: 13,
+    fontWeight: "600",
+  },
   slide: {
     alignItems: "center",
     justifyContent: "center",
@@ -451,6 +616,32 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   emojiText: { fontSize: 56 },
+  avatarCircle: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    marginBottom: 32,
+    position: "relative",
+    overflow: "visible",
+  },
+  avatarImage: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+  },
+  avatarEditBadge: {
+    position: "absolute",
+    bottom: 2,
+    right: 2,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#fff",
+  },
+  avatarEditIcon: { color: "#fff", fontSize: 14, fontWeight: "700" },
   slideTitle: {
     fontSize: 28,
     fontWeight: "800",
@@ -462,6 +653,42 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: "center",
     lineHeight: 24,
+  },
+  photoPickerArea: {
+    width: "100%",
+    marginTop: 32,
+    gap: 12,
+    alignItems: "center",
+  },
+  photoBtn: {
+    width: "100%",
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: "center",
+  },
+  photoBtnText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  skipPhotoBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    marginTop: 4,
+  },
+  skipPhotoText: {
+    fontSize: 14,
+    fontWeight: "500",
+    textAlign: "center",
+  },
+  photoConfirmArea: {
+    alignItems: "center",
+    gap: 8,
+    marginTop: 8,
+  },
+  photoConfirmText: {
+    fontSize: 17,
+    fontWeight: "700",
   },
   categoryGrid: {
     flexDirection: "row",
@@ -510,9 +737,15 @@ const styles = StyleSheet.create({
   },
   ctaButton: {
     marginHorizontal: 24,
+    marginBottom: 8,
     paddingVertical: 18,
     borderRadius: 18,
     alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
   },
   ctaText: {
     color: "#fff",
