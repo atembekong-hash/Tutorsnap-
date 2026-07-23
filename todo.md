@@ -791,3 +791,8 @@
 - [x] Render StudyViewRenderer when viewMode === "study"
 - [x] Add toggleStyles StyleSheet to chat.tsx
 - [x] TypeScript: 0 errors, all 33 tests passing
+
+## Study View Enhancements
+- [x] Add Save to Notes button to each StudyBlockCard
+- [x] Add Auto Study View toggle to Tutor Settings
+- [x] Wire auto-switch logic in chat.tsx after AI response

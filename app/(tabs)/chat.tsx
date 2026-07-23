@@ -1681,6 +1681,11 @@ function ChatScreenContent() {
           aiResponse: accumulated,
           subject: undefined,
         });
+        // Auto Study View: if the setting is enabled, switch to Study View
+        // automatically after each AI response completes
+        if (tutorSettings.autoStudyView) {
+          handleSwitchToStudyView();
+        }
       } catch (err: unknown) {
         const isAbort = err instanceof Error && err.name === "AbortError";
         if (!isAbort) {
@@ -1703,7 +1708,7 @@ function ChatScreenContent() {
         setIsStreaming(false);
       }
     },
-    [persistMessages, suggestFollowUpsMutation, getTypingDelayMs]
+    [persistMessages, suggestFollowUpsMutation, getTypingDelayMs, tutorSettings, handleSwitchToStudyView]
   );
 
   // ── Send ────────────────────────────────────────────────────────────────────
