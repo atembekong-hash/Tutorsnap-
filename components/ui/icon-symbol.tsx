@@ -172,6 +172,7 @@ const MAPPING = {
   "hand.draw.fill": "swipe",
   "text.word.spacing": "text-fields",
   "circle.hexagongrid.fill": "blur-circular",
+  "checkmark.seal.fill": "verified",
 } as unknown as IconMapping;
 
 export function IconSymbol({

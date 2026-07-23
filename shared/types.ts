@@ -66,8 +66,8 @@ export type MathSolution = {
   tips?: string[];
   relatedTopics?: string[];
   workedExample?: WorkedExample;
-  /** Submission-ready final answer — no explanation, no commentary. Copy-paste ready for homework/exam. */
-  finalSolution?: string;
+  /** Independently generated submission-ready answer — complete worked solution as a student would write for marking. */
+  submissionReady?: string;
 };
 
 export type HistoryItem = {
@@ -91,8 +91,8 @@ export type PracticeQuestion = {
   answer: string;
   steps: SolutionStep[];
   hints: string[];
-  /** Submission-ready final answer — no explanation, no commentary. Copy-paste ready for homework/exam. */
-  finalSolution?: string;
+  /** Independently generated submission-ready answer — complete worked solution as a student would write for marking. */
+  submissionReady?: string;
 };
 
 export type ChatMessage = {

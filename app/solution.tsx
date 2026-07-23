@@ -32,7 +32,7 @@ import { createSession, renameSession } from "@/lib/chat-sessions";
 import { APP_URL } from "@/constants/app";
 import { loadGlobalGrade, GRADE_LABELS } from "@/lib/grade-levels";
 import { cleanMathText } from "@/lib/clean-math-text";
-import { FinalSolutionCard } from "@/components/final-solution-card";
+import { SubmissionReadyCard } from "@/components/submission-ready-card";
 
 function StepCard({ step, colors, fs, delay = 0 }: { step: SolutionStep; colors: any; fs: (n: number) => number; delay?: number }) {
   const [expanded, setExpanded] = useState(true);
@@ -1279,8 +1279,8 @@ export default function SolutionScreen() {
         )}
 
         {/* Final Solution Card */}
-        {solution.finalSolution && (
-          <FinalSolutionCard content={solution.finalSolution} fs={fs} />
+        {solution.submissionReady && (
+          <SubmissionReadyCard content={solution.submissionReady} fs={fs} />
         )}
 
         {/* AI Similar Problems */}

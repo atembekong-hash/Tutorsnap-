@@ -1,35 +1,35 @@
 /**
- * FinalSolutionCard
+ * SubmissionReadyCard
  *
- * Displays the submission-ready final answer in a visually distinct card.
- * This is a completely self-contained deliverable — no explanation, no commentary.
- * A student can copy this directly into homework, classwork, or an exam.
+ * Displays the independently generated submission-ready answer.
+ * This is NOT a summary of the explanation above — it is a brand-new,
+ * complete output generated specifically for direct submission.
+ *
+ * A student can skip the entire explanation and use only this card
+ * to submit a correct, complete, polished answer.
  */
 
 import React, { useRef, useState } from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
-import { Platform } from "react-native";
 import { useColors } from "@/hooks/use-colors";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { AIResponseRenderer, AIResponseErrorBoundary } from "@/components/ai-response-renderer";
 
-function H() {}
-H.impactLight = () => {
+function hapticLight() {
   if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-};
-H.notificationSuccess = () => {
+}
+function hapticSuccess() {
   if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-};
+}
 
-interface FinalSolutionCardProps {
+interface SubmissionReadyCardProps {
   content: string;
-  /** Font size scaler, defaults to identity */
   fs?: (n: number) => number;
 }
 
-export function FinalSolutionCard({ content, fs: fsProp }: FinalSolutionCardProps) {
+export function SubmissionReadyCard({ content, fs: fsProp }: SubmissionReadyCardProps) {
   const colors = useColors();
   const fs = fsProp ?? ((n: number) => n);
   const [copied, setCopied] = useState(false);
@@ -41,7 +41,7 @@ export function FinalSolutionCard({ content, fs: fsProp }: FinalSolutionCardProp
     try {
       await Clipboard.setStringAsync(content);
       setCopied(true);
-      H.notificationSuccess();
+      hapticSuccess();
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -49,39 +49,60 @@ export function FinalSolutionCard({ content, fs: fsProp }: FinalSolutionCardProp
     }
   };
 
+  // Accent colour: deep indigo — distinct from the primary purple used elsewhere
+  const ACCENT = "#4F46E5";
+  const ACCENT_BG = `${ACCENT}10`;
+  const ACCENT_BORDER = `${ACCENT}35`;
+  const ACCENT_ICON_BG = `${ACCENT}18`;
+
   return (
-    <View style={[styles.card, { borderColor: "#7C3AED", backgroundColor: "#7C3AED12" }]}>
-      {/* Header */}
+    <View
+      style={[
+        styles.card,
+        { borderColor: ACCENT_BORDER, backgroundColor: ACCENT_BG },
+      ]}
+      accessibilityLabel="Submission Ready answer"
+    >
+      {/* Header row */}
       <View style={styles.header}>
         <View style={styles.labelRow}>
-          <View style={[styles.iconWrap, { backgroundColor: "#7C3AED20" }]}>
-            <IconSymbol size={16} name="checkmark.seal.fill" color="#7C3AED" />
+          <View style={[styles.iconWrap, { backgroundColor: ACCENT_ICON_BG }]}>
+            <IconSymbol size={15} name="checkmark.seal.fill" color={ACCENT} />
           </View>
-          <View>
-            <Text style={[styles.label, { color: "#7C3AED", fontSize: fs(11) }]}>FINAL SOLUTION</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.label, { color: ACCENT, fontSize: fs(11) }]}>
+              SUBMISSION READY
+            </Text>
             <Text style={[styles.sublabel, { color: colors.muted, fontSize: fs(10) }]}>
-              Submission-ready. Copy directly into your work.
+              Independent answer. Copy directly into your work.
             </Text>
           </View>
         </View>
+
         <TouchableOpacity
           onPress={handleCopy}
-          accessibilityLabel="Copy final solution"
-          style={[styles.copyBtn, { backgroundColor: copied ? "#7C3AED20" : "transparent", borderColor: copied ? "#7C3AED50" : "#7C3AED30" }]}
+          accessibilityLabel="Copy submission ready answer"
+          style={[
+            styles.copyBtn,
+            {
+              backgroundColor: copied ? `${ACCENT}18` : "transparent",
+              borderColor: copied ? `${ACCENT}50` : ACCENT_BORDER,
+            },
+          ]}
         >
           <IconSymbol
-            size={14}
+            size={13}
             name={copied ? "checkmark.circle.fill" : "doc.on.doc"}
-            color={copied ? "#7C3AED" : "#7C3AED"}
+            color={ACCENT}
           />
-          <Text style={[styles.copyText, { color: "#7C3AED", fontSize: fs(12) }]}>
+          <Text style={[styles.copyText, { color: ACCENT, fontSize: fs(12) }]}>
             {copied ? "Copied!" : "Copy"}
           </Text>
         </TouchableOpacity>
       </View>
 
       {/* Divider */}
-      <View style={[styles.divider, { backgroundColor: "#7C3AED30" }]} />
+      <View style={[styles.divider, { backgroundColor: ACCENT_BORDER }]} />
 
       {/* Content */}
       <View style={styles.content}>
@@ -108,7 +129,7 @@ const styles = StyleSheet.create({
   card: {
     borderWidth: 1.5,
     borderRadius: 16,
-    marginTop: 16,
+    marginTop: 20,
     overflow: "hidden",
   },
   header: {
@@ -118,6 +139,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingTop: 12,
     paddingBottom: 10,
+    gap: 8,
   },
   labelRow: {
     flexDirection: "row",
@@ -126,18 +148,19 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   iconWrap: {
-    width: 32,
-    height: 32,
+    width: 30,
+    height: 30,
     borderRadius: 8,
     alignItems: "center",
     justifyContent: "center",
   },
   label: {
     fontWeight: "700",
-    letterSpacing: 0.8,
+    letterSpacing: 0.9,
   },
   sublabel: {
     marginTop: 1,
+    lineHeight: 14,
   },
   copyBtn: {
     flexDirection: "row",
@@ -157,7 +180,7 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 14,
-    paddingTop: 10,
-    paddingBottom: 14,
+    paddingTop: 12,
+    paddingBottom: 16,
   },
 });

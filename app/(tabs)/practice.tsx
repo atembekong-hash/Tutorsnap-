@@ -231,7 +231,7 @@ function PracticeScreenContent() {
           subject: currentQuestion.subject,
           answer: currentQuestion.answer,
           steps: currentQuestion.steps,
-          ...(currentQuestion.finalSolution ? { finalSolution: currentQuestion.finalSolution } : {}),
+          ...(currentQuestion.submissionReady ? { submissionReady: currentQuestion.submissionReady } : {}),
         }),
       },
     });

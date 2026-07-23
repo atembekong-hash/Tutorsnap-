@@ -765,3 +765,17 @@
 - [x] Integrate FinalSolutionCard into solution.tsx (Solve + Practice tabs)
 - [x] Pass finalSolution field through practice.tsx handleViewSolution
 - [x] Integrate FinalSolutionCard into chat.tsx MessageBubble (AI Tutor tab)
+
+## Submission Ready Architecture (Full Rebuild)
+- [x] Remove finalSolution field from prompts (was a summary, not a separate output)
+- [x] Remove ---FINAL_SOLUTION_START/END--- delimiters from chat system prompt
+- [x] Remove old FinalSolutionCard component
+- [x] Add submissionReady field to MathSolution and PracticeQuestion types
+- [x] Redesign solve/image-solve prompts: submissionReady is a brand-new independent output, not derived from the explanation
+- [x] Redesign practice prompt: same submissionReady independence requirement
+- [x] Redesign AI Tutor chat prompt: append ===SUBMISSION_READY_START=== / ===SUBMISSION_READY_END=== delimiters with a fully independent second output
+- [x] Build SubmissionReadyCard component (distinct design, copy button, subject-adaptive content)
+- [x] Wire SubmissionReadyCard into solution.tsx (Solve + Practice tabs)
+- [x] Pass submissionReady through practice.tsx handleViewSolution
+- [x] Wire SubmissionReadyCard into chat.tsx MessageBubble (AI Tutor tab)
+- [x] TypeScript: 0 errors

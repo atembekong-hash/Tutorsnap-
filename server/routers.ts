@@ -72,7 +72,13 @@ CRITICAL RULES:
 - The answer field must be a FULL paragraph (7-10 sentences) restating the result, interpreting it, and noting any important caveats or special cases.
 - Tips must be detailed, actionable, and specific (6-8 sentences each). Include at least 6 tips.
 - The workedExample.solution must be a LONG narrative (at least 450 words) walking through every single step.
-- The finalSolution field is CRITICAL. It must be a completely self-contained, submission-ready answer that a student can copy directly into homework, classwork, or an exam. Rules: (1) NO explanation, NO commentary, NO preamble, NO "therefore", NO "we can see that". (2) For mathematics/science: show ONLY the numbered calculation lines from start to finish, with the final answer clearly stated on the last line. (3) For essays/English: provide the complete finished prose answer. (4) For programming: provide only the final code block. (5) For definitions: provide only the concise final definition. A student must be able to ignore the entire explanation above and use ONLY this field to submit a correct, complete answer.
+- The submissionReady field is a COMPLETELY INDEPENDENT second output. Do NOT summarise, condense, or extract from the explanation above. Generate it fresh from scratch as if you were writing only the answer a student would hand in. Rules by subject type:
+  * Mathematics / Physics / Chemistry / Statistics: Write the complete worked solution exactly as a student would present it for marking. Show every calculation step on its own numbered line. Include all formula substitutions, intermediate values with units, and state the final answer clearly on the last line. No prose, no commentary, no "therefore" or "we can see that".
+  * Programming / Computer Science: Provide only the final production-ready code. No explanation, no inline comments beyond what the code itself requires.
+  * Essays / English / History / Social Studies: Write the complete, polished final response as if submitting it. Full sentences, proper paragraphs, no notes or meta-commentary.
+  * Definitions / Vocabulary: Write only the concise, precise final definition.
+  * Multiple Choice: State the correct option letter and answer, then include only the essential supporting calculation or one-line justification if needed.
+  This field must be completely self-contained. A student must be able to skip the entire explanation above, read ONLY this field, and have everything needed to submit a correct, complete, polished answer.
 
 FORMATTING RULES (CRITICAL - FOLLOW EXACTLY):
 - ALL mathematical expressions MUST be wrapped in LaTeX delimiters: $...$ for inline math, $$...$$ for block math.
@@ -110,7 +116,7 @@ Always respond with valid JSON in this exact format:
     "Detailed tip 6: specific, actionable, 6-8 sentences"
   ],
   "relatedTopics": ["Topic 1", "Topic 2", "Topic 3", "Topic 4", "Topic 5", "Topic 6"],
-  "finalSolution": "Submission-ready answer only. For maths/science: numbered calculation lines from start to finish, final boxed answer on last line. For essays: complete finished prose. For code: final code block only. For definitions: concise final definition. NO explanation, NO commentary, NO preamble."
+  "submissionReady": "[INDEPENDENTLY GENERATED — not a summary of the above] Complete worked solution as a student would write for submission. Maths/science: numbered calculation lines, all substitutions, units, final answer on last line. Programming: final code only. Essays: complete polished prose. Definitions: concise precise definition. Multiple choice: correct option + essential supporting work only. NO explanatory prose, NO commentary, NO preamble."
 }`;
 }
 
@@ -157,7 +163,7 @@ Always respond with valid JSON in this exact format:
   "conceptExplained": "A LONG, RICH paragraph (10-15 sentences): underlying theory, historical context or motivation, formal definition, intuitive explanation, when the concept applies, common pitfalls, and connections to at least 3 related topics.",
   "tips": ["Detailed tip 1: 4-6 sentences", "Detailed tip 2: 4-6 sentences", "Detailed tip 3: 4-6 sentences", "Detailed tip 4: 4-6 sentences"],
   "relatedTopics": ["Topic 1", "Topic 2", "Topic 3", "Topic 4", "Topic 5"],
-  "finalSolution": "Submission-ready answer only. For maths/science: numbered calculation lines from start to finish, final answer on last line. For essays: complete finished prose. For code: final code block only. For definitions: concise final definition. NO explanation, NO commentary, NO preamble."
+  "submissionReady": "[INDEPENDENTLY GENERATED — not a summary of the above] Complete worked solution as a student would write for submission. Maths/science: numbered calculation lines, all substitutions, units, final answer on last line. Programming: final code only. Essays: complete polished prose. Definitions: concise precise definition. Multiple choice: correct option + essential supporting work only. NO explanatory prose, NO commentary, NO preamble."
 }`;
 
 // ─── Complexity detector ─────────────────────────────────────────────────────
@@ -278,9 +284,9 @@ function buildPracticePrompt(subject: string, difficulty: string): string {
   return `You are TutorSnap, an expert academic tutor. Generate ONE ${difficulty} ${taskType} for: ${subject}.
 The "answer" field must be a FULL PARAGRAPH (4-6 sentences) explaining the complete solution.
 The "steps" array must have AT LEAST 5-8 steps, each with a detailed explanation (3-5 sentences).
-The "finalSolution" field is CRITICAL. It must be a completely self-contained, submission-ready answer: for maths/science show ONLY numbered calculation lines from start to finish with the final answer on the last line; for essays provide the complete finished prose; for code provide only the final code block; for definitions provide only the concise definition. NO explanation, NO commentary, NO preamble.
+The "submissionReady" field is a COMPLETELY INDEPENDENT second output. Do NOT summarise or extract from the explanation. Generate it fresh as if writing only the answer a student would hand in. Maths/science: numbered calculation lines, all substitutions, units, final answer on last line. Programming: final code only. Essays: complete polished prose. Definitions: concise precise definition. Multiple choice: correct option + essential supporting work only. NO prose commentary, NO preamble.
 Respond ONLY with this JSON (no extra text):
-{"id":"p1","subject":"${subject}","difficulty":"${difficulty}","problem":"<question>","answer":"<full paragraph answer, 4-6 sentences>","steps":[{"stepNumber":1,"title":"<descriptive title>","explanation":"<detailed explanation, 3-5 sentences>","expression":"<formula if any>"}],"hints":["<hint 1, 1-2 sentences>","<hint 2, 1-2 sentences>","<hint 3, 1-2 sentences>"],"finalSolution":"<submission-ready answer only, no explanation>"}`;
+{"id":"p1","subject":"${subject}","difficulty":"${difficulty}","problem":"<question>","answer":"<full paragraph answer, 4-6 sentences>","steps":[{"stepNumber":1,"title":"<descriptive title>","explanation":"<detailed explanation, 3-5 sentences>","expression":"<formula if any>"}],"hints":["<hint 1, 1-2 sentences>","<hint 2, 1-2 sentences>","<hint 3, 1-2 sentences>"],"submissionReady":"<independently generated submission answer>"}`;
 }
 
 // ─── Helper ───────────────────────────────────────────────────────────────────

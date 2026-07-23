@@ -109,7 +109,7 @@ import { fetch as expoFetch } from "expo/fetch";
 import { scheduleDailyReminder, cancelDailyReminder, scheduleSessionSummaryNotification } from "@/lib/notifications";
 import { pinDefinition, readGlossary, unpinDefinition, clearGlossary, type GlossaryEntry } from "@/lib/glossary";
 import { cleanMathText } from "@/lib/clean-math-text";
-import { FinalSolutionCard } from "@/components/final-solution-card";
+import { SubmissionReadyCard } from "@/components/submission-ready-card";
 
 function getAppearanceSubjectKey(subjectId: string | null): string {
   if (!subjectId) return "Mathematics";
@@ -555,18 +555,18 @@ function MessageBubble({
     );
   }
 
-  // Split content into Teaching Mode and Final Solution
-  const START_TAG = "---FINAL_SOLUTION_START---";
-  const END_TAG = "---FINAL_SOLUTION_END---";
+  // Split content into Learn (Teaching Mode) and Submission Ready sections
+  const START_TAG = "===SUBMISSION_READY_START===";
+  const END_TAG = "===SUBMISSION_READY_END===";
   const startIdx = message.content.indexOf(START_TAG);
   const endIdx = message.content.indexOf(END_TAG);
-  const hasFinalSolution = !streaming && startIdx !== -1;
-  const teachingContent = hasFinalSolution
+  const hasSubmissionReady = !streaming && startIdx !== -1;
+  const teachingContent = hasSubmissionReady
     ? message.content.slice(0, startIdx).trim()
     : message.content;
-  const finalSolutionContent = hasFinalSolution && endIdx !== -1
+  const submissionReadyContent = hasSubmissionReady && endIdx !== -1
     ? message.content.slice(startIdx + START_TAG.length, endIdx).trim()
-    : hasFinalSolution
+    : hasSubmissionReady
     ? message.content.slice(startIdx + START_TAG.length).trim()
     : "";
 
@@ -623,9 +623,9 @@ function MessageBubble({
               <CopyButton content={teachingContent} colors={colors} fs={fs} />
             )}
           </View>
-          {/* Final Solution Card — rendered outside the TouchableOpacity tap zone */}
-          {hasFinalSolution && finalSolutionContent.length > 0 && (
-            <FinalSolutionCard content={finalSolutionContent} fs={fs} />
+          {/* Submission Ready Card — independently generated, submission-optimised answer */}
+          {hasSubmissionReady && submissionReadyContent.length > 0 && (
+            <SubmissionReadyCard content={submissionReadyContent} fs={fs} />
           )}
           </View>
         </View>
