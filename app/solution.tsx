@@ -283,6 +283,14 @@ export default function SolutionScreen() {
       if (markdownPreviewTimerRef.current) clearTimeout(markdownPreviewTimerRef.current);
     };
   }, []);
+  const scrollRef = useRef<InstanceType<typeof ScrollView>>(null);
+  const submissionReadyYRef = useRef(0);
+
+  const handleJumpToSubmission = () => {
+    H.impactLight();
+    scrollRef.current?.scrollTo({ y: submissionReadyYRef.current - 16, animated: true });
+  };
+
   const generateSimilarMutation = trpc.math.generateSimilar.useMutation({
     onSuccess: (data) => {
       if (data.problems?.length > 0) {
@@ -1061,7 +1069,24 @@ export default function SolutionScreen() {
         </View>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+      <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+        {/* Jump to Submission Ready anchor button */}
+        {solution?.submissionReady && (
+          <TouchableOpacity
+            accessibilityLabel="Jump to Submission Ready"
+            onPress={handleJumpToSubmission}
+            activeOpacity={0.8}
+            style={[
+              styles.jumpToSubmissionBtn,
+              { backgroundColor: `#6366f120`, borderColor: `#6366f140` },
+            ]}
+          >
+            <Text style={{ fontSize: 14 }}>📋</Text>
+            <Text style={[styles.jumpToSubmissionText, { color: '#6366f1', fontSize: fs(13) }]}>Jump to Submission Ready</Text>
+            <IconSymbol size={14} name="chevron.right" color="#6366f1" />
+          </TouchableOpacity>
+        )}
+
         {/* Subject Badge + Grade Level Badge + Bookmark indicator */}
         <View style={styles.badgeRow}>
           <View style={[styles.subjectBadge, { backgroundColor: `${subjectColor}20` }]}>
@@ -1280,7 +1305,9 @@ export default function SolutionScreen() {
 
         {/* Final Solution Card */}
         {solution.submissionReady && (
-          <SubmissionReadyCard content={solution.submissionReady} fs={fs} />
+          <View onLayout={(e) => { submissionReadyYRef.current = e.nativeEvent.layout.y; }}>
+            <SubmissionReadyCard content={solution.submissionReady} fs={fs} />
+          </View>
         )}
 
         {/* AI Similar Problems */}
@@ -1800,4 +1827,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   inviteShareBtnText: { fontSize: 14, fontWeight: "600" },
+  jumpToSubmissionBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 4,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  jumpToSubmissionText: {
+    flex: 1,
+    fontWeight: "600",
+  },
 });
