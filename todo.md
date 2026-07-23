@@ -750,3 +750,8 @@
 - [x] A4: Fix EAS Android production AAB build failure — generated package-lock.json (lockfileVersion 3), added legacy-peer-deps=true to .npmrc, confirmed eas.json production profile has buildType: app-bundle
 - [x] A5: Fix Google Sign-In DEVELOPER_ERROR on Play Store — added App Signing SHA-1 to Firebase + Google Cloud OAuth client, updated google-services.json, rebuilt AAB (versionCode 5)
 - [x] AUTH1: Fix auth flash on cold start — AuthGuard component added to root layout, blocks navigation until AuthContext.isLoading resolves, shows themed background while loading
+
+## Auth Flow Bug Fixes (Post-APK Testing)
+- [x] Fix onboarding appearing before auth screen on fresh install — gate onboarding check on isSignedIn being true
+- [x] Fix re-opening app logging user out — isAuthenticated now checks refresh token expiry (30 days) instead of access token expiry (1 hour)
+- [x] Increment versionCode to 6 / buildNumber to 5 for new APK build

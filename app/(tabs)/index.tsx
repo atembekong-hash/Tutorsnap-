@@ -49,6 +49,7 @@ import { loadGlobalGrade, saveGlobalGrade, GRADE_LABELS, GRADE_OPTIONS } from "@
 import { listSessionSummaries, type ChatSessionSummary } from "@/lib/chat-sessions";
 import { Swipeable } from "react-native-gesture-handler";
 import { cleanMathText } from "@/lib/clean-math-text";
+import { useAuth } from "@/lib/auth-context";
 
 function getAppearanceSubjectKey(subjectId: string): string {
   const def = getSubjectDef(subjectId);
@@ -603,8 +604,12 @@ function SolveScreenContent() {
   );
 
   // Auth guard is handled in the root layout via AuthGuard component.
-  // Onboarding check: if user is signed in but hasn't completed onboarding, redirect.
+  // Onboarding check: only redirect to onboarding once the user is confirmed
+  // signed in. Running this unconditionally on mount caused a race where
+  // onboarding appeared before the auth-screen on fresh installs.
+  const { isSignedIn, isLoading: authLoading } = useAuth();
   useEffect(() => {
+    if (authLoading || !isSignedIn) return; // wait until auth is resolved and user is in
     (async () => {
       try {
         const onboardingDone = await AsyncStorage.getItem("@tutorsnap/onboardingDone");
@@ -614,7 +619,7 @@ function SolveScreenContent() {
       } catch { /* ignore */ }
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [authLoading, isSignedIn]);
 
   const solveMutation = trpc.academic.solve.useMutation({
     onSuccess: async (data) => {

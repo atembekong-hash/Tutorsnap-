@@ -276,13 +276,39 @@ export async function logout(): Promise<void> {
 }
 
 /**
- * Check if user is authenticated
+ * Check if the refresh token is expired
+ */
+export async function isRefreshTokenExpired(): Promise<boolean> {
+  try {
+    const expiryStr = Platform.OS === "web"
+      ? localStorage.getItem(REFRESH_EXPIRY_KEY)
+      : await SecureStore.getItemAsync(REFRESH_EXPIRY_KEY);
+
+    if (!expiryStr) return true;
+
+    const expiry = parseInt(expiryStr, 10);
+    return Date.now() >= expiry;
+  } catch (error) {
+    console.error("[Auth] Failed to check refresh token expiry:", error);
+    return true;
+  }
+}
+
+/**
+ * Check if user is authenticated.
+ * Considers the session valid as long as the refresh token has not expired
+ * (30-day window). The access token (1-hour) may be expired on cold start —
+ * that is fine because token-refresh will silently renew it.
  */
 export async function isAuthenticated(): Promise<boolean> {
   try {
     const token = await getAuthToken();
     const user = await getUserInfo();
-    return !!(token && user);
+    if (!token || !user) return false;
+    // Accept the session if the refresh token is still valid (even if the
+    // short-lived access token has expired — it will be refreshed on demand).
+    const refreshExpired = await isRefreshTokenExpired();
+    return !refreshExpired;
   } catch (error) {
     console.error("[Auth] Failed to check authentication:", error);
     return false;
