@@ -51,6 +51,8 @@ import { listSessionSummaries, type ChatSessionSummary } from "@/lib/chat-sessio
 import { Swipeable } from "react-native-gesture-handler";
 import { cleanMathText } from "@/lib/clean-math-text";
 import { useAuth } from "@/lib/auth-context";
+import { StreakMilestoneModal } from "@/components/streak-milestone-modal";
+import { checkStreakMilestone, type MilestoneInfo } from "@/lib/streak-milestones";
 
 function getAppearanceSubjectKey(subjectId: string): string {
   const def = getSubjectDef(subjectId);
@@ -651,6 +653,8 @@ function SolveScreenContent() {
   const undoToastAnim = useRef(new Animated.Value(0)).current; // 0=hidden, 1=visible
   // Recent solves mini-history
   const [recentSolves, setRecentSolves] = useState<HistoryItem[]>([]);
+  // Streak milestone celebration
+  const [streakMilestone, setStreakMilestone] = useState<MilestoneInfo | null>(null);
 
   const loadProgress = async () => {
     const p = await getProgress();
@@ -805,6 +809,11 @@ function SolveScreenContent() {
         if (updatedProgress.streak.todaySolved >= updatedProgress.streak.dailyGoal) {
           await cancelStreakAlert();
         }
+      } catch { /* ignore */ }
+      // Check for streak milestone celebration
+      try {
+        const hit = await checkStreakMilestone(updatedProgress.streak.currentStreak);
+        if (hit) setStreakMilestone(hit);
       } catch { /* ignore */ }
       // Check if a new badge was just earned
       try {
@@ -1560,6 +1569,11 @@ function SolveScreenContent() {
           onClose={() => setPendingBadge(null)}
         />
       )}
+      {/* Streak Milestone Celebration */}
+      <StreakMilestoneModal
+        info={streakMilestone}
+        onDismiss={() => setStreakMilestone(null)}
+      />
       {/* Cheat Sheet Bottom Sheet */}
       <CheatSheetBottomSheet
         visible={showCheatSheet}

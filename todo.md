@@ -834,3 +834,7 @@
 ## Round 43: Confetti + Re-run Setup Wizard
 - [x] Add rich confetti burst to onboarding final slide (Start Free Trial tap)
 - [x] Add Re-run Setup Wizard row to Settings profile section (clears only onboarding flag)
+
+## Round 44: Pre-fill Onboarding + Streak Milestones
+- [x] Pre-fill name and grade when re-running the onboarding wizard
+- [x] Streak milestone celebration: confetti + toast at 3, 7, 14, 30 day streaks

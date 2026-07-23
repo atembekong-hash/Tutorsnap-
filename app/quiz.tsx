@@ -29,6 +29,8 @@ import { QuizSkeletonCard } from "@/components/skeleton";
 import { loadGlobalGrade, GRADE_LABELS } from "@/lib/grade-levels";
 import { cleanMathText } from "@/lib/clean-math-text";
 import AsyncStorageLib from "@react-native-async-storage/async-storage";
+import { StreakMilestoneModal } from "@/components/streak-milestone-modal";
+import { checkStreakMilestone, type MilestoneInfo } from "@/lib/streak-milestones";
 import PaywallScreen from "./paywall";
 import { SubmissionReadyCard } from "@/components/submission-ready-card";
 import { useFontSize } from "@/lib/font-size-provider";
@@ -346,6 +348,7 @@ export default function QuizScreen() {
   const { isPremium, isDevMode, checkLimit: _checkLimit, incrementUsage: incUsage } = usePremium();
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const progressAnim = useRef(new Animated.Value(1)).current;
+  const [streakMilestone, setStreakMilestone] = useState<MilestoneInfo | null>(null);
 
   // Full worked explanation — fetched after answer reveal
   const [fullExplanations, setFullExplanations] = useState<Record<string, string>>({});
@@ -527,6 +530,13 @@ export default function QuizScreen() {
       setBonusStreak(bonus.newStreak);
       if (bonus.awarded && Platform.OS !== "web") {
         H.notificationSuccess();
+      }
+      // Check for streak milestone celebration
+      if (bonus.awarded && bonus.newStreak > 0) {
+        try {
+          const hit = await checkStreakMilestone(bonus.newStreak);
+          if (hit) setStreakMilestone(hit);
+        } catch { /* non-critical */ }
       }
       setFinished(true);
       // Trigger App Store review prompt on success (≥80%), gated by install age + rate limit
@@ -722,6 +732,12 @@ export default function QuizScreen() {
           )}
         </ScrollView>
       )}
+
+      {/* Streak Milestone Celebration */}
+      <StreakMilestoneModal
+        info={streakMilestone}
+        onDismiss={() => setStreakMilestone(null)}
+      />
 
       {/* Paywall Modal — shown when free quiz question limit is reached */}
       <Modal

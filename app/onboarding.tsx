@@ -17,7 +17,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useColors } from "@/hooks/use-colors";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { SUBJECT_CATEGORIES, type SubjectCategory } from "@/lib/subjects";
-import { GRADE_OPTIONS, saveGlobalGrade } from "@/lib/grade-levels";
+import { GRADE_OPTIONS, saveGlobalGrade, loadGlobalGrade } from "@/lib/grade-levels";
 import { TUTOR_SETTINGS_KEY, DEFAULT_TUTOR_SETTINGS } from "@/components/tutor-settings-modal";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
@@ -160,6 +160,31 @@ export default function OnboardingScreen() {
   const [showConfetti, setShowConfetti] = useState(false);
   // Animated value for dot indicator
   const dotAnim = useRef(new Animated.Value(0)).current;
+
+  // Pre-fill saved values when re-running the wizard
+  useEffect(() => {
+    (async () => {
+      try {
+        const [savedName, savedGrade, savedCategories, savedAvatar] = await Promise.all([
+          AsyncStorage.getItem(USER_NAME_KEY),
+          loadGlobalGrade(),
+          AsyncStorage.getItem("@tutorsnap/preferredCategories"),
+          AsyncStorage.getItem("@tutorsnap/avatarUri"),
+        ]);
+        if (savedName) setUserName(savedName);
+        if (savedGrade) setSelectedGrade(savedGrade);
+        if (savedCategories) {
+          try {
+            const parsed = JSON.parse(savedCategories) as SubjectCategory[];
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              setSelectedCategories(new Set(parsed));
+            }
+          } catch { /* ignore */ }
+        }
+        if (savedAvatar) setAvatarUri(savedAvatar);
+      } catch { /* ignore */ }
+    })();
+  }, []);
 
   const isLastSlide = currentSlide === SLIDES.length - 1;
   const isFirstSlide = currentSlide === 0;
