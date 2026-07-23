@@ -116,6 +116,15 @@ export default function OnboardingScreen() {
   const dotAnim = useRef(new Animated.Value(0)).current;
 
   const isLastSlide = currentSlide === SLIDES.length - 1;
+  const isFirstSlide = currentSlide === 0;
+
+  const goBack = () => {
+    H.impactLight();
+    const prev = currentSlide - 1;
+    setCurrentSlide(prev);
+    animateDot(prev);
+    scrollRef.current?.scrollTo({ x: prev * SCREEN_WIDTH, animated: true });
+  };
 
   const animateDot = (toIndex: number) => {
     Animated.spring(dotAnim, {
@@ -265,6 +274,19 @@ export default function OnboardingScreen() {
       style={styles.gradientRoot}
     >
       <SafeAreaView style={[styles.root, { backgroundColor: "transparent" }]} edges={["top", "bottom", "left", "right"]}>
+        {/* Back button */}
+        {!isFirstSlide && (
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={goBack}
+            activeOpacity={0.7}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+          >
+            <Text style={[styles.backArrow, { color: colors.foreground }]}>‹</Text>
+          </TouchableOpacity>
+        )}
+
         {/* Skip button */}
         <TouchableOpacity
           style={styles.skipBtn}
@@ -584,6 +606,23 @@ export default function OnboardingScreen() {
 const styles = StyleSheet.create({
   gradientRoot: { flex: 1 },
   root: { flex: 1 },
+  backBtn: {
+    position: "absolute",
+    top: 54,
+    left: 20,
+    zIndex: 10,
+    padding: 8,
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  backArrow: {
+    fontSize: 34,
+    fontWeight: "300",
+    lineHeight: 38,
+    marginTop: -4,
+  },
   skipBtn: {
     position: "absolute",
     top: 56,
@@ -595,7 +634,10 @@ const styles = StyleSheet.create({
   slideCounter: {
     position: "absolute",
     top: 60,
-    left: 24,
+    alignSelf: "center",
+    left: 0,
+    right: 0,
+    textAlign: "center",
     zIndex: 10,
     fontSize: 13,
     fontWeight: "600",
