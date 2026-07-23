@@ -791,3 +791,7 @@
 - [x] Notes screen filter by source: filter chips (All / Alt Explanation / Chat / Note) above search bar in notes.tsx
 - [x] Review Missed Questions flow: "Review Missed" button in ScoreSummary, dedicated screen listing only wrong answers with full explanations + Submission Ready cards
 - [x] Extend payload hardening to Practice tab: solveExplanation trigger after Show Answer in practice.tsx, validated payload with subject/difficulty/gradeLevel
+
+## Round 35 APK Build
+- [x] Bump version to 1.1.2, buildNumber 6, versionCode 7
+- [ ] EAS APK build triggered for Round 35 (Study View, Notes filter, Review Missed, Practice hardening)
