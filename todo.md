@@ -794,4 +794,8 @@
 
 ## Round 35 APK Build
 - [x] Bump version to 1.1.2, buildNumber 6, versionCode 7
-- [ ] EAS APK build triggered for Round 35 (Study View, Notes filter, Review Missed, Practice hardening)
+- [x] EAS APK build triggered for Round 35 (Study View, Notes filter, Review Missed, Practice hardening)
+
+## Round 36: Toast + Review Missed History
+- [x] Study Block card save toast: 2-second animated confirmation when block saved to Notes
+- [x] Review Missed button in quiz-history-detail.tsx for any past quiz

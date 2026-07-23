@@ -505,6 +505,29 @@ export default function QuizHistoryDetailScreen() {
           </View>
         )}
 
+        {/* Review Missed button — only shown when there are missed questions */}
+        {hasDetail && quiz.questions!.some((q) => q.userAnswer !== q.correctAnswer) && (
+          <TouchableOpacity
+            onPress={() => {
+              H.impactMedium();
+              router.push({ pathname: "/review-missed", params: { quizId: id } } as any);
+            }}
+            style={[styles.reviewMissedBtn, { backgroundColor: `${colors.error}15`, borderColor: `${colors.error}40` }]}
+            activeOpacity={0.85}
+            accessibilityLabel="Review missed questions from this quiz"
+            accessibilityRole="button"
+          >
+            <IconSymbol size={18} name="exclamationmark.circle.fill" color={colors.error} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.reviewMissedTitle, { color: colors.error }]}>Review Missed Questions</Text>
+              <Text style={[styles.reviewMissedSub, { color: colors.muted }]}>
+                {quiz.questions!.filter((q) => q.userAnswer !== q.correctAnswer).length} question{quiz.questions!.filter((q) => q.userAnswer !== q.correctAnswer).length !== 1 ? "s" : ""} to review
+              </Text>
+            </View>
+            <IconSymbol size={16} name="chevron.right" color={colors.muted} />
+          </TouchableOpacity>
+        )}
+
         {/* Practice again button */}
         <TouchableOpacity
           onPress={() =>
@@ -686,4 +709,16 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   practiceBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  reviewMissedBtn: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 12,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    padding: 14,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  reviewMissedTitle: { fontSize: 14, fontWeight: "700" as const },
+  reviewMissedSub: { fontSize: 12, marginTop: 2 },
 });

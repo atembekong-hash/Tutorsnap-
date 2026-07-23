@@ -306,6 +306,7 @@ export default function SolutionScreen() {
       if (copiedHintIdTimerRef.current) clearTimeout(copiedHintIdTimerRef.current);
       if (markdownPreviewTimerRef.current) clearTimeout(markdownPreviewTimerRef.current);
       if (saveNoteTimerRef.current) clearTimeout(saveNoteTimerRef.current);
+      if (studyBlockSavedTimerRef.current) clearTimeout(studyBlockSavedTimerRef.current);
     };
   }, []);
   const scrollRef = useRef<InstanceType<typeof ScrollView>>(null);
@@ -313,6 +314,8 @@ export default function SolutionScreen() {
   const similarYRef = useRef(0);
   const [saveNoteFeedback, setSaveNoteFeedback] = useState(false);
   const saveNoteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [studyBlockSavedToast, setStudyBlockSavedToast] = useState<string | null>(null);
+  const studyBlockSavedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleJumpToSubmission = () => {
     H.impactLight();
@@ -511,6 +514,10 @@ export default function SolutionScreen() {
       const notes: { id: string; content: string; savedAt: number; type?: string }[] = raw ? JSON.parse(raw) : [];
       notes.unshift({ id: `note-${Date.now()}`, content: noteContent, savedAt: Date.now(), type: "study_block" });
       await AsyncStorage.setItem(SAVED_NOTES_KEY, JSON.stringify(notes.slice(0, 200)));
+      // Show floating save confirmation toast
+      setStudyBlockSavedToast(block.title);
+      if (studyBlockSavedTimerRef.current) clearTimeout(studyBlockSavedTimerRef.current);
+      studyBlockSavedTimerRef.current = setTimeout(() => setStudyBlockSavedToast(null), 2000);
     } catch { /* ignore */ }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [solution?.problem]);
@@ -1184,6 +1191,16 @@ export default function SolutionScreen() {
           <View style={{ flex: 1, marginLeft: 6 }}>
             <Text style={[styles.linkToastText, { color: colors.success, fontSize: 11, fontWeight: "700" }]}>Markdown copied!</Text>
             <Text style={[styles.linkToastText, { color: colors.muted, fontSize: 10, fontWeight: "400", marginTop: 1 }]} numberOfLines={2} ellipsizeMode="tail">{markdownPreviewText}</Text>
+          </View>
+        </View>
+      )}
+      {/* Study Block saved toast */}
+      {studyBlockSavedToast && (
+        <View style={[styles.linkToast, { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.success }]}>
+          <IconSymbol size={15} name="note.text" color={colors.success} />
+          <View style={{ flex: 1, marginLeft: 6 }}>
+            <Text style={[styles.linkToastText, { color: colors.success, fontSize: 11, fontWeight: "700" }]}>Saved to Notes!</Text>
+            <Text style={[styles.linkToastText, { color: colors.muted, fontSize: 10, fontWeight: "400", marginTop: 1 }]} numberOfLines={1} ellipsizeMode="tail">{studyBlockSavedToast}</Text>
           </View>
         </View>
       )}
