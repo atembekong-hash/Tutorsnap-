@@ -269,9 +269,31 @@ export default function SolutionScreen() {
   const copiedHintIdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [markdownPreviewText, setMarkdownPreviewText] = useState<string | null>(null);
   const markdownPreviewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [headerTooltip, setHeaderTooltip] = useState<string | null>(null);
+  const tooltipOpacity = useRef(new Animated.Value(0)).current;
+  const tooltipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [headerIconsSeenRef] = useState(() => ({ seen: false }));
+  const showHeaderTooltip = useCallback((label: string) => {
+    if (headerIconsSeenRef.seen) return;
+    headerIconsSeenRef.seen = true;
+    AsyncStorage.setItem("@tutorsnap/headerIconsSeen", "1").catch(() => {});
+    setHeaderTooltip(label);
+    tooltipOpacity.setValue(0);
+    Animated.sequence([
+      Animated.timing(tooltipOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+      Animated.delay(1500),
+      Animated.timing(tooltipOpacity, { toValue: 0, duration: 300, useNativeDriver: true }),
+    ]).start(() => setHeaderTooltip(null));
+  }, [headerIconsSeenRef, tooltipOpacity]);
+  useEffect(() => {
+    AsyncStorage.getItem("@tutorsnap/headerIconsSeen").then((v) => {
+      if (v === "1") headerIconsSeenRef.seen = true;
+    });
+  }, [headerIconsSeenRef]);
   // Cleanup all feedback timers on unmount
   useEffect(() => {
     return () => {
+      if (tooltipTimerRef.current) clearTimeout(tooltipTimerRef.current);
       if (copyFeedbackTimerRef.current) clearTimeout(copyFeedbackTimerRef.current);
       if (copyLinkFeedbackTimerRef.current) clearTimeout(copyLinkFeedbackTimerRef.current);
       if (copiedProblemIdTimerRef.current) clearTimeout(copiedProblemIdTimerRef.current);
@@ -1126,7 +1148,7 @@ export default function SolutionScreen() {
         <View style={styles.navActions}>
           {/* Saved Notes shortcut */}
           <TouchableOpacity
-            onPress={() => { H.impactLight(); router.push("/notes" as any); }}
+            onPress={() => { H.impactLight(); showHeaderTooltip("Notes"); router.push("/notes" as any); }}
             style={styles.navActionBtn}
             accessibilityLabel="Saved Notes"
           >
@@ -1134,14 +1156,14 @@ export default function SolutionScreen() {
           </TouchableOpacity>
           {/* Flashcards shortcut */}
           <TouchableOpacity
-            onPress={() => { H.impactLight(); router.push("/flashcards" as any); }}
+            onPress={() => { H.impactLight(); showHeaderTooltip("Flashcards"); router.push("/flashcards" as any); }}
             style={styles.navActionBtn}
             accessibilityLabel="Flashcards"
           >
             <IconSymbol size={21} name="rectangle.stack.fill" color={colors.muted} />
           </TouchableOpacity>
           {/* Bookmark Button */}
-          <TouchableOpacity onPress={handleBookmark} style={styles.navActionBtn}>
+          <TouchableOpacity onPress={() => { showHeaderTooltip("Bookmark"); handleBookmark(); }} style={styles.navActionBtn}>
             <IconSymbol
               size={22}
               name={bookmarked ? "bookmark.fill" : "bookmark"}
@@ -1149,7 +1171,7 @@ export default function SolutionScreen() {
             />
           </TouchableOpacity>
           {/* Share as PDF Button */}
-          <TouchableOpacity onPress={handleShare} style={styles.navActionBtn} disabled={shareLoading}
+          <TouchableOpacity onPress={() => { showHeaderTooltip("Share"); handleShare(); }} style={styles.navActionBtn} disabled={shareLoading}
             accessibilityLabel="Share">
             {shareLoading ? (
               <ActivityIndicator size="small" color={colors.primary} />
@@ -1158,6 +1180,11 @@ export default function SolutionScreen() {
             )}
           </TouchableOpacity>
         </View>
+        {headerTooltip && (
+          <Animated.View pointerEvents="none" style={[styles.headerTooltip, { backgroundColor: colors.foreground, opacity: tooltipOpacity }]}>
+            <Text style={[styles.headerTooltipText, { color: colors.background }]}>{headerTooltip}</Text>
+          </Animated.View>
+        )}
       </View>
 
       <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
@@ -1818,6 +1845,8 @@ const styles = StyleSheet.create({
   navTitle: { fontSize: 17, fontWeight: "700" },
   navActions: { flexDirection: "row", alignItems: "center", gap: 4 },
   navActionBtn: { padding: 4 },
+  headerTooltip: { position: "absolute", bottom: -28, right: 12, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, zIndex: 999 },
+  headerTooltipText: { fontSize: 12, fontWeight: "600" },
   badgeRow: {
     paddingHorizontal: 16,
     paddingTop: 16,

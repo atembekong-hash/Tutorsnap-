@@ -470,6 +470,7 @@ function PracticeScreenContent() {
             { icon: "chart.xyaxis.line" as const, label: "Progress", route: "/progress" },
             { icon: "calendar" as const, label: "Study Planner", route: "/study-planner" },
             { icon: "person.2.fill" as const, label: "Classroom", route: "/(tabs)/classroom" },
+            { icon: "note.text" as const, label: "Saved Notes", route: "/notes" },
           ].map((item) => (
             <TouchableOpacity
               key={item.route}
