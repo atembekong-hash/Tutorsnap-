@@ -7,6 +7,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   ScrollView,
+  RefreshControl,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
@@ -139,20 +140,26 @@ export default function QuizHistoryScreen() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [activeSubject, setActiveSubject] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const doLoad = (isRefresh = false) => {
+    if (!isRefresh) setLoading(true);
+    setLoadError(false);
+    loadQuizHistory()
+      .then((data) => { setHistory(data); })
+      .catch(() => { setLoadError(true); })
+      .finally(() => { setLoading(false); setRefreshing(false); });
+  };
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    doLoad(true);
+  };
 
   useFocusEffect(
     useCallback(() => {
-      setLoading(true);
-      setLoadError(false);
-      loadQuizHistory()
-        .then((data) => {
-          setHistory(data);
-          setLoading(false);
-        })
-        .catch(() => {
-          setLoadError(true);
-          setLoading(false);
-        });
+      doLoad();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
   );
 
@@ -375,6 +382,14 @@ export default function QuizHistoryScreen() {
               contentContainerStyle={styles.listContent}
               showsVerticalScrollIndicator={false}
               ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={handleRefresh}
+                  tintColor={colors.primary}
+                  colors={[colors.primary]}
+                />
+              }
             />
           )}
         </>

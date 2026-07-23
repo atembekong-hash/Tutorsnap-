@@ -858,3 +858,8 @@
 - [x] Screen push transition: FadeIn + SlideInRight animation when navigating Home -> Solution
 - [x] Practice tab: show PracticeSkeletonCard on initial mount before first load
 - [x] History tab: pull-to-refresh with RefreshControl + skeleton animation
+
+## Round 48: More Transition Polish
+- [x] Apply useScreenTransition to Quiz, Flashcards, and Bookmarks screens
+- [x] Pull-to-refresh on Quiz History screen
+- [x] Staggered step animation on Solution screen (80ms per step)

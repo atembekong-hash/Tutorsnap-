@@ -21,6 +21,8 @@ import * as H from "@/lib/haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
+import { useScreenTransition } from "@/hooks/use-screen-transition";
+import { Animated } from "react-native";
 import { getBookmarks, removeBookmark } from "@/lib/bookmarks";
 import {
   getFolders,
@@ -62,6 +64,7 @@ export default function BookmarksScreen() {
   const [showFolderModal, setShowFolderModal] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [showAddToFolderMenu, setShowAddToFolderMenu] = useState<string | null>(null); // bookmarkId
+  const { fadeStyle } = useScreenTransition({ duration: 280, translateY: 16 });
 
   const loadBookmarks = async () => {
     try {
@@ -414,6 +417,7 @@ export default function BookmarksScreen() {
 
   return (
     <ScreenContainer>
+      <Animated.View style={[{ flex: 1 }, fadeStyle]}>
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
@@ -727,6 +731,7 @@ export default function BookmarksScreen() {
           )}
         </>
       )}
+      </Animated.View>
     </ScreenContainer>
   );
 }

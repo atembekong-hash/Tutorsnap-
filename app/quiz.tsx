@@ -15,6 +15,7 @@ import * as H from "@/lib/haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
+import { useScreenTransition } from "@/hooks/use-screen-transition";
 import { trpc } from "@/lib/trpc";
 import { getSubjectDef, getSubjectLabel } from "@/lib/subjects";
 import { useAppearance } from "@/lib/appearance-context";
@@ -349,6 +350,7 @@ export default function QuizScreen() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const progressAnim = useRef(new Animated.Value(1)).current;
   const [streakMilestone, setStreakMilestone] = useState<MilestoneInfo | null>(null);
+  const { fadeStyle } = useScreenTransition({ duration: 280, translateY: 16 });
 
   // Full worked explanation — fetched after answer reveal
   const [fullExplanations, setFullExplanations] = useState<Record<string, string>>({});
@@ -605,6 +607,7 @@ export default function QuizScreen() {
 
   return (
     <ScreenContainer>
+      <Animated.View style={[{ flex: 1 }, fadeStyle]}>
       {/* Nav Bar */}
       <View style={[styles.navBar, { borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
@@ -757,6 +760,7 @@ export default function QuizScreen() {
           <PaywallScreen />
         </View>
       </Modal>
+      </Animated.View>
     </ScreenContainer>
   );
 }

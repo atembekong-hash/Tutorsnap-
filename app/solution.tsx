@@ -48,12 +48,12 @@ function StepCard({ step, colors, fs, delay = 0 }: { step: SolutionStep; colors:
   const [copiedExpr, setCopiedExpr] = useState(false);
   const copiedExprTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(24)).current;
+  const slideAnim = useRef(new Animated.Value(20)).current;
 
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 350, delay, useNativeDriver: true }),
-      Animated.timing(slideAnim, { toValue: 0, duration: 350, delay, useNativeDriver: true }),
+      Animated.timing(fadeAnim, { toValue: 1, duration: 300, delay, useNativeDriver: true }),
+      Animated.timing(slideAnim, { toValue: 0, duration: 300, delay, useNativeDriver: true }),
     ]).start();
     return () => {
       if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
@@ -1464,7 +1464,7 @@ export default function SolutionScreen() {
             </TouchableOpacity>
           </View>
           {solution.steps?.map((step, index) => (
-            <StepCard key={index} step={step} colors={colors} fs={fs} delay={index * 120} />
+            <StepCard key={index} step={step} colors={colors} fs={fs} delay={index * 80} />
           ))}
         </View>
         )}

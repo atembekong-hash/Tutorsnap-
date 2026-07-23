@@ -16,6 +16,7 @@ import * as H from "@/lib/haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
+import { useScreenTransition } from "@/hooks/use-screen-transition";
 import { SchemeColors } from "@/constants/theme";
 import { getBookmarks } from "@/lib/bookmarks";
 import type { HistoryItem } from "@/shared/types";
@@ -350,6 +351,7 @@ export default function FlashcardsScreen() {
   const [reviewCount, setReviewCount] = useState(0);
   const [shareMenuVisible, setShareMenuVisible] = useState(false);
   const [pdfLoading, setPdfLoading] = useState(false);
+  const { fadeStyle } = useScreenTransition({ duration: 280, translateY: 16 });
 
   useFocusEffect(
     useCallback(() => {
@@ -488,6 +490,7 @@ export default function FlashcardsScreen() {
 
   return (
     <ScreenContainer>
+      <Animated.View style={[{ flex: 1 }, fadeStyle]}>
       {/* Header */}
       <View style={[styles.navBar, { borderBottomColor: colors.border }]}>
         <TouchableOpacity
@@ -756,6 +759,7 @@ export default function FlashcardsScreen() {
           </View>
         </TouchableOpacity>
       </Modal>
+      </Animated.View>
     </ScreenContainer>
   );
 }
