@@ -523,17 +523,40 @@ Respond ONLY with this JSON (no extra text):
       });
       const text = extractLLMContent(result);
       const jsonStr = extractJsonFromContent(text);
+      let parsed: Record<string, unknown>;
       try {
-        return JSON.parse(jsonStr);
+        parsed = JSON.parse(jsonStr);
       } catch {
         // Try repair for truncated JSON
         try {
           const repaired = repairTruncatedJson(jsonStr);
-          return JSON.parse(repaired);
+          parsed = JSON.parse(repaired);
         } catch {
           throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned invalid JSON. Please try again." });
         }
       }
+      // Validate required fields — block malformed payloads before they reach the client
+      const requiredPracticeFields = ["problem", "answer", "steps", "hints"];
+      const missingPracticeFields = requiredPracticeFields.filter((f) => !parsed[f]);
+      if (missingPracticeFields.length > 0) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `AI response missing required fields: ${missingPracticeFields.join(", ")}. Please try again.`,
+        });
+      }
+      // Ensure steps is an array
+      if (!Array.isArray(parsed.steps) || (parsed.steps as unknown[]).length === 0) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned no solution steps. Please try again." });
+      }
+      // Ensure hints is an array
+      if (!Array.isArray(parsed.hints)) {
+        parsed.hints = [];
+      }
+      // Inject subject and difficulty from input if missing (model sometimes omits them)
+      if (!parsed.subject) parsed.subject = input.subject;
+      if (!parsed.difficulty) parsed.difficulty = input.difficulty;
+      if (!parsed.id) parsed.id = `p-${Date.now()}`;
+      return parsed;
     }),
 
   generateQuiz: publicProcedure
@@ -727,6 +750,63 @@ Respond ONLY with this JSON:
       } catch {
         const repaired = repairTruncatedJson(jsonStr);
         return JSON.parse(repaired) as { problems: { id: string; problem: string; hint: string }[] };
+      }
+    }),
+  generateStudyBlocks: publicProcedure
+    .input(z.object({
+      problem: z.string(),
+      answer: z.string(),
+      steps: z.array(z.object({
+        stepNumber: z.number(),
+        title: z.string(),
+        explanation: z.string(),
+        expression: z.string().optional(),
+      })).optional(),
+      conceptExplained: z.string().optional(),
+      tips: z.array(z.string()).optional(),
+      subject: z.string(),
+      gradeLevel: z.string().optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const stepsText = (input.steps ?? []).map((s) =>
+        `Step ${s.stepNumber}: ${s.title}${s.expression ? ` [${s.expression}]` : ''} - ${s.explanation}`
+      ).join('\n');
+      const tipsText = (input.tips ?? []).join('; ');
+      const prompt = `You are TutorSnap, an expert academic tutor.${gradeContext(input.gradeLevel)}
+Convert this solution into 4-7 study blocks for a student to review.
+
+Problem: "${input.problem.slice(0, 300)}"
+Answer: "${input.answer.slice(0, 200)}"
+${stepsText ? `Steps:\n${stepsText.slice(0, 800)}` : ''}
+${input.conceptExplained ? `Key concept: ${input.conceptExplained.slice(0, 200)}` : ''}
+${tipsText ? `Tips: ${tipsText.slice(0, 200)}` : ''}
+
+Block types available: core_answer, key_concept, worked_example, formula, definition, tip, analogy, summary, step_breakdown, visual_note.
+Choose the most useful types for this specific problem. Always include core_answer as the first block.
+Respond ONLY with this JSON:
+{"blocks":[{"id":"b1","type":"core_answer","title":"Direct Answer","content":"..."}]}`;
+      const result = await invokeLLM({
+        model: 'claude-haiku-4-5',
+        messages: [
+          { role: 'system', content: prompt },
+          { role: 'user', content: 'Generate the study blocks now.' },
+        ],
+        max_tokens: 1200,
+        response_format: { type: 'json_object' },
+      });
+      const text = extractLLMContent(result);
+      const jsonStr = extractJsonFromContent(text);
+      try {
+        const parsed = JSON.parse(jsonStr);
+        return { blocks: parsed.blocks ?? [] };
+      } catch {
+        try {
+          const repaired = repairTruncatedJson(jsonStr);
+          const parsed = JSON.parse(repaired);
+          return { blocks: parsed.blocks ?? [] };
+        } catch {
+          return { blocks: [] };
+        }
       }
     }),
 });

@@ -135,10 +135,10 @@ const SAVED_NOTES_KEY = "tutor_saved_notes";
 async function saveNote(content: string): Promise<void> {
   try {
     const raw = await AsyncStorage.getItem(SAVED_NOTES_KEY);
-    const notes: { id: string; content: string; savedAt: number }[] = raw
+    const notes: { id: string; content: string; savedAt: number; type?: string }[] = raw
       ? JSON.parse(raw)
       : [];
-    notes.unshift({ id: `note-${Date.now()}`, content, savedAt: Date.now() });
+    notes.unshift({ id: `note-${Date.now()}`, content, savedAt: Date.now(), type: "chat" });
     // Keep last 200 notes
     await AsyncStorage.setItem(SAVED_NOTES_KEY, JSON.stringify(notes.slice(0, 200)));
   } catch { /* ignore */ }

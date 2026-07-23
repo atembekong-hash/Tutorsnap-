@@ -95,6 +95,26 @@ export type PracticeQuestion = {
   submissionReady?: string;
 };
 
+export type StudyBlockType =
+  | "core_answer"
+  | "key_concept"
+  | "worked_example"
+  | "formula"
+  | "definition"
+  | "tip"
+  | "analogy"
+  | "code"
+  | "summary"
+  | "step_breakdown"
+  | "visual_note";
+
+export type StudyBlock = {
+  id: string;
+  type: StudyBlockType;
+  title: string;
+  content: string;
+};
+
 export type ChatMessage = {
   id: string;
   role: "user" | "assistant";

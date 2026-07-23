@@ -226,6 +226,15 @@ function PracticeScreenContent() {
 
   const handleViewSolution = () => {
     if (!currentQuestion) return;
+    // Validate required fields before navigating — block malformed payloads
+    const missingFields: string[] = [];
+    if (!currentQuestion.problem?.trim()) missingFields.push("problem");
+    if (!currentQuestion.answer?.trim()) missingFields.push("answer");
+    if (!Array.isArray(currentQuestion.steps) || currentQuestion.steps.length === 0) missingFields.push("steps");
+    if (missingFields.length > 0) {
+      console.warn("[PracticeViewSolution] BLOCKED — missing required fields:", missingFields);
+      return;
+    }
     router.push({
       pathname: "/solution",
       params: {

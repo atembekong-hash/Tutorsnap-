@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Alert,
   TextInput,
+  ScrollView,
 } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -24,6 +25,17 @@ type SavedNote = {
   savedAt: number;
   type?: string;
 };
+
+// ─── Source filter types ──────────────────────────────────────────────────────
+type SourceFilter = "all" | "explanation" | "study_block" | "chat" | "note";
+
+const SOURCE_FILTERS: { id: SourceFilter; label: string }[] = [
+  { id: "all",          label: "All" },
+  { id: "explanation",  label: "Alt Explanation" },
+  { id: "study_block",  label: "Study Block" },
+  { id: "chat",         label: "Chat" },
+  { id: "note",         label: "Note" },
+];
 
 function formatRelativeTime(timestamp: number): string {
   const now = Date.now();
@@ -53,14 +65,25 @@ function getPreviewBody(content: string): string {
 
 function getTypeLabel(type?: string): string {
   if (type === "explanation") return "Alt Explanation";
+  if (type === "study_block") return "Study Block";
   if (type === "chat") return "Chat";
   return "Note";
 }
 
 function getTypeColor(type: string | undefined, colors: any): string {
   if (type === "explanation") return colors.success;
-  if (type === "chat") return colors.primary;
+  if (type === "study_block") return colors.primary;
+  if (type === "chat") return colors.warning;
   return colors.muted;
+}
+
+function matchesSourceFilter(note: SavedNote, filter: SourceFilter): boolean {
+  if (filter === "all") return true;
+  if (filter === "explanation") return note.type === "explanation";
+  if (filter === "study_block") return note.type === "study_block";
+  if (filter === "chat") return note.type === "chat";
+  // "note" = anything without a recognised type
+  return !note.type || (note.type !== "explanation" && note.type !== "study_block" && note.type !== "chat");
 }
 
 export default function NotesScreen() {
@@ -68,6 +91,7 @@ export default function NotesScreen() {
   const router = useRouter();
   const [notes, setNotes] = useState<SavedNote[]>([]);
   const [search, setSearch] = useState("");
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const copiedTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -136,9 +160,23 @@ export default function NotesScreen() {
     }
   };
 
-  const filtered = notes.filter((n) =>
-    search.trim() === "" ? true : n.content.toLowerCase().includes(search.trim().toLowerCase())
-  );
+  // Count notes per source for chip badges
+  const countBySource = React.useMemo(() => {
+    const counts: Record<SourceFilter, number> = { all: notes.length, explanation: 0, study_block: 0, chat: 0, note: 0 };
+    notes.forEach((n) => {
+      if (n.type === "explanation") counts.explanation++;
+      else if (n.type === "study_block") counts.study_block++;
+      else if (n.type === "chat") counts.chat++;
+      else counts.note++;
+    });
+    return counts;
+  }, [notes]);
+
+  const filtered = notes.filter((n) => {
+    const matchesSearch = search.trim() === "" ? true : n.content.toLowerCase().includes(search.trim().toLowerCase());
+    const matchesSource = matchesSourceFilter(n, sourceFilter);
+    return matchesSearch && matchesSource;
+  });
 
   const renderItem = ({ item }: { item: SavedNote }) => {
     const typeColor = getTypeColor(item.type, colors);
@@ -203,22 +241,67 @@ export default function NotesScreen() {
       </View>
 
       {notes.length > 0 && (
-        <View style={[styles.searchBar, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <IconSymbol size={16} name="magnifyingglass" color={colors.muted} />
-          <TextInput
-            value={search}
-            onChangeText={setSearch}
-            placeholder="Search notes..."
-            placeholderTextColor={colors.muted}
-            style={[styles.searchInput, { color: colors.foreground }]}
-            returnKeyType="search"
-          />
-          {search.length > 0 && (
-            <TouchableOpacity onPress={() => setSearch("")}>
-              <IconSymbol size={16} name="xmark.circle.fill" color={colors.muted} />
-            </TouchableOpacity>
-          )}
-        </View>
+        <>
+          {/* Search bar */}
+          <View style={[styles.searchBar, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <IconSymbol size={16} name="magnifyingglass" color={colors.muted} />
+            <TextInput
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Search notes..."
+              placeholderTextColor={colors.muted}
+              style={[styles.searchInput, { color: colors.foreground }]}
+              returnKeyType="search"
+            />
+            {search.length > 0 && (
+              <TouchableOpacity onPress={() => setSearch("")}>
+                <IconSymbol size={16} name="xmark.circle.fill" color={colors.muted} />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Source filter chips */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterChipsRow}
+          >
+            {SOURCE_FILTERS.map((f) => {
+              const count = countBySource[f.id];
+              if (f.id !== "all" && count === 0) return null;
+              const isActive = sourceFilter === f.id;
+              return (
+                <TouchableOpacity
+                  key={f.id}
+                  accessibilityLabel={`Filter by ${f.label}`}
+                  onPress={() => {
+                    setSourceFilter(f.id);
+                    H.impactLight();
+                  }}
+                  style={[
+                    styles.filterChip,
+                    {
+                      backgroundColor: isActive ? colors.primary : colors.surface,
+                      borderColor: isActive ? colors.primary : colors.border,
+                    },
+                  ]}
+                  activeOpacity={0.75}
+                >
+                  <Text style={[styles.filterChipText, { color: isActive ? "#FFFFFF" : colors.muted }]}>
+                    {f.label}
+                  </Text>
+                  {count > 0 && (
+                    <View style={[styles.filterChipBadge, { backgroundColor: isActive ? "rgba(255,255,255,0.3)" : `${colors.primary}20` }]}>
+                      <Text style={[styles.filterChipBadgeText, { color: isActive ? "#FFFFFF" : colors.primary }]}>
+                        {count}
+                      </Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </>
       )}
 
       {notes.length === 0 ? (
@@ -226,7 +309,7 @@ export default function NotesScreen() {
           <Text style={{ fontSize: 48, marginBottom: 16 }}>📝</Text>
           <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No Notes Yet</Text>
           <Text style={[styles.emptySubtitle, { color: colors.muted }]}>
-            Save alternative explanations from the solution screen to review them here.
+            Save alternative explanations or study blocks from the solution screen to review them here.
           </Text>
           <TouchableOpacity
             onPress={() => router.back()}
@@ -239,7 +322,17 @@ export default function NotesScreen() {
         <View style={styles.emptyState}>
           <Text style={{ fontSize: 36, marginBottom: 12 }}>🔍</Text>
           <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No Results</Text>
-          <Text style={[styles.emptySubtitle, { color: colors.muted }]}>No notes match your search.</Text>
+          <Text style={[styles.emptySubtitle, { color: colors.muted }]}>
+            {search.trim() ? "No notes match your search." : `No ${SOURCE_FILTERS.find((f) => f.id === sourceFilter)?.label ?? ""} notes yet.`}
+          </Text>
+          {sourceFilter !== "all" && (
+            <TouchableOpacity
+              onPress={() => setSourceFilter("all")}
+              style={[styles.emptyBtn, { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }]}
+            >
+              <Text style={[styles.emptyBtnText, { color: colors.foreground }]}>Show All Notes</Text>
+            </TouchableOpacity>
+          )}
         </View>
       ) : (
         <FlatList
@@ -288,9 +381,40 @@ const styles = StyleSheet.create({
     fontSize: 14,
     paddingVertical: 0,
   },
+  filterChipsRow: {
+    flexDirection: "row",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    gap: 8,
+  },
+  filterChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  filterChipText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  filterChipBadge: {
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 4,
+  },
+  filterChipBadgeText: {
+    fontSize: 10,
+    fontWeight: "700",
+  },
   listContent: {
     paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingTop: 8,
     paddingBottom: 40,
     gap: 12,
   },

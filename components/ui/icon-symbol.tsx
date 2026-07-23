@@ -176,6 +176,9 @@ const MAPPING = {
   // Notes
   "note.text": "notes",
   "note.text.badge.plus": "note-add",
+  // Study blocks
+  "text.book.closed.fill": "menu-book",
+  "arrow.left.arrow.right": "compare-arrows",
 } as unknown as IconMapping;
 
 export function IconSymbol({

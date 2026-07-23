@@ -405,6 +405,16 @@ export default function RootLayout() {
               }}
             />
             <Stack.Screen
+              name="review-missed"
+              options={{
+                presentation: "card",
+                animation: "slide_from_right",
+                headerShown: false,
+                gestureEnabled: true,
+                gestureDirection: "horizontal",
+              }}
+            />
+            <Stack.Screen
               name="chat-history"
               options={{
                 presentation: "card",

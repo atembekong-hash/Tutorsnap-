@@ -24,7 +24,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { toggleBookmark, isBookmarked } from "@/lib/bookmarks";
-import type { MathSolution, SolutionStep, HistoryItem, MathSubject } from "@/shared/types";
+import type { MathSolution, SolutionStep, HistoryItem, MathSubject, StudyBlock } from "@/shared/types";
 import { getSubjectColor, getSubjectLabel } from "@/lib/subjects";
 import { useFontSize } from "@/lib/font-size-provider";
 import { trpc } from "@/lib/trpc";
@@ -34,6 +34,7 @@ import { APP_URL } from "@/constants/app";
 import { loadGlobalGrade, GRADE_LABELS } from "@/lib/grade-levels";
 import { cleanMathText } from "@/lib/clean-math-text";
 import { SubmissionReadyCard } from "@/components/submission-ready-card";
+import { StudyBlockCard, StudyBlockSkeleton } from "@/components/study-block-card";
 
 function StepCard({ step, colors, fs, delay = 0 }: { step: SolutionStep; colors: any; fs: (n: number) => number; delay?: number }) {
   const [expanded, setExpanded] = useState(true);
@@ -328,6 +329,22 @@ export default function SolutionScreen() {
   const [discussLoading, setDiscussLoading] = useState(false);
   const [explainDiffLoading, setExplainDiffLoading] = useState(false);
   const [altExplanation, setAltExplanation] = useState<string | null>(null);
+  // Study View state
+  const [viewMode, setViewMode] = useState<"steps" | "study">("steps");
+  const [studyBlocks, setStudyBlocks] = useState<StudyBlock[]>([]);
+  const [studyBlocksLoading, setStudyBlocksLoading] = useState(false);
+  const [studyBlocksError, setStudyBlocksError] = useState<string | null>(null);
+  const generateStudyBlocksMutation = trpc.academic.generateStudyBlocks.useMutation({
+    onSuccess: (data) => {
+      setStudyBlocks(data.blocks as StudyBlock[]);
+      setStudyBlocksLoading(false);
+      setStudyBlocksError(null);
+    },
+    onError: () => {
+      setStudyBlocksLoading(false);
+      setStudyBlocksError("Could not generate study blocks. Please try again.");
+    },
+  });
   const [showAltExplanation, setShowAltExplanation] = useState(false);
   const [altExplanationCached, setAltExplanationCached] = useState(false); // true = loaded from cache
   const [explainStyle, setExplainStyle] = useState<"analogy" | "step-by-step" | "visual">("analogy");
@@ -466,6 +483,37 @@ export default function SolutionScreen() {
     );
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [needsAutoSolve]);
+
+  const handleSwitchToStudy = useCallback(() => {
+    setViewMode("study");
+    H.impactLight();
+    if (studyBlocks.length > 0 || studyBlocksLoading) return;
+    if (!solution) return;
+    setStudyBlocksLoading(true);
+    setStudyBlocksError(null);
+    generateStudyBlocksMutation.mutate({
+      problem: solution.problem,
+      answer: solution.answer,
+      steps: solution.steps,
+      conceptExplained: solution.conceptExplained,
+      tips: solution.tips,
+      subject: solution.subject,
+      gradeLevel: gradeLevel ?? undefined,
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [solution, studyBlocks.length, studyBlocksLoading, gradeLevel]);
+
+  const handleSaveStudyBlockToNotes = useCallback(async (block: StudyBlock) => {
+    try {
+      const noteContent = `[Study Block: ${block.title}]\n\n${block.content}\n\n(from: ${solution?.problem ?? ""})`.trim();
+      const SAVED_NOTES_KEY = "tutor_saved_notes";
+      const raw = await AsyncStorage.getItem(SAVED_NOTES_KEY);
+      const notes: { id: string; content: string; savedAt: number; type?: string }[] = raw ? JSON.parse(raw) : [];
+      notes.unshift({ id: `note-${Date.now()}`, content: noteContent, savedAt: Date.now(), type: "study_block" });
+      await AsyncStorage.setItem(SAVED_NOTES_KEY, JSON.stringify(notes.slice(0, 200)));
+    } catch { /* ignore */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [solution?.problem]);
 
   // Show auto-solving spinner
   if (autoSolving) {
@@ -1267,7 +1315,61 @@ export default function SolutionScreen() {
           <Text style={[styles.answerText, { color: colors.foreground, fontSize: fs(22) }]}>{cleanMathText(solution.answer)}</Text>
         </View>
 
-        {/* Steps */}
+        {/* View Mode Toggle */}
+        <View style={{ flexDirection: "row", marginHorizontal: 16, marginBottom: 12, borderRadius: 12, overflow: "hidden", borderWidth: 1, borderColor: colors.border }}>
+          <TouchableOpacity
+            accessibilityLabel="Steps view"
+            onPress={() => { setViewMode("steps"); H.impactLight(); }}
+            style={[{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 10 }, viewMode === "steps" ? { backgroundColor: colors.primary } : { backgroundColor: colors.surface }]}
+            activeOpacity={0.8}
+          >
+            <IconSymbol size={15} name="list.bullet" color={viewMode === "steps" ? "#FFFFFF" : colors.muted} />
+            <Text style={{ fontSize: 13, fontWeight: "700", color: viewMode === "steps" ? "#FFFFFF" : colors.muted }}>Steps</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            accessibilityLabel="Study view"
+            onPress={handleSwitchToStudy}
+            style={[{ flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 10 }, viewMode === "study" ? { backgroundColor: colors.primary } : { backgroundColor: colors.surface }]}
+            activeOpacity={0.8}
+          >
+            {studyBlocksLoading ? (
+              <ActivityIndicator size="small" color={viewMode === "study" ? "#FFFFFF" : colors.muted} />
+            ) : (
+              <IconSymbol size={15} name="text.book.closed.fill" color={viewMode === "study" ? "#FFFFFF" : colors.muted} />
+            )}
+            <Text style={{ fontSize: 13, fontWeight: "700", color: viewMode === "study" ? "#FFFFFF" : colors.muted }}>Study View</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Study View: block-card renderer */}
+        {viewMode === "study" && (
+          <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
+            {studyBlocksLoading && <StudyBlockSkeleton count={4} />}
+            {studyBlocksError && !studyBlocksLoading && (
+              <View style={{ alignItems: "center", padding: 20, gap: 10 }}>
+                <Text style={{ color: colors.error, fontSize: 14, textAlign: "center" }}>{studyBlocksError}</Text>
+                <TouchableOpacity
+                  onPress={handleSwitchToStudy}
+                  style={{ backgroundColor: colors.primary, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10 }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={{ color: "#FFFFFF", fontWeight: "700", fontSize: 14 }}>Retry</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+            {!studyBlocksLoading && !studyBlocksError && studyBlocks.map((block, i) => (
+              <StudyBlockCard
+                key={block.id}
+                block={block}
+                index={i}
+                onSaveToNotes={handleSaveStudyBlockToNotes}
+              />
+            ))}
+          </View>
+        )}
+
+        {/* Steps (only shown in steps mode) */}
+        {viewMode === "steps" && (
         <View style={styles.stepsSection}>
           <View style={[styles.sectionHeader, { justifyContent: "space-between" }]}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
@@ -1298,6 +1400,7 @@ export default function SolutionScreen() {
             <StepCard key={index} step={step} colors={colors} fs={fs} delay={index * 120} />
           ))}
         </View>
+        )}
 
         {/* Concept Explanation */}
         {solution.conceptExplained && (

@@ -127,6 +127,7 @@ function ScoreSummary({
   gradeLevel,
   onRetry,
   onHome,
+  onReviewMissed,
   colors,
 }: {
   questions: QuizQuestion[];
@@ -138,6 +139,7 @@ function ScoreSummary({
   gradeLevel: string | null;
   onRetry: () => void;
   onHome: () => void;
+  onReviewMissed?: () => void;
   colors: any;
 }) {
   const correct = answers.filter((a, i) => a === questions[i].correctAnswer).length;
@@ -255,6 +257,26 @@ function ScoreSummary({
           <Text style={[styles.summaryBtnText, { color: colors.foreground }]}>Home</Text>
         </TouchableOpacity>
       </View>
+      {/* Review Missed Questions CTA — only shown when there are wrong answers */}
+      {onReviewMissed && correct < total && (
+        <TouchableOpacity
+          onPress={() => { H.impactLight(); onReviewMissed(); }}
+          style={[styles.reviewMissedBtn, { backgroundColor: `${colors.error}12`, borderColor: `${colors.error}35` }]}
+          activeOpacity={0.8}
+          accessibilityLabel="Review missed questions"
+        >
+          <IconSymbol size={18} name="xmark.circle.fill" color={colors.error} />
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.reviewMissedTitle, { color: colors.error }]}>
+              Review {total - correct} Missed Question{total - correct !== 1 ? "s" : ""}
+            </Text>
+            <Text style={[styles.reviewMissedSubtitle, { color: colors.muted }]}>
+              See where you went wrong with full explanations
+            </Text>
+          </View>
+          <IconSymbol size={16} name="chevron.right" color={colors.muted} />
+        </TouchableOpacity>
+      )}
       {/* Share prompt card — viral loop nudge */}
       <View style={[styles.sharePromptCard, { backgroundColor: `${colors.primary}08`, borderColor: `${colors.primary}20` }]}>
         <Text style={[styles.sharePromptTitle, { color: colors.foreground }]}>
@@ -318,6 +340,7 @@ export default function QuizScreen() {
   const [totalTime, setTotalTime] = useState(0);
   const [bonusAwarded, setBonusAwarded] = useState(false);
   const [bonusStreak, setBonusStreak] = useState(0);
+  const [savedQuizId, setSavedQuizId] = useState<string | null>(null);
   const [showPaywallModal, setShowPaywallModal] = useState(false);
   const [quizQuestionsAnswered, setQuizQuestionsAnswered] = useState(0);
   const { isPremium, isDevMode, checkLimit: _checkLimit, incrementUsage: incUsage } = usePremium();
@@ -483,7 +506,7 @@ export default function QuizScreen() {
           explanation: q.explanation,
           userAnswer: finalAnswers[i] ?? null,
         }));
-        await saveQuizResult({
+        const savedResult = await saveQuizResult({
           subject,
           difficulty,
           score: correctCount,
@@ -494,6 +517,7 @@ export default function QuizScreen() {
           questions: questionSnapshots,
           gradeLevel,
         });
+        setSavedQuizId(savedResult.id);
       } catch { /* history save failure is non-critical */ }
       let bonus = { awarded: false, newStreak: 0 };
       try {
@@ -597,6 +621,7 @@ export default function QuizScreen() {
             gradeLevel={gradeLevel}
             onRetry={handleRetry}
             onHome={() => router.push("/(tabs)/practice" as any)}
+            onReviewMissed={savedQuizId ? () => router.push({ pathname: "/review-missed", params: { quizId: savedQuizId } } as any) : undefined}
             colors={colors}
           />
       ) : (
@@ -852,4 +877,15 @@ const styles = StyleSheet.create({
     alignSelf: "center",
   },
   gradeLevelBadgeText: { fontSize: 13, fontWeight: "700" },
+  reviewMissedBtn: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    gap: 12,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    marginTop: 8,
+  },
+  reviewMissedTitle: { fontSize: 14, fontWeight: "700" as const },
+  reviewMissedSubtitle: { fontSize: 12, marginTop: 2 },
 });

@@ -785,3 +785,9 @@
 - [x] Solve tab: add Save to Flashcards button at the bottom of the solution
 - [x] Practice tab Quick Links: add Study Planner card
 - [x] Practice tab Quick Links: add Classroom card
+
+## Round 35: 4 New Features
+- [x] Study View for Solve tab: segmented Chat/Study toggle in solution.tsx, generateStudyBlocks endpoint, StudyBlockCard component, block-card renderer replacing step cards in Study mode
+- [x] Notes screen filter by source: filter chips (All / Alt Explanation / Chat / Note) above search bar in notes.tsx
+- [x] Review Missed Questions flow: "Review Missed" button in ScoreSummary, dedicated screen listing only wrong answers with full explanations + Submission Ready cards
+- [x] Extend payload hardening to Practice tab: solveExplanation trigger after Show Answer in practice.tsx, validated payload with subject/difficulty/gradeLevel
