@@ -10,8 +10,10 @@ import {
   Modal,
   Alert,
   TextInput,
+  Image,
   type ScrollView as ScrollViewType,
 } from "react-native";
+import * as ImagePicker from "expo-image-picker";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import Constants from "expo-constants";
 import * as H from "@/lib/haptics";
@@ -199,6 +201,47 @@ export default function SettingsScreen() {
   const { settings: tutorSettings, update: updateTutorSetting, reset: resetTutorSettings } = useTutorSettings();
   const [soundEffectsEnabled, setSoundEffectsEnabledState] = useState(true);
 
+  // Avatar / profile photo
+  const [avatarUri, setAvatarUri] = useState<string | null>(null);
+  const [avatarLoading, setAvatarLoading] = useState(false);
+
+  const handlePickAvatar = async () => {
+    H.impactLight();
+    if (Platform.OS !== "web") {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Permission needed", "Please allow access to your photo library to set a profile photo.");
+        return;
+      }
+    }
+    setAvatarLoading(true);
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: "images",
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+        base64: false,
+      });
+      if (!result.canceled && result.assets[0]?.uri) {
+        const uri = result.assets[0].uri;
+        setAvatarUri(uri);
+        await AsyncStorage.setItem("@tutorsnap/avatarUri", uri);
+        H.notificationSuccess();
+      }
+    } catch (e) {
+      Alert.alert("Error", "Could not load photo. Please try again.");
+    } finally {
+      setAvatarLoading(false);
+    }
+  };
+
+  const handleRemoveAvatar = async () => {
+    H.impactMedium();
+    setAvatarUri(null);
+    await AsyncStorage.removeItem("@tutorsnap/avatarUri");
+  };
+
   // Change-email flow
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [showChangeEmailModal, setShowChangeEmailModal] = useState(false);
@@ -303,6 +346,7 @@ export default function SettingsScreen() {
     getSubscriptionStatus().then(setSubStatus).catch(() => {});
     loadGlobalGrade().then((g: string | null) => setGradeLevelState(g));
     AsyncStorage.getItem("@tutorsnap/userName").then((n: string | null) => setUserNameState(n || null));
+    AsyncStorage.getItem("@tutorsnap/avatarUri").then((uri: string | null) => setAvatarUri(uri || null));
     getUserInfo().then((u) => { if (u?.email) setUserEmail(u.email); });
     isBackupReminderEnabled().then(setBackupReminderEnabled);
     getBackupReminderSettings().then(setBackupReminderSettings);
@@ -1057,7 +1101,61 @@ export default function SettingsScreen() {
 
       <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 48 }}>
 
-        {/* Stats Summary */}
+        {/* ── Profile Hero Card ── */}
+        <View style={[styles.profileCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          {/* Avatar */}
+          <TouchableOpacity
+            onPress={handlePickAvatar}
+            disabled={avatarLoading}
+            style={styles.avatarWrap}
+            activeOpacity={0.8}
+            accessibilityLabel="Change profile photo"
+          >
+            {avatarUri ? (
+              <Image source={{ uri: avatarUri }} style={styles.avatarImg} />
+            ) : (
+              <View style={[styles.avatarPlaceholder, { backgroundColor: `${colors.primary}20` }]}>
+                <Text style={[styles.avatarInitials, { color: colors.primary }]}>
+                  {userName ? userName.trim().split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase() : "?"}
+                </Text>
+              </View>
+            )}
+            {/* Camera badge */}
+            <View style={[styles.avatarBadge, { backgroundColor: colors.primary }]}>
+              <IconSymbol size={12} name="camera.fill" color="#fff" />
+            </View>
+          </TouchableOpacity>
+
+          {/* Name + email */}
+          <View style={styles.profileInfo}>
+            <TouchableOpacity
+              onPress={() => { setNameInput(userName || ""); setShowNameModal(true); }}
+              activeOpacity={0.75}
+              style={styles.profileNameRow}
+            >
+              <Text style={[styles.profileName, { color: colors.foreground }]} numberOfLines={1}>
+                {userName || "Add your name"}
+              </Text>
+              <IconSymbol size={14} name="pencil" color={colors.muted} />
+            </TouchableOpacity>
+            {userEmail ? (
+              <Text style={[styles.profileEmail, { color: colors.muted }]} numberOfLines={1}>{userEmail}</Text>
+            ) : null}
+            {avatarUri ? (
+              <TouchableOpacity onPress={handleRemoveAvatar} style={styles.removePhotoBtn} activeOpacity={0.7}>
+                <Text style={[styles.removePhotoText, { color: colors.error }]}>Remove photo</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity onPress={handlePickAvatar} disabled={avatarLoading} activeOpacity={0.7}>
+                <Text style={[styles.addPhotoText, { color: colors.primary }]}>
+                  {avatarLoading ? "Loading..." : "Add profile photo"}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        {/* Stats row below profile */}
         <View style={[styles.statsCard, { backgroundColor: `${colors.primary}10`, borderColor: `${colors.primary}25` }]}>
           <View style={styles.statItem}>
             <Text style={[styles.statValue, { color: colors.primary }]}>{streak}</Text>
@@ -2616,5 +2714,80 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     paddingVertical: 0,
+  },
+  // Profile hero card
+  profileCard: {
+    marginHorizontal: 16,
+    marginTop: 20,
+    marginBottom: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+  },
+  avatarWrap: {
+    position: "relative",
+    width: 80,
+    height: 80,
+    flexShrink: 0,
+  },
+  avatarImg: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+  },
+  avatarPlaceholder: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  avatarInitials: {
+    fontSize: 28,
+    fontWeight: "700",
+  },
+  avatarBadge: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#fff",
+  },
+  profileInfo: {
+    flex: 1,
+    gap: 4,
+  },
+  profileNameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  profileName: {
+    fontSize: 18,
+    fontWeight: "700",
+    flex: 1,
+  },
+  profileEmail: {
+    fontSize: 13,
+  },
+  addPhotoText: {
+    fontSize: 13,
+    fontWeight: "600",
+    marginTop: 2,
+  },
+  removePhotoBtn: {
+    marginTop: 2,
+  },
+  removePhotoText: {
+    fontSize: 13,
+    fontWeight: "500",
   },
 });

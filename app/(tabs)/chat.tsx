@@ -2999,15 +2999,20 @@ function ChatScreenContent() {
       )}
 
       {/* ── Share menu sheet ── */}
-      {showShareMenu && (
+      <Modal
+        visible={showShareMenu}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowShareMenu(false)}
+      >
         <TouchableOpacity
           style={[StyleSheet.absoluteFillObject, chatStyles.backdrop, { backgroundColor: "rgba(0,0,0,0.5)" }]}
           activeOpacity={1}
           onPress={() => setShowShareMenu(false)}
         >
           <View style={{ flex: 1 }} />
-          <TouchableOpacity activeOpacity={1}>
-            <View style={[chatStyles.sheet, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <TouchableOpacity activeOpacity={1} onPress={() => {}}>
+            <View style={[chatStyles.sheet, { backgroundColor: colors.surface, borderColor: colors.border, maxHeight: "75%" }]}>
               <View style={[chatStyles.sheetHandle, { backgroundColor: colors.border }]} />
               <Text style={[chatStyles.sheetTitle, { color: colors.foreground, fontSize: fs(16) }]}>Share Chat</Text>
 
@@ -3104,7 +3109,7 @@ function ChatScreenContent() {
             </View>
           </TouchableOpacity>
         </TouchableOpacity>
-      )}
+      </Modal>
 
       {/* Round 44: ⋯ More menu dropdown (History + Share) */}
       {showMoreMenu && (

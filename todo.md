@@ -810,3 +810,7 @@
 ## Round 38: Share Sheet Fix + Practice Progress Nudge
 - [x] Fix share menu: compact scrollable bottom sheet with drag handle and Cancel button
 - [x] Practice tab: progress nudge strip above generate card (streak + today goal)
+
+## Round 39: Chat Share Sheet + Settings Profile Section
+- [x] Convert chat share menu to bottom sheet (drag handle, ScrollView, Cancel button)
+- [x] Add profile section to settings header: avatar, display name, photo upload via image picker
