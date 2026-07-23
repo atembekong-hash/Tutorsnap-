@@ -879,3 +879,9 @@
 - [x] Empty state illustrations for History screen (magnifying glass SVG + CTA)
 - [x] Empty state illustrations for Quiz History screen (trophy SVG + CTA)
 - [x] Onboarding skip button (top-right, bypasses remaining slides, hidden on first/last slide)
+
+## Round 51: Empty State Animation, Perfect Score Confetti, Onboarding Progress Bar
+
+- [x] Animated empty state entrance (scale 0.82 to 1.0, 350ms on mount with back easing)
+- [x] Confetti burst on 100% quiz score (PerfectScoreModal, 60 particles, fires 400ms after results appear)
+- [x] Onboarding progress bar (replaces slide counter text, 4px bar with 300ms animated width)

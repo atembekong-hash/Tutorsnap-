@@ -160,6 +160,18 @@ export default function OnboardingScreen() {
   const [showConfetti, setShowConfetti] = useState(false);
   // Animated value for dot indicator
   const dotAnim = useRef(new Animated.Value(0)).current;
+  // Animated value for progress bar
+  const progressBarAnim = useRef(new Animated.Value(0)).current;
+
+  // Animate progress bar whenever slide changes
+  useEffect(() => {
+    Animated.timing(progressBarAnim, {
+      toValue: (currentSlide + 1) / SLIDES.length,
+      duration: 300,
+      useNativeDriver: false,
+    }).start();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentSlide]);
 
   // Pre-fill saved values when re-running the wizard
   useEffect(() => {
@@ -376,10 +388,21 @@ export default function OnboardingScreen() {
           </TouchableOpacity>
         )}
 
-        {/* Slide counter */}
-        <Text style={[styles.slideCounter, { color: colors.muted }]}>
-          {currentSlide + 1} / {SLIDES.length}
-        </Text>
+        {/* Progress bar */}
+        <View style={styles.progressBarContainer}>
+          <Animated.View
+            style={[
+              styles.progressBarFill,
+              {
+                backgroundColor: colors.primary,
+                width: progressBarAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: ["0%", "100%"],
+                }),
+              },
+            ]}
+          />
+        </View>
 
         {/* Slides */}
         <ScrollView
@@ -726,16 +749,20 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   skipText: { fontSize: 15, fontWeight: "600" },
-  slideCounter: {
+  progressBarContainer: {
     position: "absolute",
-    top: 60,
-    alignSelf: "center",
-    left: 0,
-    right: 0,
-    textAlign: "center",
+    top: 56,
+    left: 24,
+    right: 24,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "rgba(128,128,128,0.18)",
     zIndex: 10,
-    fontSize: 13,
-    fontWeight: "600",
+    overflow: "hidden",
+  },
+  progressBarFill: {
+    height: 4,
+    borderRadius: 2,
   },
   slide: {
     alignItems: "center",

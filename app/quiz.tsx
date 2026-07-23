@@ -35,6 +35,7 @@ import { checkStreakMilestone, type MilestoneInfo } from "@/lib/streak-milestone
 import PaywallScreen from "./paywall";
 import { SubmissionReadyCard } from "@/components/submission-ready-card";
 import { useFontSize } from "@/lib/font-size-provider";
+import { PerfectScoreModal } from "@/components/perfect-score-modal";
 
 function getAppearanceSubjectKey(subjectId: string): string {
   const def = getSubjectDef(subjectId);
@@ -371,6 +372,7 @@ export default function QuizScreen() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const progressAnim = useRef(new Animated.Value(1)).current;
   const [streakMilestone, setStreakMilestone] = useState<MilestoneInfo | null>(null);
+  const [showPerfectScore, setShowPerfectScore] = useState(false);
   const { fadeStyle } = useScreenTransition({ duration: 280, translateY: 16 });
 
   // Full worked explanation — fetched after answer reveal
@@ -562,6 +564,10 @@ export default function QuizScreen() {
         } catch { /* non-critical */ }
       }
       setFinished(true);
+      // Trigger perfect score confetti on 100%
+      if (pct === 100) {
+        setTimeout(() => setShowPerfectScore(true), 400);
+      }
       // Trigger App Store review prompt on success (≥80%), gated by install age + rate limit
       maybeRequestReview(pct).catch(() => {});
     } else {
@@ -761,6 +767,12 @@ export default function QuizScreen() {
       <StreakMilestoneModal
         info={streakMilestone}
         onDismiss={() => setStreakMilestone(null)}
+      />
+
+      {/* Perfect Score Confetti */}
+      <PerfectScoreModal
+        visible={showPerfectScore}
+        onDismiss={() => setShowPerfectScore(false)}
       />
 
       {/* Paywall Modal — shown when free quiz question limit is reached */}
