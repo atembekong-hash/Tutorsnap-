@@ -1124,6 +1124,22 @@ export default function SolutionScreen() {
         </TouchableOpacity>
         <Text style={[styles.navTitle, { color: colors.foreground }]}>Solution</Text>
         <View style={styles.navActions}>
+          {/* Saved Notes shortcut */}
+          <TouchableOpacity
+            onPress={() => { H.impactLight(); router.push("/notes" as any); }}
+            style={styles.navActionBtn}
+            accessibilityLabel="Saved Notes"
+          >
+            <IconSymbol size={21} name="note.text" color={colors.muted} />
+          </TouchableOpacity>
+          {/* Flashcards shortcut */}
+          <TouchableOpacity
+            onPress={() => { H.impactLight(); router.push("/flashcards" as any); }}
+            style={styles.navActionBtn}
+            accessibilityLabel="Flashcards"
+          >
+            <IconSymbol size={21} name="rectangle.stack.fill" color={colors.muted} />
+          </TouchableOpacity>
           {/* Bookmark Button */}
           <TouchableOpacity onPress={handleBookmark} style={styles.navActionBtn}>
             <IconSymbol

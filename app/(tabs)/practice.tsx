@@ -468,6 +468,8 @@ function PracticeScreenContent() {
             { icon: "bookmark.fill" as const, label: "Bookmarks", route: "/bookmarks" },
             { icon: "rectangle.stack.fill" as const, label: "Flashcards", route: "/flashcards" },
             { icon: "chart.xyaxis.line" as const, label: "Progress", route: "/progress" },
+            { icon: "calendar" as const, label: "Study Planner", route: "/study-planner" },
+            { icon: "person.2.fill" as const, label: "Classroom", route: "/(tabs)/classroom" },
           ].map((item) => (
             <TouchableOpacity
               key={item.route}

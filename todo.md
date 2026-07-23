@@ -779,3 +779,9 @@
 - [x] Pass submissionReady through practice.tsx handleViewSolution
 - [x] Wire SubmissionReadyCard into chat.tsx MessageBubble (AI Tutor tab)
 - [x] TypeScript: 0 errors
+
+## Quick-Access Shortcuts from Solve and Practice Tabs
+- [x] Solve tab header: add Saved Notes icon button (next to bookmark)
+- [x] Solve tab: add Save to Flashcards button at the bottom of the solution
+- [x] Practice tab Quick Links: add Study Planner card
+- [x] Practice tab Quick Links: add Classroom card
