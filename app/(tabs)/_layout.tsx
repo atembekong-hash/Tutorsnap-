@@ -1,14 +1,13 @@
-import { Tabs } from "expo-router";
+import { Tabs, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { View, Platform, StyleSheet, Animated, Easing } from "react-native";
-import { useRef, useEffect } from "react";
-
+import { View, Platform, StyleSheet, Animated, Easing, Text } from "react-native";
+import { useRef, useEffect, useCallback, useState } from "react";
 import { HapticTab } from "@/components/haptic-tab";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { SchemeColors } from "@/constants/theme";
 import { useChatBadge } from "@/hooks/use-chat-badge";
-import { Text } from "react-native";
+import { getDailyChallengeState } from "@/lib/daily-challenge";
 import { useAppearance } from "@/lib/appearance-context";
 
 function ScanTabIcon({ color: _color, focused: _focused }: { color: string; focused: boolean }) {
@@ -57,6 +56,43 @@ function ChatTabIcon({ color, focused: _focused }: { color: string; focused: boo
             {unreadCount > 99 ? "99+" : String(unreadCount)}
           </Text>
         </Animated.View>
+      )}
+    </View>
+  );
+}
+
+function PracticeTabIcon({ color, focused }: { color: string; focused: boolean }) {
+  const [dailyDone, setDailyDone] = useState(true);
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  useFocusEffect(
+    useCallback(() => {
+      getDailyChallengeState().then((s) => setDailyDone(s.completed));
+    }, [])
+  );
+
+  useEffect(() => {
+    if (dailyDone || focused) return;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.5, duration: 600, useNativeDriver: true, easing: Easing.out(Easing.quad) }),
+        Animated.timing(pulseAnim, { toValue: 1.0, duration: 600, useNativeDriver: true, easing: Easing.in(Easing.quad) }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [dailyDone, focused, pulseAnim]);
+
+  return (
+    <View style={{ position: "relative" }}>
+      <IconSymbol size={24} name="pencil.and.list.clipboard" color={color} />
+      {!dailyDone && (
+        <Animated.View
+          style={[
+            styles.practiceBadge,
+            { transform: [{ scale: pulseAnim }] },
+          ]}
+        />
       )}
     </View>
   );
@@ -116,7 +152,7 @@ export default function TabLayout() {
         name="practice"
         options={{
           title: "Practice",
-          tabBarIcon: ({ color }) => <IconSymbol size={24} name="pencil.and.list.clipboard" color={color} />,
+          tabBarIcon: ({ color, focused }) => <PracticeTabIcon color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen
@@ -188,6 +224,15 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: "800" as const,
     letterSpacing: 0.2,
+  },
+  practiceBadge: {
+    position: "absolute" as const,
+    top: -3,
+    right: -4,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#EF4444",
   },
   scanIconContainer: {
     width: 54,

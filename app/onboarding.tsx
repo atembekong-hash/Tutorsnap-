@@ -677,15 +677,18 @@ export default function OnboardingScreen() {
                 activeOpacity={0.7}
                 accessibilityLabel={`Go to slide ${idx + 1}`}
               >
-                <View
-                  style={[
-                    styles.dot,
-                    {
-                      backgroundColor: isActive ? colors.primary : `${colors.primary}30`,
-                      width: isActive ? 24 : 8,
-                    },
-                  ]}
-                />
+                {isActive ? (
+                  <LinearGradient
+                    colors={["#7C3AED", "#06B6D4"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={[styles.dot, { width: 24 }]}
+                  />
+                ) : (
+                  <View
+                    style={[styles.dot, { backgroundColor: `${colors.primary}30`, width: 8 }]}
+                  />
+                )}
               </TouchableOpacity>
             );
           })}

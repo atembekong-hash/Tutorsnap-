@@ -891,3 +891,9 @@
 - [x] Share button in PerfectScoreModal (native share sheet with score message)
 - [x] Linear gradient fill on onboarding progress bar (violet to cyan)
 - [x] Verify and fix empty state CTA deep links: Bookmarks -> Solve tab, History -> Solve tab, Quiz History -> Practice tab
+
+## Round 53: Onboarding Gradient Dots, History Share, Tab Badges
+
+- [x] Gradient pill for active dot in onboarding slide indicators
+- [x] Share button on History screen cards
+- [x] Animated pulsing dot badge on Practice tab icon (pulses when daily challenge is incomplete)

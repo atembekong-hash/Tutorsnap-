@@ -21,6 +21,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { toggleBookmark, getBookmarks } from "@/lib/bookmarks";
 import type { HistoryItem, MathSubject } from "@/shared/types";
 import { getSubjectColor, getSubjectLabel } from "@/lib/subjects";
+import { Share } from "react-native";
 import { GRADE_LABELS } from "@/lib/grade-levels";
 import { cleanMathText } from "@/lib/clean-math-text";
 import { HistorySkeletonList } from "@/components/skeleton";
@@ -199,6 +200,21 @@ function HistoryScreenContent() {
               name={bookmarkedIds.has(item.problem) ? "bookmark.fill" : "bookmark"}
               color={bookmarkedIds.has(item.problem) ? colors.warning : colors.muted}
             />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={async (e) => {
+              e.stopPropagation();
+              H.impactLight();
+              try {
+                await Share.share({
+                  message: `I solved this on TutorSnap!\n\n${item.problem}\n\nAnswer: ${item.answer}\n\nDownload TutorSnap to solve problems instantly.`,
+                  title: "TutorSnap Solution",
+                });
+              } catch {}
+            }}
+            style={{ padding: 6, marginTop: 4 }}
+          >
+            <IconSymbol size={18} name="paperplane.fill" color={colors.muted} />
           </TouchableOpacity>
           <IconSymbol size={18} name="chevron.right" color={colors.muted} />
         </View>
