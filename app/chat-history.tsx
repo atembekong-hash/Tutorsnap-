@@ -13,6 +13,7 @@ import {
   Share,
   Modal,
   KeyboardAvoidingView,
+  Animated,
 } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import * as H from "@/lib/haptics";
@@ -20,6 +21,7 @@ import { useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
+import { useScreenTransition } from "@/hooks/use-screen-transition";
 import { useFontSize } from "@/lib/font-size-provider";
 import { getSubjectLabel } from "@/lib/subjects";
 import {
@@ -683,8 +685,10 @@ export default function ChatHistoryScreen() {
     router.push({ pathname: "/(tabs)/chat", params: { newSession: "1" } });
   };
 
+  const { fadeStyle } = useScreenTransition({ duration: 280, translateY: 16 });
   return (
     <ScreenContainer>
+      <Animated.View style={[{ flex: 1 }, fadeStyle]}>
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <TouchableOpacity
@@ -904,7 +908,8 @@ export default function ChatHistoryScreen() {
           onCancel={() => setTagTarget(null)}
         />
       )}
-    </ScreenContainer>
+    
+      </Animated.View></ScreenContainer>
   );
 }
 

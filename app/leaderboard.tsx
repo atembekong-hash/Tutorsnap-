@@ -16,6 +16,7 @@ import {
   Modal,
   ScrollView,
   Platform,
+  Animated,
 } from "react-native";
 import { useRouter } from "expo-router";
 import * as Sharing from "expo-sharing";
@@ -24,6 +25,7 @@ import * as H from "@/lib/haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
+import { useScreenTransition } from "@/hooks/use-screen-transition";
 import { getProgress } from "@/lib/progress";
 import {
   loadFriends,
@@ -165,8 +167,10 @@ export default function LeaderboardScreen() {
     return `#${rank}`;
   };
 
+  const { fadeStyle } = useScreenTransition({ duration: 280, translateY: 16 });
   return (
     <ScreenContainer>
+      <Animated.View style={[{ flex: 1 }, fadeStyle]}>
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
@@ -432,7 +436,8 @@ export default function LeaderboardScreen() {
           </ScrollView>
         </View>
       </Modal>
-    </ScreenContainer>
+    
+      </Animated.View></ScreenContainer>
   );
 }
 

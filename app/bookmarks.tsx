@@ -14,6 +14,7 @@ import {
   TextInput,
   ScrollView,
   ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import Swipeable from "react-native-gesture-handler/Swipeable";
@@ -65,14 +66,24 @@ export default function BookmarksScreen() {
   const [newFolderName, setNewFolderName] = useState("");
   const [showAddToFolderMenu, setShowAddToFolderMenu] = useState<string | null>(null); // bookmarkId
   const { fadeStyle } = useScreenTransition({ duration: 280, translateY: 16 });
+  const [refreshing, setRefreshing] = useState(false);
 
-  const loadBookmarks = async () => {
+  const loadBookmarks = async (isRefresh = false) => {
     try {
       const bm = await getBookmarks();
       setBookmarks(bm);
     } catch {
       // getBookmarks swallows errors internally; this is a safety net
+    } finally {
+      if (isRefresh) setRefreshing(false);
     }
+  };
+
+  const handleRefresh = () => {
+    H.impactLight();
+    setRefreshing(true);
+    loadBookmarks(true);
+    loadFolders();
   };
 
   const loadFolders = async () => {
@@ -727,6 +738,14 @@ export default function BookmarksScreen() {
               contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
               showsVerticalScrollIndicator={false}
               ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={handleRefresh}
+                  tintColor={colors.primary}
+                  colors={[colors.primary]}
+                />
+              }
             />
           )}
         </>

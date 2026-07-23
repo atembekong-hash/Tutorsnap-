@@ -344,10 +344,11 @@ export default function OnboardingScreen() {
   const currentGradient = SLIDE_GRADIENTS[SLIDES[currentSlide]?.id] ?? ["#0a7ea420", "#0a7ea405"];
 
   return (
+    <View style={[styles.gradientRoot, { backgroundColor: colors.background }]}>
     <LinearGradient
       colors={[currentGradient[0], currentGradient[1], "transparent"]}
-      style={styles.gradientRoot}
-    >
+      style={StyleSheet.absoluteFillObject}
+    />
       <SafeAreaView style={[styles.root, { backgroundColor: "transparent" }]} edges={["top", "bottom", "left", "right"]}>
         {/* Back button */}
         {!isFirstSlide && (
@@ -691,7 +692,7 @@ export default function OnboardingScreen() {
           </View>
         )}
       </SafeAreaView>
-    </LinearGradient>
+    </View>
   );
 }
 

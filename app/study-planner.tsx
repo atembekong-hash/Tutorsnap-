@@ -12,12 +12,14 @@ import {
   Alert,
   FlatList,
   KeyboardAvoidingView,
+  Animated,
 } from "react-native";
 import { useRouter , useFocusEffect } from "expo-router";
 import * as H from "@/lib/haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
+import { useScreenTransition } from "@/hooks/use-screen-transition";
 import {
   loadStudySlots,
   upsertStudySlot,
@@ -153,8 +155,10 @@ export default function StudyPlannerScreen() {
   const totalWeekMinutes = slots.reduce((sum, s) => sum + s.durationMinutes, 0);
   const todaySlots = slots.filter((s) => s.weekday === (new Date().getDay() as Weekday));
 
+  const { fadeStyle } = useScreenTransition({ duration: 280, translateY: 16 });
   return (
     <ScreenContainer>
+      <Animated.View style={[{ flex: 1 }, fadeStyle]}>
       {/* Header */}
       <View style={[styles.navBar, { borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
@@ -513,7 +517,8 @@ export default function StudyPlannerScreen() {
         </Modal>
         </KeyboardAvoidingView>
       </Modal>
-    </ScreenContainer>
+    
+      </Animated.View></ScreenContainer>
   );
 }
 

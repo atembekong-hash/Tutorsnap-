@@ -18,6 +18,7 @@ import * as H from "@/lib/haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
+import { useScreenTransition } from "@/hooks/use-screen-transition";
 import {
   getUserRewards,
   getRewardTiers,
@@ -99,8 +100,10 @@ export default function RewardsScreen() {
     );
   }
 
+  const { fadeStyle } = useScreenTransition({ duration: 280, translateY: 16 });
   return (
     <ScreenContainer className="p-6">
+      <Animated.View style={[{ flex: 1 }, fadeStyle]}>
       <ScrollView contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={{ marginBottom: 24 }}>
@@ -299,7 +302,8 @@ export default function RewardsScreen() {
           ))}
         </View>
       </ScrollView>
-    </ScreenContainer>
+    
+      </Animated.View></ScreenContainer>
   );
 }
 

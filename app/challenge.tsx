@@ -23,6 +23,7 @@ import * as H from "@/lib/haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
+import { useScreenTransition } from "@/hooks/use-screen-transition";
 import { getSubjectColor, getSubjectLabel, getSubjectEmoji } from "@/lib/subjects";
 import { recordChallengeResult, getClassroomDisplayName } from "@/lib/classroom";
 import { saveChallengeAttempt } from "@/lib/challenge-history";
@@ -189,8 +190,10 @@ export default function ChallengeScreen() {
     return m > 0 ? `${m}:${sec.toString().padStart(2, "0")}` : `${sec}s`;
   };
 
+  const { fadeStyle } = useScreenTransition({ duration: 280, translateY: 16 });
   return (
     <ScreenContainer>
+      <Animated.View style={[{ flex: 1 }, fadeStyle]}>
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
@@ -406,7 +409,8 @@ export default function ChallengeScreen() {
           </View>
         )}
       </ScrollView>
-    </ScreenContainer>
+    
+      </Animated.View></ScreenContainer>
   );
 }
 

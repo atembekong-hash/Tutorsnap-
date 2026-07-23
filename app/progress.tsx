@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   Platform,
+  Animated,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import { ProgressSkeletonScreen } from "@/components/skeleton";
@@ -13,6 +14,7 @@ import * as H from "@/lib/haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
+import { useScreenTransition } from "@/hooks/use-screen-transition";
 import {
   getProgress,
   setDailyGoal,
@@ -125,8 +127,10 @@ export default function ProgressScreen() {
   // Get today's day index (0=Mon, 6=Sun)
   const todayDayIndex = (new Date().getDay() + 6) % 7;
 
+  const { fadeStyle } = useScreenTransition({ duration: 280, translateY: 16 });
   return (
     <ScreenContainer>
+      <Animated.View style={[{ flex: 1 }, fadeStyle]}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
         {/* Header */}
         <View style={styles.header}>
@@ -551,7 +555,8 @@ export default function ProgressScreen() {
         subjectLabel={unlockModal?.subjectLabel ?? ""}
         onClose={() => setUnlockModal(null)}
       />
-    </ScreenContainer>
+    
+      </Animated.View></ScreenContainer>
   );
 }
 

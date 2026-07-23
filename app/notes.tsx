@@ -8,6 +8,7 @@ import {
   Alert,
   TextInput,
   ScrollView,
+  Animated,
 } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -16,6 +17,7 @@ import * as H from "@/lib/haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
+import { useScreenTransition } from "@/hooks/use-screen-transition";
 
 const SAVED_NOTES_KEY = "tutor_saved_notes";
 
@@ -217,8 +219,10 @@ export default function NotesScreen() {
     );
   };
 
+  const { fadeStyle } = useScreenTransition({ duration: 280, translateY: 16 });
   return (
     <ScreenContainer>
+      <Animated.View style={[{ flex: 1 }, fadeStyle]}>
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <IconSymbol size={22} name="arrow.left" color={colors.foreground} />
@@ -343,7 +347,8 @@ export default function NotesScreen() {
           showsVerticalScrollIndicator={false}
         />
       )}
-    </ScreenContainer>
+    
+      </Animated.View></ScreenContainer>
   );
 }
 

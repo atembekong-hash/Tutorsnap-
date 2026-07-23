@@ -12,6 +12,7 @@ import {
   TextInput,
   Image,
   type ScrollView as ScrollViewType,
+  Animated,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -23,6 +24,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
+import { useScreenTransition } from "@/hooks/use-screen-transition";
 import { useThemeContext } from "@/lib/theme-provider";
 import { getProgress, setDailyGoal } from "@/lib/progress";
 import { logout, getUserInfo, setUserInfo } from "@/lib/_core/auth-enhanced";
@@ -1089,8 +1091,10 @@ export default function SettingsScreen() {
     label.toLowerCase().includes(sq) ||
     (subtitle ?? "").toLowerCase().includes(sq);
 
+  const { fadeStyle } = useScreenTransition({ duration: 280, translateY: 16 });
   return (
     <ScreenContainer>
+      <Animated.View style={[{ flex: 1 }, fadeStyle]}>
       {/* Header */}
       <View style={[styles.navBar, { borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
@@ -2484,7 +2488,8 @@ export default function SettingsScreen() {
         onExportChat={() => {}}
       />
 
-    </ScreenContainer>
+    
+      </Animated.View></ScreenContainer>
   );
 }
 

@@ -17,6 +17,7 @@ import * as Linking from "expo-linking";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
+import { useScreenTransition } from "@/hooks/use-screen-transition";
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -253,8 +254,10 @@ export default function FAQScreen() {
     setExpandedId(null);
   };
 
+  const { fadeStyle } = useScreenTransition({ duration: 280, translateY: 16 });
   return (
     <ScreenContainer>
+      <Animated.View style={[{ flex: 1 }, fadeStyle]}>
       {/* Header */}
       <View style={[styles.navBar, { borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
@@ -409,7 +412,8 @@ export default function FAQScreen() {
         )}
 
       </ScrollView>
-    </ScreenContainer>
+    
+      </Animated.View></ScreenContainer>
   );
 }
 

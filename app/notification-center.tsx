@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Platform,
   Alert,
+  Animated,
 } from "react-native";
 import { useRouter } from "expo-router";
 import * as H from "@/lib/haptics";
@@ -16,6 +17,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
+import { useScreenTransition } from "@/hooks/use-screen-transition";
 
 const STORAGE_KEY = "@tutorsnap/notificationPrefs";
 
@@ -184,8 +186,10 @@ export default function NotificationCenterScreen() {
 
   const enabledCount = Object.values(prefs).filter(Boolean).length;
 
+  const { fadeStyle } = useScreenTransition({ duration: 280, translateY: 16 });
   return (
     <ScreenContainer>
+      <Animated.View style={[{ flex: 1 }, fadeStyle]}>
       {/* Header */}
       <View style={[styles.navBar, { borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
@@ -287,7 +291,8 @@ export default function NotificationCenterScreen() {
         </View>
 
       </ScrollView>
-    </ScreenContainer>
+    
+      </Animated.View></ScreenContainer>
   );
 }
 

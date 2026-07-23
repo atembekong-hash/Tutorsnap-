@@ -863,3 +863,11 @@
 - [x] Apply useScreenTransition to Quiz, Flashcards, and Bookmarks screens
 - [x] Pull-to-refresh on Quiz History screen
 - [x] Staggered step animation on Solution screen (80ms per step)
+
+## Round 49: UX Polish - Transitions, Refresh, Score Animation
+
+- [x] Apply useScreenTransition to 19 remaining screens (challenge, chat-history, faq, feedback, leaderboard, legal, notes, notification-center, pomodoro, profile-setup, profile, progress, quiz-history-detail, quiz-history, report-bug, review-missed, rewards, settings, study-planner)
+- [x] Pull-to-refresh on Bookmarks screen
+- [x] Animated score count-up reveal on Quiz Results (0 to final pct over 600ms)
+- [x] Fix onboarding dark mode (background now uses colors.background with LinearGradient overlay)
+- [x] Build APK 1.1.6

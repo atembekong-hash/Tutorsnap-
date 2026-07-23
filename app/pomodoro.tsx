@@ -12,6 +12,7 @@ import {
   StyleSheet,
   Platform,
   Alert,
+  Animated,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import * as H from "@/lib/haptics";
@@ -19,6 +20,7 @@ import { useKeepAwake } from "expo-keep-awake";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
+import { useScreenTransition } from "@/hooks/use-screen-transition";
 import { getSubjectDef } from "@/lib/subjects";
 import type { SubjectId } from "@/lib/subjects";
 
@@ -142,8 +144,10 @@ export default function PomodoroScreen() {
   const phaseLabel = phase === "focus" ? "Focus Time" : phase === "break" ? "Break Time" : "Session Complete!";
   const phaseEmoji = phase === "focus" ? (subjectDef?.emoji ?? "📚") : phase === "break" ? "☕" : "🎉";
 
+  const { fadeStyle } = useScreenTransition({ duration: 280, translateY: 16 });
   return (
     <ScreenContainer>
+      <Animated.View style={[{ flex: 1 }, fadeStyle]}>
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={handleExit} style={styles.backBtn}>
@@ -276,7 +280,8 @@ export default function PomodoroScreen() {
           </Text>
         )}
       </View>
-    </ScreenContainer>
+    
+      </Animated.View></ScreenContainer>
   );
 }
 

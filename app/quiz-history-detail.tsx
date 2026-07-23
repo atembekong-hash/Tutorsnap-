@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Share,
   Platform,
+  Animated,
 } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import * as H from "@/lib/haptics";
@@ -15,6 +16,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
+import { useScreenTransition } from "@/hooks/use-screen-transition";
 import { loadQuizHistory, type QuizResult, type QuizQuestionSnapshot } from "@/lib/quiz-history";
 import { getSubjectLabel } from "@/lib/subjects";
 import { cleanMathText } from "@/lib/clean-math-text";
@@ -372,8 +374,10 @@ export default function QuizHistoryDetailScreen() {
   const subjectLabel = getSubjectLabel(quiz.subject);
   const hasDetail = quiz.questions && quiz.questions.length > 0;
 
+  const { fadeStyle } = useScreenTransition({ duration: 280, translateY: 16 });
   return (
     <ScreenContainer>
+      <Animated.View style={[{ flex: 1 }, fadeStyle]}>
       {/* Nav bar */}
       <View style={[styles.navBar, { borderBottomColor: colors.border }]}>
         <TouchableOpacity
@@ -545,7 +549,8 @@ export default function QuizHistoryDetailScreen() {
           <Text style={styles.practiceBtnText}>Practice Again</Text>
         </TouchableOpacity>
       </ScrollView>
-    </ScreenContainer>
+    
+      </Animated.View></ScreenContainer>
   );
 }
 

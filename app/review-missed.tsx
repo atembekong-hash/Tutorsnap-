@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
+  Animated,
 } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -13,6 +14,7 @@ import * as H from "@/lib/haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
+import { useScreenTransition } from "@/hooks/use-screen-transition";
 import { loadQuizHistory, type QuizQuestionSnapshot } from "@/lib/quiz-history";
 import { cleanMathText } from "@/lib/clean-math-text";
 import { useFontSize } from "@/lib/font-size-provider";
@@ -279,8 +281,10 @@ export default function ReviewMissedScreen() {
       });
   }, [quizId]);
 
+  const { fadeStyle } = useScreenTransition({ duration: 280, translateY: 16 });
   return (
     <ScreenContainer>
+      <Animated.View style={[{ flex: 1 }, fadeStyle]}>
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
@@ -390,7 +394,8 @@ export default function ReviewMissedScreen() {
           </TouchableOpacity>
         </ScrollView>
       )}
-    </ScreenContainer>
+    
+      </Animated.View></ScreenContainer>
   );
 }
 

@@ -9,6 +9,7 @@ import {
   Platform,
   Alert,
   KeyboardAvoidingView,
+  Animated,
 } from "react-native";
 import { useRouter } from "expo-router";
 import * as H from "@/lib/haptics";
@@ -17,6 +18,7 @@ import Constants from "expo-constants";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
+import { useScreenTransition } from "@/hooks/use-screen-transition";
 
 const CATEGORIES = [
   { id: "general", label: "General Feedback", emoji: "💬" },
@@ -85,8 +87,10 @@ export default function FeedbackScreen() {
     );
   }
 
+  const { fadeStyle } = useScreenTransition({ duration: 280, translateY: 16 });
   return (
     <ScreenContainer>
+      <Animated.View style={[{ flex: 1 }, fadeStyle]}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -199,7 +203,8 @@ export default function FeedbackScreen() {
 
         </ScrollView>
       </KeyboardAvoidingView>
-    </ScreenContainer>
+    
+      </Animated.View></ScreenContainer>
   );
 }
 

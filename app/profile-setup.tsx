@@ -4,10 +4,13 @@
  */
 
 import { useState } from "react";
-import { View, Text, TextInput, Pressable, ScrollView, ActivityIndicator, Image } from "react-native";
+import { View, Text, TextInput, Pressable, ScrollView, ActivityIndicator, Image,
+  Animated,
+} from "react-native";
 import { useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
+import { useScreenTransition } from "@/hooks/use-screen-transition";
 import { setUserInfo } from "@/lib/_core/auth-enhanced";
 import { useAuth } from "@/lib/auth-context";
 import * as Haptics from "expo-haptics";
@@ -62,8 +65,10 @@ export default function ProfileSetupScreen() {
     }
   };
 
+  const { fadeStyle } = useScreenTransition({ duration: 280, translateY: 16 });
   return (
     <ScreenContainer containerClassName="bg-background">
+      <Animated.View style={[{ flex: 1 }, fadeStyle]}>
       <ScrollView contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false}>
         <View className="flex-1 justify-between px-6 py-8">
           {/* Header */}
@@ -151,6 +156,7 @@ export default function ProfileSetupScreen() {
           </View>
         </View>
       </ScrollView>
-    </ScreenContainer>
+    
+      </Animated.View></ScreenContainer>
   );
 }

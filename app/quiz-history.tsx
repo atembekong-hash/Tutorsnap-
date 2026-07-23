@@ -8,12 +8,14 @@ import {
   ActivityIndicator,
   ScrollView,
   RefreshControl,
+  Animated,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
+import { useScreenTransition } from "@/hooks/use-screen-transition";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useAppearance } from "@/lib/appearance-context";
 import { loadQuizHistory, type QuizResult } from "@/lib/quiz-history";
@@ -182,8 +184,10 @@ export default function QuizHistoryScreen() {
     [history, activeSubject]
   );
 
+  const { fadeStyle } = useScreenTransition({ duration: 280, translateY: 16 });
   return (
     <ScreenContainer>
+      <Animated.View style={[{ flex: 1 }, fadeStyle]}>
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <TouchableOpacity
@@ -394,7 +398,8 @@ export default function QuizHistoryScreen() {
           )}
         </>
       )}
-    </ScreenContainer>
+    
+      </Animated.View></ScreenContainer>
   );
 }
 

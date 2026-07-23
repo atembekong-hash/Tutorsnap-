@@ -153,6 +153,24 @@ function ScoreSummary({
   const mins = Math.floor(timeTaken / 60);
   const secs = timeTaken % 60;
   const subjectLabel = getSubjectLabel(subject);
+
+  // Animated score count-up
+  const scoreAnim = React.useRef(new Animated.Value(0)).current;
+  const [displayPct, setDisplayPct] = React.useState(0);
+  React.useEffect(() => {
+    const listener = scoreAnim.addListener(({ value }) => {
+      setDisplayPct(Math.round(value));
+    });
+    Animated.timing(scoreAnim, {
+      toValue: pct,
+      duration: 600,
+      delay: 200,
+      useNativeDriver: false,
+    }).start();
+    return () => scoreAnim.removeListener(listener);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // GRADE_LABELS and AsyncStorageLib imported at module level
   const [userName, setUserName] = React.useState<string | null>(null);
   React.useEffect(() => {
@@ -209,7 +227,7 @@ function ScoreSummary({
       <View style={[styles.gradeCard, { backgroundColor: `${gradeColor}15`, borderColor: `${gradeColor}40` }]}>
         <Text style={[styles.gradeText, { color: gradeColor }]}>{grade}</Text>
         <Text style={[styles.scoreText, { color: colors.foreground }]}>{correct} / {total} correct</Text>
-        <Text style={[styles.pctText, { color: gradeColor }]}>{pct}%</Text>
+        <Text style={[styles.pctText, { color: gradeColor }]}>{displayPct}%</Text>
         <Text style={[styles.timeText, { color: colors.muted }]}>
           ⏱ {mins > 0 ? `${mins}m ` : ""}{secs}s
         </Text>
