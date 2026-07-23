@@ -602,25 +602,16 @@ function SolveScreenContent() {
     }, [])
   );
 
-  // One-time startup check on mount — runs only once, not on every focus
-  // Order: 1) auth check  2) onboarding check  3) show dashboard
+  // Auth guard is handled in the root layout via AuthGuard component.
+  // Onboarding check: if user is signed in but hasn't completed onboarding, redirect.
   useEffect(() => {
     (async () => {
       try {
-        const { isAuthenticated } = await import("@/lib/_core/auth-enhanced");
-        const authed = await isAuthenticated();
-        if (!authed) {
-          // Not signed in — go to sign-in screen first
-          router.replace("/auth-screen" as any);
-          return;
-        }
-        // Signed in — check if onboarding is complete
         const onboardingDone = await AsyncStorage.getItem("@tutorsnap/onboardingDone");
         if (!onboardingDone) {
           router.replace("/onboarding" as any);
         }
-        // Otherwise stay on dashboard
-      } catch { /* ignore — treat as authenticated */ }
+      } catch { /* ignore */ }
     })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

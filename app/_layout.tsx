@@ -12,7 +12,7 @@ import { Inter_800ExtraBold } from "@expo-google-fonts/inter/800ExtraBold";
 import { JetBrainsMono_400Regular } from "@expo-google-fonts/jetbrains-mono/400Regular";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-reanimated";
-import { Platform , Alert } from "react-native";
+import { Platform , Alert, View } from "react-native";
 // Removed: React Navigation Stack is not compatible with Expo Router
 import "@/lib/_core/nativewind-pressable";
 import { ThemeProvider } from "@/lib/theme-provider";
@@ -39,7 +39,8 @@ import { recordFirstLaunch } from "@/lib/review-prompt";
 import { getOrCreateReferralCode, scheduleWeeklyAffiliateDigest } from "@/lib/affiliate";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { playTransitionSound } from "@/lib/sound-effects";
-import { AuthProvider } from "@/lib/auth-context";
+import { AuthProvider, useAuth } from "@/lib/auth-context";
+import { useColors } from "@/hooks/use-colors";
 
 // Show notifications as banners when app is in foreground
 if (Platform.OS !== "web") {
@@ -60,6 +61,33 @@ const DEFAULT_WEB_FRAME: Rect = { x: 0, y: 0, width: 0, height: 0 };
 export const unstable_settings = {
   anchor: "(tabs)",
 };
+
+/**
+ * AuthGuard — renders nothing (blank screen) while auth state is loading,
+ * then redirects to auth-screen if the user is not signed in.
+ * This prevents the dashboard from flashing before the redirect fires.
+ */
+function AuthGuard({ children }: { children: React.ReactNode }) {
+  const { isLoading, isSignedIn } = useAuth();
+  const router = useRouter();
+  const colors = useColors();
+
+  useEffect(() => {
+    if (isLoading) return; // still resolving — wait
+    if (!isSignedIn) {
+      router.replace("/auth-screen" as any);
+    }
+  }, [isLoading, isSignedIn, router]);
+
+  // While auth state is resolving, show a blank themed screen so no content flashes
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.background }} />
+    );
+  }
+
+  return <>{children}</>;
+}
 
 export default function RootLayout() {
   const router = useRouter();
@@ -217,6 +245,7 @@ export default function RootLayout() {
   const content = (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AuthProvider>
+        <AuthGuard>
         <trpc.Provider client={trpcClient} queryClient={queryClient}>
           <QueryClientProvider client={queryClient}>
           <OfflineBanner />
@@ -446,6 +475,7 @@ export default function RootLayout() {
           <StatusBar style="auto" />
           </QueryClientProvider>
         </trpc.Provider>
+        </AuthGuard>
       </AuthProvider>
     </GestureHandlerRootView>
   );
