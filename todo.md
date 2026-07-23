@@ -755,3 +755,13 @@
 - [x] Fix onboarding appearing before auth screen on fresh install — gate onboarding check on isSignedIn being true
 - [x] Fix re-opening app logging user out — isAuthenticated now checks refresh token expiry (30 days) instead of access token expiry (1 hour)
 - [x] Increment versionCode to 6 / buildNumber to 5 for new APK build
+
+## Final Solution Card (Submission-Ready Deliverable)
+- [x] Add finalSolution field to MathSolution and PracticeQuestion shared types
+- [x] Update solve system prompt (text + image) to return finalSolution in JSON
+- [x] Update practice system prompt to return finalSolution in JSON
+- [x] Update AI Tutor chat system prompt to append ---FINAL_SOLUTION_START/END--- delimiters
+- [x] Create FinalSolutionCard component (purple-accented, copy button, submission-ready label)
+- [x] Integrate FinalSolutionCard into solution.tsx (Solve + Practice tabs)
+- [x] Pass finalSolution field through practice.tsx handleViewSolution
+- [x] Integrate FinalSolutionCard into chat.tsx MessageBubble (AI Tutor tab)

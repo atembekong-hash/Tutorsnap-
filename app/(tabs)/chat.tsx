@@ -109,6 +109,7 @@ import { fetch as expoFetch } from "expo/fetch";
 import { scheduleDailyReminder, cancelDailyReminder, scheduleSessionSummaryNotification } from "@/lib/notifications";
 import { pinDefinition, readGlossary, unpinDefinition, clearGlossary, type GlossaryEntry } from "@/lib/glossary";
 import { cleanMathText } from "@/lib/clean-math-text";
+import { FinalSolutionCard } from "@/components/final-solution-card";
 
 function getAppearanceSubjectKey(subjectId: string | null): string {
   if (!subjectId) return "Mathematics";
@@ -554,11 +555,26 @@ function MessageBubble({
     );
   }
 
+  // Split content into Teaching Mode and Final Solution
+  const START_TAG = "---FINAL_SOLUTION_START---";
+  const END_TAG = "---FINAL_SOLUTION_END---";
+  const startIdx = message.content.indexOf(START_TAG);
+  const endIdx = message.content.indexOf(END_TAG);
+  const hasFinalSolution = !streaming && startIdx !== -1;
+  const teachingContent = hasFinalSolution
+    ? message.content.slice(0, startIdx).trim()
+    : message.content;
+  const finalSolutionContent = hasFinalSolution && endIdx !== -1
+    ? message.content.slice(startIdx + START_TAG.length, endIdx).trim()
+    : hasFinalSolution
+    ? message.content.slice(startIdx + START_TAG.length).trim()
+    : "";
+
   // AI bubble — full width, no card, tap-to-copy + long-press for reaction menu
   return (
     <TouchableOpacity
-      onPress={() => onTapCopyAI?.(message.content)}
-      onLongPress={() => onLongPressAI(message.content)}
+      onPress={() => onTapCopyAI?.(teachingContent)}
+      onLongPress={() => onLongPressAI(teachingContent)}
       delayLongPress={450}
       activeOpacity={0.92}
       accessibilityLabel="Tap to copy, long press for options"
@@ -569,12 +585,12 @@ function MessageBubble({
           {showAccentBar && <View style={[bubbleStyles.aiAccentBar, { backgroundColor: colors.primary }]} />}
           <View style={bubbleStyles.aiContent}>
           <AIResponseErrorBoundary
-            fallbackText={message.content}
+            fallbackText={teachingContent}
             fontSize={fs(15)}
             color={colors.foreground}
           >
             <AIResponseRenderer
-              markdown={message.content}
+              markdown={teachingContent}
               fontSize={fs(15)}
               color={colors.foreground}
               codeBackground={colors.surface}
@@ -594,19 +610,23 @@ function MessageBubble({
               <Text style={[bubbleStyles.timeText, { color: colors.muted, fontSize: fs(10) }]}>
                 {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </Text>
-              {!streaming && message.content.length > 80 && (
+              {!streaming && teachingContent.length > 80 && (
                 <Text style={[bubbleStyles.readingTime, { color: colors.muted, fontSize: fs(10) }]}>
-                  {`  ·  ${Math.max(1, Math.ceil(message.content.split(/\s+/).length / 200))} min read`}
+                  {`  ·  ${Math.max(1, Math.ceil(teachingContent.split(/\s+/).length / 200))} min read`}
                 </Text>
               )}
               {reaction ? (
                 <Text style={[bubbleStyles.reactionBadge, { fontSize: fs(13) }]}>{reaction}</Text>
               ) : null}
             </View>
-            {!streaming && message.content.length > 0 && (
-              <CopyButton content={message.content} colors={colors} fs={fs} />
+            {!streaming && teachingContent.length > 0 && (
+              <CopyButton content={teachingContent} colors={colors} fs={fs} />
             )}
           </View>
+          {/* Final Solution Card — rendered outside the TouchableOpacity tap zone */}
+          {hasFinalSolution && finalSolutionContent.length > 0 && (
+            <FinalSolutionCard content={finalSolutionContent} fs={fs} />
+          )}
           </View>
         </View>
       </View>
