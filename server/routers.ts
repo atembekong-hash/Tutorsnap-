@@ -93,6 +93,7 @@ Always respond with valid JSON in this exact format:
   "problem": "the original question or problem, reproduced exactly",
   "subject": "${subject}",
   "answer": "A FULL PARAGRAPH (7-10 sentences): state the result, interpret it, note units, explain any special cases or caveats, and summarise what was learned.",
+  "submissionReady": "[INDEPENDENTLY GENERATED — not a summary of the above] Complete worked solution as a student would write for submission. Maths/science: numbered calculation lines, all substitutions, units, final answer on last line. Programming: final code only. Essays: complete polished prose. Definitions: concise precise definition. Multiple choice: correct option + essential supporting work only. NO explanatory prose, NO commentary, NO preamble.",
   "steps": [
     {
       "stepNumber": 1,
@@ -115,8 +116,7 @@ Always respond with valid JSON in this exact format:
     "Detailed tip 5: specific, actionable, 6-8 sentences",
     "Detailed tip 6: specific, actionable, 6-8 sentences"
   ],
-  "relatedTopics": ["Topic 1", "Topic 2", "Topic 3", "Topic 4", "Topic 5", "Topic 6"],
-  "submissionReady": "[INDEPENDENTLY GENERATED — not a summary of the above] Complete worked solution as a student would write for submission. Maths/science: numbered calculation lines, all substitutions, units, final answer on last line. Programming: final code only. Essays: complete polished prose. Definitions: concise precise definition. Multiple choice: correct option + essential supporting work only. NO explanatory prose, NO commentary, NO preamble."
+  "relatedTopics": ["Topic 1", "Topic 2", "Topic 3", "Topic 4", "Topic 5", "Topic 6"]
 }`;
 }
 
@@ -147,6 +147,7 @@ Always respond with valid JSON in this exact format:
   "problem": "the question or problem you found in the image",
   "subject": "the detected subject id (e.g. algebra, calculus, biology, us_history, etc.)",
   "answer": "A FULL PARAGRAPH (5-8 sentences): state the result, interpret it, note units, explain any special cases or caveats, and summarise what was learned.",
+  "submissionReady": "[INDEPENDENTLY GENERATED — not a summary of the above] Complete worked solution as a student would write for submission. Maths/science: numbered calculation lines, all substitutions, units, final answer on last line. Programming: final code only. Essays: complete polished prose. Definitions: concise precise definition. Multiple choice: correct option + essential supporting work only. NO explanatory prose, NO commentary, NO preamble.",
   "steps": [
     {
       "stepNumber": 1,
@@ -162,8 +163,7 @@ Always respond with valid JSON in this exact format:
   },
   "conceptExplained": "A LONG, RICH paragraph (10-15 sentences): underlying theory, historical context or motivation, formal definition, intuitive explanation, when the concept applies, common pitfalls, and connections to at least 3 related topics.",
   "tips": ["Detailed tip 1: 4-6 sentences", "Detailed tip 2: 4-6 sentences", "Detailed tip 3: 4-6 sentences", "Detailed tip 4: 4-6 sentences"],
-  "relatedTopics": ["Topic 1", "Topic 2", "Topic 3", "Topic 4", "Topic 5"],
-  "submissionReady": "[INDEPENDENTLY GENERATED — not a summary of the above] Complete worked solution as a student would write for submission. Maths/science: numbered calculation lines, all substitutions, units, final answer on last line. Programming: final code only. Essays: complete polished prose. Definitions: concise precise definition. Multiple choice: correct option + essential supporting work only. NO explanatory prose, NO commentary, NO preamble."
+  "relatedTopics": ["Topic 1", "Topic 2", "Topic 3", "Topic 4", "Topic 5"]
 }`;
 
 // ─── Complexity detector ─────────────────────────────────────────────────────
