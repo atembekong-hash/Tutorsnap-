@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { AIResponseRenderer, AIResponseErrorBoundary } from "@/components/ai-response-renderer";
 import {
   View,
@@ -302,6 +303,7 @@ export default function SolutionScreen() {
   const [explainDiffLoading, setExplainDiffLoading] = useState(false);
   const [altExplanation, setAltExplanation] = useState<string | null>(null);
   const [showAltExplanation, setShowAltExplanation] = useState(false);
+  const [altExplanationCached, setAltExplanationCached] = useState(false); // true = loaded from cache
   const explainDiffMutation = trpc.math.explainDifferently.useMutation();
 
   // Auto-solve state: triggered when a feed card has no cached solution
@@ -331,6 +333,45 @@ export default function SolutionScreen() {
 
   // Use live solution if available, otherwise fall back to parsed
   const solution: MathSolution | null = liveSolution ?? (needsAutoSolve ? null : parsedSolution);
+
+  // Load cached alt explanation for this problem on mount
+  useEffect(() => {
+    if (!parsedSolution?.problem) return;
+    const cacheKey = `alt_explain:${parsedSolution.problem.trim().toLowerCase().slice(0, 200)}`;
+    AsyncStorage.getItem(cacheKey).then((cached) => {
+      if (cached) {
+        setAltExplanation(cached);
+        setAltExplanationCached(true);
+      }
+    }).catch(() => {});
+  }, [parsedSolution?.problem]);
+
+  const runExplainDifferently = useCallback(async (_forceRefresh = false) => {
+    if (!solution) return;
+    H.impactLight();
+    setExplainDiffLoading(true);
+    try {
+      const result = await explainDiffMutation.mutateAsync({
+        problem: solution.problem,
+        answer: solution.answer,
+        subject: solution.subject as any,
+        gradeLevel: gradeLevel ?? undefined,
+      });
+      const alt = result?.explanation || "No alternative explanation available.";
+      setAltExplanation(alt);
+      setAltExplanationCached(false);
+      setShowAltExplanation(true);
+      H.notificationSuccess();
+      // Cache the result keyed by problem text
+      const cacheKey = `alt_explain:${solution.problem.trim().toLowerCase().slice(0, 200)}`;
+      AsyncStorage.setItem(cacheKey, alt).catch(() => {});
+    } catch {
+      H.notificationError();
+    } finally {
+      setExplainDiffLoading(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [solution?.problem, solution?.answer, solution?.subject, gradeLevel]);
 
   useEffect(() => {
     if (parsedSolution?.problem) {
@@ -1426,30 +1467,17 @@ export default function SolutionScreen() {
         {/* Explain this Differently */}
         <TouchableOpacity
           accessibilityLabel="Explain this solution differently"
-          onPress={async () => {
+          onPress={() => {
             if (showAltExplanation && altExplanation) {
               setShowAltExplanation((v) => !v);
               return;
             }
-            if (!solution) return;
-            H.impactLight()
-            setExplainDiffLoading(true);
-            try {
-              const result = await explainDiffMutation.mutateAsync({
-                problem: solution.problem,
-                answer: solution.answer,
-                subject: solution.subject as any,
-                gradeLevel: gradeLevel ?? undefined,
-              });
-              const alt = result?.explanation || "No alternative explanation available.";
-              setAltExplanation(alt);
+            if (altExplanation && !showAltExplanation) {
+              // Cached result: just show it instantly
               setShowAltExplanation(true);
-              H.notificationSuccess()
-            } catch {
-              H.notificationError()
-            } finally {
-              setExplainDiffLoading(false);
+              return;
             }
+            runExplainDifferently();
           }}
           disabled={explainDiffLoading}
           style={[
@@ -1468,30 +1496,71 @@ export default function SolutionScreen() {
           </Text>
         </TouchableOpacity>
 
+        {/* Skeleton loader while generating */}
+        {explainDiffLoading && (
+          <View style={[styles.altExplanationCard, { backgroundColor: `${colors.success}08`, borderColor: `${colors.success}30` }]}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 }}>
+              <IconSymbol size={16} name="lightbulb.fill" color={colors.success} />
+              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Alternative Explanation</Text>
+            </View>
+            {[100, 85, 92, 70, 88].map((w, i) => (
+              <View
+                key={i}
+                style={{
+                  height: 13,
+                  borderRadius: 6,
+                  backgroundColor: `${colors.success}18`,
+                  width: `${w}%`,
+                  marginBottom: 8,
+                }}
+              />
+            ))}
+            <View style={{ height: 13, borderRadius: 6, backgroundColor: `${colors.success}18`, width: "55%" }} />
+          </View>
+        )}
+
         {/* Alternative explanation card */}
-        {showAltExplanation && altExplanation && (
+        {showAltExplanation && altExplanation && !explainDiffLoading && (
           <View style={[styles.altExplanationCard, { backgroundColor: `${colors.success}08`, borderColor: `${colors.success}30` }]}>
             <View style={[styles.sectionHeader, { justifyContent: "space-between" }]}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
                 <IconSymbol size={16} name="lightbulb.fill" color={colors.success} />
                 <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Alternative Explanation</Text>
+                {altExplanationCached && (
+                  <View style={{ backgroundColor: `${colors.success}20`, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
+                    <Text style={{ fontSize: 10, fontWeight: "700", color: colors.success }}>Cached</Text>
+                  </View>
+                )}
               </View>
-              <TouchableOpacity
-                accessibilityLabel="Copy alternative explanation"
-                onPress={async () => {
-                  try {
-                    await Clipboard.setStringAsync(altExplanation!);
-                    setCopyAltFeedback(true);
-                    H.impactLight();
-                    if (copyAltTimerRef.current) clearTimeout(copyAltTimerRef.current);
-                    copyAltTimerRef.current = setTimeout(() => setCopyAltFeedback(false), 1500);
-                  } catch { /* ignore */ }
-                }}
-                style={[styles.copyBtn, { backgroundColor: copyAltFeedback ? `${colors.success}20` : "transparent" }]}
-              >
-                <IconSymbol size={14} name={copyAltFeedback ? "checkmark.circle.fill" : "doc.on.doc"} color={copyAltFeedback ? colors.success : colors.muted} />
-                <Text style={[styles.copyText, { color: copyAltFeedback ? colors.success : colors.muted }]}>{copyAltFeedback ? "Copied!" : "Copy"}</Text>
-              </TouchableOpacity>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                {/* Regenerate button */}
+                <TouchableOpacity
+                  accessibilityLabel="Regenerate alternative explanation"
+                  onPress={() => runExplainDifferently(true)}
+                  style={[styles.copyBtn, { backgroundColor: `${colors.primary}15` }]}
+                  disabled={explainDiffLoading}
+                >
+                  <IconSymbol size={14} name="arrow.clockwise" color={colors.primary} />
+                  <Text style={[styles.copyText, { color: colors.primary }]}>Regenerate</Text>
+                </TouchableOpacity>
+                {/* Copy button */}
+                <TouchableOpacity
+                  accessibilityLabel="Copy alternative explanation"
+                  onPress={async () => {
+                    try {
+                      await Clipboard.setStringAsync(altExplanation!);
+                      setCopyAltFeedback(true);
+                      H.impactLight();
+                      if (copyAltTimerRef.current) clearTimeout(copyAltTimerRef.current);
+                      copyAltTimerRef.current = setTimeout(() => setCopyAltFeedback(false), 1500);
+                    } catch { /* ignore */ }
+                  }}
+                  style={[styles.copyBtn, { backgroundColor: copyAltFeedback ? `${colors.success}20` : "transparent" }]}
+                >
+                  <IconSymbol size={14} name={copyAltFeedback ? "checkmark.circle.fill" : "doc.on.doc"} color={copyAltFeedback ? colors.success : colors.muted} />
+                  <Text style={[styles.copyText, { color: copyAltFeedback ? colors.success : colors.muted }]}>{copyAltFeedback ? "Copied!" : "Copy"}</Text>
+                </TouchableOpacity>
+              </View>
             </View>
             <AIResponseErrorBoundary fallbackText={altExplanation} fontSize={fs(14)} color={colors.foreground}>
               <AIResponseRenderer
