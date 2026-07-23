@@ -13,6 +13,7 @@ import {
   ActivityIndicator,
   Animated,
   Linking,
+  Modal,
 } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -816,16 +817,26 @@ export default function SolutionScreen() {
 
   return (
     <ScreenContainer>
-      {/* Share Menu Overlay */}
-      {showShareMenu && (
+      {/* Share Menu - Scrollable Bottom Sheet */}
+      <Modal
+        visible={showShareMenu}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowShareMenu(false)}
+      >
         <TouchableOpacity
-          accessibilityLabel="Toggle show share menu"
+          accessibilityLabel="Close share menu"
           style={styles.shareOverlay}
           activeOpacity={1}
           onPress={() => setShowShareMenu(false)}
         >
-          <View style={[styles.shareMenu, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <TouchableOpacity activeOpacity={1} style={[styles.shareMenu, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => {}}>
+            {/* Drag handle */}
+            <View style={styles.shareMenuHandle}>
+              <View style={[styles.shareMenuHandleBar, { backgroundColor: colors.border }]} />
+            </View>
             <Text style={[styles.shareMenuTitle, { color: colors.muted }]}>Share Solution</Text>
+            <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
             <TouchableOpacity
               accessibilityLabel="Copy full solution"
               onPress={async () => {
@@ -1177,9 +1188,18 @@ export default function SolutionScreen() {
               </View>
               <IconSymbol size={16} name="chevron.right" color={colors.muted} />
             </TouchableOpacity>
-          </View>
+            </ScrollView>
+            {/* Cancel button */}
+            <TouchableOpacity
+              onPress={() => { H.impactLight(); setShowShareMenu(false); }}
+              style={[styles.shareMenuCancel, { borderTopColor: colors.border }]}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.shareMenuCancelText, { color: colors.error }]}>Cancel</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
         </TouchableOpacity>
-      )}
+      </Modal>
       {/* Copy Link feedback toast */}
       {copyLinkFeedback && (
         <View style={[styles.linkToast, { backgroundColor: colors.success }]}>
@@ -2201,8 +2221,27 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     borderWidth: 1,
-    paddingBottom: 32,
+    maxHeight: "75%",
     overflow: "hidden",
+  },
+  shareMenuHandle: {
+    alignItems: "center",
+    paddingTop: 10,
+    paddingBottom: 4,
+  },
+  shareMenuHandleBar: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+  },
+  shareMenuCancel: {
+    borderTopWidth: 0.5,
+    paddingVertical: 16,
+    alignItems: "center",
+  },
+  shareMenuCancelText: {
+    fontSize: 16,
+    fontWeight: "600",
   },
   shareMenuTitle: {
     fontSize: 12,

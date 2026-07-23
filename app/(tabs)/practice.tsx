@@ -19,7 +19,7 @@ import type { PracticeQuestion, Difficulty } from "@/shared/types";
 import { SubjectPicker } from "@/components/subject-picker";
 import { type SubjectId, getSubjectColor, getSubjectLabel , type SubjectCategory } from "@/lib/subjects";
 import { loadQuizStats, getAdaptiveDifficultySuggestion, getDifficultyDownSuggestion, type QuizStats, type DifficultyUpSuggestion, type DifficultyDownSuggestion } from "@/lib/quiz-history";
-import { getProgress, type ProgressData } from "@/lib/progress";
+import { getProgress, getStreakEmoji, type ProgressData } from "@/lib/progress";
 import { getWeeklyData, type WeeklyData } from "@/lib/weekly-goals";
 import { getCheatSheet, hasCheatSheet } from "@/lib/cheat-sheets";
 import * as Clipboard from "expo-clipboard";
@@ -318,6 +318,40 @@ function PracticeScreenContent() {
             })}
           </View>
         </View>
+
+        {/* Progress nudge strip above generate button */}
+        {progressData && (
+          <TouchableOpacity
+            onPress={() => { H.impactLight(); router.push("/progress" as any); }}
+            style={[styles.practiceProgressStrip, { backgroundColor: `${colors.warning}10`, borderColor: `${colors.warning}25` }]}
+            activeOpacity={0.75}
+            accessibilityLabel="View progress"
+          >
+            <Text style={styles.practiceProgressEmoji}>{getStreakEmoji(progressData.streak.currentStreak)}</Text>
+            {progressData.streak.currentStreak > 0 && (
+              <Text style={[styles.practiceProgressText, { color: colors.warning }]}>
+                {progressData.streak.currentStreak}-day streak
+              </Text>
+            )}
+            {progressData.streak.dailyGoal > 0 && (
+              <>
+                {progressData.streak.currentStreak > 0 && (
+                  <View style={[styles.practiceProgressDot, { backgroundColor: colors.muted }]} />
+                )}
+                <Text style={[styles.practiceProgressText, { color: colors.muted }]}>
+                  {progressData.streak.todaySolved}/{progressData.streak.dailyGoal} today
+                </Text>
+                <View style={[styles.practiceProgressTrack, { backgroundColor: `${colors.primary}20` }]}>
+                  <View style={[styles.practiceProgressFill, {
+                    backgroundColor: progressData.streak.todaySolved >= progressData.streak.dailyGoal ? colors.success : colors.primary,
+                    width: `${Math.min(100, Math.round((progressData.streak.todaySolved / progressData.streak.dailyGoal) * 100))}%` as any,
+                  }]} />
+                </View>
+              </>
+            )}
+            <IconSymbol size={12} name="chevron.right" color={colors.muted} style={{ marginLeft: "auto" }} />
+          </TouchableOpacity>
+        )}
 
         {/* Generate Button */}
         <TouchableOpacity
@@ -1148,6 +1182,22 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   streakNudgeBtnText: { color: "#fff", fontWeight: "700", fontSize: 13 },
+  practiceProgressStrip: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginHorizontal: 16,
+    marginBottom: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 6,
+  },
+  practiceProgressEmoji: { fontSize: 14 },
+  practiceProgressText: { fontSize: 12, fontWeight: "600" },
+  practiceProgressDot: { width: 3, height: 3, borderRadius: 2 },
+  practiceProgressTrack: { flex: 1, height: 4, borderRadius: 2, overflow: "hidden" },
+  practiceProgressFill: { height: 4, borderRadius: 2 },
 });
 
 const pStyles = StyleSheet.create({

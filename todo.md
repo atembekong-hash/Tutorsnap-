@@ -806,3 +806,7 @@
 
 ## Round 37: Solution Header Progress Nudge
 - [x] Add streak/stats badge below solution title in solution.tsx header (tap to open Progress)
+
+## Round 38: Share Sheet Fix + Practice Progress Nudge
+- [x] Fix share menu: compact scrollable bottom sheet with drag handle and Cancel button
+- [x] Practice tab: progress nudge strip above generate card (streak + today goal)
