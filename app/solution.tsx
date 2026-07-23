@@ -308,6 +308,7 @@ export default function SolutionScreen() {
   const [explainCount, setExplainCount] = useState(0); // how many times regenerated
   const [activeCardStyle, setActiveCardStyle] = useState<"analogy" | "step-by-step" | "visual">("analogy"); // style that produced the current card
   const [altRating, setAltRating] = useState<"up" | "down" | null>(null); // thumbs rating for current explanation
+  const [seenStyles, setSeenStyles] = useState<Set<string>>(new Set()); // tracks which styles have been used
   const explainDiffMutation = trpc.math.explainDifferently.useMutation();
 
   // Auto-solve state: triggered when a feed card has no cached solution
@@ -388,6 +389,7 @@ export default function SolutionScreen() {
       setExplainCount((c) => c + 1);
       setActiveCardStyle(explainStyle); // record which style produced this card
       setAltRating(null); // reset rating for new explanation
+      setSeenStyles((prev) => new Set([...prev, explainStyle])); // track this style as seen
       H.notificationSuccess();
       // Cache the result keyed by problem text + style
       const cacheKey = `alt_explain:${solution.problem.trim().toLowerCase().slice(0, 200)}`;
@@ -1682,6 +1684,40 @@ export default function SolutionScreen() {
             {altRating === "down" && (
               <Text style={{ fontSize: 11, color: colors.muted, marginTop: 6, textAlign: "center" }}>Thanks for the feedback! Try regenerating with a different style.</Text>
             )}
+            {/* Share explanation button */}
+            <TouchableOpacity
+              accessibilityLabel="Share this explanation"
+              onPress={async () => {
+                H.impactLight();
+                const styleLabel = activeCardStyle === "analogy" ? "Analogy" : activeCardStyle === "step-by-step" ? "Step-by-step" : "Visual";
+                const message = `📚 ${styleLabel} Explanation (via TutorSnap)\n\n❓ ${solution?.problem ?? ""}\n\n💡 ${altExplanation ?? ""}\n\nSolve more at ${APP_URL.replace("https://", "")}`;
+                if (Platform.OS === "web") {
+                  try {
+                    await Clipboard.setStringAsync(message);
+                    Alert.alert("Copied!", "Explanation copied to clipboard.");
+                  } catch { /* ignore */ }
+                  return;
+                }
+                try {
+                  await Share.share({ message });
+                } catch { /* user cancelled */ }
+              }}
+              style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 10, paddingVertical: 9, borderRadius: 12, backgroundColor: `${colors.primary}10`, borderWidth: 1, borderColor: `${colors.primary}25` }}
+            >
+              <IconSymbol size={15} name="paperplane.fill" color={colors.primary} />
+              <Text style={{ fontSize: 13, fontWeight: "600", color: colors.primary }}>Share this explanation</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* All-3-styles prompt: shown after user has seen all 3 styles */}
+        {seenStyles.size >= 3 && !explainDiffLoading && (
+          <View style={{ marginHorizontal: 16, marginTop: 8, padding: 14, borderRadius: 14, backgroundColor: `${colors.warning}10`, borderWidth: 1, borderColor: `${colors.warning}30`, flexDirection: "row", alignItems: "center", gap: 10 }}>
+            <Text style={{ fontSize: 18 }}>🎯</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 13, fontWeight: "700", color: colors.foreground }}>You've explored all 3 styles!</Text>
+              <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>Ready for a challenge? Try a harder similar problem to test your understanding.</Text>
+            </View>
           </View>
         )}
 
