@@ -903,3 +903,9 @@
 - [x] Pulsing dot badge on Solve tab when daily solve goal not yet met
 - [x] Share button on Bookmarks cards (same as History)
 - [x] Success haptic after Share.share() resolves in History and Bookmarks
+
+## Round 55: Badge Dismiss Animation, Share Count, Bulk Share
+
+- [x] Badge dismiss animation on Solve tab (scale-out 1.0 to 0 over 200ms when goal met)
+- [x] Share count tracking and display on History cards (persisted in AsyncStorage, shown below paperplane icon)
+- [x] Bulk select and share mode on Bookmarks screen (long-press or Select button, bulk share sheet)

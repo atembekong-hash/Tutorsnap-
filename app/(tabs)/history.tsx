@@ -50,6 +50,8 @@ function HistoryScreenContent() {
   const [filterGrade, setFilterGrade] = useState<string | "all">("all");
   const [historyLoading, setHistoryLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [shareCounts, setShareCounts] = useState<Record<string, number>>({});
+  const SHARE_COUNTS_KEY = "history_share_counts";
 
   const loadHistory = async () => {
     try {
@@ -59,6 +61,8 @@ function HistoryScreenContent() {
       }
       const bm = await getBookmarks();
       setBookmarkedIds(new Set(bm.map((b) => b.problem)));
+      const sc = await AsyncStorage.getItem("history_share_counts");
+      if (sc) setShareCounts(JSON.parse(sc));
     } catch (_) {
       // ignore
     } finally {
@@ -210,12 +214,22 @@ function HistoryScreenContent() {
                   message: `I solved this on TutorSnap!\n\n${item.problem}\n\nAnswer: ${item.answer}\n\nDownload TutorSnap to solve problems instantly.`,
                   title: "TutorSnap Solution",
                 });
-                if (result.action === Share.sharedAction) H.notificationSuccess();
+                if (result.action === Share.sharedAction) {
+                  H.notificationSuccess();
+                  const updated = { ...shareCounts, [item.id]: (shareCounts[item.id] || 0) + 1 };
+                  setShareCounts(updated);
+                  await AsyncStorage.setItem("history_share_counts", JSON.stringify(updated));
+                }
               } catch {}
             }}
             style={{ padding: 6, marginTop: 4 }}
           >
-            <IconSymbol size={18} name="paperplane.fill" color={colors.muted} />
+            <IconSymbol size={18} name="paperplane.fill" color={shareCounts[item.id] ? colors.primary : colors.muted} />
+            {shareCounts[item.id] ? (
+              <Text style={{ fontSize: 9, color: colors.primary, fontWeight: "600", marginTop: 1 }}>
+                {shareCounts[item.id]}
+              </Text>
+            ) : null}
           </TouchableOpacity>
           <IconSymbol size={18} name="chevron.right" color={colors.muted} />
         </View>

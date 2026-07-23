@@ -64,19 +64,40 @@ function ChatTabIcon({ color, focused: _focused }: { color: string; focused: boo
 
 function SolveTabIcon({ color, focused }: { color: string; focused: boolean }) {
   const [goalMet, setGoalMet] = useState(true);
+  const [badgeVisible, setBadgeVisible] = useState(false);
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const dismissAnim = useRef(new Animated.Value(1)).current;
+  const prevGoalMet = useRef(true);
 
   useFocusEffect(
     useCallback(() => {
       getProgress().then((p) => {
         const met = p.streak.todaySolved >= p.streak.dailyGoal;
         setGoalMet(met);
+        if (!met) {
+          setBadgeVisible(true);
+          dismissAnim.setValue(1);
+        }
       });
-    }, [])
+    }, [dismissAnim])
   );
 
+  // Dismiss animation when goal transitions from not-met to met
   useEffect(() => {
-    if (goalMet || focused) return;
+    if (!prevGoalMet.current && goalMet && badgeVisible) {
+      Animated.timing(dismissAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+        easing: Easing.in(Easing.quad),
+      }).start(() => setBadgeVisible(false));
+    }
+    prevGoalMet.current = goalMet;
+  }, [goalMet, badgeVisible, dismissAnim]);
+
+  // Pulse animation when badge is visible and tab not focused
+  useEffect(() => {
+    if (!badgeVisible || goalMet || focused) return;
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, { toValue: 1.5, duration: 600, useNativeDriver: true, easing: Easing.out(Easing.quad) }),
@@ -85,16 +106,16 @@ function SolveTabIcon({ color, focused }: { color: string; focused: boolean }) {
     );
     loop.start();
     return () => loop.stop();
-  }, [goalMet, focused, pulseAnim]);
+  }, [badgeVisible, goalMet, focused, pulseAnim]);
 
   return (
     <View style={{ position: "relative" }}>
       <IconSymbol size={30} name="sum" color={color} />
-      {!goalMet && (
+      {badgeVisible && (
         <Animated.View
           style={[
             styles.practiceBadge,
-            { transform: [{ scale: pulseAnim }] },
+            { transform: [{ scale: Animated.multiply(pulseAnim, dismissAnim) }], opacity: dismissAnim },
           ]}
         />
       )}

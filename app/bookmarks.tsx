@@ -69,6 +69,8 @@ export default function BookmarksScreen() {
   const [showAddToFolderMenu, setShowAddToFolderMenu] = useState<string | null>(null); // bookmarkId
   const { fadeStyle } = useScreenTransition({ duration: 280, translateY: 16 });
   const [refreshing, setRefreshing] = useState(false);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const loadBookmarks = async (isRefresh = false) => {
     try {
@@ -86,6 +88,35 @@ export default function BookmarksScreen() {
     setRefreshing(true);
     loadBookmarks(true);
     loadFolders();
+  };
+
+  const toggleSelect = (id: string) => {
+    H.impactLight();
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulkShare = async () => {
+    const selected = bookmarks.filter((b) => selectedIds.has(b.id));
+    if (selected.length === 0) return;
+    H.impactMedium();
+    const message = selected.map((item, i) =>
+      `${i + 1}. ${item.problem}\nAnswer: ${item.answer}`
+    ).join("\n\n");
+    try {
+      const result = await Share.share({
+        message: `My TutorSnap Bookmarks (${selected.length}):\n\n${message}\n\nDownload TutorSnap to solve problems instantly.`,
+        title: "TutorSnap Bookmarks",
+      });
+      if (result.action === Share.sharedAction) {
+        H.notificationSuccess();
+        setSelectMode(false);
+        setSelectedIds(new Set());
+      }
+    } catch {}
   };
 
   const loadFolders = async () => {
@@ -241,17 +272,20 @@ export default function BookmarksScreen() {
     const date = item.solvedAt
       ? new Date(item.solvedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })
       : "";
+    const isSelected = selectedIds.has(item.id);
 
     return (
       <Swipeable
-        renderRightActions={() => renderRightActions(item)}
+        renderRightActions={selectMode ? undefined : () => renderRightActions(item)}
         rightThreshold={60}
         overshootRight={false}
         friction={2}
+        enabled={!selectMode}
       >
       <TouchableOpacity
-        onPress={() => handleViewSolution(item)}
-        style={[styles.bookmarkCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+        onPress={() => selectMode ? toggleSelect(item.id) : handleViewSolution(item)}
+        onLongPress={() => { if (!selectMode) { setSelectMode(true); toggleSelect(item.id); } }}
+        style={[styles.bookmarkCard, { backgroundColor: isSelected ? `${colors.primary}18` : colors.surface, borderColor: isSelected ? colors.primary : colors.border }]}
         activeOpacity={0.75}
       >
         <View style={[styles.bookmarkAccent, { backgroundColor: subjectColor }]} />
@@ -461,27 +495,64 @@ export default function BookmarksScreen() {
           </Text>
         </View>
         <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
-          <TouchableOpacity
-            accessibilityLabel="Export bookmarks"
-            onPress={() => { H.impactLight(); setShowExportMenu(true); }}
-            style={[styles.flashcardBtn, { backgroundColor: `${colors.success}15`, borderColor: `${colors.success}30` }]}
-            activeOpacity={0.7}
-            disabled={exportLoading}
-          >
-            {exportLoading
-              ? <ActivityIndicator size="small" color={colors.success} />
-              : <IconSymbol size={18} name="square.and.arrow.up" color={colors.success} />}
-          </TouchableOpacity>
-          <TouchableOpacity
-            accessibilityLabel="View flashcards"
-            onPress={() => router.push("/flashcards" as any)}
-            style={[styles.flashcardBtn, { backgroundColor: `${colors.primary}15`, borderColor: `${colors.primary}30` }]}
-            activeOpacity={0.7}
-          >
-            <Text style={{ fontSize: 16 }}>🃏</Text>
-          </TouchableOpacity>
+          {selectMode ? (
+            <TouchableOpacity
+              onPress={() => { setSelectMode(false); setSelectedIds(new Set()); H.impactLight(); }}
+              style={[styles.flashcardBtn, { backgroundColor: `${colors.error}15`, borderColor: `${colors.error}30` }]}
+              activeOpacity={0.7}
+            >
+              <Text style={{ fontSize: 13, fontWeight: "600", color: colors.error }}>Cancel</Text>
+            </TouchableOpacity>
+          ) : (
+            <>
+              <TouchableOpacity
+                accessibilityLabel="Export bookmarks"
+                onPress={() => { H.impactLight(); setShowExportMenu(true); }}
+                style={[styles.flashcardBtn, { backgroundColor: `${colors.success}15`, borderColor: `${colors.success}30` }]}
+                activeOpacity={0.7}
+                disabled={exportLoading}
+              >
+                {exportLoading
+                  ? <ActivityIndicator size="small" color={colors.success} />
+                  : <IconSymbol size={18} name="square.and.arrow.up" color={colors.success} />}
+              </TouchableOpacity>
+              <TouchableOpacity
+                accessibilityLabel="View flashcards"
+                onPress={() => router.push("/flashcards" as any)}
+                style={[styles.flashcardBtn, { backgroundColor: `${colors.primary}15`, borderColor: `${colors.primary}30` }]}
+                activeOpacity={0.7}
+              >
+                <Text style={{ fontSize: 16 }}>🃏</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                accessibilityLabel="Select bookmarks"
+                onPress={() => { H.impactLight(); setSelectMode(true); }}
+                style={[styles.flashcardBtn, { backgroundColor: `${colors.muted}15`, borderColor: `${colors.muted}30` }]}
+                activeOpacity={0.7}
+              >
+                <IconSymbol size={18} name="checkmark.circle" color={colors.muted} />
+              </TouchableOpacity>
+            </>
+          )}
         </View>
       </View>
+      {/* Bulk share bar */}
+      {selectMode && (
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 10, backgroundColor: colors.surface, borderBottomWidth: 0.5, borderBottomColor: colors.border }}>
+          <Text style={{ fontSize: 14, color: colors.muted }}>
+            {selectedIds.size === 0 ? "Long-press or tap to select" : `${selectedIds.size} selected`}
+          </Text>
+          <TouchableOpacity
+            onPress={handleBulkShare}
+            disabled={selectedIds.size === 0}
+            style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: selectedIds.size > 0 ? colors.primary : `${colors.muted}30` }}
+            activeOpacity={0.75}
+          >
+            <IconSymbol size={15} name="paperplane.fill" color={selectedIds.size > 0 ? "#fff" : colors.muted} />
+            <Text style={{ fontSize: 13, fontWeight: "600", color: selectedIds.size > 0 ? "#fff" : colors.muted }}>Share Selected</Text>
+          </TouchableOpacity>
+        </View>
+      )}
       {/* Export Menu Modal */}
       {showExportMenu && (
         <TouchableOpacity
