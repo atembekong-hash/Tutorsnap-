@@ -474,12 +474,9 @@ function PracticeScreenContent() {
         <View style={pStyles.quickLinksRow}>
           {[
             { icon: "clock.fill" as const, label: "Quiz History", route: "/quiz-history" },
-            { icon: "bookmark.fill" as const, label: "Bookmarks", route: "/bookmarks" },
+            { icon: "calendar" as const, label: "Study Planner", route: "/study-planner" },
             { icon: "rectangle.stack.fill" as const, label: "Flashcards", route: "/flashcards" },
             { icon: "chart.xyaxis.line" as const, label: "Progress", route: "/progress" },
-            { icon: "calendar" as const, label: "Study Planner", route: "/study-planner" },
-            { icon: "person.2.fill" as const, label: "Classroom", route: "/(tabs)/classroom" },
-            { icon: "note.text" as const, label: "Saved Notes", route: "/notes" },
           ].map((item) => (
             <TouchableOpacity
               key={item.route}

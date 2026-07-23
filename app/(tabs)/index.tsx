@@ -1193,6 +1193,37 @@ function SolveScreenContent() {
           </View>
 
           {/* ─────────────────────────────────────────────────────────────────── */}
+          {/* SECTION 3b: QUICK LINKS ROW                                         */}
+          {/* ─────────────────────────────────────────────────────────────────── */}
+          <View style={styles.sectionBlock}>
+            <View style={styles.sectionLabelRow}>
+              <View style={[styles.sectionLabelDot, { backgroundColor: colors.primary }]} />
+              <Text style={[styles.sectionLabelText, { color: colors.muted }]}>QUICK ACCESS</Text>
+            </View>
+            <View style={[styles.featureRow, { marginTop: 10 }]}>
+              {[
+                { icon: "note.text" as const, label: "Notes", route: "/notes", color: colors.primary },
+                { icon: "rectangle.stack.fill" as const, label: "Flashcards", route: "/flashcards", color: colors.secondary },
+                { icon: "bookmark.fill" as const, label: "Bookmarks", route: "/bookmarks", color: colors.warning },
+                { icon: "calendar" as const, label: "Planner", route: "/study-planner", color: colors.success },
+              ].map((item) => (
+                <TouchableOpacity
+                  key={item.route}
+                  onPress={() => { H.impactLight(); router.push(item.route as any); }}
+                  style={[styles.featureCard, { backgroundColor: `${item.color}12`, borderColor: `${item.color}25` }]}
+                  activeOpacity={0.8}
+                  accessibilityLabel={item.label}
+                >
+                  <View style={[styles.featureIcon, { backgroundColor: item.color }]}>
+                    <IconSymbol size={20} name={item.icon} color="#FFFFFF" />
+                  </View>
+                  <Text style={[styles.featureTitle, { color: colors.foreground }]} numberOfLines={1}>{item.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* ─────────────────────────────────────────────────────────────────── */}
           {/* SECTION 4: RECENT SOLVES + TIPS + UPSELL (before examples)         */}
           {/* ─────────────────────────────────────────────────────────────────── */}
 

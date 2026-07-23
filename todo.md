@@ -799,3 +799,7 @@
 ## Round 36: Toast + Review Missed History
 - [x] Study Block card save toast: 2-second animated confirmation when block saved to Notes
 - [x] Review Missed button in quiz-history-detail.tsx for any past quiz
+
+## Round 36b: Quick Links Layout
+- [x] Solve tab: added QUICK ACCESS row (Notes, Flashcards, Bookmarks, Planner) after EXPLORE section
+- [x] Practice tab: Quick Links already trimmed to 4 cards (Quiz History, Study Planner, Flashcards, Progress)
