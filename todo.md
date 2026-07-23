@@ -779,3 +779,15 @@
 - [x] Pass submissionReady through practice.tsx handleViewSolution
 - [x] Wire SubmissionReadyCard into chat.tsx MessageBubble (AI Tutor tab)
 - [x] TypeScript: 0 errors
+
+## Study View Mode - AI Tutor
+- [x] Add StudyBlock type to shared/types.ts
+- [x] Create StudyBlockCard component with distinct visual per block type
+- [x] Create StudyViewRenderer with loading skeleton, error, and empty states
+- [x] Add generateStudyBlocks endpoint to academicRouter in routers.ts
+- [x] Add viewMode, studyBlocks, studyBlocksLoading state to chat.tsx
+- [x] Add generateStudyBlocksMutation and handleSwitchToStudyView/Chat handlers
+- [x] Add Chat/Study segmented toggle to AI Tutor top bar
+- [x] Render StudyViewRenderer when viewMode === "study"
+- [x] Add toggleStyles StyleSheet to chat.tsx
+- [x] TypeScript: 0 errors, all 33 tests passing
