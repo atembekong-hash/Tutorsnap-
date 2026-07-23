@@ -1588,29 +1588,18 @@ export default function SolutionScreen() {
         {/* Alternative explanation card */}
         {showAltExplanation && altExplanation && !explainDiffLoading && (
           <View style={[styles.altExplanationCard, { backgroundColor: `${colors.success}08`, borderColor: `${colors.success}30` }]}>
-            <View style={[styles.sectionHeader, { justifyContent: "space-between" }]}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
-                <IconSymbol size={16} name="lightbulb.fill" color={colors.success} />
-                <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Alternative Explanation</Text>
-                {altExplanationCached && (
-                  <View style={{ backgroundColor: `${colors.success}20`, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
-                    <Text style={{ fontSize: 10, fontWeight: "700", color: colors.success }}>Cached</Text>
-                  </View>
-                )}
-                {explainCount > 0 && (
-                  <View style={{ backgroundColor: `${colors.primary}15`, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
-                    <Text style={{ fontSize: 10, fontWeight: "700", color: colors.primary }}>#{explainCount}</Text>
-                  </View>
-                )}
-                {/* Style label chip */}
-                <View style={{ backgroundColor: `${colors.success}15`, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
-                  <Text style={{ fontSize: 10, fontWeight: "600", color: colors.success }}>
-                    {activeCardStyle === "analogy" ? "Analogy" : activeCardStyle === "step-by-step" ? "Step-by-step" : "Visual"}
-                  </Text>
-                </View>
-              </View>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                {/* Regenerate button */}
+            {/* Row 1: icon + title (flex-shrink) + action buttons (fixed, never shrink) */}
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 6 }}>
+              <IconSymbol size={16} name="lightbulb.fill" color={colors.success} style={{ flexShrink: 0 }} />
+              <Text
+                style={[styles.sectionTitle, { color: colors.foreground, flex: 1 }]}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                Alternative Explanation
+              </Text>
+              {/* Action buttons: fixed width, never shrink, always visible */}
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4, flexShrink: 0 }}>
                 <TouchableOpacity
                   accessibilityLabel="Regenerate alternative explanation"
                   onPress={() => runExplainDifferently(true)}
@@ -1620,7 +1609,6 @@ export default function SolutionScreen() {
                   <IconSymbol size={14} name="arrow.clockwise" color={colors.primary} />
                   <Text style={[styles.copyText, { color: colors.primary }]}>Regenerate</Text>
                 </TouchableOpacity>
-                {/* Copy button */}
                 <TouchableOpacity
                   accessibilityLabel="Copy alternative explanation"
                   onPress={async () => {
@@ -1638,6 +1626,24 @@ export default function SolutionScreen() {
                   <Text style={[styles.copyText, { color: copyAltFeedback ? colors.success : colors.muted }]}>{copyAltFeedback ? "Copied!" : "Copy"}</Text>
                 </TouchableOpacity>
               </View>
+            </View>
+            {/* Row 2: metadata chips — wrap freely, never compete with action buttons */}
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 4 }}>
+              <View style={{ backgroundColor: `${colors.success}15`, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
+                <Text style={{ fontSize: 11, fontWeight: "600", color: colors.success }}>
+                  {activeCardStyle === "analogy" ? "Analogy" : activeCardStyle === "step-by-step" ? "Step-by-step" : "Visual"}
+                </Text>
+              </View>
+              {altExplanationCached && (
+                <View style={{ backgroundColor: `${colors.success}20`, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
+                  <Text style={{ fontSize: 11, fontWeight: "700", color: colors.success }}>Cached</Text>
+                </View>
+              )}
+              {explainCount > 0 && (
+                <View style={{ backgroundColor: `${colors.primary}15`, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
+                  <Text style={{ fontSize: 11, fontWeight: "700", color: colors.primary }}>#{explainCount}</Text>
+                </View>
+              )}
             </View>
             <AIResponseErrorBoundary fallbackText={altExplanation} fontSize={fs(14)} color={colors.foreground}>
               <AIResponseRenderer
