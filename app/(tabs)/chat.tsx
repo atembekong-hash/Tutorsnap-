@@ -40,6 +40,7 @@ import {
   Animated,
   Easing,
   AppState,
+  Image,
   type AppStateStatus,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -915,6 +916,7 @@ function ChatScreenContent() {
   const [sessionLoaded, setSessionLoaded] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
+  const [avatarUri, setAvatarUri] = useState<string | null>(null);
   // Round 44: top-bar ⋯ dropdown and tutor settings popup
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showTutorSettings, setShowTutorSettings] = useState(false);
@@ -1208,6 +1210,10 @@ function ChatScreenContent() {
     }
 
     init();
+    // Load avatar for header display
+    AsyncStorage.getItem("@tutorsnap/avatarUri").then((uri) => {
+      if (uri) setAvatarUri(uri);
+    });
     return () => {
       cancelled = true;
       streamAbortRef.current?.abort();
@@ -2225,6 +2231,18 @@ function ChatScreenContent() {
           ]}
         >
           <View style={chatStyles.headerLeft}>
+            {/* User avatar — taps to Settings */}
+            <TouchableOpacity
+              onPress={() => router.push("/settings" as never)}
+              style={[chatStyles.chatHeaderAvatar, { backgroundColor: `${colors.primary}20`, borderColor: `${colors.primary}40` }]}
+              activeOpacity={0.75}
+            >
+              {avatarUri ? (
+                <Image source={{ uri: avatarUri }} style={{ width: 32, height: 32, borderRadius: 16 }} />
+              ) : (
+                <IconSymbol size={18} name="person.fill" color={colors.primary} />
+              )}
+            </TouchableOpacity>
             <View style={{ flex: 1, minWidth: 0 }}>
               <Text
                 style={[chatStyles.headerTitle, { color: colors.foreground, marginLeft: 0 }]}
@@ -4053,6 +4071,16 @@ const chatStyles = StyleSheet.create({
   },
   tutorSettingsRowSub: {
     lineHeight: 16,
+  },
+  chatHeaderAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    marginRight: 10,
+    overflow: "hidden",
   },
 });
 
