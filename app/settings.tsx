@@ -534,21 +534,14 @@ export default function SettingsScreen() {
   };
 
   const handleRateApp = async () => {
-    H.impactLight()
+    H.impactLight();
     try {
-      if (Platform.OS !== "web") {
-        const isAvailable = await StoreReview.isAvailableAsync();
-        if (isAvailable) {
-          await StoreReview.requestReview();
-          return;
-        }
-      }
-      // Fallback: open store page
+      // Always open the store page directly so users can leave a public rating
       const url = Platform.OS === "ios"
         ? "https://apps.apple.com/app/tutorsnap/id6748052679"
         : "https://play.google.com/store/apps/details?id=com.tutorsnap.app";
       await Linking.openURL(url);
-    } catch { /* store review or linking failure is non-critical */ }
+    } catch { /* linking failure is non-critical */ }
   };
 
   const handleRestorePurchases = async () => {

@@ -27,6 +27,7 @@ import {
 } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import * as H from "@/lib/haptics";
+import * as Linking from "expo-linking";
 import * as StoreReview from "expo-store-review";
 import { useRouter, useFocusEffect } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -372,12 +373,13 @@ export default function ReferScreen() {
         break;
       }
       case "review": {
-        const canReview = await StoreReview.isAvailableAsync();
-        if (canReview) {
-          await StoreReview.requestReview();
-        } else {
-          Alert.alert("Leave a Review", "Please leave us a review on the App Store or Google Play to claim your +3 days.");
-        }
+        // Always open the store page directly so users can leave a public rating
+        try {
+          const url = Platform.OS === "ios"
+            ? "https://apps.apple.com/app/tutorsnap/id6748052679"
+            : "https://play.google.com/store/apps/details?id=com.tutorsnap.app";
+          await Linking.openURL(url);
+        } catch { /* linking failure is non-critical */ }
         const earned = await recordReview();
         if (earned > 0) {
           showToast(`+${earned} days earned for your review! ⭐`);

@@ -306,6 +306,8 @@ export default function SolutionScreen() {
   const [altExplanationCached, setAltExplanationCached] = useState(false); // true = loaded from cache
   const [explainStyle, setExplainStyle] = useState<"analogy" | "step-by-step" | "visual">("analogy");
   const [explainCount, setExplainCount] = useState(0); // how many times regenerated
+  const [activeCardStyle, setActiveCardStyle] = useState<"analogy" | "step-by-step" | "visual">("analogy"); // style that produced the current card
+  const [altRating, setAltRating] = useState<"up" | "down" | null>(null); // thumbs rating for current explanation
   const explainDiffMutation = trpc.math.explainDifferently.useMutation();
 
   // Auto-solve state: triggered when a feed card has no cached solution
@@ -318,6 +320,15 @@ export default function SolutionScreen() {
   // Load global grade on mount
   useEffect(() => {
     loadGlobalGrade().then((g: string | null) => { if (g) setGradeLevel(g); });
+  }, []);
+
+  // Restore persisted explain style preference
+  useEffect(() => {
+    AsyncStorage.getItem("@tutorsnap/explainStyle").then((saved) => {
+      if (saved === "analogy" || saved === "step-by-step" || saved === "visual") {
+        setExplainStyle(saved);
+      }
+    }).catch(() => {});
   }, []);
 
   let parsedSolution: MathSolution | null = null;
@@ -375,6 +386,8 @@ export default function SolutionScreen() {
       setAltExplanationCached(false);
       setShowAltExplanation(true);
       setExplainCount((c) => c + 1);
+      setActiveCardStyle(explainStyle); // record which style produced this card
+      setAltRating(null); // reset rating for new explanation
       H.notificationSuccess();
       // Cache the result keyed by problem text + style
       const cacheKey = `alt_explain:${solution.problem.trim().toLowerCase().slice(0, 200)}`;
@@ -1485,7 +1498,11 @@ export default function SolutionScreen() {
             {(["analogy", "step-by-step", "visual"] as const).map((s) => (
               <TouchableOpacity
                 key={s}
-                onPress={() => { setExplainStyle(s); H.impactLight(); }}
+                onPress={() => {
+                  setExplainStyle(s);
+                  H.impactLight();
+                  AsyncStorage.setItem("@tutorsnap/explainStyle", s).catch(() => {});
+                }}
                 style={[
                   styles.copyBtn,
                   {
@@ -1579,6 +1596,12 @@ export default function SolutionScreen() {
                     <Text style={{ fontSize: 10, fontWeight: "700", color: colors.primary }}>#{explainCount}</Text>
                   </View>
                 )}
+                {/* Style label chip */}
+                <View style={{ backgroundColor: `${colors.success}15`, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
+                  <Text style={{ fontSize: 10, fontWeight: "600", color: colors.success }}>
+                    {activeCardStyle === "analogy" ? "Analogy" : activeCardStyle === "step-by-step" ? "Step-by-step" : "Visual"}
+                  </Text>
+                </View>
               </View>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                 {/* Regenerate button */}
@@ -1620,6 +1643,45 @@ export default function SolutionScreen() {
                 stripPreamble={false}
               />
             </AIResponseErrorBoundary>
+            {/* Thumbs up/down rating row */}
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: `${colors.success}20` }}>
+              <Text style={{ fontSize: 12, color: colors.muted, flex: 1 }}>Was this helpful?</Text>
+              {/* Thumbs up → opens store */}
+              <TouchableOpacity
+                accessibilityLabel="Rate explanation helpful"
+                onPress={async () => {
+                  if (altRating === "up") return;
+                  setAltRating("up");
+                  H.notificationSuccess();
+                  try {
+                    const url = Platform.OS === "ios"
+                      ? "https://apps.apple.com/app/tutorsnap/id6748052679"
+                      : "https://play.google.com/store/apps/details?id=com.tutorsnap.app";
+                    await Linking.openURL(url);
+                  } catch { /* ignore */ }
+                }}
+                style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 14, backgroundColor: altRating === "up" ? `${colors.success}25` : colors.surface, borderWidth: 1, borderColor: altRating === "up" ? `${colors.success}50` : colors.border }}
+              >
+                <Text style={{ fontSize: 15 }}>👍</Text>
+                <Text style={{ fontSize: 12, fontWeight: "600", color: altRating === "up" ? colors.success : colors.muted }}>Yes</Text>
+              </TouchableOpacity>
+              {/* Thumbs down → dismiss */}
+              <TouchableOpacity
+                accessibilityLabel="Rate explanation not helpful"
+                onPress={() => {
+                  if (altRating === "down") return;
+                  setAltRating("down");
+                  H.impactLight();
+                }}
+                style={{ flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 14, backgroundColor: altRating === "down" ? `${colors.error}15` : colors.surface, borderWidth: 1, borderColor: altRating === "down" ? `${colors.error}40` : colors.border }}
+              >
+                <Text style={{ fontSize: 15 }}>👎</Text>
+                <Text style={{ fontSize: 12, fontWeight: "600", color: altRating === "down" ? colors.error : colors.muted }}>No</Text>
+              </TouchableOpacity>
+            </View>
+            {altRating === "down" && (
+              <Text style={{ fontSize: 11, color: colors.muted, marginTop: 6, textAlign: "center" }}>Thanks for the feedback! Try regenerating with a different style.</Text>
+            )}
           </View>
         )}
 
