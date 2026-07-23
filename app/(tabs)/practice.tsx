@@ -8,6 +8,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Platform,
+  Image,
 } from "react-native";
 import { useRouter, useLocalSearchParams , useFocusEffect } from "expo-router";
 import * as H from "@/lib/haptics";
@@ -84,11 +85,19 @@ function PracticeScreenContent() {
   const [preferredCategories, setPreferredCategories] = useState<SubjectCategory[]>([]);
   const [gradeLevel, setGradeLevel] = useState<string | null>(null);
   const [showGradePicker, setShowGradePicker] = useState(false);
+  const [avatarUri, setAvatarUri] = useState<string | null>(null);
 
   // Load global grade default on mount
   useEffect(() => {
     loadGlobalGrade().then((g) => { if (g) setGradeLevel(g); });
   }, []);
+
+  // Refresh avatar when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      AsyncStorage.getItem("@tutorsnap/avatarUri").then((uri) => setAvatarUri(uri || null));
+    }, [])
+  );
 
   // Pre-select subject from navigation params (e.g. from Bookmarks "Practice Similar")
   useEffect(() => {
@@ -256,16 +265,30 @@ function PracticeScreenContent() {
         <View style={styles.header}>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
             <Text style={[styles.title, { color: colors.foreground }]}>Practice</Text>
-            <TouchableOpacity
-              onPress={() => { setShowGradePicker(true); H.impactLight(); }}
-              style={[styles.gradePill, { backgroundColor: gradeLevel ? `${colors.primary}18` : colors.surface, borderColor: gradeLevel ? colors.primary : colors.border }]}
-              accessibilityLabel={gradeLevel ? `Level: ${GRADE_LABELS[gradeLevel]}. Tap to change.` : "Set level"}
-              accessibilityRole="button"
-            >
-              <Text style={[styles.gradePillText, { color: gradeLevel ? colors.primary : colors.muted }]}>
-                {gradeLevel ? GRADE_LABELS[gradeLevel] : "Level"}
-              </Text>
-            </TouchableOpacity>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+              <TouchableOpacity
+                onPress={() => { setShowGradePicker(true); H.impactLight(); }}
+                style={[styles.gradePill, { backgroundColor: gradeLevel ? `${colors.primary}18` : colors.surface, borderColor: gradeLevel ? colors.primary : colors.border }]}
+                accessibilityLabel={gradeLevel ? `Level: ${GRADE_LABELS[gradeLevel]}. Tap to change.` : "Set level"}
+                accessibilityRole="button"
+              >
+                <Text style={[styles.gradePillText, { color: gradeLevel ? colors.primary : colors.muted }]}>
+                  {gradeLevel ? GRADE_LABELS[gradeLevel] : "Level"}
+                </Text>
+              </TouchableOpacity>
+              {/* User avatar */}
+              <TouchableOpacity
+                onPress={() => router.push("/settings" as any)}
+                style={[{ width: 32, height: 32, borderRadius: 16, overflow: "hidden", backgroundColor: `${colors.primary}15`, borderWidth: 1, borderColor: `${colors.primary}30`, alignItems: "center", justifyContent: "center" }]}
+                activeOpacity={0.75}
+              >
+                {avatarUri ? (
+                  <Image source={{ uri: avatarUri }} style={{ width: 32, height: 32, borderRadius: 16 }} />
+                ) : (
+                  <IconSymbol size={18} name="person.fill" color={colors.primary} />
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
           <Text style={[styles.subtitle, { color: colors.muted }]}>
             Generate problems to sharpen your skills

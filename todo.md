@@ -819,3 +819,8 @@
 - [x] Show user avatar (or initials) in chat tab header
 - [x] Show user avatar in Solve tab home greeting (top-right, taps to Settings)
 - [x] Expand Try Examples to 70 questions in 10 collapsible group dropdowns
+
+## Round 41: Auto-expand Grade Group + Practice Avatar + APK Build
+- [x] Auto-expand user's grade group in Try Examples on Solve tab load
+- [x] Add avatar circle to Practice tab header
+- [x] Bump version and trigger EAS APK build

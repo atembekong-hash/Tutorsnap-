@@ -701,7 +701,11 @@ function SolveScreenContent() {
         }
       });
       getShieldCount().then(setShieldCount);
-      loadGlobalGrade().then((g: string | null) => setHomeGradeLevel(g));
+      loadGlobalGrade().then((g: string | null) => {
+        setHomeGradeLevel(g);
+        // Auto-expand the user's grade group in Try Examples
+        if (g) setExpandedGroups(new Set([g]));
+      });
       AsyncStorage.getItem("@tutorsnap/userName").then((n) => setUserName(n || null));
       AsyncStorage.getItem("@tutorsnap/avatarUri").then((uri) => setAvatarUri(uri || null));
       // Load most recent chat session for "Continue last chat" link
