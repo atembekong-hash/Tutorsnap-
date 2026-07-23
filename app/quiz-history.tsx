@@ -232,7 +232,7 @@ export default function QuizHistoryScreen() {
           </TouchableOpacity>
         </View>
       ) : history.length === 0 ? (
-        <EmptyState variant="quiz-history" onAction={() => router.back()} />
+        <EmptyState variant="quiz-history" onAction={() => router.push("/(tabs)/practice" as any)} />
       ) : (
         <>
           {/* Subject filter chips */}

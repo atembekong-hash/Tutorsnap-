@@ -394,14 +394,20 @@ export default function OnboardingScreen() {
             style={[
               styles.progressBarFill,
               {
-                backgroundColor: colors.primary,
                 width: progressBarAnim.interpolate({
                   inputRange: [0, 1],
                   outputRange: ["0%", "100%"],
                 }),
               },
             ]}
-          />
+          >
+            <LinearGradient
+              colors={["#7C3AED", "#06B6D4"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={{ flex: 1, borderRadius: 2 }}
+            />
+          </Animated.View>
         </View>
 
         {/* Slides */}

@@ -502,7 +502,7 @@ export default function BookmarksScreen() {
       )}
 
       {bookmarks.length === 0 ? (
-        <EmptyState variant="bookmarks" onAction={() => router.back()} />
+        <EmptyState variant="bookmarks" onAction={() => router.push("/(tabs)/" as any)} />
       ) : (
         <>
           {/* Search Bar */}

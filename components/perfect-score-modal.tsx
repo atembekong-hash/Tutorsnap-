@@ -18,6 +18,7 @@ import {
   Easing,
   Modal,
   Platform,
+  Share,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -118,6 +119,19 @@ function ConfettiParticle({ index }: { index: number }) {
 
 // ─── Animated card ────────────────────────────────────────────────────────────
 function AnimatedCard({ onDismiss }: { onDismiss: () => void }) {
+  const handleShare = async () => {
+    try {
+      H.impactLight();
+      await Share.share({
+        message:
+          "I just scored 100% on a TutorSnap quiz! Perfect score! " +
+          "Challenge yourself at tutorsnapai.tech",
+        title: "Perfect Score on TutorSnap!",
+      });
+    } catch {
+      /* share cancelled or unavailable */
+    }
+  };
   const colors = useColors();
   const cardScale = useRef(new Animated.Value(0.7)).current;
   const cardOpacity = useRef(new Animated.Value(0)).current;
@@ -162,15 +176,26 @@ function AnimatedCard({ onDismiss }: { onDismiss: () => void }) {
       <Text style={[styles.cardSubtitle, { color: colors.muted }]}>
         You got every question right. Outstanding work!
       </Text>
-      <TouchableOpacity
-        onPress={onDismiss}
-        activeOpacity={0.85}
-        style={[styles.dismissBtn, { backgroundColor: colors.primary }]}
-        accessibilityLabel="Continue"
-        accessibilityRole="button"
-      >
-        <Text style={styles.dismissText}>Continue</Text>
-      </TouchableOpacity>
+      <View style={styles.btnRow}>
+        <TouchableOpacity
+          onPress={handleShare}
+          activeOpacity={0.85}
+          style={[styles.shareBtn, { borderColor: colors.primary }]}
+          accessibilityLabel="Share perfect score"
+          accessibilityRole="button"
+        >
+          <Text style={[styles.shareBtnText, { color: colors.primary }]}>Share</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={onDismiss}
+          activeOpacity={0.85}
+          style={[styles.dismissBtn, { backgroundColor: colors.primary }]}
+          accessibilityLabel="Continue"
+          accessibilityRole="button"
+        >
+          <Text style={styles.dismissText}>Continue</Text>
+        </TouchableOpacity>
+      </View>
     </Animated.View>
   );
 }
@@ -259,6 +284,24 @@ const styles = StyleSheet.create({
   },
   dismissText: {
     color: "#fff",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  btnRow: {
+    flexDirection: "row",
+    gap: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  shareBtn: {
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 24,
+    borderWidth: 2,
+    minWidth: 100,
+    alignItems: "center",
+  },
+  shareBtnText: {
     fontSize: 16,
     fontWeight: "700",
   },
