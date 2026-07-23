@@ -12,7 +12,6 @@ import { Modal ,
   Keyboard,
   Animated,
   Easing,
-  Image,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import * as H from "@/lib/haptics";
@@ -116,150 +115,6 @@ const DEFAULT_EXAMPLES = [
   "Explain the process of mitosis",
   "What caused World War I?",
   "Balance: Fe + O₂ → Fe₂O₃",
-];
-
-// 70 grade-grouped examples — 10 groups of 7
-const GRADE_EXAMPLE_GROUPS: { id: string; label: string; emoji: string; questions: string[] }[] = [
-  {
-    id: "gr1_2",
-    label: "Grade 1 - 2",
-    emoji: "🌱",
-    questions: [
-      "What is 5 + 7?",
-      "How many sides does a triangle have?",
-      "What sound does the letter 'B' make?",
-      "If I have 10 apples and eat 3, how many are left?",
-      "What is bigger: 15 or 9?",
-      "Name three animals that live in the ocean.",
-      "What day comes after Monday?",
-    ],
-  },
-  {
-    id: "gr3_4",
-    label: "Grade 3 - 4",
-    emoji: "📚",
-    questions: [
-      "What is 12 × 9?",
-      "What is the perimeter of a rectangle with length 8 and width 5?",
-      "What is a noun? Give two examples.",
-      "What are the three states of matter?",
-      "What is the capital of France?",
-      "Write a sentence using a simile.",
-      "What is 3/4 + 1/4?",
-    ],
-  },
-  {
-    id: "gr5_6",
-    label: "Grade 5 - 6",
-    emoji: "🔢",
-    questions: [
-      "What is 15% of 80?",
-      "Explain the difference between a prime and composite number.",
-      "What is the main idea of a paragraph?",
-      "Describe the water cycle.",
-      "What caused the American Revolution?",
-      "Simplify: 24/36",
-      "What is the difference between a simile and a metaphor?",
-    ],
-  },
-  {
-    id: "gr7_8",
-    label: "Grade 7 - 8",
-    emoji: "📐",
-    questions: [
-      "Solve for x: 3x - 5 = 16",
-      "What is the Pythagorean theorem? Give an example.",
-      "Explain the difference between mitosis and meiosis.",
-      "What is the theme of 'To Kill a Mockingbird'?",
-      "What were the main causes of World War I?",
-      "Calculate the area of a circle with radius 7.",
-      "What is Newton's Second Law of Motion?",
-    ],
-  },
-  {
-    id: "gr9_10",
-    label: "Grade 9 - 10",
-    emoji: "🧮",
-    questions: [
-      "Solve: 2x² + 5x - 3 = 0 using the quadratic formula.",
-      "Explain the difference between ionic and covalent bonds.",
-      "Analyze the symbolism of the green light in The Great Gatsby.",
-      "What were the causes and effects of the French Revolution?",
-      "Find the slope of the line through (2, 3) and (5, 9).",
-      "Explain the law of conservation of energy.",
-      "What is the difference between active and passive voice?",
-    ],
-  },
-  {
-    id: "gcse",
-    label: "GCSE",
-    emoji: "🇬🇧",
-    questions: [
-      "Expand and simplify: (x + 3)(x - 2)",
-      "Balance the equation: Mg + HCl → MgCl₂ + H₂",
-      "Explain how natural selection leads to evolution.",
-      "Analyse the effect of the writer's language choices in this extract.",
-      "What is the difference between speed and velocity?",
-      "Calculate the compound interest on £500 at 4% for 3 years.",
-      "Describe the causes of the First World War.",
-    ],
-  },
-  {
-    id: "alevel",
-    label: "A-Level",
-    emoji: "🎓",
-    questions: [
-      "Differentiate f(x) = x³ sin(x) using the product rule.",
-      "Explain the mechanism of nucleophilic substitution (SN2).",
-      "Critically evaluate Keynesian economic theory.",
-      "Analyse the use of free indirect discourse in 'Emma' by Jane Austen.",
-      "Derive the equation for simple harmonic motion.",
-      "What is the Hardy-Weinberg principle and when does it apply?",
-      "Evaluate ∫(x² + 3x) dx between x = 1 and x = 4.",
-    ],
-  },
-  {
-    id: "university",
-    label: "University",
-    emoji: "🏛️",
-    questions: [
-      "Prove that the square root of 2 is irrational.",
-      "Explain the Heisenberg uncertainty principle and its implications.",
-      "Compare Rawls' theory of justice with Nozick's libertarianism.",
-      "Derive the Black-Scholes option pricing formula.",
-      "Explain the mechanism of action of CRISPR-Cas9.",
-      "What is the difference between frequentist and Bayesian inference?",
-      "Solve the differential equation: dy/dx + 2y = e^(-x)",
-    ],
-  },
-  {
-    id: "stem_mixed",
-    label: "STEM Mix",
-    emoji: "⚗️",
-    questions: [
-      "What is the time complexity of binary search?",
-      "Explain how a transformer works.",
-      "What is the difference between machine learning and deep learning?",
-      "Calculate the pH of a 0.01 M HCl solution.",
-      "Explain the central dogma of molecular biology.",
-      "What is the difference between series and parallel circuits?",
-      "Solve: log₂(x) = 5",
-    ],
-  },
-  {
-    id: "humanities_mixed",
-    label: "Humanities Mix",
-    emoji: "🌍",
-    questions: [
-      "What is cognitive dissonance? Give a real-world example.",
-      "Explain the difference between a democracy and a republic.",
-      "What is the significance of the Magna Carta?",
-      "Explain supply and demand with a real-world example.",
-      "What is the difference between weather and climate?",
-      "Analyse the theme of power in 'Animal Farm'.",
-      "What is the difference between primary and secondary sources?",
-    ],
-  },
 ];
 
 
@@ -631,8 +486,6 @@ function SolveScreenContent() {
   const [showSolveGradePicker, setShowSolveGradePicker] = useState(false);
   const [rememberGrade, setRememberGrade] = useState(false);
   const [_userName, setUserName] = useState<string | null>(null);
-  const [avatarUri, setAvatarUri] = useState<string | null>(null);
-  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   const [lastSession, setLastSession] = useState<ChatSessionSummary | null>(null);
   const [quickAskText, setQuickAskText] = useState("");
   const [continueSessionDismissed, setContinueSessionDismissed] = useState(false);
@@ -703,7 +556,6 @@ function SolveScreenContent() {
       getShieldCount().then(setShieldCount);
       loadGlobalGrade().then((g: string | null) => setHomeGradeLevel(g));
       AsyncStorage.getItem("@tutorsnap/userName").then((n) => setUserName(n || null));
-      AsyncStorage.getItem("@tutorsnap/avatarUri").then((uri) => setAvatarUri(uri || null));
       // Load most recent chat session for "Continue last chat" link
       listSessionSummaries().then((sessions) => {
         const sorted = sessions.sort((a, b) => b.updatedAt - a.updatedAt);
@@ -985,17 +837,11 @@ function SolveScreenContent() {
                 <TouchableOpacity
                   accessibilityLabel="Open settings"
                   onPress={() => router.push("/settings" as any)}
-                  style={[styles.iconBtn, { padding: 0, overflow: "hidden" }]}
+                  style={styles.iconBtn}
                   activeOpacity={0.7}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  {avatarUri ? (
-                    <Image source={{ uri: avatarUri }} style={{ width: 32, height: 32, borderRadius: 16 }} />
-                  ) : (
-                    <View style={[styles.homeAvatarPlaceholder, { backgroundColor: `${colors.primary}20` }]}>
-                      <IconSymbol size={18} name="person.crop.circle.fill" color={colors.primary} />
-                    </View>
-                  )}
+                  <IconSymbol size={24} name="gear" color={colors.foreground} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -1465,102 +1311,20 @@ function SolveScreenContent() {
                 {selectedSubject ? `${(getSubjectDef(selectedSubject)?.label ?? "Subject").toUpperCase()} EXAMPLES` : "TRY AN EXAMPLE"}
               </Text>
             </View>
-            {/* Subject-specific flat list (when a subject is selected) */}
-            {selectedSubject && SUBJECT_EXAMPLES[selectedSubject] && (
-              (SUBJECT_EXAMPLES[selectedSubject] ?? []).map((example: string, index: number) => (
-                <TouchableOpacity
-                  key={index}
-                  onPress={() => handleExample(example)}
-                  style={[styles.exampleCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                  activeOpacity={0.7}
-                >
-                  <View style={[styles.exampleNumber, { backgroundColor: `${colors.primary}20` }]}>
-                    <Text style={[styles.exampleNumberText, { color: colors.primary }]}>{index + 1}</Text>
-                  </View>
-                  <Text style={[styles.exampleText, { color: colors.foreground }]}>{example}</Text>
-                  <IconSymbol size={16} name="chevron.right" color={colors.muted} />
-                </TouchableOpacity>
-              ))
-            )}
-            {/* Grade-grouped collapsible dropdowns (when no subject is selected) */}
-            {!selectedSubject && GRADE_EXAMPLE_GROUPS.map((group) => {
-              const isOpen = !!expandedGroups[group.id];
-              // Highlight the group matching the user's grade level
-              const isUserGrade = homeGradeLevel
-                ? group.id === homeGradeLevel ||
-                  (homeGradeLevel.startsWith("grade1") && group.id === "gr1_2") ||
-                  (homeGradeLevel.startsWith("grade2") && group.id === "gr1_2") ||
-                  (homeGradeLevel.startsWith("grade3") && group.id === "gr3_4") ||
-                  (homeGradeLevel.startsWith("grade4") && group.id === "gr3_4") ||
-                  (homeGradeLevel.startsWith("grade5") && group.id === "gr5_6") ||
-                  (homeGradeLevel.startsWith("grade6") && group.id === "gr5_6") ||
-                  (homeGradeLevel.startsWith("grade7") && group.id === "gr7_8") ||
-                  (homeGradeLevel.startsWith("grade8") && group.id === "gr7_8") ||
-                  (homeGradeLevel.startsWith("grade9") && group.id === "gr9_10") ||
-                  (homeGradeLevel.startsWith("grade10") && group.id === "gr9_10") ||
-                  (homeGradeLevel === "gcse" && group.id === "gcse") ||
-                  (homeGradeLevel === "alevel" && group.id === "alevel") ||
-                  (homeGradeLevel === "university" && group.id === "university")
-                : false;
-              return (
-                <View key={group.id} style={{ marginBottom: 6 }}>
-                  {/* Group header / toggle row */}
-                  <TouchableOpacity
-                    onPress={() => {
-                      setExpandedGroups((prev) => ({ ...prev, [group.id]: !prev[group.id] }));
-                      H.impactLight();
-                    }}
-                    activeOpacity={0.75}
-                    style={[
-                      styles.exampleGroupHeader,
-                      {
-                        backgroundColor: isUserGrade ? `${colors.primary}12` : colors.surface,
-                        borderColor: isUserGrade ? `${colors.primary}40` : colors.border,
-                      },
-                    ]}
-                  >
-                    <Text style={{ fontSize: 18, marginRight: 8 }}>{group.emoji}</Text>
-                    <Text style={[styles.exampleGroupLabel, { color: colors.foreground, flex: 1 }]}>{group.label}</Text>
-                    {isUserGrade && (
-                      <View style={[styles.exampleGroupYouBadge, { backgroundColor: `${colors.primary}20` }]}>
-                        <Text style={[styles.exampleGroupYouText, { color: colors.primary }]}>Your level</Text>
-                      </View>
-                    )}
-                    <Text style={[styles.exampleGroupCount, { color: colors.muted }]}>7 questions</Text>
-                    <IconSymbol
-                      size={16}
-                      name={isOpen ? "chevron.down" : "chevron.right"}
-                      color={colors.muted}
-                      style={{ marginLeft: 6 }}
-                    />
-                  </TouchableOpacity>
-                  {/* Expanded questions */}
-                  {isOpen && group.questions.map((q, qi) => (
-                    <TouchableOpacity
-                      key={qi}
-                      onPress={() => handleExample(q)}
-                      style={[
-                        styles.exampleCard,
-                        {
-                          backgroundColor: colors.background,
-                          borderColor: colors.border,
-                          marginLeft: 12,
-                          borderLeftWidth: 3,
-                          borderLeftColor: isUserGrade ? colors.primary : colors.border,
-                        },
-                      ]}
-                      activeOpacity={0.7}
-                    >
-                      <View style={[styles.exampleNumber, { backgroundColor: `${colors.primary}15` }]}>
-                        <Text style={[styles.exampleNumberText, { color: colors.primary }]}>{qi + 1}</Text>
-                      </View>
-                      <Text style={[styles.exampleText, { color: colors.foreground }]}>{q}</Text>
-                      <IconSymbol size={14} name="chevron.right" color={colors.muted} />
-                    </TouchableOpacity>
-                  ))}
+            {(selectedSubject && SUBJECT_EXAMPLES[selectedSubject] ? SUBJECT_EXAMPLES[selectedSubject] : DEFAULT_EXAMPLES).map((example, index) => (
+              <TouchableOpacity
+                key={index}
+                onPress={() => handleExample(example)}
+                style={[styles.exampleCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.exampleNumber, { backgroundColor: `${colors.primary}20` }]}>
+                  <Text style={[styles.exampleNumberText, { color: colors.primary }]}>{index + 1}</Text>
                 </View>
-              );
-            })}
+                <Text style={[styles.exampleText, { color: colors.foreground }]}>{example}</Text>
+                <IconSymbol size={16} name="chevron.right" color={colors.muted} />
+              </TouchableOpacity>
+            ))}
           </View>
         </ScrollView>
 
@@ -2457,39 +2221,5 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#FFFFFF",
     flexShrink: 1,
-  },
-  homeAvatarPlaceholder: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  exampleGroupHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: 2,
-  },
-  exampleGroupLabel: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  exampleGroupYouBadge: {
-    borderRadius: 6,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    marginRight: 8,
-  },
-  exampleGroupYouText: {
-    fontSize: 11,
-    fontWeight: "600",
-  },
-  exampleGroupCount: {
-    fontSize: 12,
-    marginRight: 2,
   },
 });

@@ -41,7 +41,6 @@ import {
   Easing,
   AppState,
   type AppStateStatus,
-  Image,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { BlurView } from "expo-blur";
@@ -916,7 +915,6 @@ function ChatScreenContent() {
   const [sessionLoaded, setSessionLoaded] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
-  const [avatarUri, setAvatarUri] = useState<string | null>(null);
   // Round 44: top-bar ⋯ dropdown and tutor settings popup
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showTutorSettings, setShowTutorSettings] = useState(false);
@@ -1163,13 +1161,10 @@ function ChatScreenContent() {
   const TAB_BAR_HEIGHT = 60 + bottomPadding;
 
   // ── Session init ────────────────────────────────────────────────────────────
-  // Load avatar on mount and refresh when screen gains focus
-  useEffect(() => {
-    AsyncStorage.getItem("@tutorsnap/avatarUri").then((uri) => setAvatarUri(uri || null));
-  }, []);
 
   useEffect(() => {
     let cancelled = false;
+
     async function init() {
       await migrateOldChatHistory();
 
@@ -2230,21 +2225,6 @@ function ChatScreenContent() {
           ]}
         >
           <View style={chatStyles.headerLeft}>
-            {/* User avatar — taps to Settings */}
-            <TouchableOpacity
-              onPress={() => router.push("/settings")}
-              activeOpacity={0.8}
-              accessibilityLabel="Profile settings"
-              style={{ marginRight: 10, flexShrink: 0 }}
-            >
-              {avatarUri ? (
-                <Image source={{ uri: avatarUri }} style={{ width: 34, height: 34, borderRadius: 17 }} />
-              ) : (
-                <View style={[chatStyles.headerAvatarPlaceholder, { backgroundColor: `${colors.primary}20` }]}>
-                  <IconSymbol size={18} name="person.crop.circle.fill" color={colors.primary} />
-                </View>
-              )}
-            </TouchableOpacity>
             <View style={{ flex: 1, minWidth: 0 }}>
               <Text
                 style={[chatStyles.headerTitle, { color: colors.foreground, marginLeft: 0 }]}
@@ -4073,13 +4053,6 @@ const chatStyles = StyleSheet.create({
   },
   tutorSettingsRowSub: {
     lineHeight: 16,
-  },
-  headerAvatarPlaceholder: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: "center",
-    justifyContent: "center",
   },
 });
 

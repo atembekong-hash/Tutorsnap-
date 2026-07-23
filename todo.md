@@ -814,8 +814,3 @@
 ## Round 39: Chat Share Sheet + Settings Profile Section
 - [x] Convert chat share menu to bottom sheet (drag handle, ScrollView, Cancel button)
 - [x] Add profile section to settings header: avatar, display name, photo upload via image picker
-
-## Round 40: Avatar in Chat/Solve + Expanded Try Examples
-- [x] Show user avatar (or initials) in chat tab header
-- [x] Show user avatar in Solve tab home greeting (top-right, taps to Settings)
-- [x] Expand Try Examples to 70 questions in 10 grade-grouped collapsible dropdowns
