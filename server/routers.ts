@@ -417,24 +417,27 @@ Correct answer: ${input.correctAnswer}
 Student selected: ${input.selectedAnswer}
 ${input.selectedAnswer === input.correctAnswer ? "The student got it RIGHT." : "The student got it WRONG."}
 
-Provide a FULL, DETAILED worked solution:
-1. State the correct answer clearly
-2. Explain WHY it is correct (full reasoning, 4-6 sentences)
-3. Show the complete working/derivation step by step
-4. If the student was wrong, explain specifically why their choice was incorrect (2-3 sentences)
-5. Give a key insight or tip to remember this concept
-
-Respond with plain text (no JSON). Be thorough and educational.`;
+Respond ONLY with this JSON (no extra text):
+{
+  "explanation": "FULL DETAILED worked solution: (1) state the correct answer clearly, (2) explain WHY it is correct with full reasoning (4-6 sentences), (3) show the complete working/derivation step by step, (4) if the student was wrong explain specifically why their choice was incorrect (2-3 sentences), (5) give a key insight or tip to remember this concept. Be thorough and educational.",
+  "submissionReady": "INDEPENDENTLY GENERATED - not a summary of the explanation above. Write only what a student would hand in. State the correct option letter and answer, then show only the essential supporting work or one-line justification (2-4 lines max). No prose commentary, no preamble."
+}`;
       const result = await invokeLLM({
         model: "claude-haiku-4-5",
         messages: [
           { role: "system", content: prompt },
           { role: "user", content: "Explain the answer fully." },
         ],
-        max_tokens: 800,
+        max_tokens: 900,
+        response_format: { type: "json_object" },
       });
       const text = extractLLMContent(result);
-      return { explanation: text.trim() };
+      try {
+        const parsed = JSON.parse(extractJsonFromContent(text));
+        return { explanation: (parsed.explanation ?? text).trim(), submissionReady: (parsed.submissionReady ?? "").trim() };
+      } catch {
+        return { explanation: text.trim(), submissionReady: "" };
+      }
     }),
 
   solveFromImage: publicProcedure

@@ -30,6 +30,8 @@ import { loadGlobalGrade, GRADE_LABELS } from "@/lib/grade-levels";
 import { cleanMathText } from "@/lib/clean-math-text";
 import AsyncStorageLib from "@react-native-async-storage/async-storage";
 import PaywallScreen from "./paywall";
+import { SubmissionReadyCard } from "@/components/submission-ready-card";
+import { useFontSize } from "@/lib/font-size-provider";
 
 function getAppearanceSubjectKey(subjectId: string): string {
   const def = getSubjectDef(subjectId);
@@ -93,7 +95,7 @@ function OptionRow({
     textColor = colors.primary;
   }
 
-  const stateLabel = revealed ? (correct ? " — correct" : selected ? " — incorrect" : "") : selected ? " — selected" : "";
+  const stateLabel = revealed ? (correct ? " - correct" : selected ? " - incorrect" : "") : selected ? " - selected" : "";
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -167,7 +169,7 @@ function ScoreSummary({
         ? `${emoji} ${userName}'s TutorSnap Quiz Results`
         : `${emoji} TutorSnap Quiz Results`,
       `Subject: ${subjectLabel}${gradeLabel ? ` · ${gradeLabel}` : ""}`,
-      `Score: ${correct}/${total} (${pct}%) — Grade ${grade}`,
+      `Score: ${correct}/${total} (${pct}%) - Grade ${grade}`,
       `Time: ${timeStr}`,
       bonusAwarded ? `🔥 Streak bonus earned! ${bonusStreak}-day streak` : "",
       "",
@@ -235,7 +237,7 @@ function ScoreSummary({
               <Text style={[styles.reviewQ, { color: colors.foreground }]} numberOfLines={2}>{cleanMathText(q.problem)}</Text>
             </View>
             <Text style={[styles.reviewAns, { color: isCorrect ? colors.success : colors.error }]}>
-              Your answer: {userAns ?? "Timed out"} — {isCorrect ? "Correct ✓" : `Correct: ${q.correctAnswer}`}
+              Your answer: {userAns ?? "Timed out"} - {isCorrect ? "Correct ✓" : `Correct: ${q.correctAnswer}`}
             </Text>
             <Text style={[styles.reviewExp, { color: colors.muted }]}>{cleanMathText(q.explanation)}</Text>
           </View>
@@ -256,7 +258,7 @@ function ScoreSummary({
       {/* Share prompt card — viral loop nudge */}
       <View style={[styles.sharePromptCard, { backgroundColor: `${colors.primary}08`, borderColor: `${colors.primary}20` }]}>
         <Text style={[styles.sharePromptTitle, { color: colors.foreground }]}>
-          {pct >= 80 ? `🎉 Nice work! Share your ${grade}?` : `📚 Keep practicing — share your progress?`}
+          {pct >= 80 ? `🎉 Nice work! Share your ${grade}?` : `📚 Keep practicing - share your progress?`}
         </Text>
         <Text style={[styles.sharePromptSubtext, { color: colors.muted }]}>
           Challenge a friend or show off your score
@@ -324,11 +326,15 @@ export default function QuizScreen() {
 
   // Full worked explanation — fetched after answer reveal
   const [fullExplanations, setFullExplanations] = useState<Record<string, string>>({});
+  const [submissionReadyAnswers, setSubmissionReadyAnswers] = useState<Record<string, string>>({});
   const [loadingExplanation, setLoadingExplanation] = useState(false);
+  const { fs } = useFontSize();
   const solveExplanationMutation = trpc.academic.solveExplanation.useMutation({
     onSuccess: (data, variables) => {
-      // variables.problem is the question — use currentIdx captured via closure
       setFullExplanations((prev) => ({ ...prev, [variables.problem]: data.explanation }));
+      if (data.submissionReady) {
+        setSubmissionReadyAnswers((prev) => ({ ...prev, [variables.problem]: data.submissionReady! }));
+      }
       setLoadingExplanation(false);
     },
     onError: () => setLoadingExplanation(false),
@@ -624,6 +630,11 @@ export default function QuizScreen() {
                 <Text style={[styles.explanationText, { color: colors.foreground }]}>{cleanMathText(q.explanation)}</Text>
               )}
             </View>
+          )}
+
+          {/* Submission Ready card - independent answer for direct submission */}
+          {revealed && submissionReadyAnswers[q.problem] && (
+            <SubmissionReadyCard content={submissionReadyAnswers[q.problem]} fs={fs} />
           )}
 
           {/* Action Button */}

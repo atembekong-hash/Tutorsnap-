@@ -31,6 +31,8 @@ import { PracticeSkeletonCard } from "@/components/skeleton";
 import { loadQuizHistory } from "@/lib/quiz-history";
 import { savePrefetchedQuiz } from "@/lib/quiz-prefetch";
 import { cleanMathText } from "@/lib/clean-math-text";
+import { SubmissionReadyCard } from "@/components/submission-ready-card";
+import { useFontSize } from "@/lib/font-size-provider";
 const QUIZ_COUNTS = [3, 5, 10];
 
 function getDifficulties(gradeLevel: string | null): { id: Difficulty; label: string; color: string; desc: string }[] {
@@ -74,6 +76,7 @@ function getDifficulties(gradeLevel: string | null): { id: Difficulty; label: st
 
 function PracticeScreenContent() {
   const colors = useColors();
+  const { fs } = useFontSize();
   const router = useRouter();
   const params = useLocalSearchParams<{ subject?: string }>();
   const [selectedSubject, setSelectedSubject] = useState<SubjectId>("algebra");
@@ -756,13 +759,18 @@ function PracticeScreenContent() {
               </View>
             )}
 
+            {/* Submission Ready card — independent full worked answer for direct submission */}
+            {showAnswer && currentQuestion.submissionReady && (
+              <SubmissionReadyCard content={currentQuestion.submissionReady} fs={fs} />
+            )}
+
             {/* Streak nudge — shown after 5 consecutive correct */}
             {showStreakNudge && (
               <View style={[styles.streakNudge, { backgroundColor: `${colors.primary}12`, borderColor: `${colors.primary}40` }]}>
                 <Text style={styles.streakNudgeEmoji}>🔥</Text>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.streakNudgeTitle, { color: colors.foreground }]}>You're on fire!</Text>
-                  <Text style={[styles.streakNudgeSub, { color: colors.muted }]}>{consecutiveCorrect} in a row — try a harder one?</Text>
+                  <Text style={[styles.streakNudgeSub, { color: colors.muted }]}>{consecutiveCorrect} in a row - try a harder one?</Text>
                 </View>
                 <TouchableOpacity
                   onPress={() => {

@@ -602,7 +602,7 @@ export default function SolutionScreen() {
     const tipsText = (solution!.tips || []).length > 0
       ? `\n\n💡 Tips:\n${solution!.tips!.map((t) => `• ${t}`).join("\n")}`
       : "";
-    const message = `📚 ${getSubjectLabel(solution!.subject)} — TutorSnap\n\n❓ ${solution!.problem}\n\n✅ Answer: ${solution!.answer}\n\n${stepsText}${tipsText}\n\nSolved with TutorSnap · ${APP_URL.replace("https://", "")}`;
+    const message = `📚 ${getSubjectLabel(solution!.subject)} - TutorSnap\n\n❓ ${solution!.problem}\n\n✅ Answer: ${solution!.answer}\n\n${stepsText}${tipsText}\n\nSolved with TutorSnap · ${APP_URL.replace("https://", "")}`;
     if (Platform.OS === "web") {
       // Share.share is a no-op on web — use clipboard instead
       try {
@@ -834,7 +834,7 @@ export default function SolutionScreen() {
                     await Share.share({ message: noteText, title: `Solution: ${solution.problem.substring(0, 60)}` });
                   } else {
                     await Clipboard.setStringAsync(noteText);
-                    Alert.alert("Copied!", "Solution text copied — paste into your notes app.");
+                    Alert.alert("Copied!", "Solution text copied - paste into your notes app.");
                   }
                 } catch { /* user cancelled */ }
               }}
