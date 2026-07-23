@@ -8,6 +8,7 @@ import { useColors } from "@/hooks/use-colors";
 import { SchemeColors } from "@/constants/theme";
 import { useChatBadge } from "@/hooks/use-chat-badge";
 import { getDailyChallengeState } from "@/lib/daily-challenge";
+import { getProgress } from "@/lib/progress";
 import { useAppearance } from "@/lib/appearance-context";
 
 function ScanTabIcon({ color: _color, focused: _focused }: { color: string; focused: boolean }) {
@@ -56,6 +57,46 @@ function ChatTabIcon({ color, focused: _focused }: { color: string; focused: boo
             {unreadCount > 99 ? "99+" : String(unreadCount)}
           </Text>
         </Animated.View>
+      )}
+    </View>
+  );
+}
+
+function SolveTabIcon({ color, focused }: { color: string; focused: boolean }) {
+  const [goalMet, setGoalMet] = useState(true);
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  useFocusEffect(
+    useCallback(() => {
+      getProgress().then((p) => {
+        const met = p.streak.todaySolved >= p.streak.dailyGoal;
+        setGoalMet(met);
+      });
+    }, [])
+  );
+
+  useEffect(() => {
+    if (goalMet || focused) return;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.5, duration: 600, useNativeDriver: true, easing: Easing.out(Easing.quad) }),
+        Animated.timing(pulseAnim, { toValue: 1.0, duration: 600, useNativeDriver: true, easing: Easing.in(Easing.quad) }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [goalMet, focused, pulseAnim]);
+
+  return (
+    <View style={{ position: "relative" }}>
+      <IconSymbol size={30} name="sum" color={color} />
+      {!goalMet && (
+        <Animated.View
+          style={[
+            styles.practiceBadge,
+            { transform: [{ scale: pulseAnim }] },
+          ]}
+        />
       )}
     </View>
   );
@@ -145,7 +186,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: "Solve",
-          tabBarIcon: ({ color }) => <IconSymbol size={30} name="sum" color={color} />,
+          tabBarIcon: ({ color, focused }) => <SolveTabIcon color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen

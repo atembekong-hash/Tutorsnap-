@@ -897,3 +897,9 @@
 - [x] Gradient pill for active dot in onboarding slide indicators
 - [x] Share button on History screen cards
 - [x] Animated pulsing dot badge on Practice tab icon (pulses when daily challenge is incomplete)
+
+## Round 54: Solve Tab Badge, Bookmarks Share, Share Haptic
+
+- [x] Pulsing dot badge on Solve tab when daily solve goal not yet met
+- [x] Share button on Bookmarks cards (same as History)
+- [x] Success haptic after Share.share() resolves in History and Bookmarks

@@ -16,6 +16,7 @@ import {
   ScrollView,
   ActivityIndicator,
   RefreshControl,
+  Share,
 } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import Swipeable from "react-native-gesture-handler/Swipeable";
@@ -319,6 +320,24 @@ export default function BookmarksScreen() {
                 <IconSymbol size={12} name="folder.badge.plus" color={colors.primary} />
               </TouchableOpacity>
             )}
+            <TouchableOpacity
+              accessibilityLabel="Share"
+              onPress={async (e) => {
+                e.stopPropagation();
+                H.impactLight();
+                try {
+                  const result = await Share.share({
+                    message: `I saved this on TutorSnap!\n\n${item.problem}\n\nAnswer: ${item.answer}\n\nDownload TutorSnap to solve problems instantly.`,
+                    title: "TutorSnap Bookmark",
+                  });
+                  if (result.action === Share.sharedAction) H.notificationSuccess();
+                } catch {}
+              }}
+              style={{ padding: 4 }}
+              activeOpacity={0.7}
+            >
+              <IconSymbol size={14} name="paperplane.fill" color={colors.muted} />
+            </TouchableOpacity>
             <IconSymbol size={14} name="chevron.right" color={colors.muted} />
           </View>
         </View>

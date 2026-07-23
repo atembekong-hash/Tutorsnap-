@@ -206,10 +206,11 @@ function HistoryScreenContent() {
               e.stopPropagation();
               H.impactLight();
               try {
-                await Share.share({
+                const result = await Share.share({
                   message: `I solved this on TutorSnap!\n\n${item.problem}\n\nAnswer: ${item.answer}\n\nDownload TutorSnap to solve problems instantly.`,
                   title: "TutorSnap Solution",
                 });
+                if (result.action === Share.sharedAction) H.notificationSuccess();
               } catch {}
             }}
             style={{ padding: 6, marginTop: 4 }}
