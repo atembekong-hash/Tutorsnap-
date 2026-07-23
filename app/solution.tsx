@@ -38,6 +38,7 @@ import { getProgress, getStreakEmoji, type ProgressData } from "@/lib/progress";
 import { cleanMathText } from "@/lib/clean-math-text";
 import { SubmissionReadyCard } from "@/components/submission-ready-card";
 import { StudyBlockCard, StudyBlockSkeleton } from "@/components/study-block-card";
+import { SolvingOverlay } from "@/components/skeleton";
 
 function StepCard({ step, colors, fs, delay = 0 }: { step: SolutionStep; colors: any; fs: (n: number) => number; delay?: number }) {
   const [expanded, setExpanded] = useState(true);
@@ -533,15 +534,7 @@ export default function SolutionScreen() {
   if (autoSolving) {
     return (
       <ScreenContainer>
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 16, padding: 24 }}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={{ color: colors.foreground, fontSize: fs(16), fontWeight: "700", textAlign: "center" }}>
-            Solving problem…
-          </Text>
-          <Text style={{ color: colors.muted, fontSize: fs(13), textAlign: "center", lineHeight: 20 }}>
-            {parsedSolution?.problem}
-          </Text>
-        </View>
+        <SolvingOverlay problem={parsedSolution?.problem} />
       </ScreenContainer>
     );
   }

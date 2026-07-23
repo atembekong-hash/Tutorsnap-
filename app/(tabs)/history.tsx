@@ -21,6 +21,7 @@ import type { HistoryItem, MathSubject } from "@/shared/types";
 import { getSubjectColor, getSubjectLabel } from "@/lib/subjects";
 import { GRADE_LABELS } from "@/lib/grade-levels";
 import { cleanMathText } from "@/lib/clean-math-text";
+import { HistorySkeletonList } from "@/components/skeleton";
 
 function formatTime(timestamp: number): string {
   const now = Date.now();
@@ -44,6 +45,7 @@ function HistoryScreenContent() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterSubject, setFilterSubject] = useState<MathSubject | "all">("all");
   const [filterGrade, setFilterGrade] = useState<string | "all">("all");
+  const [historyLoading, setHistoryLoading] = useState(true);
 
   const loadHistory = async () => {
     try {
@@ -55,6 +57,8 @@ function HistoryScreenContent() {
       setBookmarkedIds(new Set(bm.map((b) => b.problem)));
     } catch (_) {
       // ignore
+    } finally {
+      setHistoryLoading(false);
     }
   };
 
@@ -346,6 +350,14 @@ function HistoryScreenContent() {
       )}
     </View>
   );
+
+  if (historyLoading) {
+    return (
+      <ScreenContainer>
+        <HistorySkeletonList rows={7} />
+      </ScreenContainer>
+    );
+  }
 
   return (
     <ScreenContainer>

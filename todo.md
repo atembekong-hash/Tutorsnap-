@@ -844,3 +844,12 @@
 - [x] Streak-at-risk evening push notification (8 PM local, only if streak > 0 and nothing solved today)
 - [x] Version bump to 1.1.5 / versionCode 10
 - [x] Build APK 1.1.5
+
+## Round 46: Smooth Loading Animations
+- [x] New skeleton primitives: ShimmerBox (sweep), PulseBox (scale+opacity), DotsLoader (bouncing dots), SpinnerOverlay, SolvingOverlay
+- [x] HomeSkeletonScreen: full shimmer layout shown until first progress load
+- [x] ProgressSkeletonScreen: replaces "Loading..." text on Progress tab
+- [x] HistorySkeletonList: animated rows on History and Quiz History screens
+- [x] SolvingOverlay: branded brain emoji + DotsLoader replaces plain ActivityIndicator on Solution screen
+- [x] DotsLoader: replaces ActivityIndicator in Solve button (index.tsx) and AI Tutor session loading
+- [x] QuizLoadingScreen: upgraded to use ShimmerBox progress bar

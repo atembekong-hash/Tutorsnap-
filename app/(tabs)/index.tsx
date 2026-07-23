@@ -53,6 +53,7 @@ import { cleanMathText } from "@/lib/clean-math-text";
 import { useAuth } from "@/lib/auth-context";
 import { StreakMilestoneModal } from "@/components/streak-milestone-modal";
 import { checkStreakMilestone, type MilestoneInfo } from "@/lib/streak-milestones";
+import { HomeSkeletonScreen, DotsLoader } from "@/components/skeleton";
 
 function getAppearanceSubjectKey(subjectId: string): string {
   const def = getSubjectDef(subjectId);
@@ -655,10 +656,13 @@ function SolveScreenContent() {
   const [recentSolves, setRecentSolves] = useState<HistoryItem[]>([]);
   // Streak milestone celebration
   const [streakMilestone, setStreakMilestone] = useState<MilestoneInfo | null>(null);
+  // Home loading state — show skeleton until first progress load completes
+  const [homeLoading, setHomeLoading] = useState(true);
 
   const loadProgress = async () => {
     const p = await getProgress();
     setProgress(p);
+    setHomeLoading(false);
     // Find the closest almost-badge to nudge the user
     const almosts = getAlmostBadges(p.subjectCounts);
     if (almosts.length > 0) {
@@ -927,6 +931,14 @@ function SolveScreenContent() {
     ? getDailyGoalPercent(streak.todaySolved, streak.dailyGoal)
     : 0;
   const streakEmoji = streak ? getStreakEmoji(streak.currentStreak) : "🌱";
+
+  if (homeLoading) {
+    return (
+      <ScreenContainer>
+        <HomeSkeletonScreen />
+      </ScreenContainer>
+    );
+  }
 
   return (
     <ScreenContainer>
@@ -1279,7 +1291,7 @@ function SolveScreenContent() {
                 }]}
               >
                 {solveMutation.isPending ? (
-                  <><ActivityIndicator color="#FFFFFF" size="small" /><Text style={styles.actionPillSolveText}>Solving...</Text></>
+                  <><DotsLoader color="#FFFFFF" /><Text style={styles.actionPillSolveText}>Solving...</Text></>
                 ) : !isOnline ? (
                   <><IconSymbol size={14} name="wifi.slash" color="#FFFFFF" /><Text style={styles.actionPillSolveText}>Offline</Text></>
                 ) : (

@@ -111,6 +111,7 @@ import { scheduleDailyReminder, cancelDailyReminder, scheduleSessionSummaryNotif
 import { pinDefinition, readGlossary, unpinDefinition, clearGlossary, type GlossaryEntry } from "@/lib/glossary";
 import { cleanMathText } from "@/lib/clean-math-text";
 import { SubmissionReadyCard } from "@/components/submission-ready-card";
+import { DotsLoader } from "@/components/skeleton";
 
 function getAppearanceSubjectKey(subjectId: string | null): string {
   if (!subjectId) return "Mathematics";
@@ -2379,7 +2380,7 @@ function ChatScreenContent() {
         <View style={{ flex: 1, minHeight: 0 }}>
         {!sessionLoaded ? (
           <View style={chatStyles.loadingCenter}>
-            <ActivityIndicator size="large" color={colors.primary} />
+            <DotsLoader />
           </View>
         ) : showWelcome ? (
           <WelcomeCard

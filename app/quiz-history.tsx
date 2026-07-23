@@ -16,6 +16,7 @@ import { useColors } from "@/hooks/use-colors";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useAppearance } from "@/lib/appearance-context";
 import { loadQuizHistory, type QuizResult } from "@/lib/quiz-history";
+import { HistorySkeletonList } from "@/components/skeleton";
 import { getSubjectDef, getSubjectLabel } from "@/lib/subjects";
 
 function getAppearanceSubjectKey(subjectId: string): string {
@@ -197,9 +198,7 @@ export default function QuizHistoryScreen() {
       </View>
 
       {loading ? (
-        <View style={styles.center}>
-          <ActivityIndicator color={colors.primary} size="large" />
-        </View>
+        <HistorySkeletonList rows={7} />
       ) : loadError ? (
         <View style={styles.center}>
           <Text style={styles.emptyEmoji}>⚠️</Text>

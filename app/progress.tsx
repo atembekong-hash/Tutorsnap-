@@ -8,6 +8,7 @@ import {
   Platform,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
+import { ProgressSkeletonScreen } from "@/components/skeleton";
 import * as H from "@/lib/haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -105,9 +106,7 @@ export default function ProgressScreen() {
   if (!progress) {
     return (
       <ScreenContainer>
-        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-          <Text style={{ color: colors.muted }}>Loading...</Text>
-        </View>
+        <ProgressSkeletonScreen />
       </ScreenContainer>
     );
   }
