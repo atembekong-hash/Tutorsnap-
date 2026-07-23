@@ -703,62 +703,6 @@ Respond ONLY with this JSON:
         return JSON.parse(repaired) as { problems: { id: string; problem: string; hint: string }[] };
       }
     }),
-
-  /** Generate structured study blocks from an AI response for Study View mode */
-  generateStudyBlocks: publicProcedure
-    .input(z.object({
-      aiResponse: z.string().min(1),
-      subject: z.string().optional(),
-    }))
-    .mutation(async ({ input }) => {
-      const subjectHint = input.subject ? `The subject context is: ${input.subject}.` : "";
-      const systemPrompt = `You are an expert academic content structurer. Transform a raw AI tutor response into structured study blocks for review and revision.
-
-Analyze the response and identify its major educational components. For each component create a block with a semantic type, a concise title (3-6 words), and the full content.
-
-Available block types:
-- core_answer: The direct answer or main result
-- key_concept: A core concept being taught
-- worked_example: A full worked example with steps
-- formula: A formula, equation, or expression
-- definition: A term definition
-- tip: A study tip or common mistake warning
-- analogy: A real-world analogy
-- code: A code block (programming subjects)
-- summary: A concise summary or takeaway
-- step_breakdown: A numbered step-by-step breakdown
-- visual_note: A visual or spatial description
-
-Rules:
-- Generate 3 to 7 blocks. Quality over quantity.
-- Each block must be self-contained.
-- Do NOT summarize. Use actual content from the response.
-- Titles must be 3-6 words, no trailing punctuation.
-- Content must be clean markdown. No dollar signs for math. Use plain text for equations.
-- Do NOT use em dashes or en dashes.
-- Choose block types that genuinely match the content.
-${subjectHint}
-
-Respond ONLY with valid JSON: {"blocks": [{"type": "core_answer", "title": "The Direct Answer", "content": "..."}]}`;
-      const result = await invokeLLM({
-        model: "claude-haiku-4-5",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: `Transform this AI response into study blocks:\n\n${input.aiResponse.slice(0, 3000)}` },
-        ],
-        max_tokens: 2000,
-        response_format: { type: "json_object" },
-      });
-      const text = extractLLMContent(result);
-      try {
-        const parsed = JSON.parse(extractJsonFromContent(text)) as { blocks: Array<{ type: string; title: string; content: string }> };
-        const validTypes = ["core_answer","key_concept","worked_example","formula","definition","tip","analogy","code","summary","step_breakdown","visual_note"];
-        const blocks = (parsed.blocks ?? []).filter((b: any) => validTypes.includes(b.type) && b.title && b.content).slice(0, 7);
-        return { blocks };
-      } catch {
-        return { blocks: [] };
-      }
-    }),
 });
 // ─── Voice router ────────────────────────────────────────────────────────────
 const voiceRouter = router({

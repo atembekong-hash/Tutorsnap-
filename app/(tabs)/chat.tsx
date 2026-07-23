@@ -28,7 +28,6 @@ import {
   Text,
   TextInput,
   FlatList,
-  ScrollView,
   TouchableOpacity,
   StyleSheet,
   KeyboardAvoidingView,
@@ -111,8 +110,6 @@ import { scheduleDailyReminder, cancelDailyReminder, scheduleSessionSummaryNotif
 import { pinDefinition, readGlossary, unpinDefinition, clearGlossary, type GlossaryEntry } from "@/lib/glossary";
 import { cleanMathText } from "@/lib/clean-math-text";
 import { SubmissionReadyCard } from "@/components/submission-ready-card";
-import { StudyViewRenderer } from "@/components/study-view-renderer";
-import type { StudyBlock } from "@/shared/types";
 
 function getAppearanceSubjectKey(subjectId: string | null): string {
   if (!subjectId) return "Mathematics";
@@ -959,12 +956,6 @@ function ChatScreenContent() {
   const [reactionPickerMsgId, setReactionPickerMsgId] = useState<string | null>(null);
   const [reactionPickerContent, setReactionPickerContent] = useState<string>('');
   const [reactions, setReactions] = useState<Record<string, string>>({}); // msgId -> emoji
-  // Study View mode
-  const [viewMode, setViewMode] = useState<"chat" | "study">("chat");
-  const [studyBlocks, setStudyBlocks] = useState<StudyBlock[]>([]);
-  const [studyBlocksLoading, setStudyBlocksLoading] = useState(false);
-  const [studyBlocksError, setStudyBlocksError] = useState<string | null>(null);
-  const studyViewToggleAnim = useRef(new Animated.Value(0)).current; // 0=chat, 1=study
   const [subjectClearedToast] = useState(false);
   const subjectClearedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollTopScaleAnim = useRef(new Animated.Value(1)).current;
@@ -1389,41 +1380,6 @@ function ChatScreenContent() {
     },
   });
 
-  // Study View: generate study blocks from the last AI response
-  const generateStudyBlocksMutation = trpc.academic.generateStudyBlocks.useMutation({
-    onSuccess: (data) => {
-      setStudyBlocks((data.blocks as StudyBlock[]) ?? []);
-      setStudyBlocksLoading(false);
-      setStudyBlocksError(null);
-    },
-    onError: (err) => {
-      setStudyBlocksLoading(false);
-      setStudyBlocksError(err.message ?? "Failed to generate study blocks");
-    },
-  });
-
-  const handleSwitchToStudyView = useCallback(() => {
-    if (viewMode === "study") return;
-    setViewMode("study");
-    Animated.timing(studyViewToggleAnim, { toValue: 1, duration: 220, useNativeDriver: false }).start();
-    // Find the last AI message
-    const lastAI = [...messages].reverse().find((m) => m.role === "assistant" && m.content && !m.error);
-    if (!lastAI) return;
-    // Only regenerate if we don't already have blocks for this message
-    setStudyBlocksLoading(true);
-    setStudyBlocksError(null);
-    generateStudyBlocksMutation.mutate({
-      aiResponse: lastAI.content,
-      subject: selectedSubject ?? undefined,
-    });
-  }, [viewMode, messages, selectedSubject, studyViewToggleAnim, generateStudyBlocksMutation]);
-
-  const handleSwitchToChatView = useCallback(() => {
-    if (viewMode === "chat") return;
-    setViewMode("chat");
-    Animated.timing(studyViewToggleAnim, { toValue: 0, duration: 220, useNativeDriver: false }).start();
-  }, [viewMode, studyViewToggleAnim]);
-
   // Streaming chat send — replaces the old tRPC chatMutation
   const sendStreamingChat = useCallback(
     async (
@@ -1681,11 +1637,6 @@ function ChatScreenContent() {
           aiResponse: accumulated,
           subject: undefined,
         });
-        // Auto Study View: if the setting is enabled, switch to Study View
-        // automatically after each AI response completes
-        if (tutorSettings.autoStudyView) {
-          handleSwitchToStudyView();
-        }
       } catch (err: unknown) {
         const isAbort = err instanceof Error && err.name === "AbortError";
         if (!isAbort) {
@@ -1708,7 +1659,7 @@ function ChatScreenContent() {
         setIsStreaming(false);
       }
     },
-    [persistMessages, suggestFollowUpsMutation, getTypingDelayMs, tutorSettings, handleSwitchToStudyView]
+    [persistMessages, suggestFollowUpsMutation, getTypingDelayMs]
   );
 
   // ── Send ────────────────────────────────────────────────────────────────────
@@ -2421,19 +2372,6 @@ function ChatScreenContent() {
             onPrompt={(t) => handleSend(t)}
             onEditNickname={() => { setShowTutorSettings(true); H.impactLight(); }}
           />
-        ) : viewMode === "study" ? (
-          <ScrollView
-            style={{ flex: 1 }}
-            contentContainerStyle={{ flexGrow: 1 }}
-            keyboardShouldPersistTaps="always"
-          >
-            <StudyViewRenderer
-              blocks={studyBlocks}
-              loading={studyBlocksLoading}
-              error={studyBlocksError}
-              fs={fs}
-            />
-          </ScrollView>
         ) : (
           <FlatList
             ref={flatListRef}
@@ -4265,41 +4203,4 @@ const glossaryModalStyles = StyleSheet.create({
   emptyState: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32, marginTop: 60 },
   emptyTitle: { fontSize: 18, fontWeight: "700", marginBottom: 8, letterSpacing: -0.3 },
   emptySub: { fontSize: 14, textAlign: "center", lineHeight: 22 },
-});
-
-// ── Study View toggle styles ──────────────────────────────────────────────────
-const toggleStyles = StyleSheet.create({
-  wrapper: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    alignItems: "center",
-    borderBottomWidth: 0.5,
-  },
-  pill: {
-    flexDirection: "row",
-    borderRadius: 12,
-    borderWidth: 1,
-    overflow: "hidden",
-    padding: 3,
-    gap: 2,
-  },
-  tab: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 9,
-  },
-  activeTab: {
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  tabText: {
-    fontWeight: "600",
-    letterSpacing: -0.2,
-  },
 });

@@ -72,7 +72,6 @@ export interface TutorSettings {
   autoResumeDelay: AutoResumeDelay;
   sendOnEnter: boolean;
   voiceInput: boolean;
-  autoStudyView: boolean; // Auto-switch to Study View after each AI response
 
   // 4. Session & History
   saveHistory: boolean;
@@ -131,7 +130,6 @@ export const DEFAULT_TUTOR_SETTINGS: TutorSettings = {
   autoResumeDelay: 3,
   sendOnEnter: false,
   voiceInput: true,
-  autoStudyView: false,
 
   saveHistory: true,
   autoTitle: true,
@@ -930,13 +928,6 @@ export function TutorSettingsModal({
               sub="Show microphone button in chat bar"
               value={settings.voiceInput}
               onChange={(v) => onUpdate({ voiceInput: v })}
-            />
-            <ToggleRow
-              icon="book.fill"
-              label="Auto Study View"
-              sub="Switch to Study View automatically after each AI response"
-              value={settings.autoStudyView ?? false}
-              onChange={(v) => onUpdate({ autoStudyView: v })}
             />
             <ToggleRow
               icon="wifi"
