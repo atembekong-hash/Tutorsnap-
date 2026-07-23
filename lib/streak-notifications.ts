@@ -63,6 +63,10 @@ async function cancelById(storageKey: string): Promise<void> {
 /**
  * Schedule a daily 8 PM streak alert if the student hasn't hit their daily
  * goal yet today. If they have already met the goal, cancel any pending alert.
+ *
+ * When the user has an active streak (> 0 days) and has solved nothing today,
+ * the notification is elevated to a streak-at-risk warning so they don't lose
+ * their streak.
  */
 export async function syncStreakAlert(): Promise<void> {
   if (Platform.OS === "web") return;
@@ -93,17 +97,24 @@ export async function syncStreakAlert(): Promise<void> {
   trigger.setHours(20, 0, 0, 0);
   if (trigger.getTime() <= Date.now()) return; // already past 8 PM today
 
-  const streakMsg = currentStreak > 0
-    ? `Don't break your ${currentStreak}-day streak! Solve ${dailyGoal - todaySolved} more problem${dailyGoal - todaySolved === 1 ? "" : "s"} today.`
-    : `Solve ${dailyGoal - todaySolved} problem${dailyGoal - todaySolved === 1 ? "" : "s"} to start your streak!`;
+  // Elevated streak-at-risk message when the user has a streak but hasn't solved today
+  const isStreakAtRisk = currentStreak > 0 && todaySolved === 0;
+  const title = isStreakAtRisk
+    ? `🔥 ${currentStreak}-day streak at risk!`
+    : "🔥 Streak at risk!";
+  const streakMsg = isStreakAtRisk
+    ? `You haven't solved anything today. Solve just 1 problem to keep your ${currentStreak}-day streak alive!`
+    : currentStreak > 0
+      ? `Don't break your ${currentStreak}-day streak! Solve ${dailyGoal - todaySolved} more problem${dailyGoal - todaySolved === 1 ? "" : "s"} today.`
+      : `Solve ${dailyGoal - todaySolved} problem${dailyGoal - todaySolved === 1 ? "" : "s"} to start your streak!`;
 
   try {
     const id = await Notifications.scheduleNotificationAsync({
       content: {
-        title: "🔥 Streak at risk!",
+        title,
         body: streakMsg,
         sound: true,
-        data: { type: "streak_alert" },
+        data: { type: "streak_alert", streakAtRisk: isStreakAtRisk },
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DATE,

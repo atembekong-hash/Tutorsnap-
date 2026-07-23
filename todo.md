@@ -838,3 +838,9 @@
 ## Round 44: Pre-fill Onboarding + Streak Milestones
 - [x] Pre-fill name and grade when re-running the onboarding wizard
 - [x] Streak milestone celebration: confetti + toast at 3, 7, 14, 30 day streaks
+
+## Round 45: Milestone Share Card + Streak-at-Risk Notification + APK 1.1.5
+- [x] Milestone share card: Share button in StreakMilestoneModal (native share sheet)
+- [x] Streak-at-risk evening push notification (8 PM local, only if streak > 0 and nothing solved today)
+- [x] Version bump to 1.1.5 / versionCode 10
+- [x] Build APK 1.1.5

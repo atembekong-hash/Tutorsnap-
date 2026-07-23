@@ -16,11 +16,14 @@ import {
   Animated,
   Dimensions,
   Modal,
+  Platform,
+  Share,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import * as Clipboard from "expo-clipboard";
 import { useColors } from "@/hooks/use-colors";
 import type { MilestoneInfo } from "@/lib/streak-milestones";
 
@@ -132,10 +135,21 @@ function AnimatedCard({
       }),
     ]).start();
 
-    // Auto-dismiss after 3.5 s
-    const timer = setTimeout(onDismiss, 3500);
+    // Auto-dismiss after 5 s (longer to allow sharing)
+    const timer = setTimeout(onDismiss, 5000);
     return () => clearTimeout(timer);
   }, []);
+
+  const handleShare = async () => {
+    const message = `${info.emoji} I just hit a ${info.title} on TutorSnap! ${info.subtitle} Join me at tutorsnapai.tech`;
+    try {
+      if (Platform.OS === "web") {
+        await Clipboard.setStringAsync(message);
+      } else {
+        await Share.share({ message });
+      }
+    } catch { /* user cancelled or share unavailable */ }
+  };
 
   return (
     <Animated.View
@@ -156,15 +170,33 @@ function AnimatedCard({
       <Text style={[styles.cardSubtitle, { color: colors.muted }]}>
         {info.subtitle}
       </Text>
-      <TouchableOpacity
-        onPress={onDismiss}
-        activeOpacity={0.8}
-        style={[styles.dismissBtn, { backgroundColor: colors.primary }]}
-        accessibilityLabel="Dismiss celebration"
-        accessibilityRole="button"
-      >
-        <Text style={styles.dismissText}>Keep it up! 🚀</Text>
-      </TouchableOpacity>
+
+      {/* Action row */}
+      <View style={styles.actionRow}>
+        {/* Share button */}
+        <TouchableOpacity
+          onPress={handleShare}
+          activeOpacity={0.8}
+          style={[styles.shareBtn, { borderColor: colors.primary }]}
+          accessibilityLabel="Share my streak"
+          accessibilityRole="button"
+        >
+          <Text style={[styles.shareBtnText, { color: colors.primary }]}>
+            {Platform.OS === "web" ? "Copy" : "Share"} 🔗
+          </Text>
+        </TouchableOpacity>
+
+        {/* Dismiss button */}
+        <TouchableOpacity
+          onPress={onDismiss}
+          activeOpacity={0.8}
+          style={[styles.dismissBtn, { backgroundColor: colors.primary }]}
+          accessibilityLabel="Dismiss celebration"
+          accessibilityRole="button"
+        >
+          <Text style={styles.dismissText}>Keep it up! 🚀</Text>
+        </TouchableOpacity>
+      </View>
     </Animated.View>
   );
 }
@@ -200,7 +232,7 @@ export function StreakMilestoneModal({ info, onDismiss }: Props) {
           ))}
         </View>
 
-        {/* Card — stop propagation so tapping card doesn't dismiss */}
+        {/* Card -- stop propagation so tapping card doesn't dismiss */}
         <TouchableOpacity activeOpacity={1} onPress={() => {}}>
           <AnimatedCard info={info} onDismiss={onDismiss} />
         </TouchableOpacity>
@@ -245,15 +277,31 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginBottom: 28,
   },
+  actionRow: {
+    flexDirection: "row",
+    gap: 10,
+    width: "100%",
+  },
+  shareBtn: {
+    flex: 1,
+    paddingVertical: 13,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    alignItems: "center",
+  },
+  shareBtnText: {
+    fontSize: 15,
+    fontWeight: "700",
+  },
   dismissBtn: {
+    flex: 1,
     paddingVertical: 14,
-    paddingHorizontal: 36,
-    borderRadius: 16,
+    borderRadius: 14,
     alignItems: "center",
   },
   dismissText: {
     color: "#fff",
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "700",
   },
 });
