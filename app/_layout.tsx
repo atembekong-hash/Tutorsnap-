@@ -481,6 +481,56 @@ export default function RootLayout() {
                 gestureDirection: "horizontal",
               }}
             />
+            <Stack.Screen
+              name="profile"
+              options={{
+                presentation: "card",
+                animation: "slide_from_right",
+                headerShown: false,
+                gestureEnabled: true,
+                gestureDirection: "horizontal",
+              }}
+            />
+            <Stack.Screen
+              name="profile-setup"
+              options={{
+                presentation: "card",
+                animation: "slide_from_right",
+                headerShown: false,
+                gestureEnabled: true,
+                gestureDirection: "horizontal",
+              }}
+            />
+            <Stack.Screen
+              name="redeem-code"
+              options={{
+                presentation: "modal",
+                animation: "slide_from_bottom",
+                headerShown: false,
+                gestureEnabled: true,
+                gestureDirection: "vertical",
+              }}
+            />
+            <Stack.Screen
+              name="notes"
+              options={{
+                presentation: "card",
+                animation: "slide_from_right",
+                headerShown: false,
+                gestureEnabled: true,
+                gestureDirection: "horizontal",
+              }}
+            />
+            <Stack.Screen
+              name="rewards"
+              options={{
+                presentation: "card",
+                animation: "slide_from_right",
+                headerShown: false,
+                gestureEnabled: true,
+                gestureDirection: "horizontal",
+              }}
+            />
           </Stack>
           <StatusBar style="auto" />
           </QueryClientProvider>

@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  ActivityIndicator,
   Platform,
   Image,
 } from "react-native";
@@ -28,7 +27,7 @@ import { useNetworkStatus } from "@/hooks/use-network-status";
 import { getSubjectDifficulty, setSubjectDifficulty } from "@/lib/subject-difficulty";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { GRADE_OPTIONS, GRADE_LABELS, loadGlobalGrade, saveGlobalGrade } from "@/lib/grade-levels";
-import { PracticeSkeletonCard } from "@/components/skeleton";
+import { PracticeSkeletonCard, DotsLoader} from "@/components/skeleton";
 import { loadQuizHistory } from "@/lib/quiz-history";
 import { savePrefetchedQuiz } from "@/lib/quiz-prefetch";
 import { cleanMathText } from "@/lib/clean-math-text";
@@ -397,7 +396,7 @@ function PracticeScreenContent() {
         >
           {generateMutation.isPending ? (
             <>
-              <ActivityIndicator color="#FFFFFF" size="small" />
+              <DotsLoader color="#FFFFFF" />
               <Text style={styles.generateBtnText}>Generating...</Text>
             </>
           ) : (

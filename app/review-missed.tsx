@@ -5,7 +5,6 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  ActivityIndicator,
   Animated,
 } from "react-native";
 import * as Clipboard from "expo-clipboard";
@@ -18,6 +17,7 @@ import { useScreenTransition } from "@/hooks/use-screen-transition";
 import { loadQuizHistory, type QuizQuestionSnapshot } from "@/lib/quiz-history";
 import { cleanMathText } from "@/lib/clean-math-text";
 import { useFontSize } from "@/lib/font-size-provider";
+import { DotsLoader } from "@/components/skeleton";
 
 // ─── Option Badge ─────────────────────────────────────────────────────────────
 
@@ -304,7 +304,7 @@ export default function ReviewMissedScreen() {
 
       {loading ? (
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <DotsLoader color={colors.primary} />
           <Text style={[styles.loadingText, { color: colors.muted, fontSize: fs(14) }]}>
             Loading missed questions...
           </Text>

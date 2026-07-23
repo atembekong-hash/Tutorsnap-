@@ -10,7 +10,6 @@ import {
   Share,
   Alert,
   Platform,
-  ActivityIndicator,
   Animated,
   Linking,
   Modal,
@@ -38,7 +37,7 @@ import { getProgress, getStreakEmoji, type ProgressData } from "@/lib/progress";
 import { cleanMathText } from "@/lib/clean-math-text";
 import { SubmissionReadyCard } from "@/components/submission-ready-card";
 import { StudyBlockCard, StudyBlockSkeleton } from "@/components/study-block-card";
-import { SolvingOverlay } from "@/components/skeleton";
+import { SolvingOverlay, DotsLoader } from "@/components/skeleton";
 import { useScreenTransition } from "@/hooks/use-screen-transition";
 
 function StepCard({ step, colors, fs, delay = 0 }: { step: SolutionStep; colors: any; fs: (n: number) => number; delay?: number }) {
@@ -1055,7 +1054,7 @@ export default function SolutionScreen() {
               >
                 <View style={[styles.shareMenuIcon, { backgroundColor: `${colors.error}15` }]}>
                   {shareLoading
-                    ? <ActivityIndicator size="small" color={colors.error} />
+                    ? <DotsLoader color={colors.error} />
                     : <IconSymbol size={18} name="doc.richtext" color={colors.error} />}
                 </View>
                 <View style={styles.shareMenuInfo}>
@@ -1089,7 +1088,7 @@ export default function SolutionScreen() {
             >
               <View style={[styles.shareMenuIcon, { backgroundColor: `${colors.error}15` }]}>
                 {shareLoading
-                  ? <ActivityIndicator size="small" color={colors.error} />
+                  ? <DotsLoader color={colors.error} />
                   : <IconSymbol size={18} name="doc.fill" color={colors.error} />}
               </View>
               <View style={styles.shareMenuInfo}>
@@ -1247,7 +1246,7 @@ export default function SolutionScreen() {
             <TouchableOpacity onPress={() => { showHeaderTooltip("Share"); handleShare(); }} style={styles.navActionBtn} disabled={shareLoading}
               accessibilityLabel="Share">
               {shareLoading ? (
-                <ActivityIndicator size="small" color={colors.primary} />
+                <DotsLoader color={colors.primary} />
               ) : (
                 <IconSymbol size={22} name="square.and.arrow.up" color={colors.primary} />
               )}
@@ -1400,7 +1399,7 @@ export default function SolutionScreen() {
             activeOpacity={0.8}
           >
             {studyBlocksLoading ? (
-              <ActivityIndicator size="small" color={viewMode === "study" ? "#FFFFFF" : colors.muted} />
+              <DotsLoader color={viewMode === "study" ? "#FFFFFF" : colors.muted} />
             ) : (
               <IconSymbol size={15} name="text.book.closed.fill" color={viewMode === "study" ? "#FFFFFF" : colors.muted} />
             )}
@@ -1624,7 +1623,7 @@ export default function SolutionScreen() {
           >
             <View style={[styles.similarIconWrap, { backgroundColor: `${colors.primary}15` }]}>
               {generateSimilarMutation.isPending ? (
-                <ActivityIndicator size="small" color={colors.primary} />
+                <DotsLoader color={colors.primary} />
               ) : (
                 <IconSymbol size={18} name="wand.and.stars" color={colors.primary} />
               )}
@@ -1766,7 +1765,7 @@ export default function SolutionScreen() {
           activeOpacity={0.8}
         >
           {explainDiffLoading ? (
-            <ActivityIndicator size="small" color={colors.success} />
+            <DotsLoader color={colors.success} />
           ) : (
             <IconSymbol size={18} name="lightbulb.fill" color={colors.success} />
           )}
@@ -1989,7 +1988,7 @@ export default function SolutionScreen() {
               <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>Ready for a challenge? Tap to generate harder similar problems.</Text>
             </View>
             {generateSimilarMutation.isPending
-              ? <ActivityIndicator size="small" color={colors.warning} />
+              ? <DotsLoader color={colors.warning} />
               : <IconSymbol size={16} name="chevron.right" color={colors.warning} />}
           </TouchableOpacity>
         )}

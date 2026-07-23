@@ -9,7 +9,6 @@ import {
   Platform,
   Animated,
   Modal,
-  ActivityIndicator,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import * as H from "@/lib/haptics";
@@ -24,6 +23,7 @@ import { getSubjectDef, getSubjectLabel } from "@/lib/subjects";
 import * as Sharing from "expo-sharing";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Print from "expo-print";
+import { DotsLoader } from "@/components/skeleton";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CARD_WIDTH = SCREEN_WIDTH - 48;
@@ -520,7 +520,7 @@ export default function FlashcardsScreen() {
           activeOpacity={0.7}
         >
           {pdfLoading ? (
-            <ActivityIndicator size="small" color={colors.primary} />
+            <DotsLoader color={colors.primary} />
           ) : (
             <IconSymbol
               size={18}
@@ -626,7 +626,7 @@ export default function FlashcardsScreen() {
             activeOpacity={0.75}
           >
             {pdfLoading ? (
-              <ActivityIndicator size="small" color={colors.primary} />
+              <DotsLoader color={colors.primary} />
             ) : (
               <IconSymbol size={16} name="doc.fill" color={colors.primary} />
             )}

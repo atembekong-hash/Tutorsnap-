@@ -9,7 +9,6 @@ import {
   Text,
   Pressable,
   ScrollView,
-  ActivityIndicator,
   Platform,
   TextInput,
   KeyboardAvoidingView,
@@ -24,6 +23,7 @@ import { validateOAuthCredentials } from "@/lib/oauth-service";
 import { sendEmailOtp, verifyEmailOtp } from "@/lib/email-auth";
 import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { DotsLoader } from "@/components/skeleton";
 
 async function getPostAuthRoute(): Promise<string> {
   const onboardingDone = await AsyncStorage.getItem("@tutorsnap/onboardingDone");
@@ -278,7 +278,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                     ]}
                   >
                     {loading
-                      ? <ActivityIndicator color="#fff" size="small" />
+                      ? <DotsLoader color="#fff" />
                       : <Text style={styles.primaryBtnText}>Send Code</Text>
                     }
                   </Pressable>
@@ -313,7 +313,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                     ]}
                   >
                     {loading
-                      ? <ActivityIndicator color="#fff" size="small" />
+                      ? <DotsLoader color="#fff" />
                       : <Text style={styles.primaryBtnText}>Verify & Sign In</Text>
                     }
                   </Pressable>
@@ -336,7 +336,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                     ]}
                   >
                     {loading
-                      ? <ActivityIndicator color={colors.primary} size="small" />
+                      ? <DotsLoader color={colors.primary} />
                       : <Text style={styles.oauthIcon}>🔵</Text>
                     }
                     <Text style={[styles.oauthBtnText, { color: colors.foreground }]}>
@@ -355,7 +355,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                       ]}
                     >
                       {loading
-                        ? <ActivityIndicator color={colors.background} size="small" />
+                        ? <DotsLoader color={colors.background} />
                         : <Text style={styles.oauthIcon}>🍎</Text>
                       }
                       <Text style={[styles.oauthBtnText, { color: colors.background }]}>

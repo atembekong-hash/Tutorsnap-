@@ -5,7 +5,6 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  ActivityIndicator,
   Image,
   Platform,
   Alert,
@@ -26,6 +25,7 @@ import { type SubjectId } from "@/lib/subjects";
 import { useNetworkStatus } from "@/hooks/use-network-status";
 import { CameraView, useCameraPermissions } from "@/lib/camera-wrapper";
 import { GRADE_OPTIONS, GRADE_LABELS, loadGlobalGrade, saveGlobalGrade } from "@/lib/grade-levels";
+import { DotsLoader } from "@/components/skeleton";
 
 type ScanMode = "camera" | "preview" | "web-picker";
 
@@ -359,7 +359,7 @@ function ScanScreenContent() {
           >
             {isProcessing || solveMutation.isPending ? (
               <>
-                <ActivityIndicator color="#FFFFFF" size="small" />
+                <DotsLoader color="#FFFFFF" />
                 <Text style={styles.solveBtnText}>Analyzing Image...</Text>
               </>
             ) : !isOnline ? (

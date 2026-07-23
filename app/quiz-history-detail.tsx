@@ -5,7 +5,6 @@ import {
   ScrollView,
   TouchableOpacity,
   StyleSheet,
-  ActivityIndicator,
   Share,
   Platform,
   Animated,
@@ -20,6 +19,7 @@ import { useScreenTransition } from "@/hooks/use-screen-transition";
 import { loadQuizHistory, type QuizResult, type QuizQuestionSnapshot } from "@/lib/quiz-history";
 import { getSubjectLabel } from "@/lib/subjects";
 import { cleanMathText } from "@/lib/clean-math-text";
+import { DotsLoader } from "@/components/skeleton";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -335,7 +335,7 @@ export default function QuizHistoryDetailScreen() {
           <View style={{ width: 40 }} />
         </View>
         <View style={styles.center}>
-          <ActivityIndicator color={colors.primary} size="large" />
+          <DotsLoader color={colors.primary} />
         </View>
       </ScreenContainer>
     );

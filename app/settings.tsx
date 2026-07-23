@@ -1159,6 +1159,17 @@ export default function SettingsScreen() {
             )}
           </View>
 
+          {/* View Full Profile */}
+          <TouchableOpacity
+            onPress={() => { H.impactLight(); router.push("/profile" as any); }}
+            style={[styles.rerunWizardBtn, { borderColor: colors.border, backgroundColor: colors.background, marginBottom: 8 }]}
+            activeOpacity={0.75}
+          >
+            <Text style={{ fontSize: 18 }}>👤</Text>
+            <Text style={[styles.rerunWizardText, { color: colors.foreground }]}>View Full Profile</Text>
+            <Text style={[styles.rerunWizardChevron, { color: colors.muted }]}>›</Text>
+          </TouchableOpacity>
+
           {/* Re-run Setup Wizard */}
           <TouchableOpacity
             onPress={() => {
@@ -1532,6 +1543,9 @@ export default function SettingsScreen() {
         )}
         {ms("Redeem a Friend's Code", "referral code") && (
           <SettingsRow icon="gift.fill" label="Redeem a Friend's Code" subtitle="Enter a referral code to activate your free trial" colors={colors} onPress={() => setShowRedeemModal(true)} />
+        )}
+        {ms("Rewards", "free days earned") && (
+          <SettingsRow icon="star.fill" label="Rewards Dashboard" subtitle="View your earned free days and tier progress" colors={colors} onPress={() => router.push("/rewards" as any)} />
         )}
 
         {/* ── COMMUNITY ─────────────────────────────────────────────────── */}

@@ -8,7 +8,6 @@ import {
   StyleSheet,
   TextInput,
   Alert,
-  ActivityIndicator,
   Platform,
   Share,
   Modal,
@@ -36,6 +35,7 @@ import {
   MAX_PINNED,
   type ChatSessionSummary,
 } from "@/lib/chat-sessions";
+import { DotsLoader } from "@/components/skeleton";
 
 // ─── Format helpers ───────────────────────────────────────────────────────────
 
@@ -803,7 +803,7 @@ export default function ChatHistoryScreen() {
       {/* Content */}
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <DotsLoader color={colors.primary} />
         </View>
       ) : filtered.length === 0 ? (
         <View style={styles.center}>

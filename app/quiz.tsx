@@ -5,7 +5,6 @@ import { Share, Modal ,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  ActivityIndicator,
   Platform,
   Animated,
 } from "react-native";
@@ -26,7 +25,7 @@ import { usePremium } from "@/hooks/use-premium";
 import { FREE_LIMITS } from "@/lib/subscription";
 import { QuizNudgeBanner } from "@/components/quiz-nudge-banner";
 import { maybeRequestReview } from "@/lib/review-prompt";
-import { QuizSkeletonCard } from "@/components/skeleton";
+import { QuizSkeletonCard, DotsLoader} from "@/components/skeleton";
 import { loadGlobalGrade, GRADE_LABELS } from "@/lib/grade-levels";
 import { cleanMathText } from "@/lib/clean-math-text";
 import AsyncStorageLib from "@react-native-async-storage/async-storage";
@@ -719,7 +718,7 @@ export default function QuizScreen() {
               <Text style={[styles.explanationLabel, { color: colors.primary }]}>💡 Full Explanation</Text>
               {loadingExplanation && !fullExplanations[q.problem] ? (
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 }}>
-                  <ActivityIndicator size="small" color={colors.primary} />
+                  <DotsLoader color={colors.primary} />
                   <Text style={[styles.explanationText, { color: colors.muted }]}>Generating detailed solution...</Text>
                 </View>
               ) : fullExplanations[q.problem] ? (

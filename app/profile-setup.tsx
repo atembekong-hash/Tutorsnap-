@@ -4,7 +4,7 @@
  */
 
 import { useState } from "react";
-import { View, Text, TextInput, Pressable, ScrollView, ActivityIndicator, Image,
+import { View, Text, TextInput, Pressable, ScrollView, Image,
   Animated,
 } from "react-native";
 import { useRouter } from "expo-router";
@@ -14,6 +14,7 @@ import { useScreenTransition } from "@/hooks/use-screen-transition";
 import { setUserInfo } from "@/lib/_core/auth-enhanced";
 import { useAuth } from "@/lib/auth-context";
 import * as Haptics from "expo-haptics";
+import { DotsLoader } from "@/components/skeleton";
 
 export default function ProfileSetupScreen() {
   const router = useRouter();
@@ -139,7 +140,7 @@ export default function ProfileSetupScreen() {
             >
               <View className="bg-primary rounded-lg p-4 flex-row items-center justify-center gap-2">
                 {loading ? (
-                  <ActivityIndicator color={colors.background} size="small" />
+                  <DotsLoader color={colors.background} />
                 ) : null}
                 <Text className="text-background font-semibold text-base">
                   {loading ? "Setting up..." : "Continue to TutorSnap"}

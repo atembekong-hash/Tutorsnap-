@@ -14,7 +14,6 @@ import {
   Platform,
   TextInput,
   ScrollView,
-  ActivityIndicator,
   RefreshControl,
   Share,
 } from "react-native";
@@ -40,6 +39,7 @@ import {
 import type { HistoryItem, SolutionStep } from "@/shared/types";
 import { getSubjectColor, getSubjectLabel, getSubjectEmoji } from "@/lib/subjects";
 import { GRADE_LABELS } from "@/lib/grade-levels";
+import { DotsLoader } from "@/components/skeleton";
 
 // Sort options
 type SortKey = "newest" | "oldest" | "subject" | "steps";
@@ -513,7 +513,7 @@ export default function BookmarksScreen() {
                 disabled={exportLoading}
               >
                 {exportLoading
-                  ? <ActivityIndicator size="small" color={colors.success} />
+                  ? <DotsLoader color={colors.success} />
                   : <IconSymbol size={18} name="square.and.arrow.up" color={colors.success} />}
               </TouchableOpacity>
               <TouchableOpacity

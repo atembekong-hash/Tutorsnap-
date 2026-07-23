@@ -4,9 +4,10 @@
  */
 
 import { useState, useEffect } from "react";
-import { View, Text, TextInput, Pressable, ScrollView, ActivityIndicator, Alert,
+import { View, Text, TextInput, Pressable, ScrollView, Alert,
   Animated,
 } from "react-native";
+import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
@@ -14,6 +15,7 @@ import { useScreenTransition } from "@/hooks/use-screen-transition";
 import { setUserInfo, logout } from "@/lib/_core/auth-enhanced";
 import { useAuth } from "@/lib/auth-context";
 import * as Haptics from "expo-haptics";
+import { DotsLoader } from "@/components/skeleton";
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -143,9 +145,18 @@ export default function ProfileScreen() {
       <ScrollView contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false}>
         <View className="flex-1 gap-6 px-6 py-8">
           {/* Header */}
-          <View className="gap-2">
-            <Text className="text-2xl font-bold text-foreground">Profile</Text>
-            <Text className="text-sm text-muted">Manage your account information</Text>
+          <View className="flex-row items-center gap-3 mb-2">
+            <Pressable
+              onPress={() => router.back()}
+              style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1, padding: 4 }]}
+              accessibilityLabel="Go back"
+            >
+              <IconSymbol name="chevron.left" size={24} color={colors.foreground} />
+            </Pressable>
+            <View className="gap-1">
+              <Text className="text-2xl font-bold text-foreground">Profile</Text>
+              <Text className="text-sm text-muted">Manage your account information</Text>
+            </View>
           </View>
 
           {/* Error Message */}
@@ -227,7 +238,7 @@ export default function ProfileScreen() {
                 >
                   <View className="bg-primary rounded-lg p-4 flex-row items-center justify-center gap-2">
                     {loading ? (
-                      <ActivityIndicator color={colors.background} size="small" />
+                      <DotsLoader color={colors.background} />
                     ) : null}
                     <Text className="text-background font-semibold text-base">
                       {loading ? "Saving..." : "Save Changes"}

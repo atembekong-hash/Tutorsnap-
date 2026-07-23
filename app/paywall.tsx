@@ -16,7 +16,6 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Platform,
   Pressable,
@@ -45,6 +44,7 @@ import {
   purchaseProduct,
   restorePurchases,
 } from "@/lib/subscription";
+import { DotsLoader } from "@/components/skeleton";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -249,7 +249,7 @@ export default function PaywallScreen() {
           </View>
         ) : (
           <View style={s.loadingPlans}>
-            <ActivityIndicator color={colors.primary} />
+            <DotsLoader color={colors.primary} />
           </View>
         )}
 
@@ -283,7 +283,7 @@ export default function PaywallScreen() {
           accessibilityRole="button"
         >
           {loading ? (
-            <ActivityIndicator color="#fff" />
+            <DotsLoader color="#fff" />
           ) : (
             <Text style={s.ctaBtnText}>Start Free Trial</Text>
           )}
@@ -302,7 +302,7 @@ export default function PaywallScreen() {
           accessibilityRole="button"
         >
           {restoring ? (
-            <ActivityIndicator size="small" color={colors.muted} />
+            <DotsLoader color={colors.muted} />
           ) : (
             <Text style={s.restoreBtnText}>Restore Purchases</Text>
           )}

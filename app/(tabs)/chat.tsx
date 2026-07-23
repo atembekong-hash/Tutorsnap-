@@ -32,7 +32,6 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
   Keyboard,
   Share,
   Alert,
@@ -2352,7 +2351,7 @@ function ChatScreenContent() {
           return (
             <View style={[chatStyles.offlineBanner, { backgroundColor: bgColor, borderBottomColor: borderColor }]}>
               {isReconnecting ? (
-                <ActivityIndicator size={14} color={textColor} />
+                <DotsLoader color={textColor} />
               ) : (
                 <IconSymbol size={14} name={iconName} color={textColor} />
               )}
@@ -2485,7 +2484,7 @@ function ChatScreenContent() {
                 {isLastAIMessage(index) && !isStreaming && !item.stopped && tutorSettings.followUpChips && (
                   <View style={chatStyles.followUpRow}>
                     {suggestFollowUpsMutation.isPending ? (
-                      <ActivityIndicator size="small" color={colors.muted} style={{ marginLeft: 8 }} />
+                      <DotsLoader color={colors.muted} />
                     ) : (
                       displayChips.map((chip: string, i: number) => (
                         <AnimatedChip
@@ -3051,7 +3050,7 @@ function ChatScreenContent() {
               {Platform.OS !== "web" && (
                 <TouchableOpacity style={[chatStyles.shareMenuItem, { borderBottomWidth: 0.5, borderBottomColor: colors.border }]} onPress={handleSharePDF} activeOpacity={0.7} disabled={pdfLoading}>
                   <View style={[chatStyles.shareMenuIcon, { backgroundColor: `${colors.error}18` }]}>
-                    {pdfLoading ? <ActivityIndicator size="small" color={colors.error} /> : <IconSymbol size={18} name="doc.fill" color={colors.error} />}
+                    {pdfLoading ? <DotsLoader color={colors.error} /> : <IconSymbol size={18} name="doc.fill" color={colors.error} />}
                   </View>
                   <View style={chatStyles.shareMenuInfo}>
                     <Text style={[chatStyles.shareMenuLabel, { color: colors.foreground, fontSize: fs(14) }]}>Share as PDF</Text>
@@ -3236,7 +3235,7 @@ function ChatScreenContent() {
               >
                 <View style={[chatStyles.moreMenuIcon, { backgroundColor: `${colors.error}18` }]}>
                   {pdfLoading ? (
-                    <ActivityIndicator size="small" color={colors.error} />
+                    <DotsLoader color={colors.error} />
                   ) : (
                     <IconSymbol size={16} name="doc.fill" color={colors.error} />
                   )}
@@ -3444,7 +3443,7 @@ function ChatScreenContent() {
       {pdfLoading && (
         <View style={[StyleSheet.absoluteFillObject, chatStyles.pdfOverlay]}>
           <View style={[chatStyles.pdfCard, { backgroundColor: colors.surface }]}>
-            <ActivityIndicator size="large" color={colors.primary} />
+            <DotsLoader color={colors.primary} />
             <Text style={[chatStyles.pdfCardText, { color: colors.foreground, fontSize: fs(15) }]}>
               Generating PDF…
             </Text>
@@ -3506,7 +3505,7 @@ function ChatScreenContent() {
           {/* List */}
           {glossaryLoading ? (
             <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-              <ActivityIndicator size="large" color={colors.primary} />
+              <DotsLoader color={colors.primary} />
             </View>
           ) : glossaryEntries.length === 0 ? (
             <View style={glossaryModalStyles.emptyState}>
