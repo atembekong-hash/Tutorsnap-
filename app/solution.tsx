@@ -304,6 +304,8 @@ export default function SolutionScreen() {
   const [altExplanation, setAltExplanation] = useState<string | null>(null);
   const [showAltExplanation, setShowAltExplanation] = useState(false);
   const [altExplanationCached, setAltExplanationCached] = useState(false); // true = loaded from cache
+  const [explainStyle, setExplainStyle] = useState<"analogy" | "step-by-step" | "visual">("analogy");
+  const [explainCount, setExplainCount] = useState(0); // how many times regenerated
   const explainDiffMutation = trpc.math.explainDifferently.useMutation();
 
   // Auto-solve state: triggered when a feed card has no cached solution
@@ -334,14 +336,24 @@ export default function SolutionScreen() {
   // Use live solution if available, otherwise fall back to parsed
   const solution: MathSolution | null = liveSolution ?? (needsAutoSolve ? null : parsedSolution);
 
-  // Load cached alt explanation for this problem on mount
+  // Load cached alt explanation for this problem on mount; also purge stale entries (>7 days)
   useEffect(() => {
     if (!parsedSolution?.problem) return;
     const cacheKey = `alt_explain:${parsedSolution.problem.trim().toLowerCase().slice(0, 200)}`;
-    AsyncStorage.getItem(cacheKey).then((cached) => {
-      if (cached) {
-        setAltExplanation(cached);
-        setAltExplanationCached(true);
+    const tsKey = `${cacheKey}:ts`;
+    const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+    AsyncStorage.multiGet([cacheKey, tsKey]).then((pairs) => {
+      const cached = pairs[0][1];
+      const ts = pairs[1][1];
+      if (cached && ts) {
+        const age = Date.now() - parseInt(ts, 10);
+        if (age > SEVEN_DAYS_MS) {
+          // Stale: remove silently
+          AsyncStorage.multiRemove([cacheKey, tsKey]).catch(() => {});
+        } else {
+          setAltExplanation(cached);
+          setAltExplanationCached(true);
+        }
       }
     }).catch(() => {});
   }, [parsedSolution?.problem]);
@@ -356,22 +368,25 @@ export default function SolutionScreen() {
         answer: solution.answer,
         subject: solution.subject as any,
         gradeLevel: gradeLevel ?? undefined,
+        style: explainStyle,
       });
       const alt = result?.explanation || "No alternative explanation available.";
       setAltExplanation(alt);
       setAltExplanationCached(false);
       setShowAltExplanation(true);
+      setExplainCount((c) => c + 1);
       H.notificationSuccess();
-      // Cache the result keyed by problem text
+      // Cache the result keyed by problem text + style
       const cacheKey = `alt_explain:${solution.problem.trim().toLowerCase().slice(0, 200)}`;
-      AsyncStorage.setItem(cacheKey, alt).catch(() => {});
+      const tsKey = `${cacheKey}:ts`;
+      AsyncStorage.multiSet([[cacheKey, alt], [tsKey, String(Date.now())]]).catch(() => {});
     } catch {
       H.notificationError();
     } finally {
       setExplainDiffLoading(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [solution?.problem, solution?.answer, solution?.subject, gradeLevel]);
+  }, [solution?.problem, solution?.answer, solution?.subject, gradeLevel, explainStyle]);
 
   useEffect(() => {
     if (parsedSolution?.problem) {
@@ -1464,6 +1479,34 @@ export default function SolutionScreen() {
           )}
         </View>
 
+        {/* Style selector chips */}
+        {!showAltExplanation && (
+          <View style={{ flexDirection: "row", gap: 8, marginHorizontal: 16, marginBottom: 8, flexWrap: "wrap" }}>
+            {(["analogy", "step-by-step", "visual"] as const).map((s) => (
+              <TouchableOpacity
+                key={s}
+                onPress={() => { setExplainStyle(s); H.impactLight(); }}
+                style={[
+                  styles.copyBtn,
+                  {
+                    backgroundColor: explainStyle === s ? `${colors.success}20` : `${colors.surface}`,
+                    borderWidth: 1,
+                    borderColor: explainStyle === s ? `${colors.success}50` : colors.border,
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    borderRadius: 20,
+                  },
+                ]}
+                activeOpacity={0.75}
+              >
+                <Text style={{ fontSize: 13, fontWeight: explainStyle === s ? "700" : "500", color: explainStyle === s ? colors.success : colors.muted }}>
+                  {s === "analogy" ? "Analogy" : s === "step-by-step" ? "Step-by-step" : "Visual"}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
         {/* Explain this Differently */}
         <TouchableOpacity
           accessibilityLabel="Explain this solution differently"
@@ -1529,6 +1572,11 @@ export default function SolutionScreen() {
                 {altExplanationCached && (
                   <View style={{ backgroundColor: `${colors.success}20`, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
                     <Text style={{ fontSize: 10, fontWeight: "700", color: colors.success }}>Cached</Text>
+                  </View>
+                )}
+                {explainCount > 0 && (
+                  <View style={{ backgroundColor: `${colors.primary}15`, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
+                    <Text style={{ fontSize: 10, fontWeight: "700", color: colors.primary }}>#{explainCount}</Text>
                   </View>
                 )}
               </View>

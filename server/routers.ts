@@ -630,21 +630,29 @@ Respond ONLY with this JSON:
       answer: z.string(),
       subject: z.string().default("other"),
       gradeLevel: z.string().optional(),
+      style: z.enum(["analogy", "step-by-step", "visual"]).default("analogy"),
     }))
     .mutation(async ({ input }) => {
       const gradeCtx = gradeContext(input.gradeLevel);
-      const systemPrompt = `You are TutorSnap, an expert academic tutor.${gradeCtx}
-Your job is to re-explain a solved problem using a DIFFERENT approach or a simpler analogy than the standard method.
+      const styleGuide = {
+        "analogy": "Use a real-world analogy or story that makes the concept click. Connect the math/concept to something the student already knows from everyday life.",
+        "step-by-step": "Break the solution into the smallest possible numbered steps. Each step should be one atomic action with a brief reason why.",
+        "visual": "Describe the concept visually: imagine drawing it, plotting it on a graph, or building it physically. Use spatial and visual language throughout.",
+      }[input.style];
+      const gradeCtx2 = gradeContext(input.gradeLevel);
+      const systemPrompt = `You are TutorSnap, an expert academic tutor.${gradeCtx2}
+Your job is to re-explain a solved problem using a DIFFERENT approach than the standard method.
+Style: ${styleGuide}
 Rules:
 - Be concise: 4-6 sentences total.
 - Use plain, student-friendly language.
-- Do NOT repeat the original solution method; use a fresh angle, analogy, or shortcut.
+- Do NOT repeat the original solution method verbatim.
 - Format math with LaTeX: $...$ for inline, $$...$$ for block.
 - Output plain text only, no JSON.`;
       const userMsg = `Problem: ${input.problem.slice(0, 400)}
 Original answer: ${input.answer.slice(0, 300)}
 
-Now re-explain this differently.`;
+Now re-explain this using the ${input.style} style.`;
       const result = await invokeLLM({
         model: "claude-haiku-4-5",
         messages: [
