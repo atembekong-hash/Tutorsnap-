@@ -803,3 +803,6 @@
 ## Round 36b: Quick Links Layout
 - [x] Solve tab: added QUICK ACCESS row (Notes, Flashcards, Bookmarks, Planner) after EXPLORE section
 - [x] Practice tab: Quick Links already trimmed to 4 cards (Quiz History, Study Planner, Flashcards, Progress)
+
+## Round 37: Solution Header Progress Nudge
+- [x] Add streak/stats badge below solution title in solution.tsx header (tap to open Progress)

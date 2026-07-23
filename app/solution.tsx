@@ -32,6 +32,7 @@ import { getMyClassroom, getJoinedClassroom, shareToClassroom } from "@/lib/clas
 import { createSession, renameSession } from "@/lib/chat-sessions";
 import { APP_URL } from "@/constants/app";
 import { loadGlobalGrade, GRADE_LABELS } from "@/lib/grade-levels";
+import { getProgress, getStreakEmoji, type ProgressData } from "@/lib/progress";
 import { cleanMathText } from "@/lib/clean-math-text";
 import { SubmissionReadyCard } from "@/components/submission-ready-card";
 import { StudyBlockCard, StudyBlockSkeleton } from "@/components/study-block-card";
@@ -363,10 +364,12 @@ export default function SolutionScreen() {
   const [autoSolveError, setAutoSolveError] = useState<string | null>(null);
   const [liveSolution, setLiveSolution] = useState<MathSolution | null>(null);
   const [gradeLevel, setGradeLevel] = useState<string | null>(null);
+  const [progressData, setProgressData] = useState<ProgressData | null>(null);
 
-  // Load global grade on mount
+  // Load global grade and progress on mount
   useEffect(() => {
     loadGlobalGrade().then((g: string | null) => { if (g) setGradeLevel(g); });
+    getProgress().then(setProgressData);
   }, []);
 
   // Restore persisted explain style preference
@@ -1205,34 +1208,70 @@ export default function SolutionScreen() {
         </View>
       )}
       {/* Header */}
-      <View style={[styles.navBar, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <IconSymbol size={22} name="arrow.left" color={colors.foreground} />
-        </TouchableOpacity>
-        <Text style={[styles.navTitle, { color: colors.foreground }]}>Solution</Text>
-        <View style={styles.navActions}>
-          {/* Bookmark Button */}
-          <TouchableOpacity onPress={() => { showHeaderTooltip("Bookmark"); handleBookmark(); }} style={styles.navActionBtn}>
-            <IconSymbol
-              size={22}
-              name={bookmarked ? "bookmark.fill" : "bookmark"}
-              color={bookmarked ? colors.warning : colors.muted}
-            />
+      <View style={[styles.navBarWrap, { borderBottomColor: colors.border }]}>
+        {/* Row 1: back / title / actions */}
+        <View style={styles.navBar}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+            <IconSymbol size={22} name="arrow.left" color={colors.foreground} />
           </TouchableOpacity>
-          {/* Share as PDF Button */}
-          <TouchableOpacity onPress={() => { showHeaderTooltip("Share"); handleShare(); }} style={styles.navActionBtn} disabled={shareLoading}
-            accessibilityLabel="Share">
-            {shareLoading ? (
-              <ActivityIndicator size="small" color={colors.primary} />
-            ) : (
-              <IconSymbol size={22} name="square.and.arrow.up" color={colors.primary} />
-            )}
-          </TouchableOpacity>
+          <Text style={[styles.navTitle, { color: colors.foreground }]}>Solution</Text>
+          <View style={styles.navActions}>
+            {/* Bookmark Button */}
+            <TouchableOpacity onPress={() => { showHeaderTooltip("Bookmark"); handleBookmark(); }} style={styles.navActionBtn}>
+              <IconSymbol
+                size={22}
+                name={bookmarked ? "bookmark.fill" : "bookmark"}
+                color={bookmarked ? colors.warning : colors.muted}
+              />
+            </TouchableOpacity>
+            {/* Share as PDF Button */}
+            <TouchableOpacity onPress={() => { showHeaderTooltip("Share"); handleShare(); }} style={styles.navActionBtn} disabled={shareLoading}
+              accessibilityLabel="Share">
+              {shareLoading ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <IconSymbol size={22} name="square.and.arrow.up" color={colors.primary} />
+              )}
+            </TouchableOpacity>
+          </View>
+          {headerTooltip && (
+            <Animated.View pointerEvents="none" style={[styles.headerTooltip, { backgroundColor: colors.foreground, opacity: tooltipOpacity }]}>
+              <Text style={[styles.headerTooltipText, { color: colors.background }]}>{headerTooltip}</Text>
+            </Animated.View>
+          )}
         </View>
-        {headerTooltip && (
-          <Animated.View pointerEvents="none" style={[styles.headerTooltip, { backgroundColor: colors.foreground, opacity: tooltipOpacity }]}>
-            <Text style={[styles.headerTooltipText, { color: colors.background }]}>{headerTooltip}</Text>
-          </Animated.View>
+        {/* Row 2: progress nudge strip (only when streak or daily goal data is available) */}
+        {progressData && (
+          <TouchableOpacity
+            onPress={() => { H.impactLight(); router.push("/progress" as any); }}
+            style={[styles.navProgressStrip, { backgroundColor: `${colors.warning}10` }]}
+            activeOpacity={0.75}
+            accessibilityLabel="View progress"
+          >
+            <Text style={styles.navProgressEmoji}>{getStreakEmoji(progressData.streak.currentStreak)}</Text>
+            {progressData.streak.currentStreak > 0 && (
+              <Text style={[styles.navProgressText, { color: colors.warning }]}>
+                {progressData.streak.currentStreak}-day streak
+              </Text>
+            )}
+            {progressData.streak.dailyGoal > 0 && (
+              <>
+                {progressData.streak.currentStreak > 0 && (
+                  <View style={[styles.navProgressDot, { backgroundColor: colors.muted }]} />
+                )}
+                <Text style={[styles.navProgressText, { color: colors.muted }]}>
+                  {progressData.streak.todaySolved}/{progressData.streak.dailyGoal} today
+                </Text>
+                <View style={[styles.navProgressTrack, { backgroundColor: `${colors.primary}20` }]}>
+                  <View style={[styles.navProgressFill, {
+                    backgroundColor: progressData.streak.todaySolved >= progressData.streak.dailyGoal ? colors.success : colors.primary,
+                    width: `${Math.min(100, Math.round((progressData.streak.todaySolved / progressData.streak.dailyGoal) * 100))}%` as any,
+                  }]} />
+                </View>
+              </>
+            )}
+            <IconSymbol size={12} name="chevron.right" color={colors.muted} style={{ marginLeft: "auto" }} />
+          </TouchableOpacity>
         )}
       </View>
 
@@ -1937,14 +1976,28 @@ export default function SolutionScreen() {
 }
 
 const styles = StyleSheet.create({
+  navBarWrap: {
+    borderBottomWidth: 0.5,
+  },
   navBar: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderBottomWidth: 0.5,
   },
+  navProgressStrip: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+    gap: 6,
+  },
+  navProgressEmoji: { fontSize: 14 },
+  navProgressText: { fontSize: 12, fontWeight: "600" },
+  navProgressDot: { width: 3, height: 3, borderRadius: 2 },
+  navProgressTrack: { flex: 1, height: 4, borderRadius: 2, overflow: "hidden" },
+  navProgressFill: { height: 4, borderRadius: 2 },
   backBtn: { padding: 4 },
   navTitle: { fontSize: 17, fontWeight: "700" },
   navActions: { flexDirection: "row", alignItems: "center", gap: 4 },
