@@ -340,6 +340,34 @@ export default function QuizScreen() {
     onError: () => setLoadingExplanation(false),
   });
 
+  // ─── Validated explanation trigger ─────────────────────────────────────────
+  // Always receives the full structured quiz object directly from state.
+  // Never relies on OCR or screen content. Blocks if any required field is absent.
+  const triggerExplanation = useCallback((q: QuizQuestion, chosenAnswer: OptionKey | null) => {
+    const missingFields: string[] = [];
+    if (!q.problem?.trim()) missingFields.push("problem");
+    if (!q.correctAnswer?.trim()) missingFields.push("correctAnswer");
+    if (!q.options?.A || !q.options?.B || !q.options?.C || !q.options?.D) missingFields.push("options");
+    if (!subject?.trim()) missingFields.push("subject");
+    if (missingFields.length > 0) {
+      console.warn("[QuizExplain] BLOCKED — missing required fields:", missingFields, { problem: q.problem, subject });
+      return;
+    }
+    if (fullExplanations[q.problem]) return; // already fetched for this question
+    const payload = {
+      problem: q.problem,
+      correctAnswer: q.correctAnswer,
+      selectedAnswer: chosenAnswer ?? "(no answer - timed out)",
+      options: q.options,
+      difficulty,
+      subject,
+      gradeLevel: gradeLevel ?? undefined,
+    };
+    console.log("[QuizExplain] Payload sent to AI:", JSON.stringify(payload, null, 2));
+    setLoadingExplanation(true);
+    solveExplanationMutation.mutate(payload);
+  }, [fullExplanations, subject, difficulty, gradeLevel, solveExplanationMutation]);
+
   const generateMutation = trpc.academic.generateQuiz.useMutation({
     onSuccess: (data) => {
       const qs = data as QuizQuestion[];
@@ -371,9 +399,23 @@ export default function QuizScreen() {
       setTimeLeft((t) => {
         if (t <= 1) {
           clearInterval(timerRef.current!);
-          // Auto-advance on timeout
+          // Auto-advance on timeout — also trigger explanation with null answer (timed out, no selection)
           setRevealed(true);
-          H.notificationWarning()
+          H.notificationWarning();
+          // Access current questions/index/selectedOption via functional setters (safe in interval callback)
+          setQuestions((qs) => {
+            setCurrentIdx((idx) => {
+              const tq = qs[idx];
+              if (tq) {
+                setSelectedOption((sel) => {
+                  triggerExplanation(tq, sel);
+                  return sel;
+                });
+              }
+              return idx;
+            });
+            return qs;
+          });
           return 0;
         }
         return t - 1;
@@ -397,18 +439,9 @@ export default function QuizScreen() {
   const handleConfirm = () => {
     if (!selectedOption && timeLeft > 0) return;
     if (timerRef.current) clearInterval(timerRef.current);
-    // Kick off full explanation fetch in background
+    // Kick off full explanation fetch — passes complete structured quiz object, never screen content
     const q = questions[currentIdx];
-    if (q && selectedOption && !fullExplanations[q.problem]) {
-      setLoadingExplanation(true);
-      solveExplanationMutation.mutate({
-        problem: q.problem,
-        correctAnswer: q.correctAnswer,
-        selectedAnswer: selectedOption,
-        subject,
-        gradeLevel: gradeLevel ?? undefined,
-      });
-    }
+    if (q) triggerExplanation(q, selectedOption);
     setRevealed(true);
     const newAnswers = [...answers];
     newAnswers[currentIdx] = selectedOption;

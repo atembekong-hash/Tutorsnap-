@@ -403,24 +403,50 @@ const academicRouter = router({
 
   solveExplanation: publicProcedure
     .input(z.object({
-      problem: z.string().min(1),
-      correctAnswer: z.string(),
-      selectedAnswer: z.string(),
+      problem: z.string().min(1, "problem is required"),
+      correctAnswer: z.string().min(1, "correctAnswer is required"),
+      selectedAnswer: z.string().min(1, "selectedAnswer is required"),
+      // Full option texts - required so the AI never has to infer or hallucinate option content
+      options: z.object({
+        A: z.string().min(1),
+        B: z.string().min(1),
+        C: z.string().min(1),
+        D: z.string().min(1),
+      }).optional(),
+      difficulty: z.enum(["easy", "medium", "hard"]).optional(),
       subject: z.string().default("other"),
       gradeLevel: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
-      const prompt = `You are TutorSnap, an expert academic tutor.${gradeContext(input.gradeLevel)}
+      // Server-side payload log - makes missing fields immediately detectable in server logs
+      console.log("[solveExplanation] Received payload:", JSON.stringify({
+        problem: input.problem?.substring(0, 80),
+        correctAnswer: input.correctAnswer,
+        selectedAnswer: input.selectedAnswer,
+        hasOptions: !!input.options,
+        difficulty: input.difficulty,
+        subject: input.subject,
+        gradeLevel: input.gradeLevel,
+      }));
+
+      // Build the options block for the prompt - uses structured data, never OCR or screen content
+      const optionsBlock = input.options
+        ? `Answer choices:\n  A) ${input.options.A}\n  B) ${input.options.B}\n  C) ${input.options.C}\n  D) ${input.options.D}\n`
+        : "";
+      const difficultyHint = input.difficulty ? ` This was a ${input.difficulty} difficulty question.` : "";
+      const correctText = input.options ? ` ("${input.options[input.correctAnswer as keyof typeof input.options]}")` : "";
+      const selectedText = input.options && input.selectedAnswer in input.options ? ` ("${input.options[input.selectedAnswer as keyof typeof input.options]}")` : "";
+      const prompt = `You are TutorSnap, an expert academic tutor.${gradeContext(input.gradeLevel)}${difficultyHint}
 A student answered a multiple-choice question.
 Question: "${input.problem}"
-Correct answer: ${input.correctAnswer}
-Student selected: ${input.selectedAnswer}
+${optionsBlock}Correct answer: ${input.correctAnswer}${correctText}
+Student selected: ${input.selectedAnswer}${selectedText}
 ${input.selectedAnswer === input.correctAnswer ? "The student got it RIGHT." : "The student got it WRONG."}
 
 Respond ONLY with this JSON (no extra text):
 {
-  "explanation": "FULL DETAILED worked solution: (1) state the correct answer clearly, (2) explain WHY it is correct with full reasoning (4-6 sentences), (3) show the complete working/derivation step by step, (4) if the student was wrong explain specifically why their choice was incorrect (2-3 sentences), (5) give a key insight or tip to remember this concept. Be thorough and educational.",
-  "submissionReady": "INDEPENDENTLY GENERATED - not a summary of the explanation above. Write only what a student would hand in. State the correct option letter and answer, then show only the essential supporting work or one-line justification (2-4 lines max). No prose commentary, no preamble."
+  "explanation": "FULL DETAILED worked solution: (1) state the correct answer clearly with its full text, (2) explain WHY it is correct with full reasoning (4-6 sentences), (3) show the complete working/derivation step by step, (4) if the student was wrong explain specifically why their choice was incorrect (2-3 sentences), (5) give a key insight or tip to remember this concept. Be thorough and educational.",
+  "submissionReady": "INDEPENDENTLY GENERATED - not a summary of the explanation above. Write only what a student would hand in. State the correct option letter and its full answer text, then show only the essential supporting work or one-line justification (2-4 lines max). No prose commentary, no preamble."
 }`;
       const result = await invokeLLM({
         model: "claude-haiku-4-5",
