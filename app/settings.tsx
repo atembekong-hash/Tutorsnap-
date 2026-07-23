@@ -1349,6 +1349,9 @@ export default function SettingsScreen() {
         {ms("Classroom", "Share problems") && (
           <SettingsRow icon="person.2.fill" label="Classroom" subtitle="Share problems with your class or join one" colors={colors} onPress={() => router.push("/(tabs)/classroom" as any)} />
         )}
+        {ms("Saved Notes", "explanations") && (
+          <SettingsRow icon="note.text" label="Saved Notes" subtitle="Explanations and chat notes you have saved" colors={colors} onPress={() => router.push("/notes" as any)} />
+        )}
         {ms("AI Tutor Settings", "Personality, style") && (
           <SettingsRow
             icon="waveform"

@@ -173,6 +173,9 @@ const MAPPING = {
   "text.word.spacing": "text-fields",
   "circle.hexagongrid.fill": "blur-circular",
   "checkmark.seal.fill": "verified",
+  // Notes
+  "note.text": "notes",
+  "note.text.badge.plus": "note-add",
 } as unknown as IconMapping;
 
 export function IconSymbol({

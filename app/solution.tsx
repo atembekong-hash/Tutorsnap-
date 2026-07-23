@@ -282,10 +282,14 @@ export default function SolutionScreen() {
       if (copyAltTimerRef.current) clearTimeout(copyAltTimerRef.current);
       if (copiedHintIdTimerRef.current) clearTimeout(copiedHintIdTimerRef.current);
       if (markdownPreviewTimerRef.current) clearTimeout(markdownPreviewTimerRef.current);
+      if (saveNoteTimerRef.current) clearTimeout(saveNoteTimerRef.current);
     };
   }, []);
   const scrollRef = useRef<InstanceType<typeof ScrollView>>(null);
   const submissionReadyYRef = useRef(0);
+  const similarYRef = useRef(0);
+  const [saveNoteFeedback, setSaveNoteFeedback] = useState(false);
+  const saveNoteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleJumpToSubmission = () => {
     H.impactLight();
@@ -1382,7 +1386,7 @@ export default function SolutionScreen() {
         )}
 
         {/* AI Similar Problems */}
-        <View style={[styles.similarSection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <View onLayout={(e) => { similarYRef.current = e.nativeEvent.layout.y; }} style={[styles.similarSection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <TouchableOpacity
             accessibilityLabel="Toggle show similar"
             onPress={async () => {
@@ -1707,18 +1711,68 @@ export default function SolutionScreen() {
               <IconSymbol size={15} name="paperplane.fill" color={colors.primary} />
               <Text style={{ fontSize: 13, fontWeight: "600", color: colors.primary }}>Share this explanation</Text>
             </TouchableOpacity>
+            {/* Save to Notes button */}
+            <TouchableOpacity
+              accessibilityLabel="Save to Notes"
+              onPress={async () => {
+                if (saveNoteFeedback) return;
+                H.impactLight();
+                try {
+                  const styleLabel = activeCardStyle === "analogy" ? "Analogy" : activeCardStyle === "step-by-step" ? "Step-by-step" : "Visual";
+                  const noteContent = `📚 ${styleLabel} Explanation\n\n❓ ${solution?.problem ?? ""}\n\n💡 ${altExplanation ?? ""}`;
+                  const SAVED_NOTES_KEY = "tutor_saved_notes";
+                  const raw = await AsyncStorage.getItem(SAVED_NOTES_KEY);
+                  const notes: { id: string; content: string; savedAt: number; type?: string }[] = raw ? JSON.parse(raw) : [];
+                  notes.unshift({ id: `note-${Date.now()}`, content: noteContent, savedAt: Date.now(), type: "explanation" });
+                  await AsyncStorage.setItem(SAVED_NOTES_KEY, JSON.stringify(notes.slice(0, 200)));
+                  setSaveNoteFeedback(true);
+                  H.notificationSuccess();
+                  if (saveNoteTimerRef.current) clearTimeout(saveNoteTimerRef.current);
+                  saveNoteTimerRef.current = setTimeout(() => setSaveNoteFeedback(false), 2000);
+                } catch { /* ignore */ }
+              }}
+              style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 8, paddingVertical: 9, borderRadius: 12, backgroundColor: saveNoteFeedback ? `${colors.success}20` : `${colors.success}10`, borderWidth: 1, borderColor: saveNoteFeedback ? `${colors.success}50` : `${colors.success}25` }}
+            >
+              <IconSymbol size={15} name={saveNoteFeedback ? "checkmark.circle.fill" : "note.text.badge.plus"} color={colors.success} />
+              <Text style={{ fontSize: 13, fontWeight: "600", color: colors.success }}>{saveNoteFeedback ? "Saved to Notes!" : "Save to Notes"}</Text>
+            </TouchableOpacity>
           </View>
         )}
 
         {/* All-3-styles prompt: shown after user has seen all 3 styles */}
         {seenStyles.size >= 3 && !explainDiffLoading && (
-          <View style={{ marginHorizontal: 16, marginTop: 8, padding: 14, borderRadius: 14, backgroundColor: `${colors.warning}10`, borderWidth: 1, borderColor: `${colors.warning}30`, flexDirection: "row", alignItems: "center", gap: 10 }}>
+          <TouchableOpacity
+            accessibilityLabel="Generate harder similar problems"
+            activeOpacity={0.8}
+            onPress={async () => {
+              H.impactLight();
+              try {
+                const result = await generateSimilarMutation.mutateAsync({
+                  problem: solution!.problem,
+                  subject: solution!.subject,
+                  difficulty: "hard",
+                  count: 3,
+                  gradeLevel: gradeLevel ?? undefined,
+                });
+                setSimilarProblems(result.problems ?? []);
+                setShowSimilar(true);
+                H.notificationSuccess();
+                setTimeout(() => {
+                  scrollRef.current?.scrollTo({ y: similarYRef.current - 16, animated: true });
+                }, 150);
+              } catch { /* ignore */ }
+            }}
+            style={{ marginHorizontal: 16, marginTop: 8, padding: 14, borderRadius: 14, backgroundColor: `${colors.warning}10`, borderWidth: 1, borderColor: `${colors.warning}40`, flexDirection: "row", alignItems: "center", gap: 10 }}
+          >
             <Text style={{ fontSize: 18 }}>🎯</Text>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 13, fontWeight: "700", color: colors.foreground }}>You've explored all 3 styles!</Text>
-              <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>Ready for a challenge? Try a harder similar problem to test your understanding.</Text>
+              <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>Ready for a challenge? Tap to generate harder similar problems.</Text>
             </View>
-          </View>
+            {generateSimilarMutation.isPending
+              ? <ActivityIndicator size="small" color={colors.warning} />
+              : <IconSymbol size={16} name="chevron.right" color={colors.warning} />}
+          </TouchableOpacity>
         )}
 
 
