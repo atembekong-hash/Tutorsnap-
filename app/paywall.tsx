@@ -25,12 +25,14 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Animated,
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as H from "@/lib/haptics";
 
 import { useColors } from "@/hooks/use-colors";
+import { useScreenTransition } from "@/hooks/use-screen-transition";
 import {
   DISCOUNT_PCT,
   PRICE_ANNUAL,
@@ -69,6 +71,7 @@ const FEATURES = [
 
 export default function PaywallScreen() {
   const colors = useColors();
+  const { fadeStyle: animatedStyle } = useScreenTransition();
   const insets = useSafeAreaInsets();
 
   const [selectedPlan, setSelectedPlan] = useState<string>(PRODUCT_ANNUAL);

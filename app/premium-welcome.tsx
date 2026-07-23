@@ -21,6 +21,7 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import * as H from "@/lib/haptics";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/use-colors";
+import { useScreenTransition } from "@/hooks/use-screen-transition";
 
 const { width: W, height: SCREEN_H } = Dimensions.get("window");
 
@@ -93,6 +94,7 @@ function ConfettiParticle({ index }: { index: number }) {
 
 export default function PremiumWelcomeScreen() {
   const colors = useColors();
+  const { fadeStyle: animatedStyle } = useScreenTransition();
   const router = useRouter();
   const { restored } = useLocalSearchParams<{ restored?: string }>();
   const isRestored = restored === "true";

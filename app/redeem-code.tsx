@@ -12,6 +12,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Animated,
 } from "react-native";
 import { useRouter } from "expo-router";
 import * as H from "@/lib/haptics";
@@ -20,9 +21,11 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { redeemReferralCode } from "@/lib/rewards";
 import { notifyReferralSuccess } from "@/lib/achievement-notifications";
+import { useScreenTransition } from "@/hooks/use-screen-transition";
 
 export default function RedeemCodeScreen() {
   const colors = useColors();
+  const { fadeStyle: animatedStyle } = useScreenTransition();
   const router = useRouter();
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);

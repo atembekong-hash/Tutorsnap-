@@ -56,6 +56,7 @@ import * as Clipboard from "expo-clipboard";
 import * as Sharing from "expo-sharing";
 import * as FileSystem from "expo-file-system/legacy";
 import { encodeAppearanceForLink } from "@/lib/appearance-deep-link";
+import { useScreenTransition } from "@/hooks/use-screen-transition";
 import * as Linking from "expo-linking";
 
 // ─── Section header ───────────────────────────────────────────────────────────
@@ -321,6 +322,7 @@ function TypingSpeedPreview({ settings, colors }: { settings: any; colors: any }
 // ─── Main screen ─────────────────────────────────────────────────────────────
 export default function AppearanceSettingsScreen() {
   const colors = useColors();
+  const { fadeStyle: animatedStyle } = useScreenTransition();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const colorScheme = useColorScheme() ?? "light";

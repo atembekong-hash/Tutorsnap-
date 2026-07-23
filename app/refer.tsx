@@ -34,6 +34,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { APP_URL, buildReferralUrl } from "@/constants/app";
+import { useScreenTransition } from "@/hooks/use-screen-transition";
 import {
   getOrCreateReferralCode,
   getAffiliateStats,
@@ -252,6 +253,7 @@ function HistoryRow({ event, colors }: { event: AffiliateEvent; colors: any }) {
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function ReferScreen() {
   const colors = useColors();
+  const { fadeStyle: animatedStyle } = useScreenTransition();
   const router = useRouter();
   const [code, setCode] = useState<string>("");
   const [stats, setStats] = useState<AffiliateStats | null>(null);

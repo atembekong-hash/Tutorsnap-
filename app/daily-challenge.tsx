@@ -16,6 +16,7 @@ import {
   StyleSheet,
   ScrollView,
   Platform,
+  Animated,
 } from "react-native";
 import * as H from "@/lib/haptics";
 import { useRouter } from "expo-router";
@@ -32,6 +33,7 @@ import {
 import { recordSolve } from "@/lib/progress";
 import { loadGlobalGrade } from "@/lib/grade-levels";
 import { cleanMathText } from "@/lib/clean-math-text";
+import { useScreenTransition } from "@/hooks/use-screen-transition";
 
 type OptionKey = "A" | "B" | "C" | "D";
 
@@ -46,6 +48,7 @@ function formatCountdown(ms: number): string {
 
 export default function DailyChallengeScreen() {
   const colors = useColors();
+  const { fadeStyle: animatedStyle } = useScreenTransition();
   const router = useRouter();
   const [gradeLevel, setGradeLevel] = useState<string | null>(null);
   const question = getTodayQuestion(gradeLevel);
