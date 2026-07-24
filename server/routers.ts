@@ -208,35 +208,177 @@ function estimateSolveTokens(problem: string, subject: string): number {
 
 /**
  * Returns a system prompt scaled to the complexity level.
- * Simple problems get a concise prompt; complex problems get the full exhaustive prompt.
+ * Uses separate prompt templates per tier to avoid fragile string-replace chains.
  */
 function buildSolveSystemPromptScaled(subject: string, problem: string): string {
   const tokens = estimateSolveTokens(problem, subject);
-  const base = buildSolveSystemPrompt(subject);
+  const subjectGuides: Record<string, string> = {
+    algebra: "Solve algebraically with full rigor. Show every algebraic manipulation.",
+    calculus: "Apply calculus rules with full rigor. State every theorem used. Show all intermediate steps.",
+    geometry: "Use geometric theorems and formulas. Show all angle, length, and area calculations.",
+    trigonometry: "Apply trig identities, the unit circle, and inverse functions. Show all algebraic simplifications.",
+    statistics: "Apply statistical formulas step by step. Show all arithmetic. Interpret the result in plain language.",
+    arithmetic: "Compute step by step with full order-of-operations detail. Explain each arithmetic rule applied.",
+    precalculus: "Analyze functions, transformations, asymptotes, limits, and sequences. Show all algebraic steps.",
+    linear_algebra: "Use matrix operations, determinants, eigenvalues, and vector space properties. Show every row operation.",
+    differential_equations: "Identify the ODE/PDE type. Show the complete solution method. Verify by substitution.",
+    number_theory: "Apply number theory theorems (divisibility, primes, GCD, modular arithmetic). Prove each step.",
+    biology: "Apply biological concepts with mechanistic detail. Explain underlying molecular or physiological mechanisms.",
+    chemistry: "Balance equations, apply stoichiometry. Show all unit conversions, mole calculations. Verify with dimensional analysis.",
+    physics: "Apply physics laws and formulas with derivations. Define all variables. Show full unit analysis.",
+    us_history: "Provide rich historical context, key figures, causes and effects. Connect events to broader themes.",
+    world_history: "Provide global historical context, compare civilizations, analyze cause and effect.",
+    economics: "Apply economic theories and models. Use supply/demand, fiscal/monetary policy, and quantitative reasoning.",
+  };
+  const guide = subjectGuides[subject] ?? "Provide a thorough, accurate, and educational answer. Never refuse a hard question; always attempt a complete solution.";
 
+  const FORMATTING = `FORMATTING RULES (CRITICAL - FOLLOW EXACTLY):
+- ALL mathematical expressions MUST be wrapped in LaTeX delimiters: $...$ for inline math, $$...$$ for block math.
+- NEVER use raw LaTeX commands outside $...$ or $$...$$ delimiters.
+- Use proper Markdown: **bold**, *italic*, backticks for code, dashes for lists, hashes for headings.
+- The "expression" field should contain ONLY the mathematical expression wrapped in $...$ or $$...$$ delimiters.`;
+
+  const SUBMISSION_READY_RULES = `The submissionReady field is a COMPLETELY INDEPENDENT second output. Generate it fresh from scratch as if writing only the answer a student would hand in:
+  * Mathematics/Physics/Chemistry/Statistics: Complete worked solution. Every calculation on its own numbered line. All formula substitutions shown. Final answer on last line. No prose.
+  * Programming/Computer Science: Final production-ready code only. No explanation.
+  * Essays/English/History/Social Studies: Complete, polished final response. Full sentences and paragraphs.
+  * Definitions/Vocabulary: Concise, precise final definition only.
+  * Multiple Choice: State the correct option letter and answer, then include only the essential supporting calculation or one-line justification.`;
+
+  // ── SIMPLE tier (basic arithmetic, single-step) ──────────────────────────────
   if (tokens <= 800) {
-    // Replace the exhaustive length requirements with concise ones
-    return base
-      .replace('Aim for AT LEAST 10-15 steps, each with a thorough multi-sentence explanation.', 'Use 3-6 clear steps.')
-      .replace('Each step explanation MUST be at least 5-8 sentences: state what you are doing, WHY, the rule or theorem that justifies it, any edge cases, and how it connects to the next step.', 'Each step explanation should be 2-3 sentences: what you are doing and why.')
-      .replace('Include a WORKED EXAMPLE section showing a COMPLETE similar problem solved from scratch — this example must itself have at least 8 steps.', 'Include a brief worked example (3-4 steps).')
-      .replace('The conceptExplained field must be a LONG, RICH paragraph (10-15 sentences) covering: the underlying theory, historical context or motivation, formal definition, intuitive explanation, when the concept applies, common pitfalls, and how it connects to at least 3 related topics.', 'The conceptExplained field should be 3-4 sentences: a clear, simple explanation of the concept.')
-      .replace('The answer field must be a FULL paragraph (5-8 sentences) restating the result, interpreting it, and noting any important caveats or special cases.', 'The answer field should be 2-3 sentences: state the result clearly and simply.')
-      .replace('Tips must be detailed, actionable, and specific (4-6 sentences each). Include at least 4 tips.', 'Include 2-3 short, practical tips (2 sentences each).')
-      .replace('The workedExample.solution must be a LONG narrative (at least 300 words) walking through every single step.', 'The workedExample.solution should be a brief narrative (50-80 words).');
+    return `You are TutorSnap, an expert academic tutor.
+Subject: ${subject}
+Guidance: ${guide}
+
+This is a SIMPLE, DIRECT question. Give a short, direct answer.
+- NEVER refuse to answer. Solve everything.
+- ${SUBMISSION_READY_RULES}
+
+${FORMATTING}
+
+Respond with valid JSON in EXACTLY this format (no extra fields, no extra steps):
+{
+  "problem": "the original question reproduced exactly",
+  "subject": "${subject}",
+  "answer": "One sentence stating the result. Example for '2+2': '2 + 2 = 4.'",
+  "submissionReady": "The direct answer only. Example: '2 + 2 = 4'",
+  "steps": [
+    {
+      "stepNumber": 1,
+      "title": "Set up",
+      "explanation": "One sentence identifying what to calculate.",
+      "expression": "$the starting expression$"
+    },
+    {
+      "stepNumber": 2,
+      "title": "Calculate",
+      "explanation": "One sentence showing the calculation and result.",
+      "expression": "$the result expression$"
+    }
+  ],
+  "workedExample": {
+    "title": "Worked Example",
+    "problem": "A similar single-step problem",
+    "solution": "One sentence solution."
+  },
+  "conceptExplained": "One sentence defining the concept.",
+  "tips": ["One practical tip.", "One common mistake to avoid."],
+  "relatedTopics": ["Topic 1", "Topic 2", "Topic 3"]
+}`;
   }
 
+  // ── MEDIUM tier (multi-step algebra, short essay) ────────────────────────────
   if (tokens <= 1400) {
-    return base
-      .replace('Aim for AT LEAST 10-15 steps, each with a thorough multi-sentence explanation.', 'Use 5-8 well-explained steps.')
-      .replace('Each step explanation MUST be at least 5-8 sentences: state what you are doing, WHY, the rule or theorem that justifies it, any edge cases, and how it connects to the next step.', 'Each step explanation should be 3-4 sentences: what you are doing, why, and the rule that justifies it.')
-      .replace('Include a WORKED EXAMPLE section showing a COMPLETE similar problem solved from scratch — this example must itself have at least 8 steps.', 'Include a worked example with 4-6 steps.')
-      .replace('The conceptExplained field must be a LONG, RICH paragraph (10-15 sentences)', 'The conceptExplained field should be a solid paragraph (5-7 sentences)')
-      .replace('Tips must be detailed, actionable, and specific (4-6 sentences each). Include at least 4 tips.', 'Include 3 practical tips (3-4 sentences each).')
-      .replace('The workedExample.solution must be a LONG narrative (at least 300 words) walking through every single step.', 'The workedExample.solution should be a clear narrative (100-150 words).');
+    return `You are TutorSnap, an expert academic tutor and professor.
+Subject: ${subject}
+Guidance: ${guide}
+
+CRITICAL RULES:
+- NEVER refuse to answer. Solve everything.
+- Use 4-7 well-explained steps. Each step explanation: 3-4 sentences (what, why, the rule that justifies it).
+- The answer field: 3-4 sentences restating the result and interpreting it.
+- The conceptExplained field: 5-7 sentences covering the concept, when it applies, and common pitfalls.
+- Include a worked example with 4-5 steps and a 100-150 word solution.
+- Include 3 practical tips (2-3 sentences each).
+- ${SUBMISSION_READY_RULES}
+
+${FORMATTING}
+
+Always respond with valid JSON in this exact format:
+{
+  "problem": "the original question or problem, reproduced exactly",
+  "subject": "${subject}",
+  "answer": "3-4 sentences: state the result, interpret it, and note any important caveats.",
+  "submissionReady": "[INDEPENDENTLY GENERATED] Complete worked solution as a student would write for submission.",
+  "steps": [
+    {
+      "stepNumber": 1,
+      "title": "Descriptive step title",
+      "explanation": "3-4 sentences: what you are doing, why, and the rule that justifies it.",
+      "expression": "The key formula, equation, or expression for this step"
+    }
+  ],
+  "workedExample": {
+    "title": "Worked Example: [brief description]",
+    "problem": "A similar but distinct example problem",
+    "solution": "Clear narrative solution (100-150 words): walk through every step."
+  },
+  "conceptExplained": "5-7 sentences: the concept, when it applies, common pitfalls, and connections to related topics.",
+  "tips": ["Practical tip 1 (2-3 sentences)", "Practical tip 2 (2-3 sentences)", "Practical tip 3 (2-3 sentences)"],
+  "relatedTopics": ["Topic 1", "Topic 2", "Topic 3", "Topic 4"]
+}`;
   }
 
-  return base; // full exhaustive prompt for complex problems
+  // ── COMPLEX tier (calculus, proofs, multi-concept) ───────────────────────────
+  return `You are TutorSnap, an expert academic tutor and professor covering ALL school and university subjects at ALL difficulty levels.
+Subject: ${subject}
+Guidance: ${guide}
+
+CRITICAL RULES:
+- NEVER refuse to answer or say a problem is too hard. Solve EVERYTHING: basic arithmetic, advanced calculus, differential equations, abstract algebra, graduate-level physics, etc.
+- If a problem is advanced, apply the appropriate advanced techniques (L'Hopital, eigenvalues, Green's theorem, Fourier series, Lagrangians, etc.).
+- Produce an EXHAUSTIVE, DEEPLY DETAILED solution. Aim for AT LEAST 15-20 steps, each with a thorough multi-sentence explanation.
+- Each step explanation MUST be at least 7-10 sentences: state what you are doing, WHY, the rule or theorem that justifies it, any edge cases, and how it connects to the next step.
+- Include a WORKED EXAMPLE section showing a COMPLETE similar problem solved from scratch — this example must itself have at least 12 steps.
+- The conceptExplained field must be a LONG, RICH paragraph (15-20 sentences) covering: the underlying theory, historical context or motivation, formal definition, intuitive explanation, when the concept applies, common pitfalls, and how it connects to at least 5 related topics.
+- The answer field must be a FULL paragraph (7-10 sentences) restating the result, interpreting it, and noting any important caveats or special cases.
+- Tips must be detailed, actionable, and specific (6-8 sentences each). Include at least 6 tips.
+- The workedExample.solution must be a LONG narrative (at least 450 words) walking through every single step.
+- ${SUBMISSION_READY_RULES}
+
+${FORMATTING}
+
+Always respond with valid JSON in this exact format:
+{
+  "problem": "the original question or problem, reproduced exactly",
+  "subject": "${subject}",
+  "answer": "A FULL PARAGRAPH (7-10 sentences): state the result, interpret it, note units, explain any special cases or caveats, and summarise what was learned.",
+  "submissionReady": "[INDEPENDENTLY GENERATED] Complete worked solution as a student would write for submission. Maths/science: numbered calculation lines, all substitutions, units, final answer on last line. Programming: final code only. Essays: complete polished prose. Definitions: concise precise definition. Multiple choice: correct option + essential supporting work only.",
+  "steps": [
+    {
+      "stepNumber": 1,
+      "title": "Descriptive step title",
+      "explanation": "DETAILED explanation (7-10 sentences): what you are doing, why, the rule/theorem that justifies it, any edge cases, and how it leads to the next step.",
+      "expression": "The key formula, equation, or expression for this step"
+    }
+  ],
+  "workedExample": {
+    "title": "Worked Example: [brief description of the example problem]",
+    "problem": "A similar but distinct example problem",
+    "solution": "LONG narrative solution (at least 450 words): walk through every single step, explain every operation, state every rule used, and interpret the final result."
+  },
+  "conceptExplained": "A LONG, RICH paragraph (15-20 sentences): underlying theory, historical context or motivation, formal definition, intuitive explanation, when the concept applies, common pitfalls, and connections to at least 5 related topics.",
+  "tips": [
+    "Detailed tip 1: specific, actionable, 6-8 sentences",
+    "Detailed tip 2: specific, actionable, 6-8 sentences",
+    "Detailed tip 3: specific, actionable, 6-8 sentences",
+    "Detailed tip 4: specific, actionable, 6-8 sentences",
+    "Detailed tip 5: specific, actionable, 6-8 sentences",
+    "Detailed tip 6: specific, actionable, 6-8 sentences"
+  ],
+  "relatedTopics": ["Topic 1", "Topic 2", "Topic 3", "Topic 4", "Topic 5", "Topic 6"]
+}`;
 }
 
 const CHAT_SYSTEM_PROMPT = `You are TutorSnap, a friendly and expert academic tutor covering all school subjects.
@@ -410,6 +552,58 @@ function extractLLMContent(result: any): string {
   return typeof raw === "string" ? raw : JSON.stringify(raw);
 }
 
+// ─── AIRE post-processor: truncate SIMPLE tier responses ────────────────────
+
+/**
+ * Truncates a string to the first N sentences.
+ * A sentence ends with . ! or ? followed by a space or end of string.
+ */
+function firstNSentences(text: string, n: number): string {
+  if (!text) return text;
+  const sentenceEnd = /[.!?](?:\s|$)/g;
+  let count = 0;
+  let lastIndex = 0;
+  let match;
+  while ((match = sentenceEnd.exec(text)) !== null) {
+    count++;
+    lastIndex = match.index + match[0].length;
+    if (count >= n) break;
+  }
+  return count >= n ? text.slice(0, lastIndex).trim() : text.trim();
+}
+
+/**
+ * For SIMPLE tier (≤800 tokens): truncate answer to 2 sentences,
+ * each step explanation to 2 sentences, and cap steps at 3.
+ */
+function truncateForSimpleTier(parsed: any, tokenBudget: number): any {
+  if (tokenBudget > 800) return parsed; // Only apply to SIMPLE tier
+  const out = { ...parsed };
+  if (typeof out.answer === "string") {
+    out.answer = firstNSentences(out.answer, 2);
+  }
+  if (Array.isArray(out.steps)) {
+    out.steps = out.steps.slice(0, 3).map((step: any) => ({
+      ...step,
+      explanation: typeof step.explanation === "string"
+        ? firstNSentences(step.explanation, 2)
+        : step.explanation,
+    }));
+  }
+  if (typeof out.conceptExplained === "string") {
+    out.conceptExplained = firstNSentences(out.conceptExplained, 1);
+  }
+  if (out.workedExample?.solution && typeof out.workedExample.solution === "string") {
+    out.workedExample = { ...out.workedExample, solution: firstNSentences(out.workedExample.solution, 2) };
+  }
+  if (Array.isArray(out.tips)) {
+    out.tips = out.tips.slice(0, 2).map((tip: string) =>
+      typeof tip === "string" ? firstNSentences(tip, 1) : tip
+    );
+  }
+  return out;
+}
+
 // ─── Academic router ──────────────────────────────────────────────────────────
 
 const academicRouter = router({
@@ -417,12 +611,12 @@ const academicRouter = router({
     .input(z.object({
       problem: z.string().min(1),
       subject: z.string().default("other"),
-      gradeLevel: z.string().optional(),
+      gradeLevel: z.string().nullable().optional(),
     }))
     .mutation(async ({ input }) => {
       try {
         const tokenBudget = estimateSolveTokens(input.problem, input.subject);
-        const systemPrompt = buildSolveSystemPromptScaled(input.subject, input.problem) + gradeContext(input.gradeLevel);
+        const systemPrompt = buildSolveSystemPromptScaled(input.subject, input.problem) + gradeContext(input.gradeLevel ?? undefined);
         const params = {
           model: "gemini-3-flash-preview" as const,
           messages: [
@@ -433,7 +627,8 @@ const academicRouter = router({
           response_format: { type: "json_object" as const },
         };
         const jsonStr = await invokeLLMWithFallback("gemini-3-flash-preview", "claude-haiku-4-5", params);
-        return JSON.parse(jsonStr);
+        const parsed = JSON.parse(jsonStr);
+        return truncateForSimpleTier(parsed, tokenBudget);
       } catch (err: unknown) {
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err instanceof Error ? err.message : "Failed to solve problem. Please try again." });
       }

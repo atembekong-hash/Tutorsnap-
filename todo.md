@@ -1005,3 +1005,12 @@
 - [x] TypeScript: 0 errors
 - [x] Tests: 49/49 passing (16 new AIRE + 33 existing)
 - [x] Version bumped to 1.2.0 (versionCode 15)
+
+- [x] Round 62 (continued): Real-user test revealed AIRE was over-explaining trivial questions
+- [x] Fix buildSolveSystemPromptScaled - broken string replacements replaced with conditional builder
+- [x] Fix gradeLevel null validation error in academic.solve (added .nullable())
+- [x] Fix isDetailed default to false in chatStream.ts (was defaulting to detailed mode for new users)
+- [x] Add truncateForSimpleTier() post-processing in academic.solve for SIMPLE tier brevity
+- [x] AIRE feedback loop: thumbs up/down on solution screen (saves to AsyncStorage for tuning)
+- [x] Subject-aware classifier boost: per-topic TOPIC_BOOSTS array (50+ keywords, scores 1-5)
+- [x] Continuation indicator UI: pulsing "Continuing..." badge in chat when AIRE Stage 5 fires

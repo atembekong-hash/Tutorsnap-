@@ -1062,6 +1062,9 @@ function ChatScreenContent() {
   const [isStreaming, setIsStreaming] = useState(false);
   // True from the moment the user sends until the first AI token arrives
   const [isWaitingForFirstToken, setIsWaitingForFirstToken] = useState(false);
+  // True when AIRE Stage 5 continuation guard fires (model hit token limit, continuing)
+  const [isContinuing, setIsContinuing] = useState(false);
+  const continuingPulseAnim = useRef(new Animated.Value(0.4)).current;
   const streamAbortRef = useRef<AbortController | null>(null);
   const streamingMsgIdRef = useRef<string | null>(null);
   // Round 42: "↓ Generating…" pill — visible when user scrolls up during streaming
@@ -1196,6 +1199,22 @@ function ChatScreenContent() {
       Animated.timing(sendBtnScaleAnim, { toValue: 1, duration: 140, useNativeDriver: true, easing: Easing.out(Easing.back(1.5)) }),
     ]).start();
   }, [isStreaming, sendBtnScaleAnim]);
+
+  // AIRE Stage 5: pulse animation for the "Continuing..." indicator
+  useEffect(() => {
+    if (!isContinuing) {
+      continuingPulseAnim.setValue(0.4);
+      return;
+    }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(continuingPulseAnim, { toValue: 1, duration: 600, useNativeDriver: true, easing: Easing.inOut(Easing.quad) }),
+        Animated.timing(continuingPulseAnim, { toValue: 0.4, duration: 600, useNativeDriver: true, easing: Easing.inOut(Easing.quad) }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [isContinuing, continuingPulseAnim]);
 
   // Round 42: animate the generating pill in/out
   useEffect(() => {
@@ -1699,7 +1718,12 @@ function ChatScreenContent() {
             const raw = trimmed.slice(5).trim();
             if (raw === "[DONE]") break;
             try {
-              const parsed = JSON.parse(raw) as { token?: string };
+              const parsed = JSON.parse(raw) as { token?: string; continuation?: boolean };
+              if (parsed.continuation) {
+                // AIRE Stage 5: continuation guard fired — model hit token limit, continuing
+                setIsContinuing(true);
+                continue;
+              }
               if (parsed.token) {
                 // First token arrived - hide the waiting dots
                 setIsWaitingForFirstToken(false);
@@ -1754,6 +1778,7 @@ function ChatScreenContent() {
         streamingMsgIdRef.current = null;
         setIsStreaming(false);
         setIsWaitingForFirstToken(false);
+        setIsContinuing(false);
         // Round 42: hide the generating pill when streaming ends
         setGeneratingPillVisible(false);
         // Round 43: clear the inactivity timer when streaming ends so it doesn't
@@ -2745,6 +2770,30 @@ function ChatScreenContent() {
                   <View style={[chatStyles.typingBubble, { backgroundColor: "transparent" }]}>
                     <TypingDots color={colors.primary} />
                   </View>
+                </View>
+              ) : isContinuing ? (
+                // AIRE Stage 5: "Continuing..." pulse shown when model hit token limit and is generating more
+                <View style={[chatStyles.typingRow, { paddingBottom: 4 }]}>
+                  <View style={chatStyles.typingAvatarCol} />
+                  <Animated.View
+                    style={[
+                      chatStyles.typingBubble,
+                      {
+                        backgroundColor: `${colors.primary}12`,
+                        borderWidth: 1,
+                        borderColor: `${colors.primary}30`,
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 6,
+                        paddingHorizontal: 12,
+                        paddingVertical: 6,
+                        opacity: continuingPulseAnim,
+                      }
+                    ]}
+                  >
+                    <IconSymbol size={12} name="arrow.clockwise" color={colors.primary} />
+                    <Text style={{ fontSize: 12, color: colors.primary, fontWeight: "600" }}>Continuing...</Text>
+                  </Animated.View>
                 </View>
               ) : null
             }

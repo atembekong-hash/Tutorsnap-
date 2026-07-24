@@ -55,14 +55,14 @@ const CHAT_SYSTEM_PROMPT = `You are TutorSnap, an expert academic tutor covering
 - Use **bold** for key terms
 - Use --- to separate major sections
 
-### Length guidance (adapt to actual complexity — these are guidelines, not hard limits)
-- Trivial (e.g. "What is 1+1?"): 1-3 sentences. Direct answer only.
-- Simple (e.g. "What is the quadratic formula?"): 4-8 sentences with a brief explanation and one example.
-- Medium (e.g. "Explain integration by parts"): 2 fully worked examples + a summary table or key insight list.
-- Complex (e.g. "Prove the fundamental theorem of calculus"): full working with ALL steps shown, a verification pass, a summary, and a related extension problem.
-- PhD-level (e.g. "Derive the Navier-Stokes equations from first principles"): exhaustive derivation, every intermediate step, all assumptions stated, physical interpretation.
-- Always end substantive responses with a ###### Pro Tip AND a ###### Common Mistake section.
-- After every worked example, add a ## Try It Yourself section with a similar practice problem (no solution — just the problem statement).
+### Length guidance (STRICT — follow exactly based on question complexity)
+- **Trivial** (e.g. "What is 1+1?", "What is 2+2?", "What colour is the sky?"): 1-2 sentences MAXIMUM. State the answer and one brief reason. NO steps, NO examples, NO Pro Tip, NO Common Mistake, NO Try It Yourself. Stop immediately after the answer.
+- **Simple** (e.g. "What is the quadratic formula?", "What is photosynthesis?"): 3-6 sentences. Direct answer + brief explanation. One example only if essential. No Pro Tip or Common Mistake for simple factual questions.
+- **Medium** (e.g. "Explain integration by parts", "Solve 3x + 5 = 14"): 2 fully worked examples + a summary table or key insight list. End with a ###### Pro Tip AND a ###### Common Mistake section.
+- **Complex** (e.g. "Prove the fundamental theorem of calculus"): full working with ALL steps shown, a verification pass, a summary, and a related extension problem. End with Pro Tip and Common Mistake. Add a ## Try It Yourself section.
+- **PhD-level** (e.g. "Derive the Navier-Stokes equations from first principles"): exhaustive derivation, every intermediate step, all assumptions stated, physical interpretation. Full Pro Tip, Common Mistake, and Try It Yourself sections required.
+
+**CRITICAL: For trivial and simple questions, do NOT add Pro Tip, Common Mistake, or Try It Yourself sections. These sections are ONLY for medium, complex, and PhD-level questions.**
 
 ## INTERACTIVE COMPONENTS — AUTO-INSERT RULES:
 
@@ -243,12 +243,55 @@ export function classifyQuestion(message: string, subject?: string): Classificat
   const latexCount = (message.match(latexPattern) ?? []).length;
   score += Math.min(latexCount, 4);
 
-  // ── Subject weight bonus ──
-  const heavySubjects = ["mathematics", "maths", "math", "physics", "chemistry", "computer science", "statistics"];
-  const mediumSubjects = ["biology", "economics", "engineering"];
-  const subjectLower = (subject ?? "").toLowerCase();
-  if (heavySubjects.some((s) => subjectLower.includes(s))) score += 2;
-  else if (mediumSubjects.some((s) => subjectLower.includes(s))) score += 1;
+  // ── Subject-aware per-topic scoring ──
+  // Each entry: [topic_keyword_in_question, bonus_score]
+  // Higher bonus = more detail expected for that topic
+  const TOPIC_BOOSTS: Array<[string, number]> = [
+    // Advanced mathematics
+    ["topology", 5], ["abstract algebra", 5], ["real analysis", 5], ["complex analysis", 5],
+    ["number theory", 4], ["linear algebra", 3], ["multivariable", 4], ["vector calculus", 4],
+    ["probability distribution", 3], ["hypothesis test", 3], ["bayesian", 4],
+    ["differential equation", 4], ["partial differential", 5], ["fourier series", 4],
+    ["matrix", 2], ["determinant", 2], ["eigenvalue", 4], ["eigenvector", 4],
+    // Advanced physics
+    ["quantum mechanics", 5], ["quantum field", 5], ["special relativity", 5], ["general relativity", 5],
+    ["electromagnetism", 4], ["thermodynamics", 3], ["statistical mechanics", 5],
+    ["wave function", 4], ["schrodinger", 5], ["hamiltonian", 5], ["lagrangian", 5],
+    ["navier-stokes", 5], ["maxwell", 4], ["lorentz", 4],
+    ["kinematics", 2], ["dynamics", 2], ["momentum", 2], ["energy conservation", 2],
+    // Advanced chemistry
+    ["organic synthesis", 5], ["reaction mechanism", 4], ["stereochemistry", 4],
+    ["electrochemistry", 4], ["thermochemistry", 3], ["quantum chemistry", 5],
+    ["spectroscopy", 3], ["nmr", 4], ["chromatography", 3],
+    ["acid base", 2], ["titration", 2], ["stoichiometry", 2], ["molar mass", 1],
+    // Computer science
+    ["dynamic programming", 4], ["graph algorithm", 4], ["np-complete", 5], ["turing", 5],
+    ["machine learning", 4], ["neural network", 4], ["backpropagation", 5],
+    ["time complexity", 3], ["space complexity", 3], ["big o", 3],
+    ["recursion", 2], ["sorting", 2], ["binary search", 2],
+    // Biology
+    ["molecular biology", 4], ["genetics", 3], ["dna replication", 3], ["protein synthesis", 3],
+    ["evolution", 2], ["natural selection", 2], ["cell division", 2],
+    // Economics
+    ["game theory", 4], ["econometrics", 5], ["macroeconomics", 3], ["microeconomics", 3],
+    ["supply and demand", 2], ["elasticity", 2],
+    // English / Humanities
+    ["literary analysis", 3], ["critical theory", 4], ["rhetorical analysis", 3],
+    ["compare and contrast", 3], ["critically evaluate", 4], ["essay", 2],
+  ];
+  const topicBonus = TOPIC_BOOSTS.reduce((acc, [keyword, bonus]) => {
+    return lower.includes(keyword) ? Math.max(acc, bonus) : acc;
+  }, 0);
+  score += topicBonus;
+
+  // Fallback flat subject bonus when no specific topic keyword matched
+  if (topicBonus === 0) {
+    const subjectLower = (subject ?? "").toLowerCase();
+    const heavySubjects = ["mathematics", "maths", "math", "physics", "chemistry", "computer science", "statistics"];
+    const mediumSubjects = ["biology", "economics", "engineering"];
+    if (heavySubjects.some((s) => subjectLower.includes(s))) score += 2;
+    else if (mediumSubjects.some((s) => subjectLower.includes(s))) score += 1;
+  }
 
   // ── Trivial override: very short, no keywords, no symbols ──
   if (words <= 5 && complexCount === 0 && symbolCount === 0 && latexCount === 0) {
@@ -533,7 +576,9 @@ export function registerChatStreamRoute(app: Express) {
       const classification = classifyQuestion(lastUserMsg, subject);
 
       // ── Stage 3: Compute dynamic token budget ──
-      const isDetailed = tutorProfile?.detailedMode !== false;
+      // Default to concise mode (false) for new users who haven't set a tutor profile.
+      // Only enable detailed mode when the user has explicitly turned it on.
+      const isDetailed = tutorProfile?.detailedMode === true;
       const tokenBudget = computeTokenBudget(classification, override, isDetailed);
 
       // ── Set SSE headers ──

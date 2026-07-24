@@ -318,6 +318,9 @@ export default function SolutionScreen() {
   const similarYRef = useRef(0);
   const [saveNoteFeedback, setSaveNoteFeedback] = useState(false);
   const saveNoteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // AIRE feedback: tracks whether the user found the response length appropriate
+  const [aireFeedback, setAireFeedback] = useState<"short" | "right" | "long" | null>(null);
+  const [aireFeedbackSaved, setAireFeedbackSaved] = useState(false);
   const [studyBlockSavedToast, setStudyBlockSavedToast] = useState<string | null>(null);
   const studyBlockSavedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -1995,6 +1998,73 @@ export default function SolutionScreen() {
 
 
 
+
+        {/* AIRE Length Feedback */}
+        {solution && solution.steps && solution.steps.length > 0 && (
+          <View style={{ marginHorizontal: 16, marginTop: 16, marginBottom: 8, padding: 14, borderRadius: 14, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
+            <Text style={{ fontSize: 12, color: colors.muted, textAlign: "center", marginBottom: 10 }}>
+              {aireFeedbackSaved ? "Thanks! This helps us tune response length." : "Was the response length right for this question?"}
+            </Text>
+            {!aireFeedbackSaved && (
+              <View style={{ flexDirection: "row", gap: 8, justifyContent: "center" }}>
+                {(["short", "right", "long"] as const).map((rating) => {
+                  const labels = { short: "Too Short", right: "Just Right", long: "Too Long" };
+                  const icons = { short: "minus.circle", right: "checkmark.circle.fill", long: "plus.circle" };
+                  const activeColors = { short: colors.warning, right: colors.success, long: colors.error };
+                  const isActive = aireFeedback === rating;
+                  return (
+                    <TouchableOpacity
+                      key={rating}
+                      accessibilityLabel={`Response was ${labels[rating]}`}
+                      onPress={async () => {
+                        if (aireFeedback === rating) return;
+                        setAireFeedback(rating);
+                        H.impactLight();
+                        // Save feedback to AsyncStorage for AIRE tuning
+                        try {
+                          const AIRE_KEY = "@tutorsnap/aire_feedback";
+                          const raw = await AsyncStorage.getItem(AIRE_KEY);
+                          const entries: Array<{ ts: number; problem: string; subject: string; steps: number; rating: string }> = raw ? JSON.parse(raw) : [];
+                          entries.unshift({
+                            ts: Date.now(),
+                            problem: (solution?.problem ?? "").slice(0, 200),
+                            subject: solution?.subject ?? "other",
+                            steps: solution?.steps?.length ?? 0,
+                            rating,
+                          });
+                          await AsyncStorage.setItem(AIRE_KEY, JSON.stringify(entries.slice(0, 500)));
+                          setTimeout(() => setAireFeedbackSaved(true), 400);
+                        } catch { /* ignore */ }
+                      }}
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 4,
+                        paddingHorizontal: 12,
+                        paddingVertical: 6,
+                        borderRadius: 20,
+                        backgroundColor: isActive ? `${activeColors[rating]}20` : colors.background,
+                        borderWidth: 1,
+                        borderColor: isActive ? `${activeColors[rating]}60` : colors.border,
+                      }}
+                    >
+                      <IconSymbol size={14} name={icons[rating] as any} color={isActive ? activeColors[rating] : colors.muted} />
+                      <Text style={{ fontSize: 12, fontWeight: isActive ? "700" : "500", color: isActive ? activeColors[rating] : colors.muted }}>
+                        {labels[rating]}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+            {aireFeedbackSaved && (
+              <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 6 }}>
+                <IconSymbol size={16} name="checkmark.circle.fill" color={colors.success} />
+                <Text style={{ fontSize: 12, color: colors.success, fontWeight: "600" }}>Feedback saved</Text>
+              </View>
+            )}
+          </View>
+        )}
 
       </ScrollView>
       </Animated.View>
