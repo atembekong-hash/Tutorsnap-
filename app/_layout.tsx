@@ -41,6 +41,10 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { playTransitionSound } from "@/lib/sound-effects";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { useColors } from "@/hooks/use-colors";
+import { initSentry, setSentryUser } from "@/lib/sentry";
+
+// Initialise Sentry crash reporting as early as possible
+initSentry();
 
 // Show notifications as banners when app is in foreground
 if (Platform.OS !== "web") {
@@ -68,16 +72,20 @@ export const unstable_settings = {
  * This prevents the dashboard from flashing before the redirect fires.
  */
 function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { isLoading, isSignedIn } = useAuth();
+  const { isLoading, isSignedIn, user } = useAuth();
   const router = useRouter();
   const colors = useColors();
 
   useEffect(() => {
     if (isLoading) return; // still resolving — wait
     if (!isSignedIn) {
+      setSentryUser(null);
       router.replace("/auth-screen" as any);
+    } else if (user?.id) {
+      // Set non-PII user context for crash reports
+      setSentryUser(String(user.id));
     }
-  }, [isLoading, isSignedIn, router]);
+  }, [isLoading, isSignedIn, user, router]);
 
   // While auth state is resolving, show a blank themed screen so no content flashes
   if (isLoading) {
