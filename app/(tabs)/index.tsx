@@ -53,6 +53,7 @@ import { useAuth } from "@/lib/auth-context";
 import { StreakMilestoneModal } from "@/components/streak-milestone-modal";
 import { checkStreakMilestone, type MilestoneInfo } from "@/lib/streak-milestones";
 import { HomeSkeletonScreen, DotsLoader } from "@/components/skeleton";
+import { SolveMilestoneModal } from "@/components/solve-milestone-modal";
 
 function getAppearanceSubjectKey(subjectId: string): string {
   const def = getSubjectDef(subjectId);
@@ -655,6 +656,8 @@ function SolveScreenContent() {
   const [recentSolves, setRecentSolves] = useState<HistoryItem[]>([]);
   // Streak milestone celebration
   const [streakMilestone, setStreakMilestone] = useState<MilestoneInfo | null>(null);
+  // Solve milestone celebration (10, 25, 50, 100 solves)
+  const [solveMilestoneCount, setSolveMilestoneCount] = useState<number | null>(null);
   // Home loading state — show skeleton until first progress load completes
   const [homeLoading, setHomeLoading] = useState(true);
 
@@ -842,10 +845,12 @@ function SolveScreenContent() {
       AsyncStorage.getItem("math_history").then((v) => {
         const h: HistoryItem[] = v ? JSON.parse(v) : [];
         setRecentSolves(h.slice(0, 3));
-        // Trigger review prompt at solve milestones (10, 25, 50, 100)
-        import("@/lib/review-prompt").then(({ maybeRequestReviewOnSolve }) => {
-          maybeRequestReviewOnSolve(h.length).catch(() => {});
-        }).catch(() => {});
+        // Show celebration modal at solve milestones (10, 25, 50, 100)
+        // The modal's onDismiss will fire the review prompt after the animation
+        const SOLVE_MILESTONES = new Set([10, 25, 50, 100]);
+        if (SOLVE_MILESTONES.has(h.length)) {
+          setSolveMilestoneCount(h.length);
+        }
       }).catch(() => {});
       router.push({
         pathname: "/solution",
@@ -1588,6 +1593,19 @@ function SolveScreenContent() {
       <StreakMilestoneModal
         info={streakMilestone}
         onDismiss={() => setStreakMilestone(null)}
+      />
+      {/* Solve Milestone Celebration — fires review prompt after dismiss */}
+      <SolveMilestoneModal
+        solveCount={solveMilestoneCount}
+        onDismiss={() => {
+          const count = solveMilestoneCount;
+          setSolveMilestoneCount(null);
+          if (count !== null) {
+            import("@/lib/review-prompt").then(({ maybeRequestReviewOnSolve }) => {
+              maybeRequestReviewOnSolve(count).catch(() => {});
+            }).catch(() => {});
+          }
+        }}
       />
       {/* Cheat Sheet Bottom Sheet */}
       <CheatSheetBottomSheet
