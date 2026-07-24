@@ -77,3 +77,28 @@ export async function maybeRequestReview(quizScorePct: number): Promise<void> {
     await AsyncStorage.setItem(LAST_REVIEW_KEY, Date.now().toString());
   } catch { /* ignore — review prompt errors should never crash the app */ }
 }
+
+/** Solve-count milestones that trigger the review prompt. */
+const SOLVE_MILESTONES = new Set([10, 25, 50, 100]);
+
+/**
+ * Call after every successful problem solve.
+ * Triggers the review prompt at the 10th, 25th, 50th, and 100th solve,
+ * subject to the same install-age and rate-limit guards.
+ *
+ * @param totalSolves - The user's all-time solve count (after the latest solve).
+ */
+export async function maybeRequestReviewOnSolve(totalSolves: number): Promise<void> {
+  if (Platform.OS === "web") return;
+  if (!SOLVE_MILESTONES.has(totalSolves)) return;
+  try {
+    const isAvailable = await StoreReview.isAvailableAsync();
+    if (!isAvailable) return;
+    const daysInstalled = await daysSinceInstall();
+    if (daysInstalled < MIN_DAYS_SINCE_INSTALL) return;
+    const daysSinceLast = await daysSinceLastPrompt();
+    if (daysSinceLast < MIN_DAYS_BETWEEN_PROMPTS) return;
+    await StoreReview.requestReview();
+    await AsyncStorage.setItem(LAST_REVIEW_KEY, Date.now().toString());
+  } catch { /* ignore — review prompt errors should never crash the app */ }
+}

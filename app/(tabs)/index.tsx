@@ -842,6 +842,10 @@ function SolveScreenContent() {
       AsyncStorage.getItem("math_history").then((v) => {
         const h: HistoryItem[] = v ? JSON.parse(v) : [];
         setRecentSolves(h.slice(0, 3));
+        // Trigger review prompt at solve milestones (10, 25, 50, 100)
+        import("@/lib/review-prompt").then(({ maybeRequestReviewOnSolve }) => {
+          maybeRequestReviewOnSolve(h.length).catch(() => {});
+        }).catch(() => {});
       }).catch(() => {});
       router.push({
         pathname: "/solution",
