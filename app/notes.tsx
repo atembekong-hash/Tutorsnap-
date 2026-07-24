@@ -265,7 +265,7 @@ export default function NotesScreen() {
           </View>
 
           {/* Source filter chips */}
-          <ScrollView
+          <ScrollView keyboardDismissMode="on-drag"
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.filterChipsRow}

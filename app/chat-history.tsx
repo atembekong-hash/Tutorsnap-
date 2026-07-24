@@ -746,7 +746,7 @@ export default function ChatHistoryScreen() {
 
       {/* Tag filter bar */}
       {allTags.length > 0 && (
-        <ScrollView
+        <ScrollView keyboardDismissMode="on-drag"
           horizontal
           showsHorizontalScrollIndicator={false}
           style={[styles.tagFilterBar, { borderBottomColor: colors.border, backgroundColor: colors.background }]}

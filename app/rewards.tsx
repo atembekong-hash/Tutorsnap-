@@ -271,6 +271,30 @@ export default function RewardsScreen() {
           </View>
         )}
 
+        {/* Referral CTA Banner */}
+        <TouchableOpacity
+          onPress={handleShareReferral}
+          activeOpacity={0.85}
+          style={[
+            styles.referralBanner,
+            { backgroundColor: `${colors.primary}18`, borderColor: `${colors.primary}40` },
+          ]}
+          accessibilityLabel="Share your referral link to earn free days"
+        >
+          <View style={{ flex: 1, gap: 4 }}>
+            <Text style={[styles.referralBannerTitle, { color: colors.foreground }]}>
+              Invite friends, earn free days
+            </Text>
+            <Text style={[styles.referralBannerDesc, { color: colors.muted }]}>
+              Share your unique link and earn 1 free day for every friend who joins.
+            </Text>
+          </View>
+          <View style={[styles.referralBannerBtn, { backgroundColor: colors.primary }]}>
+            <IconSymbol size={18} name="paperplane.fill" color="#FFFFFF" />
+            <Text style={{ color: "#FFFFFF", fontWeight: "700", fontSize: 13, marginLeft: 6 }}>Share</Text>
+          </View>
+        </TouchableOpacity>
+
         {/* Tier List */}
         <View style={{ marginTop: 32, gap: 12 }}>
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>All Tiers</Text>
@@ -411,5 +435,30 @@ const styles = StyleSheet.create({
   perkLabel: {
     fontSize: 13,
     fontWeight: "600",
+  },
+  referralBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 16,
+    marginTop: 28,
+  },
+  referralBannerTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  referralBannerDesc: {
+    fontSize: 12,
+    marginTop: 2,
+    lineHeight: 17,
+  },
+  referralBannerBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
   },
 });

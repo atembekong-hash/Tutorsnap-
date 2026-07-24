@@ -170,7 +170,7 @@ export default function StudyPlannerScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+      <ScrollView keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
         {/* Weekly Summary */}
         <View style={[styles.summaryCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={styles.summaryRow}>
@@ -196,7 +196,7 @@ export default function StudyPlannerScreen() {
         </View>
 
         {/* Day Selector */}
-        <ScrollView
+        <ScrollView keyboardDismissMode="on-drag"
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.dayStrip}
@@ -326,7 +326,7 @@ export default function StudyPlannerScreen() {
             </TouchableOpacity>
           </View>
 
-          <ScrollView contentContainerStyle={styles.modalBody} showsVerticalScrollIndicator={false}>
+          <ScrollView keyboardDismissMode="on-drag" contentContainerStyle={styles.modalBody} showsVerticalScrollIndicator={false}>
             {/* Label */}
             <Text style={[styles.fieldLabel, { color: colors.muted }]}>SESSION LABEL</Text>
             <TextInput
@@ -358,7 +358,7 @@ export default function StudyPlannerScreen() {
             <View style={styles.timeRow}>
               <View style={styles.timePickerGroup}>
                 <Text style={[styles.timePickerLabel, { color: colors.muted }]}>Hour</Text>
-                <ScrollView
+                <ScrollView keyboardDismissMode="on-drag"
                   horizontal
                   showsHorizontalScrollIndicator={false}
                   contentContainerStyle={styles.timeScrollContent}

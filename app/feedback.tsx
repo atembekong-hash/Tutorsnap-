@@ -104,7 +104,7 @@ export default function FeedbackScreen() {
           <View style={{ width: 30 }} />
         </View>
 
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 48 }}>
+        <ScrollView keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 48 }}>
 
           {/* Intro */}
           <View style={[styles.introCard, { backgroundColor: `${colors.primary}10`, borderColor: `${colors.primary}25` }]}>

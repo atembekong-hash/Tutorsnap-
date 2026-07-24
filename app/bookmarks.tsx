@@ -618,7 +618,7 @@ export default function BookmarksScreen() {
           {/* Folders Row */}
           {folders.length > 0 && (
             <View style={{ paddingHorizontal: 16, marginBottom: 4 }}>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 4 }}>
+              <ScrollView keyboardDismissMode="on-drag" horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 4 }}>
                 <TouchableOpacity
                   onPress={() => { setActiveFolderId(null); setFolderItems([]); H.impactLight(); }}
                   style={[{ flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1.5, borderColor: activeFolderId === null ? colors.primary : colors.border, backgroundColor: activeFolderId === null ? `${colors.primary}15` : colors.surface }]}
@@ -702,7 +702,7 @@ export default function BookmarksScreen() {
           )}
           {/* Subject Filter Chips + Sort */}
           <View style={styles.filterRow}>
-            <ScrollView
+            <ScrollView keyboardDismissMode="on-drag"
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.chipScroll}

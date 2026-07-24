@@ -411,7 +411,7 @@ export default function OnboardingScreen() {
         </View>
 
         {/* Slides */}
-        <ScrollView
+        <ScrollView keyboardDismissMode="on-drag"
           ref={scrollRef}
           horizontal
           pagingEnabled
@@ -548,7 +548,7 @@ export default function OnboardingScreen() {
 
               {/* Grade level picker */}
               {slide.id === "grade" && (
-                <ScrollView
+                <ScrollView keyboardDismissMode="on-drag"
                   style={{ width: "100%", marginTop: 20 }}
                   showsVerticalScrollIndicator={false}
                   contentContainerStyle={{ gap: 8, paddingBottom: 8 }}

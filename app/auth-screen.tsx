@@ -224,7 +224,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        <ScrollView contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <ScrollView keyboardDismissMode="on-drag" contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <View style={styles.container}>
             {/* Header */}
             <View style={styles.header}>
@@ -272,6 +272,8 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                   <Pressable
                     onPress={handleSendOtp}
                     disabled={loading}
+                    accessibilityLabel="Send verification code"
+                    accessibilityRole="button"
                     style={({ pressed }) => [
                       styles.primaryBtn,
                       { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1, transform: [{ scale: pressed ? 0.97 : 1 }] },
@@ -282,7 +284,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                       : <Text style={styles.primaryBtnText}>Send Code</Text>
                     }
                   </Pressable>
-                  <Pressable onPress={handleBack} style={styles.backBtn}>
+                  <Pressable onPress={handleBack} accessibilityLabel="Go back" accessibilityRole="button" style={styles.backBtn}>
                     <Text style={[styles.backBtnText, { color: colors.muted }]}>← Back</Text>
                   </Pressable>
                 </View>
@@ -307,6 +309,8 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                   <Pressable
                     onPress={handleVerifyOtp}
                     disabled={loading}
+                    accessibilityLabel="Verify code and sign in"
+                    accessibilityRole="button"
                     style={({ pressed }) => [
                       styles.primaryBtn,
                       { backgroundColor: colors.primary, opacity: pressed ? 0.8 : 1, transform: [{ scale: pressed ? 0.97 : 1 }] },
@@ -317,10 +321,10 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                       : <Text style={styles.primaryBtnText}>Verify & Sign In</Text>
                     }
                   </Pressable>
-                  <Pressable onPress={handleSendOtp} disabled={loading} style={styles.backBtn}>
+                  <Pressable onPress={handleSendOtp} disabled={loading} accessibilityLabel="Resend verification code" accessibilityRole="button" style={styles.backBtn}>
                     <Text style={[styles.backBtnText, { color: colors.muted }]}>Resend code</Text>
                   </Pressable>
-                  <Pressable onPress={handleBack} style={styles.backBtn}>
+                  <Pressable onPress={handleBack} accessibilityLabel="Change email address" accessibilityRole="button" style={styles.backBtn}>
                     <Text style={[styles.backBtnText, { color: colors.muted }]}>← Change email</Text>
                   </Pressable>
                 </View>
@@ -330,6 +334,8 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                   <Pressable
                     onPress={handleGoogleSignIn}
                     disabled={loading}
+                    accessibilityLabel="Continue with Google"
+                    accessibilityRole="button"
                     style={({ pressed }) => [
                       styles.oauthBtn,
                       { borderColor: colors.border, backgroundColor: colors.surface, opacity: pressed ? 0.8 : 1, transform: [{ scale: pressed ? 0.97 : 1 }] },
@@ -349,6 +355,8 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                     <Pressable
                       onPress={handleAppleSignIn}
                       disabled={loading}
+                      accessibilityLabel="Continue with Apple"
+                      accessibilityRole="button"
                       style={({ pressed }) => [
                         styles.oauthBtn,
                         { borderColor: colors.border, backgroundColor: colors.foreground, opacity: pressed ? 0.8 : 1, transform: [{ scale: pressed ? 0.97 : 1 }] },
@@ -375,6 +383,8 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                   <Pressable
                     onPress={handleEmailPress}
                     disabled={loading}
+                    accessibilityLabel="Continue with Email"
+                    accessibilityRole="button"
                     style={({ pressed }) => [
                       styles.oauthBtn,
                       { borderColor: colors.border, backgroundColor: colors.surface, opacity: pressed ? 0.8 : 1, transform: [{ scale: pressed ? 0.97 : 1 }] },

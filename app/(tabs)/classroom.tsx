@@ -781,7 +781,7 @@ export default function ClassroomTabScreen() {
 
       {/* No classroom */}
       {!activeClassroom && !showCreate && !showJoin && (
-        <ScrollView contentContainerStyle={styles.emptyContainer}>
+        <ScrollView keyboardDismissMode="on-drag" contentContainerStyle={styles.emptyContainer}>
           <Text style={styles.emptyIcon}>🏫</Text>
           <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No Classroom Yet</Text>
           <Text style={[styles.emptyText, { color: colors.muted }]}>
@@ -810,7 +810,7 @@ export default function ClassroomTabScreen() {
 
       {/* Create form */}
       {showCreate && (
-        <ScrollView contentContainerStyle={styles.formContainer}>
+        <ScrollView keyboardDismissMode="on-drag" contentContainerStyle={styles.formContainer}>
           <Text style={[styles.formTitle, { color: colors.foreground }]}>Create Classroom</Text>
           <Text style={[styles.formLabel, { color: colors.muted }]}>Classroom Name</Text>
           <TextInput
@@ -845,7 +845,7 @@ export default function ClassroomTabScreen() {
 
       {/* Join form */}
       {showJoin && (
-        <ScrollView contentContainerStyle={styles.formContainer}>
+        <ScrollView keyboardDismissMode="on-drag" contentContainerStyle={styles.formContainer}>
           <Text style={[styles.formTitle, { color: colors.foreground }]}>Join Classroom</Text>
           <Text style={[styles.formLabel, { color: colors.muted }]}>Enter Class Code</Text>
           <TextInput
@@ -1063,7 +1063,7 @@ export default function ClassroomTabScreen() {
             const activeGroups = groups.filter((g) => g.items.length > 0);
 
             return (
-              <ScrollView
+              <ScrollView keyboardDismissMode="on-drag"
                 style={{ flex: 1 }}
                 contentContainerStyle={styles.hwTabContent}
                 showsVerticalScrollIndicator={false}
@@ -1192,7 +1192,7 @@ export default function ClassroomTabScreen() {
 
           {/* Analytics tab (teacher only) */}
           {activeTab === "analytics" && myClassroom && (
-            <ScrollView contentContainerStyle={styles.analyticsContainer}>
+            <ScrollView keyboardDismissMode="on-drag" contentContainerStyle={styles.analyticsContainer}>
               <View style={[styles.statsRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <View style={styles.statItem}>
                   <Text style={[styles.statValue, { color: colors.foreground }]}>{feed.length}</Text>
@@ -1266,7 +1266,7 @@ export default function ClassroomTabScreen() {
 
           {/* Manage tab */}
           {activeTab === "manage" && (
-            <ScrollView contentContainerStyle={styles.manageContainer}>
+            <ScrollView keyboardDismissMode="on-drag" contentContainerStyle={styles.manageContainer}>
               {/* Code card */}
               <View style={[styles.codeCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                 <Text style={[styles.codeCardLabel, { color: colors.muted }]}>

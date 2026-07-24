@@ -116,7 +116,7 @@ export default function ReportBugScreen() {
           <View style={{ width: 30 }} />
         </View>
 
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 48 }}>
+        <ScrollView keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 48 }}>
 
           {/* Device Info Card */}
           <View style={[styles.deviceCard, { backgroundColor: `${colors.primary}10`, borderColor: `${colors.primary}25` }]}>

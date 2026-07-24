@@ -372,7 +372,7 @@ export default function LeaderboardScreen() {
               <Text style={[styles.modalDone, { color: colors.primary }]}>Add</Text>
             </TouchableOpacity>
           </View>
-          <ScrollView contentContainerStyle={styles.modalBody}>
+          <ScrollView keyboardDismissMode="on-drag" contentContainerStyle={styles.modalBody}>
             <Text style={[styles.fieldLabel, { color: colors.muted }]}>FRIEND'S NAME</Text>
             <TextInput
               style={[styles.input, { color: colors.foreground, backgroundColor: colors.surface, borderColor: colors.border }]}

@@ -211,7 +211,7 @@ export default function ChallengeScreen() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView keyboardDismissMode="on-drag" contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         {/* Problem card */}
         <View style={[styles.problemCard, { backgroundColor: colors.surface, borderColor: `${subjectColor}40`, borderLeftColor: subjectColor }]}>
           <Text style={[styles.problemLabel, { color: colors.muted }]}>Problem</Text>

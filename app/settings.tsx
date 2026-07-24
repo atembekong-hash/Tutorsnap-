@@ -1104,7 +1104,7 @@ export default function SettingsScreen() {
         <View style={{ minWidth: 30 }} />
       </View>
 
-      <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 48 }}>
+      <ScrollView keyboardDismissMode="on-drag" ref={scrollRef} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 48 }}>
 
         {/* ── Profile Hero Card ── */}
         <View style={[styles.profileCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
@@ -1840,7 +1840,7 @@ export default function SettingsScreen() {
               You'll get a daily nudge at this time
             </Text>
             <Text style={[styles.pickerLabel, { color: colors.muted }]}>HOUR</Text>
-            <ScrollView
+            <ScrollView keyboardDismissMode="on-drag"
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={{ paddingHorizontal: 4, gap: 8, flexDirection: "row" }}
@@ -1913,7 +1913,7 @@ export default function SettingsScreen() {
                 <IconSymbol size={22} name="xmark.circle.fill" color={colors.muted} />
               </TouchableOpacity>
             </View>
-            <ScrollView showsVerticalScrollIndicator={false} style={{ marginTop: 8 }}>
+            <ScrollView keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false} style={{ marginTop: 8 }}>
               {HOW_TO_STEPS.map((step, i) => (
                 <View key={i} style={[styles.howToRow, { borderBottomColor: colors.border, borderBottomWidth: i < HOW_TO_STEPS.length - 1 ? 0.5 : 0 }]}>
                   <Text style={styles.howToEmoji}>{step.emoji}</Text>
@@ -2323,7 +2323,7 @@ export default function SettingsScreen() {
             <Text style={[styles.modalSubtitle, { color: colors.muted }]}>
               This level will be pre-selected on every screen. You can still change it per session.
             </Text>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingBottom: 8 }}>
+            <ScrollView keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingBottom: 8 }}>
               {/* "Any level" clear option */}
               <TouchableOpacity
                 onPress={() => {
@@ -2439,7 +2439,7 @@ export default function SettingsScreen() {
 
             {/* Day picker */}
             <Text style={[styles.rowLabel, { color: colors.foreground, marginBottom: 6 }]}>Day of Month</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }} contentContainerStyle={{ gap: 8 }}>
+            <ScrollView keyboardDismissMode="on-drag" horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }} contentContainerStyle={{ gap: 8 }}>
               {[1, 5, 10, 15, 20, 25, 28].map((d) => (
                 <TouchableOpacity
                   key={d}
@@ -2460,7 +2460,7 @@ export default function SettingsScreen() {
 
             {/* Hour picker */}
             <Text style={[styles.rowLabel, { color: colors.foreground, marginBottom: 6 }]}>Time</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }} contentContainerStyle={{ gap: 8 }}>
+            <ScrollView keyboardDismissMode="on-drag" horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }} contentContainerStyle={{ gap: 8 }}>
               {[7, 8, 9, 10, 11, 12, 13, 14, 17, 18, 20, 21].map((h) => (
                 <TouchableOpacity
                   key={h}

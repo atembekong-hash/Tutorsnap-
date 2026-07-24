@@ -142,7 +142,7 @@ export default function ProfileScreen() {
   return (
     <ScreenContainer containerClassName="bg-background">
       <Animated.View style={[{ flex: 1 }, fadeStyle]}>
-      <ScrollView contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false}>
+      <ScrollView keyboardDismissMode="on-drag" contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false}>
         <View className="flex-1 gap-6 px-6 py-8">
           {/* Header */}
           <View className="flex-row items-center gap-3 mb-2">

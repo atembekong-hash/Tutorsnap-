@@ -511,7 +511,7 @@ export default function AppearanceSettingsScreen() {
         </View>
       )}
 
-      <ScrollView
+      <ScrollView keyboardDismissMode="on-drag"
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 32 }]}
         showsVerticalScrollIndicator={false}
       >
@@ -520,7 +520,7 @@ export default function AppearanceSettingsScreen() {
 
         {/* ── 1. Preset Themes ──────────────────────────────────────────── */}
         <SectionHeader title="QUICK PRESETS" />
-        <ScrollView
+        <ScrollView keyboardDismissMode="on-drag"
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.presetsRow}
@@ -763,7 +763,7 @@ export default function AppearanceSettingsScreen() {
                 <Text style={[styles.rowLabel, { color: colors.foreground, minWidth: 130 }]} numberOfLines={1}>
                   {subject}
                 </Text>
-                <ScrollView
+                <ScrollView keyboardDismissMode="on-drag"
                   horizontal
                   showsHorizontalScrollIndicator={false}
                   contentContainerStyle={styles.subjectSwatchRow}
@@ -812,7 +812,7 @@ export default function AppearanceSettingsScreen() {
                 <Text style={[styles.rowLabel, { color: colors.foreground, minWidth: 120, fontSize: 13 }]} numberOfLines={1}>
                   {subject}
                 </Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: "row", gap: 4, paddingRight: 4 }}>
+                <ScrollView keyboardDismissMode="on-drag" horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: "row", gap: 4, paddingRight: 4 }}>
                   {[0, 1, 2, 3, 4, 5].map((step) => (
                     <TouchableOpacity
                       key={step}
