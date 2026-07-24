@@ -616,6 +616,46 @@ const academicRouter = router({
     .mutation(async ({ input }) => {
       try {
         const tokenBudget = estimateSolveTokens(input.problem, input.subject);
+
+        // ── AIRE TRIVIAL FAST-PATH ──────────────────────────────────────────────
+        // For simple arithmetic / single-step questions (budget ≤ 800 tokens),
+        // skip the full JSON-structured solve and return a lightweight response
+        // in ~200ms instead of 8-10 seconds.
+        if (tokenBudget <= 800) {
+          const fastResult = await invokeLLM({
+            model: "gemini-3-flash-preview",
+            messages: [
+              {
+                role: "system",
+                content:
+                  "You are a concise math tutor. Answer the question in 1-2 sentences maximum. " +
+                  "Give the direct answer first, then one brief explanation sentence. " +
+                  "Do NOT use LaTeX dollar signs. Do NOT give examples, tips, or extra context.",
+              },
+              { role: "user", content: input.problem },
+            ],
+            max_tokens: 120,
+          });
+          const fastText = extractLLMContent(fastResult).trim();
+          // Shape into the standard solve response object
+          return {
+            problem: input.problem,
+            subject: input.subject,
+            answer: fastText,
+            submissionReady: fastText.split(".")[0]?.trim() ?? fastText,
+            steps: [
+              {
+                stepNumber: 1,
+                title: "Solution",
+                explanation: fastText,
+                expression: "",
+              },
+            ],
+            _fastPath: true, // flag so client can skip "Show Steps" UI
+          };
+        }
+        // ── END FAST-PATH ───────────────────────────────────────────────────────
+
         const systemPrompt = buildSolveSystemPromptScaled(input.subject, input.problem) + gradeContext(input.gradeLevel ?? undefined);
         const params = {
           model: "gemini-3-flash-preview" as const,
