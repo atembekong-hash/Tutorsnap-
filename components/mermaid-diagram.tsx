@@ -25,6 +25,8 @@ import {
   TouchableOpacity,
   Platform,
   ScrollView,
+  Alert,
+  Share,
 } from 'react-native';
 import { useColors } from '@/hooks/use-colors';
 import * as Clipboard from 'expo-clipboard';
@@ -130,11 +132,32 @@ export function MermaidDiagram({ code, fontSize = 14 }: MermaidDiagramProps) {
     }
   }, []);
 
-  const handleCopy = async () => {
-    await Clipboard.setStringAsync(code);
-    if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleExport = () => {
+    if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    const doCopySource = async () => {
+      await Clipboard.setStringAsync(code);
+      if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    };
+
+    const doShare = async () => {
+      try {
+        await Share.share({
+          message: `Mermaid Diagram Source:\n\n\`\`\`mermaid\n${code}\n\`\`\``,
+          title: 'Mermaid Diagram',
+        });
+      } catch {
+        // user dismissed share sheet
+      }
+    };
+
+    Alert.alert('Export Diagram', 'Choose an export option', [
+      { text: 'Copy Source Code', onPress: doCopySource },
+      { text: 'Share Diagram', onPress: doShare },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
   };
 
   // ── Fallback code block (used when WebView unavailable or on error) ──────────
@@ -155,16 +178,16 @@ export function MermaidDiagram({ code, fontSize = 14 }: MermaidDiagramProps) {
       <View style={[styles.container, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <View style={styles.header}>
           <Text style={[styles.label, { color: colors.muted }]}>Diagram</Text>
-          <TouchableOpacity onPress={handleCopy} style={styles.copyBtn}>
-            <Text style={[styles.copyText, { color: colors.primary }]}>
-              {copied ? 'Copied!' : 'Copy'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-        <FallbackBlock />
+                  <TouchableOpacity onPress={handleExport} style={styles.copyBtn}>
+          <Text style={[styles.copyText, { color: colors.primary }]}>
+            {copied ? 'Copied!' : 'Export'}
+          </Text>
+        </TouchableOpacity>
       </View>
-    );
-  }
+      <FallbackBlock />
+    </View>
+  );
+}
 
   // ── Native: WebView renderer ─────────────────────────────────────────────────
   if (!WebView || error) {
@@ -172,9 +195,9 @@ export function MermaidDiagram({ code, fontSize = 14 }: MermaidDiagramProps) {
       <View style={[styles.container, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <View style={styles.header}>
           <Text style={[styles.label, { color: colors.muted }]}>Diagram</Text>
-          <TouchableOpacity onPress={handleCopy} style={styles.copyBtn}>
+          <TouchableOpacity onPress={handleExport} style={styles.copyBtn}>
             <Text style={[styles.copyText, { color: colors.primary }]}>
-              {copied ? 'Copied!' : 'Copy'}
+              {copied ? 'Copied!' : 'Export'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -189,9 +212,9 @@ export function MermaidDiagram({ code, fontSize = 14 }: MermaidDiagramProps) {
     <View style={[styles.container, { backgroundColor: colors.surface, borderColor: colors.border }]}>
       <View style={styles.header}>
         <Text style={[styles.label, { color: colors.muted }]}>Diagram</Text>
-        <TouchableOpacity onPress={handleCopy} style={styles.copyBtn}>
+        <TouchableOpacity onPress={handleExport} style={styles.copyBtn}>
           <Text style={[styles.copyText, { color: colors.primary }]}>
-            {copied ? 'Copied!' : 'Copy'}
+            {copied ? 'Copied!' : 'Export'}
           </Text>
         </TouchableOpacity>
       </View>

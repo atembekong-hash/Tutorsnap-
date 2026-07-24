@@ -949,3 +949,9 @@
 - [x] Intercept mermaid fenced blocks in AIResponseRenderer fence rule
 - [x] Replace CopyButton with SmartCopyButton (5 options: Answer, Equations, Code, Notes, Summary)
 - [x] TypeScript: 0 errors | Tests: 33/33 passed
+
+## Round 58: AI Tutor Follow-up Features
+- [x] Add Save to Deck button on InteractiveFlashcard back face (saves to bookmarks/flashcards deck)
+- [x] Add Save to Notes option to SmartCopyButton action sheet (6th option alongside 5 copy options)
+- [x] Replace single Copy button on MermaidDiagram with Export action sheet (Copy Source + Share Diagram)
+- [x] TypeScript: 0 errors | Tests: 33/33 passed

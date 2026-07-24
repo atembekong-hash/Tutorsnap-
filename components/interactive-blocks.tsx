@@ -19,9 +19,11 @@ import {
   Animated,
   StyleSheet,
   Platform,
+  Alert,
 } from 'react-native';
 import { useColors } from '@/hooks/use-colors';
 import * as Haptics from 'expo-haptics';
+import { addBookmark } from '@/lib/bookmarks';
 
 // ─── Checklist ─────────────────────────────────────────────────────────────────
 
@@ -88,12 +90,33 @@ export function InteractiveChecklist({ items }: ChecklistProps) {
 interface FlashcardProps {
   front: string;
   back: string;
+  /** Subject context — used when saving to the Flashcards deck */
+  subject?: string;
 }
 
-export function InteractiveFlashcard({ front, back }: FlashcardProps) {
+export function InteractiveFlashcard({ front, back, subject }: FlashcardProps) {
   const colors = useColors();
   const [flipped, setFlipped] = useState(false);
+  const [saved, setSaved] = useState(false);
   const anim = useRef(new Animated.Value(0)).current;
+
+  const handleSaveToDeck = async () => {
+    if (Platform.OS !== 'web') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    try {
+      await addBookmark({
+        id: `flashcard-${Date.now()}`,
+        problem: front,
+        answer: back,
+        subject: (subject as any) ?? 'mathematics',
+        steps: [],
+        solvedAt: Date.now(),
+      });
+      setSaved(true);
+      Alert.alert('Saved to Deck', 'This flashcard has been added to your Flashcards deck.');
+    } catch {
+      Alert.alert('Error', 'Could not save to deck. Please try again.');
+    }
+  };
 
   const flip = () => {
     if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -144,6 +167,15 @@ export function InteractiveFlashcard({ front, back }: FlashcardProps) {
         <Text style={[styles.flashcardHint, { color: colors.primary }]}>Answer</Text>
         <Text style={[styles.flashcardText, { color: colors.foreground }]}>{back}</Text>
         <Text style={[styles.flashcardHint, { color: colors.muted, marginTop: 8 }]}>Tap to flip back</Text>
+        <TouchableOpacity
+          onPress={(e) => { e.stopPropagation?.(); handleSaveToDeck(); }}
+          style={[styles.saveDeckBtn, { backgroundColor: saved ? colors.success + '22' : colors.primary + '18', borderColor: saved ? colors.success : colors.primary }]}
+          activeOpacity={0.75}
+        >
+          <Text style={[styles.saveDeckText, { color: saved ? colors.success : colors.primary }]}>
+            {saved ? '✓ Saved to Deck' : '+ Save to Deck'}
+          </Text>
+        </TouchableOpacity>
       </Animated.View>
     </TouchableOpacity>
   );
@@ -400,6 +432,18 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
     lineHeight: 24,
+  },
+  saveDeckBtn: {
+    marginTop: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    alignSelf: 'center',
+  },
+  saveDeckText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   // Comparison table
   tableRow: {

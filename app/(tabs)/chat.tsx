@@ -443,6 +443,7 @@ function SmartCopyButton({
   fs: (n: number) => number;
 }) {
   const [copied, setCopied] = useState(false);
+  const [saved, setSaved] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const doCopy = async (text: string, label: string) => {
@@ -474,6 +475,22 @@ function SmartCopyButton({
     const summary = extractSummary(content);
     const answer = cleanMathText(content);
 
+    const doSaveToNotes = async () => {
+      try {
+        await saveNote(answer);
+        if (Platform.OS !== 'web') {
+          const Haptics = require('expo-haptics');
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
+        setSaved(true);
+        if (timerRef.current) clearTimeout(timerRef.current);
+        timerRef.current = setTimeout(() => setSaved(false), 2500);
+        Alert.alert('Saved', 'Response saved to your Notes.');
+      } catch {
+        Alert.alert('Error', 'Could not save to Notes.');
+      }
+    };
+
     const options: Array<{ text: string; onPress: () => void }> = [
       { text: 'Copy Answer', onPress: () => doCopy(answer, 'Answer') },
     ];
@@ -481,9 +498,10 @@ function SmartCopyButton({
     if (code) options.push({ text: 'Copy Code', onPress: () => doCopy(code, 'Code') });
     if (notes) options.push({ text: 'Copy Notes', onPress: () => doCopy(notes, 'Notes') });
     if (summary) options.push({ text: 'Copy Summary', onPress: () => doCopy(summary, 'Summary') });
+    options.push({ text: 'Save to Notes', onPress: doSaveToNotes });
     options.push({ text: 'Cancel', style: 'cancel' } as any);
 
-    Alert.alert('Copy', 'What would you like to copy?', options);
+    Alert.alert('Copy or Save', 'What would you like to do?', options);
   };
 
   return (
@@ -496,8 +514,8 @@ function SmartCopyButton({
       ]}
       accessibilityLabel="Smart copy options"
     >
-      <Text style={[copyBtnStyles.label, { color: copied ? colors.background : colors.muted, fontSize: fs(11) }]}>
-        {copied ? '✓ Copied' : 'Copy'}
+      <Text style={[copyBtnStyles.label, { color: (copied || saved) ? colors.background : colors.muted, fontSize: fs(11) }]}>
+        {saved ? '\u2713 Saved' : copied ? '\u2713 Copied' : 'Copy'}
       </Text>
     </TouchableOpacity>
   );
