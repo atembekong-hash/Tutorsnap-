@@ -736,6 +736,8 @@ export default function ChatHistoryScreen() {
           onChangeText={setSearch}
           returnKeyType="search"
           clearButtonMode="while-editing"
+        
+          maxLength={100}
         />
         {search.length > 0 && (
           <TouchableOpacity onPress={() => setSearch("")} accessibilityLabel="Clear search">

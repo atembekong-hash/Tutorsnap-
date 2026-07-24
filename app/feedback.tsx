@@ -182,7 +182,9 @@ export default function FeedbackScreen() {
               style={[styles.textArea, { color: colors.foreground }]}
               textAlignVertical="top"
               returnKeyType="default"
-            />
+            
+          maxLength={1000}
+        />
             <Text style={[styles.charCount, { color: colors.muted }]}>{message.length} characters</Text>
           </View>
 

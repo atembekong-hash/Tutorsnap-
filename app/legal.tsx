@@ -129,7 +129,11 @@ export default function LegalScreen() {
   };
 
   const saveConsent = async (analytics: boolean, marketing: boolean) => {
-    await AsyncStorage.setItem("@tutorsnap/consent", JSON.stringify({ analytics, marketing }));
+    try {
+      await AsyncStorage.setItem("@tutorsnap/consent", JSON.stringify({ analytics, marketing }));
+    } catch {
+      // Non-critical: consent preference may not persist, but user flow continues
+    }
   };
 
   const handleOpenConsent = () => {

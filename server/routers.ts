@@ -418,16 +418,6 @@ const academicRouter = router({
       gradeLevel: z.string().optional(),
     }))
     .mutation(async ({ input }) => {
-      // Server-side payload log - makes missing fields immediately detectable in server logs
-      console.log("[solveExplanation] Received payload:", JSON.stringify({
-        problem: input.problem?.substring(0, 80),
-        correctAnswer: input.correctAnswer,
-        selectedAnswer: input.selectedAnswer,
-        hasOptions: !!input.options,
-        difficulty: input.difficulty,
-        subject: input.subject,
-        gradeLevel: input.gradeLevel,
-      }));
 
       // Build the options block for the prompt - uses structured data, never OCR or screen content
       const optionsBlock = input.options

@@ -276,16 +276,18 @@ export default function OnboardingScreen() {
 
   /** Persist onboarding choices and pre-fill TutorSettings so the AI is personalised immediately. */
   const persistOnboardingChoices = async () => {
-    if (selectedCategories.size > 0) {
-      await AsyncStorage.setItem(
-        "@tutorsnap/preferredCategories",
-        JSON.stringify(Array.from(selectedCategories))
-      );
-    }
-    if (selectedGrade) await saveGlobalGrade(selectedGrade);
     const name = userName.trim();
-    if (name) await AsyncStorage.setItem(USER_NAME_KEY, name);
-    if (avatarUri) await AsyncStorage.setItem("@tutorsnap/avatarUri", avatarUri);
+    try {
+      if (selectedCategories.size > 0) {
+        await AsyncStorage.setItem(
+          "@tutorsnap/preferredCategories",
+          JSON.stringify(Array.from(selectedCategories))
+        );
+      }
+      if (selectedGrade) await saveGlobalGrade(selectedGrade);
+      if (name) await AsyncStorage.setItem(USER_NAME_KEY, name);
+      if (avatarUri) await AsyncStorage.setItem("@tutorsnap/avatarUri", avatarUri);
+    } catch { /* non-critical: preferences may not persist, but onboarding continues */ }
 
     // Pre-fill TutorSettings with onboarding values so the AI tutor is personalised
     // from the very first message, without requiring the user to re-enter them.

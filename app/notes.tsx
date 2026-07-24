@@ -256,7 +256,9 @@ export default function NotesScreen() {
               placeholderTextColor={colors.muted}
               style={[styles.searchInput, { color: colors.foreground }]}
               returnKeyType="search"
-            />
+            
+          maxLength={5000}
+        />
             {search.length > 0 && (
               <TouchableOpacity accessibilityLabel="Close" accessibilityHint="Dismisses this panel" accessibilityRole="button" onPress={() => setSearch("")}>
                 <IconSymbol size={16} name="xmark.circle.fill" color={colors.muted} />

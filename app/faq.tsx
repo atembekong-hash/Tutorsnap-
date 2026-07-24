@@ -278,6 +278,8 @@ export default function FAQScreen() {
           style={[styles.searchInput, { color: colors.foreground }]}
           returnKeyType="search"
           clearButtonMode="while-editing"
+        
+          maxLength={100}
         />
         {search.length > 0 && Platform.OS !== "ios" && (
           <TouchableOpacity onPress={() => setSearch("")} activeOpacity={0.7}

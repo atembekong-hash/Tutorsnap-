@@ -307,7 +307,9 @@ export default function ChallengeScreen() {
               autoFocus
               returnKeyType="done"
               onSubmitEditing={handleSubmit}
-            />
+            
+          maxLength={200}
+        />
 
             <TouchableOpacity
               accessibilityLabel="Submit"

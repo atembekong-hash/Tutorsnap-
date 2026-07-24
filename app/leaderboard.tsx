@@ -381,6 +381,7 @@ export default function LeaderboardScreen() {
               value={friendName}
               onChangeText={setFriendName}
               returnKeyType="next"
+              maxLength={50}
               autoFocus
             />
 
@@ -393,6 +394,7 @@ export default function LeaderboardScreen() {
               onChangeText={setFriendStreak}
               keyboardType="number-pad"
               returnKeyType="next"
+              maxLength={6}
             />
 
             <Text style={[styles.fieldLabel, { color: colors.muted }]}>TOTAL PROBLEMS SOLVED</Text>
@@ -404,6 +406,7 @@ export default function LeaderboardScreen() {
               onChangeText={setFriendTotal}
               keyboardType="number-pad"
               returnKeyType="done"
+              maxLength={6}
               onSubmitEditing={handleAddFriend}
             />
 

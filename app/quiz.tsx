@@ -413,7 +413,6 @@ export default function QuizScreen() {
       subject,
       gradeLevel: gradeLevel ?? undefined,
     };
-    console.log("[QuizExplain] Payload sent to AI:", JSON.stringify(payload, null, 2));
     setLoadingExplanation(true);
     solveExplanationMutation.mutate(payload);
   }, [fullExplanations, subject, difficulty, gradeLevel, solveExplanationMutation]);

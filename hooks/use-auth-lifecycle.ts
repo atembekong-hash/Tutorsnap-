@@ -40,7 +40,6 @@ export function useAuthLifecycle() {
 
     async function restoreSession() {
       try {
-        console.log("[Auth] Restoring session on startup...");
         const session = await validateSessionOnStartup();
 
         if (!isMounted) return;

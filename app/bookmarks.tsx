@@ -606,7 +606,9 @@ export default function BookmarksScreen() {
               style={[styles.searchInput, { color: colors.foreground }]}
               returnKeyType="search"
               clearButtonMode="while-editing"
-            />
+            
+          maxLength={100}
+        />
             {search.length > 0 && Platform.OS !== "ios" && (
               <TouchableOpacity onPress={() => setSearch("")} activeOpacity={0.7}
                 accessibilityLabel="Clear search">
@@ -688,7 +690,9 @@ export default function BookmarksScreen() {
                   autoFocus
                   returnKeyType="done"
                   onSubmitEditing={handleCreateFolder}
-                />
+                
+          maxLength={100}
+        />
                 <View style={{ flexDirection: "row", gap: 10 }}>
                   <TouchableOpacity onPress={() => setShowFolderModal(false)} style={{ flex: 1, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: colors.border, alignItems: "center" }} activeOpacity={0.7}>
                     <Text style={{ fontSize: 15, color: colors.muted }}>Cancel</Text>

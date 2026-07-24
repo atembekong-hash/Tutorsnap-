@@ -104,7 +104,9 @@ export default function ProfileSetupScreen() {
                 style={{
                   color: colors.foreground,
                 }}
-              />
+              
+          maxLength={50}
+        />
             </View>
 
             {/* Email Input */}
@@ -121,7 +123,9 @@ export default function ProfileSetupScreen() {
                 style={{
                   color: colors.foreground,
                 }}
-              />
+              
+          maxLength={50}
+        />
               <Text className="text-xs text-muted">
                 We'll use this to send you important updates and password recovery
               </Text>

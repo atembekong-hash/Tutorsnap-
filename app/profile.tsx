@@ -181,7 +181,9 @@ export default function ProfileScreen() {
                   placeholderTextColor={colors.muted}
                   className="bg-background border border-border rounded-lg p-3 text-foreground"
                   style={{ color: colors.foreground }}
-                />
+                
+          maxLength={50}
+        />
               ) : (
                 <Text className="text-base font-medium text-foreground">{name}</Text>
               )}
@@ -200,7 +202,9 @@ export default function ProfileScreen() {
                   placeholderTextColor={colors.muted}
                   className="bg-background border border-border rounded-lg p-3 text-foreground"
                   style={{ color: colors.foreground }}
-                />
+                
+          maxLength={50}
+        />
               ) : (
                 <Text className="text-base font-medium text-foreground">{email || "Not set"}</Text>
               )}
