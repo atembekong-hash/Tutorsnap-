@@ -1,5 +1,8 @@
 import { z } from "zod";
 import { router, publicProcedure, protectedProcedure } from "./_core/trpc";
+import { getDb } from "./db";
+import { aireFeedback } from "../drizzle/schema";
+import { eq, desc } from "drizzle-orm";
 import { invokeLLM } from "./_core/llm";
 import { systemRouter } from "./_core/systemRouter";
 import { referralRouter } from "./routers/referrals";
@@ -613,9 +616,33 @@ const academicRouter = router({
       subject: z.string().default("other"),
       gradeLevel: z.string().nullable().optional(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       try {
-        const tokenBudget = estimateSolveTokens(input.problem, input.subject);
+        let tokenBudget = estimateSolveTokens(input.problem, input.subject);
+
+        // ── AIRE per-user multiplier ────────────────────────────────────────────
+        // If the user is signed in and has ≥3 feedback ratings, adjust the
+        // token budget based on their preference history.
+        if (ctx.user) {
+          try {
+            const db = await getDb();
+            if (db) {
+              const rows = await db
+                .select({ rating: aireFeedback.rating })
+                .from(aireFeedback)
+                .where(eq(aireFeedback.userId, ctx.user.id))
+                .orderBy(desc(aireFeedback.createdAt))
+                .limit(10);
+              if (rows.length >= 3) {
+                const netScore = rows.reduce((sum: number, r: { rating: number }) => sum + r.rating, 0);
+                const normalised = netScore / rows.length;
+                const multiplier = Math.max(0.6, Math.min(1.5, 1.0 - normalised * 0.3));
+                tokenBudget = Math.round(tokenBudget * multiplier);
+              }
+            }
+          } catch { /* non-fatal */ }
+        }
+        // ── END per-user multiplier ─────────────────────────────────────────────
 
         // ── AIRE TRIVIAL FAST-PATH ──────────────────────────────────────────────
         // For simple arithmetic / single-step questions (budget ≤ 800 tokens),
@@ -1139,6 +1166,103 @@ const userRouter = router({
     }),
 });
 
+// ─── AIRE per-user memory router ────────────────────────────────────────────
+
+const aireRouter = router({
+  /**
+   * Log a user's feedback rating for an AI response.
+   * Stores up to 10 ratings per user; older ones are pruned.
+   * rating: -1 = too short, 0 = just right, 1 = too long
+   */
+  logFeedback: protectedProcedure
+    .input(z.object({
+      difficulty: z.number().int().min(1).max(5),
+      subject: z.string().default("other"),
+      steps: z.number().int().min(0).default(1),
+      rating: z.number().int().min(-1).max(1),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        const db = await getDb();
+        if (!db) return { ok: false, reason: "db_unavailable" };
+
+        const userId = ctx.user.id;
+
+        // Insert the new rating
+        await db.insert(aireFeedback).values({
+          userId,
+          difficulty: input.difficulty,
+          subject: input.subject,
+          steps: input.steps,
+          rating: input.rating,
+        });
+
+        // Prune to keep only the most recent 10 rows per user
+        const rows = await db
+          .select({ id: aireFeedback.id })
+          .from(aireFeedback)
+          .where(eq(aireFeedback.userId, userId))
+          .orderBy(desc(aireFeedback.createdAt))
+          .limit(20);
+
+        if (rows.length > 10) {
+          const idsToDelete = rows.slice(10).map((r) => r.id);
+          for (const id of idsToDelete) {
+            await db.delete(aireFeedback).where(eq(aireFeedback.id, id));
+          }
+        }
+
+        return { ok: true };
+      } catch (err) {
+        // Non-fatal — feedback storage failure should not break the app
+        console.error("[AIRE] logFeedback error:", err);
+        return { ok: false, reason: "error" };
+      }
+    }),
+
+  /**
+   * Returns per-user adjusted token budget multipliers based on their
+   * last 10 feedback ratings. A net positive score (too long) → reduce
+   * budgets; net negative (too short) → increase budgets.
+   */
+  getThresholds: protectedProcedure
+    .query(async ({ ctx }) => {
+      try {
+        const db = await getDb();
+        if (!db) return { multiplier: 1.0, sampleSize: 0 };
+
+        const userId = ctx.user.id;
+        const rows = await db
+          .select({ rating: aireFeedback.rating })
+          .from(aireFeedback)
+          .where(eq(aireFeedback.userId, userId))
+          .orderBy(desc(aireFeedback.createdAt))
+          .limit(10);
+
+        if (rows.length < 3) {
+          // Not enough data yet — use neutral multiplier
+          return { multiplier: 1.0, sampleSize: rows.length };
+        }
+
+        // Compute net score: sum of ratings (-1, 0, +1)
+        const netScore = rows.reduce((sum, r) => sum + r.rating, 0);
+        const normalised = netScore / rows.length; // range: -1 to +1
+
+        // Map to multiplier:
+        //   net = -1 (always too short)  → 1.4x  (give more tokens)
+        //   net =  0 (balanced)          → 1.0x  (no change)
+        //   net = +1 (always too long)   → 0.7x  (give fewer tokens)
+        const multiplier = 1.0 - normalised * 0.3;
+        const clamped = Math.max(0.6, Math.min(1.5, multiplier));
+
+        return { multiplier: parseFloat(clamped.toFixed(2)), sampleSize: rows.length };
+      } catch (err) {
+        console.error("[AIRE] getThresholds error:", err);
+        return { multiplier: 1.0, sampleSize: 0 };
+      }
+    }),
+});
+
 // Auth router stub (required by tests)
 const authRouter = router({
   logout: protectedProcedure.mutation(async ({ ctx }) => {
@@ -1163,6 +1287,7 @@ export const appRouter = router({
   referral: referralRouter,
   oauth: oauthRouter,
   emailAuth: emailAuthRouter,
+  aire: aireRouter,
 });
 
 export type AppRouter = typeof appRouter;

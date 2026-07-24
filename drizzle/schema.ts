@@ -180,3 +180,29 @@ export const schedulerLocks = mysqlTable("scheduler_locks", {
 });
 
 export type SchedulerLock = typeof schedulerLocks.$inferSelect;
+
+/**
+ * AIRE per-user feedback memory.
+ * Stores the last 10 response-length ratings per user.
+ * Used server-side to adjust classifier token budgets for that user.
+ */
+export const aireFeedback = mysqlTable(
+  "aire_feedback",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    /** Difficulty tier: 1=trivial, 2=simple, 3=medium, 4=complex, 5=phd */
+    difficulty: int("difficulty").notNull(),
+    /** Subject slug (e.g. "calculus", "algebra", "other") */
+    subject: varchar("subject", { length: 64 }).notNull().default("other"),
+    /** Number of steps in the response */
+    steps: int("steps").notNull().default(1),
+    /** User rating: -1 = too short, 0 = just right, 1 = too long */
+    rating: int("rating").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (t) => [index("aire_feedback_userId_idx").on(t.userId)],
+);
+
+export type AireFeedback = typeof aireFeedback.$inferSelect;
+export type InsertAireFeedback = typeof aireFeedback.$inferInsert;

@@ -329,6 +329,9 @@ export default function SolutionScreen() {
     scrollRef.current?.scrollTo({ y: submissionReadyYRef.current - 16, animated: true });
   };
 
+  // AIRE per-user memory: log feedback to DB when user is signed in
+  const logFeedbackMutation = trpc.aire.logFeedback.useMutation();
+
   const generateSimilarMutation = trpc.math.generateSimilar.useMutation({
     onSuccess: (data) => {
       if (data.problems?.length > 0) {
@@ -2035,6 +2038,16 @@ export default function SolutionScreen() {
                           await AsyncStorage.setItem(AIRE_KEY, JSON.stringify(entries.slice(0, 500)));
                           setTimeout(() => setAireFeedbackSaved(true), 400);
                         } catch { /* ignore */ }
+                        // Also log to DB for server-side AIRE threshold adjustment
+                        try {
+                          const ratingNum = rating === "short" ? -1 : rating === "long" ? 1 : 0;
+                          logFeedbackMutation.mutate({
+                            difficulty: 3, // default medium; TODO: pass actual difficulty from AIRE
+                            subject: solution?.subject ?? "other",
+                            steps: solution?.steps?.length ?? 1,
+                            rating: ratingNum,
+                          });
+                        } catch { /* ignore — DB feedback is non-fatal */ }
                       }}
                       style={{
                         flexDirection: "row",

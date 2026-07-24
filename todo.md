@@ -1018,4 +1018,4 @@
 ## Round 63: Three AIRE Improvements
 - [x] Stage 1: AIRE feedback analytics screen (Settings sub-page, bar chart per subject)
 - [x] Stage 2: Trivial question fast-path (skip JSON solve for difficulty:1, instant plain-text)
-- [ ] Stage 3: AIRE per-user memory (DB storage of feedback, server-side threshold adjustment)
+- [x] Stage 3: AIRE per-user memory (DB storage of feedback, server-side threshold adjustment)
