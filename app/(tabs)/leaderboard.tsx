@@ -195,7 +195,7 @@ export default function LeaderboardScreen() {
                 router.push("/(tabs)/index" as any);
               }
             }} style={styles.backBtn}
-              accessibilityLabel="Go back">
+              accessibilityLabel="Go back" accessibilityHint="Returns to the previous screen">
               <IconSymbol size={24} name="chevron.left" color={colors.foreground} />
             </TouchableOpacity>
             <Text style={[styles.title, { color: colors.foreground }]}>Leaderboard</Text>

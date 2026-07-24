@@ -447,7 +447,7 @@ export default function ReferScreen() {
     <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]} edges={["top", "left", "right"]}>
       {/* Nav bar */}
       <View style={[styles.navBar, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} accessibilityLabel="Go back">
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} accessibilityLabel="Go back" accessibilityHint="Returns to the previous screen">
           <IconSymbol size={22} name="chevron.left.forwardslash.chevron.right" color={colors.primary} />
         </TouchableOpacity>
         <Text style={[styles.navTitle, { color: colors.foreground }]}>Affiliate & Referrals</Text>
@@ -531,6 +531,8 @@ export default function ReferScreen() {
                   borderColor: copied ? colors.success : colors.primary,
                 }]}
                 accessibilityLabel={copied ? "Code copied" : "Copy invite code"}
+                accessibilityHint="Copies your referral code to the clipboard"
+                accessibilityRole="button"
               >
                 <IconSymbol size={15} name={copied ? "checkmark.circle.fill" : "doc.on.doc.fill"} color={copied ? colors.success : colors.primary} />
                 <Text style={[styles.copyBtnText, { color: copied ? colors.success : colors.primary }]}>
@@ -542,6 +544,22 @@ export default function ReferScreen() {
           <Text style={[styles.codeSubtext, { color: colors.muted }]}>
             Share this code with friends, students, and teachers
           </Text>
+          {/* Copy full link button */}
+          <TouchableOpacity
+            onPress={async () => {
+              H.impactLight();
+              await Clipboard.setStringAsync(referralUrl);
+              showToast("Referral link copied!");
+            }}
+            style={[styles.copyLinkBtn, { borderColor: `${colors.primary}40`, backgroundColor: `${colors.primary}08` }]}
+            activeOpacity={0.8}
+            accessibilityLabel="Copy referral link"
+            accessibilityHint="Copies your full referral URL to the clipboard"
+            accessibilityRole="button"
+          >
+            <IconSymbol size={15} name="doc.on.doc" color={colors.primary} />
+            <Text style={[styles.copyLinkBtnText, { color: colors.primary }]}>Copy Link</Text>
+          </TouchableOpacity>
           {/* Native share CTA */}
           <TouchableOpacity
             onPress={handleNativeShare}
@@ -730,6 +748,11 @@ const styles = StyleSheet.create({
     paddingVertical: 13, borderRadius: 14, marginTop: 4,
   },
   shareCtaBtnText: { color: "#FFFFFF", fontSize: 15, fontWeight: "700" },
+  copyLinkBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
+    paddingVertical: 9, borderRadius: 10, borderWidth: 1, marginTop: 8,
+  },
+  copyLinkBtnText: { fontSize: 13, fontWeight: "600" },
 
   // Earning options
   sectionTitle: { fontSize: 16, fontWeight: "700", marginBottom: 4 },

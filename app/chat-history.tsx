@@ -693,7 +693,7 @@ export default function ChatHistoryScreen() {
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <TouchableOpacity
           onPress={() => router.back()}
-          accessibilityLabel="Go back"
+          accessibilityLabel="Go back" accessibilityHint="Returns to the previous screen"
           style={styles.backBtn}
           activeOpacity={0.7}
         >

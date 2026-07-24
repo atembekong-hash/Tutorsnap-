@@ -196,7 +196,7 @@ export default function ChallengeScreen() {
       <Animated.View style={[{ flex: 1 }, fadeStyle]}>
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity accessibilityLabel="Go back" accessibilityRole="button" onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
+        <TouchableOpacity accessibilityLabel="Go back" accessibilityHint="Returns to the previous screen" accessibilityRole="button" onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
           <IconSymbol size={22} name="chevron.left" color={colors.foreground} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
@@ -367,7 +367,7 @@ export default function ChallengeScreen() {
 
             <View style={styles.resultActions}>
               <TouchableOpacity
-                accessibilityLabel="Retry"
+                accessibilityLabel="Retry" accessibilityHint="Tries the action again"
                 style={[styles.resultBtn, { backgroundColor: colors.primary }]}
                 onPress={handleRetry}
                 activeOpacity={0.85}
@@ -376,7 +376,7 @@ export default function ChallengeScreen() {
                 <Text style={styles.resultBtnText}>Try Again</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                accessibilityLabel="Share"
+                accessibilityLabel="Share" accessibilityHint="Opens the share sheet"
                 style={[styles.resultBtn, { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1.5 }]}
                 onPress={handleShareResult}
                 activeOpacity={0.85}

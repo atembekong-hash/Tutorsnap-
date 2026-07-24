@@ -224,7 +224,7 @@ export default function NotesScreen() {
     <ScreenContainer>
       <Animated.View style={[{ flex: 1 }, fadeStyle]}>
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity accessibilityLabel="Go back" accessibilityRole="button" onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity accessibilityLabel="Go back" accessibilityHint="Returns to the previous screen" accessibilityRole="button" onPress={() => router.back()} style={styles.backBtn}>
           <IconSymbol size={22} name="arrow.left" color={colors.foreground} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
@@ -258,7 +258,7 @@ export default function NotesScreen() {
               returnKeyType="search"
             />
             {search.length > 0 && (
-              <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button" onPress={() => setSearch("")}>
+              <TouchableOpacity accessibilityLabel="Close" accessibilityHint="Dismisses this panel" accessibilityRole="button" onPress={() => setSearch("")}>
                 <IconSymbol size={16} name="xmark.circle.fill" color={colors.muted} />
               </TouchableOpacity>
             )}
@@ -315,7 +315,7 @@ export default function NotesScreen() {
           <Text style={[styles.emptySubtitle, { color: colors.muted }]}>
             Save alternative explanations or study blocks from the solution screen to review them here.
           </Text>
-          <TouchableOpacity accessibilityLabel="Go back" accessibilityRole="button"
+          <TouchableOpacity accessibilityLabel="Go back" accessibilityHint="Returns to the previous screen" accessibilityRole="button"
             onPress={() => router.back()}
             style={[styles.emptyBtn, { backgroundColor: colors.primary }]}
           >

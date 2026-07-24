@@ -328,7 +328,7 @@ export default function QuizHistoryDetailScreen() {
     return (
       <ScreenContainer>
         <View style={[styles.navBar, { borderBottomColor: colors.border }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} accessibilityLabel="Go back">
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} accessibilityLabel="Go back" accessibilityHint="Returns to the previous screen">
             <IconSymbol size={22} name="arrow.left" color={colors.foreground} />
           </TouchableOpacity>
           <Text style={[styles.navTitle, { color: colors.foreground }]}>Quiz Review</Text>
@@ -345,7 +345,7 @@ export default function QuizHistoryDetailScreen() {
     return (
       <ScreenContainer>
         <View style={[styles.navBar, { borderBottomColor: colors.border }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} accessibilityLabel="Go back">
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} accessibilityLabel="Go back" accessibilityHint="Returns to the previous screen">
             <IconSymbol size={22} name="arrow.left" color={colors.foreground} />
           </TouchableOpacity>
           <Text style={[styles.navTitle, { color: colors.foreground }]}>Quiz Review</Text>

@@ -284,7 +284,7 @@ function PracticeScreenContent() {
                 </Text>
               </TouchableOpacity>
               {/* User avatar */}
-              <TouchableOpacity accessibilityLabel="Profile" accessibilityRole="button"
+              <TouchableOpacity accessibilityLabel="Profile" accessibilityHint="Opens your profile" accessibilityRole="button"
                 onPress={() => router.push("/settings" as any)}
                 style={[{ width: 32, height: 32, borderRadius: 16, overflow: "hidden", backgroundColor: `${colors.primary}15`, borderWidth: 1, borderColor: `${colors.primary}30`, alignItems: "center", justifyContent: "center" }]}
                 activeOpacity={0.75}
@@ -858,7 +858,7 @@ function PracticeScreenContent() {
                 >
                   <Text style={styles.streakNudgeBtnText}>Level Up</Text>
                 </TouchableOpacity>
-                <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button" onPress={() => setShowStreakNudge(false)} style={{ padding: 6 }}>
+                <TouchableOpacity accessibilityLabel="Close" accessibilityHint="Dismisses this panel" accessibilityRole="button" onPress={() => setShowStreakNudge(false)} style={{ padding: 6 }}>
                   <IconSymbol size={16} name="xmark" color={colors.muted} />
                 </TouchableOpacity>
               </View>
@@ -896,7 +896,7 @@ function PracticeScreenContent() {
                     <IconSymbol size={16} name="checkmark" color="#fff" />
                     <Text style={styles.selfGradeBtnText}>Got it ✓</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button"
+                  <TouchableOpacity accessibilityLabel="Close" accessibilityHint="Dismisses this panel" accessibilityRole="button"
                     onPress={() => handleSelfGrade(false)}
                     style={[styles.selfGradeBtn, { backgroundColor: colors.error }]}
                     activeOpacity={0.85}

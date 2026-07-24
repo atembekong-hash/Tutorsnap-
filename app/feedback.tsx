@@ -63,7 +63,7 @@ export default function FeedbackScreen() {
     return (
       <ScreenContainer>
         <View style={[styles.navBar, { borderBottomColor: colors.border }]}>
-          <TouchableOpacity accessibilityLabel="Go back" accessibilityRole="button" onPress={() => router.back()} style={styles.backBtn}>
+          <TouchableOpacity accessibilityLabel="Go back" accessibilityHint="Returns to the previous screen" accessibilityRole="button" onPress={() => router.back()} style={styles.backBtn}>
             <IconSymbol size={22} name="arrow.left" color={colors.foreground} />
           </TouchableOpacity>
           <Text style={[styles.navTitle, { color: colors.foreground }]}>Feedback</Text>
@@ -75,7 +75,7 @@ export default function FeedbackScreen() {
           <Text style={[styles.successDesc, { color: colors.muted }]}>
             Your feedback has been sent to the TutorSnap team. We read every message and use it to make the app better.
           </Text>
-          <TouchableOpacity accessibilityLabel="Go back" accessibilityRole="button"
+          <TouchableOpacity accessibilityLabel="Go back" accessibilityHint="Returns to the previous screen" accessibilityRole="button"
             onPress={() => router.back()}
             style={[styles.doneBtn, { backgroundColor: colors.primary }]}
             activeOpacity={0.85}
@@ -97,7 +97,7 @@ export default function FeedbackScreen() {
       >
         {/* Header */}
         <View style={[styles.navBar, { borderBottomColor: colors.border }]}>
-          <TouchableOpacity accessibilityLabel="Go back" accessibilityRole="button" onPress={() => router.back()} style={styles.backBtn}>
+          <TouchableOpacity accessibilityLabel="Go back" accessibilityHint="Returns to the previous screen" accessibilityRole="button" onPress={() => router.back()} style={styles.backBtn}>
             <IconSymbol size={22} name="arrow.left" color={colors.foreground} />
           </TouchableOpacity>
           <Text style={[styles.navTitle, { color: colors.foreground }]}>Send Feedback</Text>

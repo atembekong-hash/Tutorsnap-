@@ -140,7 +140,7 @@ export default function DailyChallengeScreen() {
         <TouchableOpacity
           onPress={() => router.back()}
           style={styles.backBtn}
-          accessibilityLabel="Go back"
+          accessibilityLabel="Go back" accessibilityHint="Returns to the previous screen"
           accessibilityRole="button"
         >
           <IconSymbol size={22} name="chevron.left.forwardslash.chevron.right" color={colors.primary} />

@@ -250,7 +250,7 @@ function HistoryScreenContent() {
               router.push("/(tabs)/index" as any);
             }
           }} style={styles.backBtn}
-            accessibilityLabel="Go back">
+            accessibilityLabel="Go back" accessibilityHint="Returns to the previous screen">
             <IconSymbol size={24} name="chevron.left" color={colors.foreground} />
           </TouchableOpacity>
           <Text style={[styles.title, { color: colors.foreground }]}>History</Text>
@@ -261,7 +261,7 @@ function HistoryScreenContent() {
                 <IconSymbol size={20} name="bookmark.fill" color={colors.warning} />
               </TouchableOpacity>
               <TouchableOpacity onPress={handleClearAll} style={styles.clearAllBtn}
-                accessibilityLabel="Clear">
+                accessibilityLabel="Clear" accessibilityHint="Removes the current input">
                 <Text style={[styles.clearAllText, { color: colors.error }]}>Clear All</Text>
               </TouchableOpacity>
             </View>

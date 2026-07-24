@@ -570,7 +570,7 @@ export default function SolutionScreen() {
           >
             <Text style={{ color: "#FFFFFF", fontSize: fs(14), fontWeight: "700" }}>Try Again</Text>
           </TouchableOpacity>
-          <TouchableOpacity accessibilityLabel="Go back" accessibilityRole="button" onPress={() => router.back()} activeOpacity={0.75}>
+          <TouchableOpacity accessibilityLabel="Go back" accessibilityHint="Returns to the previous screen" accessibilityRole="button" onPress={() => router.back()} activeOpacity={0.75}>
             <Text style={{ color: colors.muted, fontSize: fs(14) }}>Go Back</Text>
           </TouchableOpacity>
         </View>
@@ -583,7 +583,7 @@ export default function SolutionScreen() {
       <ScreenContainer>
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
           <Text style={{ color: colors.foreground, fontSize: fs(16) }}>No solution data found</Text>
-          <TouchableOpacity accessibilityLabel="Go back" accessibilityRole="button" onPress={() => router.back()} style={{ marginTop: 16 }}>
+          <TouchableOpacity accessibilityLabel="Go back" accessibilityHint="Returns to the previous screen" accessibilityRole="button" onPress={() => router.back()} style={{ marginTop: 16 }}>
             <Text style={{ color: colors.primary, fontSize: fs(16) }}>Go Back</Text>
           </TouchableOpacity>
         </View>
@@ -1065,7 +1065,7 @@ export default function SolutionScreen() {
               </TouchableOpacity>
             )}
             <TouchableOpacity
-              accessibilityLabel="Share"
+              accessibilityLabel="Share" accessibilityHint="Opens the share sheet"
               onPress={handleShareText}
               style={[styles.shareMenuItem, { borderBottomWidth: 0.5, borderBottomColor: colors.border }]}
               activeOpacity={0.7}
@@ -1080,7 +1080,7 @@ export default function SolutionScreen() {
               <IconSymbol size={16} name="chevron.right" color={colors.muted} />
             </TouchableOpacity>
             <TouchableOpacity
-              accessibilityLabel="Share"
+              accessibilityLabel="Share" accessibilityHint="Opens the share sheet"
               onPress={handleSharePdfFromMenu}
               style={[styles.shareMenuItem, { borderBottomWidth: 0.5, borderBottomColor: colors.border }]}
               activeOpacity={0.7}
@@ -1098,7 +1098,7 @@ export default function SolutionScreen() {
               <IconSymbol size={16} name="chevron.right" color={colors.muted} />
             </TouchableOpacity>
             <TouchableOpacity
-              accessibilityLabel="Copy"
+              accessibilityLabel="Copy" accessibilityHint="Copies the content to your clipboard"
               onPress={handleCopyLink}
               style={[styles.shareMenuItem, { borderBottomWidth: 0.5, borderBottomColor: colors.border }]}
               activeOpacity={0.7}
@@ -1128,7 +1128,7 @@ export default function SolutionScreen() {
               <IconSymbol size={16} name="chevron.right" color={colors.muted} />
             </TouchableOpacity>
             <TouchableOpacity
-              accessibilityLabel="Share"
+              accessibilityLabel="Share" accessibilityHint="Opens the share sheet"
               onPress={handleShareToClassroom}
               style={[styles.shareMenuItem, { borderBottomWidth: 0.5, borderBottomColor: colors.border }]}
               activeOpacity={0.7}
@@ -1229,7 +1229,7 @@ export default function SolutionScreen() {
       <View style={[styles.navBarWrap, { borderBottomColor: colors.border }]}>
         {/* Row 1: back / title / actions */}
         <View style={styles.navBar}>
-          <TouchableOpacity accessibilityLabel="Go back" accessibilityRole="button" onPress={() => router.back()} style={styles.backBtn}>
+          <TouchableOpacity accessibilityLabel="Go back" accessibilityHint="Returns to the previous screen" accessibilityRole="button" onPress={() => router.back()} style={styles.backBtn}>
             <IconSymbol size={22} name="arrow.left" color={colors.foreground} />
           </TouchableOpacity>
           <Text style={[styles.navTitle, { color: colors.foreground }]}>Solution</Text>
@@ -1244,7 +1244,7 @@ export default function SolutionScreen() {
             </TouchableOpacity>
             {/* Share as PDF Button */}
             <TouchableOpacity onPress={() => { showHeaderTooltip("Share"); handleShare(); }} style={styles.navActionBtn} disabled={shareLoading}
-              accessibilityLabel="Share">
+              accessibilityLabel="Share" accessibilityHint="Opens the share sheet">
               {shareLoading ? (
                 <DotsLoader color={colors.primary} />
               ) : (
@@ -1371,7 +1371,7 @@ export default function SolutionScreen() {
               <Text style={[styles.answerLabel, { color: colors.success }]}>ANSWER</Text>
             </View>
             <TouchableOpacity onPress={handleCopyAnswer} style={[styles.copyBtn, { backgroundColor: copyFeedback ? `${colors.success}20` : "transparent" }]}
-              accessibilityLabel="Copy">
+              accessibilityLabel="Copy" accessibilityHint="Copies the content to your clipboard">
               <IconSymbol size={16} name="doc.on.doc" color={copyFeedback ? colors.success : colors.muted} />
               <Text style={[styles.copyText, { color: copyFeedback ? colors.success : colors.muted }]}>
                 {copyFeedback ? "Copied!" : "Copy"}

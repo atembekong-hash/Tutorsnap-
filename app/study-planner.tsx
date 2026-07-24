@@ -161,11 +161,11 @@ export default function StudyPlannerScreen() {
       <Animated.View style={[{ flex: 1 }, fadeStyle]}>
       {/* Header */}
       <View style={[styles.navBar, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity accessibilityLabel="Go back" accessibilityRole="button" onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity accessibilityLabel="Go back" accessibilityHint="Returns to the previous screen" accessibilityRole="button" onPress={() => router.back()} style={styles.backBtn}>
           <IconSymbol size={22} name="arrow.left" color={colors.foreground} />
         </TouchableOpacity>
         <Text style={[styles.navTitle, { color: colors.foreground }]}>Study Planner</Text>
-        <TouchableOpacity accessibilityLabel="Add" accessibilityRole="button" onPress={openAddModal} style={[styles.addBtn, { backgroundColor: `${colors.primary}18` }]}>
+        <TouchableOpacity accessibilityLabel="Add" accessibilityHint="Opens the add form" accessibilityRole="button" onPress={openAddModal} style={[styles.addBtn, { backgroundColor: `${colors.primary}18` }]}>
           <IconSymbol size={20} name="plus.circle.fill" color={colors.primary} />
         </TouchableOpacity>
       </View>
@@ -245,7 +245,7 @@ export default function StudyPlannerScreen() {
               <Text style={{ color: colors.primary }}> · Today</Text>
             )}
           </Text>
-          <TouchableOpacity accessibilityLabel="Add" accessibilityRole="button"
+          <TouchableOpacity accessibilityLabel="Add" accessibilityHint="Opens the add form" accessibilityRole="button"
             onPress={openAddModal}
             style={[styles.addSessionBtn, { borderColor: colors.primary }]}
             activeOpacity={0.75}
@@ -294,7 +294,7 @@ export default function StudyPlannerScreen() {
                     </Text>
                   </View>
                   <TouchableOpacity
-                    accessibilityLabel="Delete"
+                    accessibilityLabel="Delete" accessibilityHint="Permanently removes this item"
                     onPress={() => handleDelete(slot)}
                     style={styles.slotDeleteBtn}
                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}

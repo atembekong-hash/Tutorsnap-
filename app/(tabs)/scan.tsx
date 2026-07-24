@@ -218,7 +218,7 @@ function ScanScreenContent() {
           >
             <Text style={styles.permissionBtnText}>Allow Camera Access</Text>
           </TouchableOpacity>
-          <TouchableOpacity accessibilityLabel="Gallery" accessibilityRole="button"
+          <TouchableOpacity accessibilityLabel="Gallery" accessibilityHint="Opens your photo library" accessibilityRole="button"
             onPress={pickFromGallery}
             style={[styles.permissionGalleryBtn, { borderColor: colors.border }]}
             activeOpacity={0.8}
@@ -267,7 +267,7 @@ function ScanScreenContent() {
         {/* Bottom controls: Gallery | Shutter | Flip */}
         <View style={styles.bottomControls}>
           {/* Gallery button */}
-          <TouchableOpacity accessibilityLabel="Gallery" accessibilityRole="button" onPress={pickFromGallery} style={styles.galleryCircleBtn} activeOpacity={0.8}>
+          <TouchableOpacity accessibilityLabel="Gallery" accessibilityHint="Opens your photo library" accessibilityRole="button" onPress={pickFromGallery} style={styles.galleryCircleBtn} activeOpacity={0.8}>
             <IconSymbol size={26} name="photo.on.rectangle" color="#FFFFFF" />
             <Text style={styles.galleryCircleLabel}>Gallery</Text>
           </TouchableOpacity>
@@ -297,7 +297,7 @@ function ScanScreenContent() {
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
           <View style={[styles.imagePreview, { borderColor: colors.border }]}>
             <Image source={{ uri: selectedImage }} style={styles.previewImage} resizeMode="contain" accessibilityLabel="Captured problem image" />
-            <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button"
+            <TouchableOpacity accessibilityLabel="Close" accessibilityHint="Dismisses this panel" accessibilityRole="button"
               onPress={handleRetake}
               style={[styles.clearOverlay, { backgroundColor: `${colors.error}E0` }]}
             >
@@ -375,7 +375,7 @@ function ScanScreenContent() {
             )}
           </TouchableOpacity>
 
-          <TouchableOpacity accessibilityLabel="Camera" accessibilityRole="button"
+          <TouchableOpacity accessibilityLabel="Camera" accessibilityHint="Opens the camera to scan a problem" accessibilityRole="button"
             onPress={handleRetake}
             style={[styles.retakeBtn, { borderColor: colors.border }]}
             activeOpacity={0.8}
@@ -400,7 +400,7 @@ function ScanScreenContent() {
         </Text>
       </View>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
-        <TouchableOpacity accessibilityLabel="Gallery" accessibilityRole="button"
+        <TouchableOpacity accessibilityLabel="Gallery" accessibilityHint="Opens your photo library" accessibilityRole="button"
           onPress={pickFromGallery}
           style={[styles.galleryBtn, { borderColor: colors.primary, backgroundColor: `${colors.primary}08` }]}
           activeOpacity={0.8}

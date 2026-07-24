@@ -3,7 +3,7 @@
  * Shows earned free days, referral tier progress, and rewards
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   StyleSheet,
   Animated,
   Dimensions,
+  RefreshControl,
 } from "react-native";
 import { useRouter } from "expo-router";
 import * as H from "@/lib/haptics";
@@ -47,6 +48,7 @@ export default function RewardsScreen() {
   const [summary, setSummary] = useState<RewardSummary | null>(null);
   const [perks, setPerks] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const progressAnim = new Animated.Value(0);
 
   useEffect(() => {
@@ -83,6 +85,13 @@ export default function RewardsScreen() {
     }
   };
 
+  const onRefresh = useCallback(async () => {
+    H.impactLight();
+    setRefreshing(true);
+    await loadRewards();
+    setRefreshing(false);
+  }, []);
+
   const handleShareReferral = () => {
     H.impactLight();
     router.push("/refer" as any);
@@ -105,11 +114,22 @@ export default function RewardsScreen() {
   return (
     <ScreenContainer className="p-6">
       <Animated.View style={[{ flex: 1 }, fadeStyle]}>
-      <ScrollView contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={{ flexGrow: 1 }}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        }
+      >
         {/* Header */}
         <View style={{ marginBottom: 24 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
-            <TouchableOpacity accessibilityLabel="Go back" accessibilityRole="button" onPress={() => router.back()} style={{ padding: 8, marginLeft: -8 }}>
+            <TouchableOpacity accessibilityLabel="Go back" accessibilityHint="Returns to the previous screen" accessibilityRole="button" onPress={() => router.back()} style={{ padding: 8, marginLeft: -8 }}>
               <IconSymbol size={24} name="chevron.left" color={colors.foreground} />
             </TouchableOpacity>
             <Text style={[styles.title, { color: colors.foreground }]}>Rewards</Text>
@@ -208,7 +228,7 @@ export default function RewardsScreen() {
 
         {/* Buttons Row */}
         <View style={{ flexDirection: "row", gap: 12, marginTop: 24 }}>
-          <TouchableOpacity accessibilityLabel="Share" accessibilityRole="button"
+          <TouchableOpacity accessibilityLabel="Share" accessibilityHint="Opens the share sheet" accessibilityRole="button"
             onPress={handleShareReferral}
             style={[styles.shareBtn, { backgroundColor: colors.primary, flex: 1 }]}
           >
@@ -290,7 +310,7 @@ export default function RewardsScreen() {
             styles.referralBanner,
             { backgroundColor: `${colors.primary}18`, borderColor: `${colors.primary}40` },
           ]}
-          accessibilityLabel="Share your referral link to earn free days"
+          accessibilityLabel="Share your referral link to earn free days" accessibilityHint="Opens the referral share screen"
         >
           <View style={{ flex: 1, gap: 4 }}>
             <Text style={[styles.referralBannerTitle, { color: colors.foreground }]}>

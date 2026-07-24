@@ -494,7 +494,7 @@ export default function FlashcardsScreen() {
       {/* Header */}
       <View style={[styles.navBar, { borderBottomColor: colors.border }]}>
         <TouchableOpacity
-          accessibilityLabel="Go back"
+          accessibilityLabel="Go back" accessibilityHint="Returns to the previous screen"
           onPress={() => router.back()}
           style={styles.backBtn}
         >
@@ -573,7 +573,7 @@ export default function FlashcardsScreen() {
             </View>
           </View>
 
-          <TouchableOpacity accessibilityLabel="Go back" accessibilityRole="button"
+          <TouchableOpacity accessibilityLabel="Go back" accessibilityHint="Returns to the previous screen" accessibilityRole="button"
             onPress={() => router.back()}
             style={[styles.emptyBtn, { backgroundColor: colors.primary }]}
           >
@@ -632,7 +632,7 @@ export default function FlashcardsScreen() {
             )}
             <Text style={[styles.printBtnText, { color: colors.primary }]}>Export Deck</Text>
           </TouchableOpacity>
-          <TouchableOpacity accessibilityLabel="Go back" accessibilityRole="button" onPress={() => router.back()} style={{ marginTop: 4 }}>
+          <TouchableOpacity accessibilityLabel="Go back" accessibilityHint="Returns to the previous screen" accessibilityRole="button" onPress={() => router.back()} style={{ marginTop: 4 }}>
             <Text style={[styles.doneBack, { color: colors.muted }]}>Back to Bookmarks</Text>
           </TouchableOpacity>
         </View>

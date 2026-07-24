@@ -147,7 +147,7 @@ export default function ProfileScreen() {
           {/* Header */}
           <View className="flex-row items-center gap-3 mb-2">
             <Pressable
-              accessibilityLabel="Go back"
+              accessibilityLabel="Go back" accessibilityHint="Returns to the previous screen"
               accessibilityRole="button"
               onPress={() => router.back()}
               style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1, padding: 4 }]}

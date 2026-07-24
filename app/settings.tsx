@@ -1097,7 +1097,7 @@ export default function SettingsScreen() {
       <Animated.View style={[{ flex: 1 }, fadeStyle]}>
       {/* Header */}
       <View style={[styles.navBar, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity accessibilityLabel="Go back" accessibilityRole="button" onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity accessibilityLabel="Go back" accessibilityHint="Returns to the previous screen" accessibilityRole="button" onPress={() => router.back()} style={styles.backBtn}>
           <IconSymbol size={22} name="arrow.left" color={colors.foreground} />
         </TouchableOpacity>
         <Text style={[styles.navTitle, { color: colors.foreground }]}>Settings</Text>
@@ -1133,7 +1133,7 @@ export default function SettingsScreen() {
 
           {/* Name + email */}
           <View style={styles.profileInfo}>
-            <TouchableOpacity accessibilityLabel="Edit" accessibilityRole="button"
+            <TouchableOpacity accessibilityLabel="Edit" accessibilityHint="Opens the edit form" accessibilityRole="button"
               onPress={() => { setNameInput(userName || ""); setShowNameModal(true); }}
               activeOpacity={0.75}
               style={styles.profileNameRow}
@@ -1231,7 +1231,7 @@ export default function SettingsScreen() {
             autoCapitalize="none"
           />
           {settingsQuery.length > 0 && Platform.OS !== "ios" && (
-            <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button" onPress={() => setSettingsQuery("")} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <TouchableOpacity accessibilityLabel="Close" accessibilityHint="Dismisses this panel" accessibilityRole="button" onPress={() => setSettingsQuery("")} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
               <IconSymbol size={16} name="xmark.circle.fill" color={colors.muted} />
             </TouchableOpacity>
           )}
@@ -1403,7 +1403,7 @@ export default function SettingsScreen() {
         )}
         {ms("Reminder Time") && reminder.enabled && Platform.OS !== "web" && (
           <TouchableOpacity
-            accessibilityLabel="Edit"
+            accessibilityLabel="Edit" accessibilityHint="Opens the edit form"
             onPress={handleEditTime}
             activeOpacity={0.7}
             style={[styles.row, { backgroundColor: colors.surface, borderColor: colors.border, marginTop: 2 }]}
@@ -2099,7 +2099,7 @@ export default function SettingsScreen() {
           <View style={[styles.modalSheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: colors.foreground }]}>Change Email</Text>
-              <TouchableOpacity onPress={() => setShowChangeEmailModal(false)} accessibilityLabel="Close" accessibilityRole="button">
+              <TouchableOpacity onPress={() => setShowChangeEmailModal(false)} accessibilityLabel="Close" accessibilityHint="Dismisses this panel" accessibilityRole="button">
                 <IconSymbol size={22} name="xmark.circle.fill" color={colors.muted} />
               </TouchableOpacity>
             </View>
@@ -2250,7 +2250,7 @@ export default function SettingsScreen() {
           <View style={[styles.modalSheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: colors.foreground }]}>Your Name</Text>
-              <TouchableOpacity onPress={() => setShowNameModal(false)} accessibilityLabel="Close" accessibilityRole="button">
+              <TouchableOpacity onPress={() => setShowNameModal(false)} accessibilityLabel="Close" accessibilityHint="Dismisses this panel" accessibilityRole="button">
                 <IconSymbol size={22} name="xmark.circle.fill" color={colors.muted} />
               </TouchableOpacity>
             </View>
@@ -2385,7 +2385,7 @@ export default function SettingsScreen() {
           <View style={[styles.modalSheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: colors.foreground }]}>Import from URL</Text>
-              <TouchableOpacity onPress={() => setShowImportUrlModal(false)} accessibilityLabel="Close" accessibilityRole="button">
+              <TouchableOpacity onPress={() => setShowImportUrlModal(false)} accessibilityLabel="Close" accessibilityHint="Dismisses this panel" accessibilityRole="button">
                 <IconSymbol size={22} name="xmark.circle.fill" color={colors.muted} />
               </TouchableOpacity>
             </View>
@@ -2431,7 +2431,7 @@ export default function SettingsScreen() {
           <View style={[styles.modalSheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: colors.foreground }]}>Backup Reminder Schedule</Text>
-              <TouchableOpacity onPress={() => setShowBackupTimePicker(false)} accessibilityLabel="Close" accessibilityRole="button">
+              <TouchableOpacity onPress={() => setShowBackupTimePicker(false)} accessibilityLabel="Close" accessibilityHint="Dismisses this panel" accessibilityRole="button">
                 <IconSymbol size={22} name="xmark.circle.fill" color={colors.muted} />
               </TouchableOpacity>
             </View>

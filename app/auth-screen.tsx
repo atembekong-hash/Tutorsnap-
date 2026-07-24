@@ -284,7 +284,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                       : <Text style={styles.primaryBtnText}>Send Code</Text>
                     }
                   </Pressable>
-                  <Pressable onPress={handleBack} accessibilityLabel="Go back" accessibilityRole="button" style={styles.backBtn}>
+                  <Pressable onPress={handleBack} accessibilityLabel="Go back" accessibilityHint="Returns to the previous screen" accessibilityRole="button" style={styles.backBtn}>
                     <Text style={[styles.backBtnText, { color: colors.muted }]}>← Back</Text>
                   </Pressable>
                 </View>

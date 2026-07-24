@@ -193,7 +193,7 @@ export default function QuizHistoryScreen() {
         <TouchableOpacity
           onPress={() => router.back()}
           style={styles.backBtn}
-          accessibilityLabel="Go back"
+          accessibilityLabel="Go back" accessibilityHint="Returns to the previous screen"
           accessibilityRole="button"
         >
           <IconSymbol size={24} name="arrow.left" color={colors.foreground} />

@@ -173,7 +173,7 @@ export default function LeaderboardScreen() {
       <Animated.View style={[{ flex: 1 }, fadeStyle]}>
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity accessibilityLabel="Go back" accessibilityRole="button" onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity accessibilityLabel="Go back" accessibilityHint="Returns to the previous screen" accessibilityRole="button" onPress={() => router.back()} style={styles.backBtn}>
           <IconSymbol size={24} name="arrow.left" color={colors.foreground} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>Streak Leaderboard</Text>
@@ -207,7 +207,7 @@ export default function LeaderboardScreen() {
                 </View>
               </View>
               <TouchableOpacity
-                accessibilityLabel="Share"
+                accessibilityLabel="Share" accessibilityHint="Opens the share sheet"
                 onPress={handleShare}
                 style={[styles.shareBtn, { backgroundColor: colors.primary }]}
                 activeOpacity={0.8}
@@ -227,7 +227,7 @@ export default function LeaderboardScreen() {
                 </View>
               </View>
               <TouchableOpacity
-                accessibilityLabel="Copy"
+                accessibilityLabel="Copy" accessibilityHint="Copies the content to your clipboard"
                 onPress={handleCopyCode}
                 style={[styles.copyBtn, { backgroundColor: copied ? `${colors.success}20` : `${colors.primary}15` }]}
                 activeOpacity={0.7}
@@ -368,7 +368,7 @@ export default function LeaderboardScreen() {
             </TouchableOpacity>
             <Text style={[styles.modalTitle, { color: colors.foreground }]}>Add Friend</Text>
             <TouchableOpacity onPress={handleAddFriend}
-              accessibilityLabel="Add">
+              accessibilityLabel="Add" accessibilityHint="Opens the add form">
               <Text style={[styles.modalDone, { color: colors.primary }]}>Add</Text>
             </TouchableOpacity>
           </View>

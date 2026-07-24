@@ -134,7 +134,7 @@ export default function ProgressScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity accessibilityLabel="Go back" accessibilityRole="button" onPress={() => router.back()} style={styles.backBtn}>
+          <TouchableOpacity accessibilityLabel="Go back" accessibilityHint="Returns to the previous screen" accessibilityRole="button" onPress={() => router.back()} style={styles.backBtn}>
             <IconSymbol size={24} name="arrow.left" color={colors.foreground} />
           </TouchableOpacity>
           <Text style={[styles.title, { color: colors.foreground }]}>Progress</Text>
@@ -538,7 +538,7 @@ export default function ProgressScreen() {
             <Text style={[styles.emptySubtitle, { color: colors.muted }]}>
               Start solving problems to track your progress and build your streak!
             </Text>
-            <TouchableOpacity accessibilityLabel="Go back" accessibilityRole="button"
+            <TouchableOpacity accessibilityLabel="Go back" accessibilityHint="Returns to the previous screen" accessibilityRole="button"
               onPress={() => router.back()}
               style={[styles.startBtn, { backgroundColor: colors.primary }]}
             >

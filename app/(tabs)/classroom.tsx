@@ -1283,7 +1283,7 @@ export default function ClassroomTabScreen() {
                 {myClassroom && (
                   <View style={styles.codeActions}>
                     <TouchableOpacity
-                      accessibilityLabel="Copy"
+                      accessibilityLabel="Copy" accessibilityHint="Copies the content to your clipboard"
                       style={[styles.codeActionBtn, { backgroundColor: copiedCode ? colors.success + "18" : colors.primary + "15", borderColor: copiedCode ? colors.success : colors.primary }]}
                       onPress={() => handleCopyCode(activeClassroom.code)}
                       activeOpacity={0.75}
@@ -1294,7 +1294,7 @@ export default function ClassroomTabScreen() {
                       </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      accessibilityLabel="Share"
+                      accessibilityLabel="Share" accessibilityHint="Opens the share sheet"
                       style={[styles.codeActionBtn, { backgroundColor: colors.primary + "15", borderColor: colors.primary }]}
                       onPress={() => handleShareCode(activeClassroom.code, activeClassroom.name)}
                       activeOpacity={0.75}
@@ -1343,7 +1343,7 @@ export default function ClassroomTabScreen() {
                 <View style={[styles.notifCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                   <Text style={[styles.notifCardTitle, { color: colors.foreground }]}>👤 Your Display Name</Text>
                   <TouchableOpacity
-                    accessibilityLabel="Edit"
+                    accessibilityLabel="Edit" accessibilityHint="Opens the edit form"
                     style={[styles.notifRow, { borderTopColor: colors.border }]}
                     onPress={handleEditDisplayName}
                     activeOpacity={0.75}
@@ -1394,7 +1394,7 @@ export default function ClassroomTabScreen() {
               {/* Danger zone */}
               <View style={[styles.dangerCard, { borderColor: colors.error + "40" }]}>
                 <TouchableOpacity
-                  accessibilityLabel="Delete"
+                  accessibilityLabel="Delete" accessibilityHint="Permanently removes this item"
                   style={[styles.dangerBtn, { borderColor: colors.error + "40" }]}
                   onPress={myClassroom ? handleDeleteClassroom : handleLeaveClassroom}
                   activeOpacity={0.75}

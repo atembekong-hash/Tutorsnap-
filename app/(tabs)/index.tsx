@@ -1329,7 +1329,7 @@ function SolveScreenContent() {
               <Text style={[styles.sectionLabelText, { color: colors.muted }]}>EXPLORE</Text>
             </View>
             <View style={styles.featureRow}>
-              <TouchableOpacity accessibilityLabel="Camera" accessibilityRole="button"
+              <TouchableOpacity accessibilityLabel="Camera" accessibilityHint="Opens the camera to scan a problem" accessibilityRole="button"
                 onPress={() => router.push("/(tabs)/scan" as any)}
                 style={[styles.featureCard, { backgroundColor: `${colors.primary}12`, borderColor: `${colors.primary}25` }]}
                 activeOpacity={0.8}
@@ -1625,7 +1625,7 @@ function SolveScreenContent() {
           <View style={[styles.gradePickerSheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
             <View style={styles.gradePickerHeader}>
               <Text style={[styles.gradePickerTitle, { color: colors.foreground }]}>Grade Level</Text>
-              <TouchableOpacity onPress={() => setShowSolveGradePicker(false)} accessibilityLabel="Close" accessibilityRole="button">
+              <TouchableOpacity onPress={() => setShowSolveGradePicker(false)} accessibilityLabel="Close" accessibilityHint="Dismisses this panel" accessibilityRole="button">
                 <IconSymbol size={22} name="xmark.circle.fill" color={colors.muted} />
               </TouchableOpacity>
             </View>

@@ -368,7 +368,7 @@ export default function OnboardingScreen() {
             style={styles.backBtn}
             onPress={goBack}
             activeOpacity={0.7}
-            accessibilityLabel="Go back"
+            accessibilityLabel="Go back" accessibilityHint="Returns to the previous screen"
             accessibilityRole="button"
           >
             <Text style={[styles.backArrow, { color: colors.foreground }]}>‹</Text>
