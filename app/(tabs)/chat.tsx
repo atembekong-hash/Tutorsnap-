@@ -2923,24 +2923,11 @@ function ChatScreenContent() {
               value={inputText}
               onChangeText={setInputText}
               multiline
-              maxLength={2000}
               returnKeyType={tutorSettings.sendOnEnter ? "send" : "default"}
               onSubmitEditing={() => { if (tutorSettings.sendOnEnter) handleSend(); }}
               blurOnSubmit={false}
               editable={!isAtLimit}
             />
-
-            {/* Character counter — shown when within 200 chars of the 2000-char limit */}
-            {inputText.length >= 1800 && (
-              <Text
-                style={[
-                  chatStyles.charCounter,
-                  { color: inputText.length >= 1950 ? colors.error : colors.warning },
-                ]}
-              >
-                {2000 - inputText.length}
-              </Text>
-            )}
 
             {/* Wand quick-toggle — flips Detailed/Concise mode per-subject without opening settings */}
             {!isStreaming && !inputText.trim() && (() => {
@@ -3922,7 +3909,7 @@ const chatStyles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    maxHeight: 120,
+    maxHeight: 200,
     paddingTop: Platform.OS === "ios" ? 6 : 4,
     paddingBottom: Platform.OS === "ios" ? 6 : 4,
   },
