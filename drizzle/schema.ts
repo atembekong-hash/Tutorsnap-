@@ -190,7 +190,7 @@ export const aireFeedback = mysqlTable(
   "aire_feedback",
   {
     id: int("id").autoincrement().primaryKey(),
-    userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    userId: int("userId").references(() => users.id, { onDelete: "cascade" }),
     /** Difficulty tier: 1=trivial, 2=simple, 3=medium, 4=complex, 5=phd */
     difficulty: int("difficulty").notNull(),
     /** Subject slug (e.g. "calculus", "algebra", "other") */

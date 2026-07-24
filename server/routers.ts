@@ -1174,7 +1174,7 @@ const aireRouter = router({
    * Stores up to 10 ratings per user; older ones are pruned.
    * rating: -1 = too short, 0 = just right, 1 = too long
    */
-  logFeedback: protectedProcedure
+  logFeedback: publicProcedure
     .input(z.object({
       difficulty: z.number().int().min(1).max(5),
       subject: z.string().default("other"),
@@ -1182,13 +1182,12 @@ const aireRouter = router({
       rating: z.number().int().min(-1).max(1),
     }))
     .mutation(async ({ ctx, input }) => {
+      // userId is optional — anonymous feedback is still valuable
+      const userId = (ctx as any).user?.id ?? null;
       try {
         const db = await getDb();
         if (!db) return { ok: false, reason: "db_unavailable" };
-
-        const userId = ctx.user.id;
-
-        // Insert the new rating
+        // Insert the new rating (userId may be null for anonymous users)
         await db.insert(aireFeedback).values({
           userId,
           difficulty: input.difficulty,
@@ -1197,18 +1196,20 @@ const aireRouter = router({
           rating: input.rating,
         });
 
-        // Prune to keep only the most recent 10 rows per user
-        const rows = await db
-          .select({ id: aireFeedback.id })
-          .from(aireFeedback)
-          .where(eq(aireFeedback.userId, userId))
-          .orderBy(desc(aireFeedback.createdAt))
-          .limit(20);
+        // Prune to keep only the most recent 10 rows per authenticated user
+        if (userId) {
+          const rows = await db
+            .select({ id: aireFeedback.id })
+            .from(aireFeedback)
+            .where(eq(aireFeedback.userId, userId))
+            .orderBy(desc(aireFeedback.createdAt))
+            .limit(20);
 
-        if (rows.length > 10) {
-          const idsToDelete = rows.slice(10).map((r) => r.id);
-          for (const id of idsToDelete) {
-            await db.delete(aireFeedback).where(eq(aireFeedback.id, id));
+          if (rows.length > 10) {
+            const idsToDelete = rows.slice(10).map((r) => r.id);
+            for (const id of idsToDelete) {
+              await db.delete(aireFeedback).where(eq(aireFeedback.id, id));
+            }
           }
         }
 
