@@ -393,7 +393,47 @@ function BlinkingCursor({ color, fontSize }: { color: string; fontSize: number }
 // ─── Message Bubble ───────────────────────────────────────────────────────────
 
 // ─── One-tap copy button for AI responses ────────────────────────────────────
-function CopyButton({
+// ─── Smart Copy helpers ───────────────────────────────────────────────────────
+
+function extractEquations(md: string): string {
+  const found: string[] = [];
+  // Block math $$...$$
+  const blockRe = /\$\$([\s\S]*?)\$\$/g;
+  let m: RegExpExecArray | null;
+  while ((m = blockRe.exec(md)) !== null) found.push(m[1].trim());
+  // Inline math $...$
+  const inlineRe = /\$([^$\n]+?)\$/g;
+  while ((m = inlineRe.exec(md)) !== null) found.push(m[1].trim());
+  return found.length > 0 ? found.join('\n') : '';
+}
+
+function extractCode(md: string): string {
+  const found: string[] = [];
+  const fenceRe = /```[\w]*\n([\s\S]*?)```/g;
+  let m: RegExpExecArray | null;
+  while ((m = fenceRe.exec(md)) !== null) found.push(m[1].trim());
+  return found.length > 0 ? found.join('\n\n') : '';
+}
+
+function extractNotes(md: string): string {
+  // Extract bullet points and numbered lists as clean notes
+  return md
+    .split('\n')
+    .filter(l => /^[-*+]\s|^\d+\.\s/.test(l.trim()))
+    .map(l => l.replace(/^[-*+]\s+/, '- ').replace(/^\d+\.\s+/, (s) => s))
+    .join('\n');
+}
+
+function extractSummary(md: string): string {
+  // Last paragraph or section after a "Summary" / "Conclusion" heading
+  const summaryMatch = md.match(/(?:##?\s*(?:Summary|Conclusion|Key Takeaway)[s]?\n)([\s\S]+?)(?=\n##|$)/i);
+  if (summaryMatch) return summaryMatch[1].trim();
+  // Fallback: last non-empty paragraph
+  const paras = md.split(/\n{2,}/).map(p => p.trim()).filter(Boolean);
+  return paras[paras.length - 1] ?? '';
+}
+
+function SmartCopyButton({
   content,
   colors,
   fs,
@@ -405,32 +445,59 @@ function CopyButton({
   const [copied, setCopied] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleCopy = async () => {
+  const doCopy = async (text: string, label: string) => {
+    if (!text.trim()) {
+      Alert.alert('Nothing to copy', `No ${label.toLowerCase()} found in this response.`);
+      return;
+    }
     try {
-      const Clip = await import("expo-clipboard");
-      await Clip.setStringAsync(cleanMathText(content));
-      const Haptics = require("expo-haptics");
+      const Clip = await import('expo-clipboard');
+      await Clip.setStringAsync(text);
+      const Haptics = require('expo-haptics');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setCopied(true);
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => setCopied(false), 2000);
     } catch {
-      // clipboard unavailable
+      Alert.alert('Error', 'Could not copy to clipboard.');
     }
+  };
+
+  const handlePress = () => {
+    if (Platform.OS !== 'web') {
+      const Haptics = require('expo-haptics');
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    const equations = extractEquations(content);
+    const code = extractCode(content);
+    const notes = extractNotes(content);
+    const summary = extractSummary(content);
+    const answer = cleanMathText(content);
+
+    const options: Array<{ text: string; onPress: () => void }> = [
+      { text: 'Copy Answer', onPress: () => doCopy(answer, 'Answer') },
+    ];
+    if (equations) options.push({ text: 'Copy Equations', onPress: () => doCopy(equations, 'Equations') });
+    if (code) options.push({ text: 'Copy Code', onPress: () => doCopy(code, 'Code') });
+    if (notes) options.push({ text: 'Copy Notes', onPress: () => doCopy(notes, 'Notes') });
+    if (summary) options.push({ text: 'Copy Summary', onPress: () => doCopy(summary, 'Summary') });
+    options.push({ text: 'Cancel', style: 'cancel' } as any);
+
+    Alert.alert('Copy', 'What would you like to copy?', options);
   };
 
   return (
     <TouchableOpacity
-      onPress={handleCopy}
+      onPress={handlePress}
       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       style={[
         copyBtnStyles.pill,
         { backgroundColor: copied ? colors.primary : colors.surface, borderColor: copied ? colors.primary : colors.border },
       ]}
-      accessibilityLabel="Copy response"
+      accessibilityLabel="Smart copy options"
     >
       <Text style={[copyBtnStyles.label, { color: copied ? colors.background : colors.muted, fontSize: fs(11) }]}>
-        {copied ? "✓ Copied" : "Copy"}
+        {copied ? '✓ Copied' : 'Copy'}
       </Text>
     </TouchableOpacity>
   );
@@ -621,7 +688,7 @@ function MessageBubble({
               ) : null}
             </View>
             {!streaming && teachingContent.length > 0 && (
-              <CopyButton content={teachingContent} colors={colors} fs={fs} />
+              <SmartCopyButton content={teachingContent} colors={colors} fs={fs} />
             )}
           </View>
           {/* Submission Ready Card — independently generated, submission-optimised answer */}

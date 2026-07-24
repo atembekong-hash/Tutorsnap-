@@ -37,6 +37,17 @@ import { processAIResponse } from '@/lib/ai-response-pipeline';
 import { useColors } from '@/hooks/use-colors';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Clipboard from 'expo-clipboard';
+import {
+  InteractiveChecklist,
+  InteractiveFlashcard,
+  InteractiveComparison,
+  InteractiveTimeline,
+  parseChecklist,
+  parseFlashcard,
+  parseComparison,
+  parseTimeline,
+} from '@/components/interactive-blocks';
+import { MermaidDiagram } from '@/components/mermaid-diagram';
 
 export interface AIResponseRendererProps {
   markdown: string;
@@ -57,27 +68,56 @@ export interface AIResponseRendererProps {
 // ─── Segment types ─────────────────────────────────────────────────────────────
 // We ONLY split on BLOCK math ($$...$$). Inline math ($...$) stays inside
 // the Markdown segment so it flows naturally within paragraphs.
+// Interactive blocks (:::checklist, :::flashcard, :::comparison, :::timeline) are
+// also extracted as typed segments before block-math splitting.
 type Segment =
   | { type: 'markdown'; content: string }
-  | { type: 'math-block'; latex: string };
+  | { type: 'math-block'; latex: string }
+  | { type: 'checklist'; raw: string }
+  | { type: 'flashcard'; raw: string }
+  | { type: 'comparison'; raw: string }
+  | { type: 'timeline'; raw: string };
 
 function splitIntoSegments(text: string): Segment[] {
   const segments: Segment[] = [];
-  // Only split on $$...$$ (block math), NOT on $...$ (inline math)
-  const blockMathPattern = /\$\$([\s\S]*?)\$\$/g;
+
+  // Step 1: Extract :::type ... ::: interactive blocks first
+  const interactiveRe = /:::(checklist|flashcard|comparison|timeline)\n([\s\S]*?):::/g;
   let lastIndex = 0;
   let match: RegExpExecArray | null;
+  const interleaved: Array<{ start: number; end: number; type: string; raw: string } | { start: number; end: number; text: string }> = [];
 
-  while ((match = blockMathPattern.exec(text)) !== null) {
-    const before = text.slice(lastIndex, match.index);
-    if (before.trim()) segments.push({ type: 'markdown', content: before });
-    const latex = match[1].trim();
-    if (latex) segments.push({ type: 'math-block', latex });
+  while ((match = interactiveRe.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      interleaved.push({ start: lastIndex, end: match.index, text: text.slice(lastIndex, match.index) });
+    }
+    interleaved.push({ start: match.index, end: match.index + match[0].length, type: match[1], raw: match[2] });
     lastIndex = match.index + match[0].length;
   }
+  if (lastIndex < text.length) {
+    interleaved.push({ start: lastIndex, end: text.length, text: text.slice(lastIndex) });
+  }
 
-  const remaining = text.slice(lastIndex);
-  if (remaining.trim()) segments.push({ type: 'markdown', content: remaining });
+  // Step 2: For each text chunk, further split on $$...$$ block math
+  for (const chunk of interleaved) {
+    if ('type' in chunk) {
+      segments.push({ type: chunk.type as any, raw: chunk.raw });
+      continue;
+    }
+    const blockMathPattern = /\$\$([\s\S]*?)\$\$/g;
+    let bi = 0;
+    let bm: RegExpExecArray | null;
+    const src = chunk.text;
+    while ((bm = blockMathPattern.exec(src)) !== null) {
+      const before = src.slice(bi, bm.index);
+      if (before.trim()) segments.push({ type: 'markdown', content: before });
+      const latex = bm[1].trim();
+      if (latex) segments.push({ type: 'math-block', latex });
+      bi = bm.index + bm[0].length;
+    }
+    const remaining = src.slice(bi);
+    if (remaining.trim()) segments.push({ type: 'markdown', content: remaining });
+  }
 
   return segments.length > 0 ? segments : [{ type: 'markdown', content: text }];
 }
@@ -440,7 +480,11 @@ function buildRenderRules(
     // Fence: use our premium CodeCard
     fence: (node: any) => {
       const code = node.content ?? '';
-      const lang = node.sourceInfo ?? '';
+      const lang = (node.sourceInfo ?? '').trim().toLowerCase();
+      // Intercept mermaid blocks and render as interactive diagram
+      if (lang === 'mermaid') {
+        return <MermaidDiagram key={node.key} code={code.trim()} fontSize={fontSize} />;
+      }
       return <CodeCard key={node.key} code={code.trim()} language={lang} fontSize={fontSize} />;
     },
 
@@ -649,7 +693,7 @@ export function AIResponseRenderer({
     }
   }
 
-  // Mixed: Markdown + block math segments
+  // Mixed: Markdown + block math + interactive block segments
   return (
     <StaggeredReveal streaming={streaming}>
       <View style={[styles.container, containerStyle]}>
@@ -661,6 +705,23 @@ export function AIResponseRenderer({
               </View>
             );
           }
+          if (segment.type === 'checklist') {
+            const items = parseChecklist(segment.raw);
+            return items.length > 0 ? <InteractiveChecklist key={index} items={items} /> : null;
+          }
+          if (segment.type === 'flashcard') {
+            const { front, back } = parseFlashcard(segment.raw);
+            return <InteractiveFlashcard key={index} front={front} back={back} />;
+          }
+          if (segment.type === 'comparison') {
+            const { headers, rows } = parseComparison(segment.raw);
+            return headers.length > 0 ? <InteractiveComparison key={index} headers={headers} rows={rows} /> : null;
+          }
+          if (segment.type === 'timeline') {
+            const entries = parseTimeline(segment.raw);
+            return entries.length > 0 ? <InteractiveTimeline key={index} entries={entries} /> : null;
+          }
+          // markdown segment
           if (!segment.content.trim()) return null;
           try {
             return (

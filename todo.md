@@ -928,3 +928,24 @@
 - [x] Wire detailedMode into routers.ts non-streaming chat: input schema, token budget branching, system prompt instruction
 - [x] Pass detailedMode from tutorSettings through sendStreamingChat tutorProfile payload in chat.tsx
 - [x] TypeScript: 0 errors, Tests: 33/33 passed
+
+## Round 59: Interactive AI Response Components + Smart Copy
+- [ ] Update chatStream.ts system prompt with component auto-insert rules
+- [ ] Update routers.ts CHAT_SYSTEM_PROMPT with component auto-insert rules
+- [ ] Build InteractiveChecklist component (parse :::checklist blocks)
+- [ ] Build InteractiveFlashcard component (parse :::flashcard blocks)
+- [ ] Build InteractiveComparison component (parse :::comparison blocks)
+- [ ] Build InteractiveTimeline component (parse :::timeline blocks)
+- [ ] Build MermaidDiagram component (WebView on native, inline on web)
+- [ ] Wire all new block renderers into AIResponseRenderer
+- [ ] Implement Smart Copy action sheet (Copy Answer / Equations / Code / Notes / Summary)
+- [ ] TypeScript: 0 errors, Tests: 33/33 passed
+
+## Round 57: AI Tutor Interactive Components + Smart Copy
+- [x] Update CHAT_SYSTEM_PROMPT (chatStream.ts + routers.ts) with auto-insert rules for checklist, flashcard, comparison, timeline, mermaid
+- [x] Build interactive-blocks.tsx (InteractiveChecklist, InteractiveFlashcard, InteractiveComparison, InteractiveTimeline + parsers)
+- [x] Extend AIResponseRenderer to parse :::type blocks and render interactive components
+- [x] Create mermaid-diagram.tsx (WebView on native, fallback code block on web)
+- [x] Intercept mermaid fenced blocks in AIResponseRenderer fence rule
+- [x] Replace CopyButton with SmartCopyButton (5 options: Answer, Equations, Code, Notes, Summary)
+- [x] TypeScript: 0 errors | Tests: 33/33 passed

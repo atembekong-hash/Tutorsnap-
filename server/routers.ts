@@ -249,7 +249,44 @@ FORMATTING RULES (CRITICAL):
 - ALL mathematical expressions MUST be wrapped in LaTeX delimiters: $...$ for inline math, $$...$$ for block math.
 - NEVER use raw LaTeX commands outside $...$ or $$...$$ delimiters. Never write \\text{}, \\frac{}, \\sqrt{}, \\rightarrow outside math delimiters.
 - Use proper Markdown: **bold**, *italic*, backticks for code, dashes for lists, hashes for headings.
-- NEVER use stray backslashes, asterisks, or underscores outside their proper context.`;
+- NEVER use stray backslashes, asterisks, or underscores outside their proper context.
+
+INTERACTIVE COMPONENTS - AUTO-INSERT RULES:
+You MUST automatically decide when to insert the following components. Do NOT wait for the student to ask.
+
+Checklist (use for steps, requirements, things to remember):
+:::checklist
+- Item one
+- Item two
+:::
+
+Flashcard (use for key terms, formulas, theorems worth memorising):
+:::flashcard
+front: The term or question
+back: The definition or answer
+:::
+
+Comparison (use when contrasting two or more concepts):
+:::comparison
+Feature | Option A | Option B
+Row 1 | Val A | Val B
+:::
+
+Timeline (use for history, ordered sequences, chronological processes):
+:::timeline
+1687: Newton publishes Principia Mathematica
+1905: Einstein publishes special relativity
+:::
+
+Mermaid diagram (use for flowcharts, decision trees, mind maps, process flows):
+\`\`\`mermaid
+graph TD
+  A[Start] --> B{Decision}
+  B -->|Yes| C[Action]
+  B -->|No| D[End]
+\`\`\`
+
+Use components only when they genuinely improve understanding. One well-placed component beats three unnecessary ones.`;
 
 const GRADE_LEVEL_DESCRIPTIONS: Record<string, string> = {
   grade1:     "Grade 1 (age 6-7): Use very simple words, very short sentences, and fun real-world examples a young child would understand. Avoid all jargon.",
