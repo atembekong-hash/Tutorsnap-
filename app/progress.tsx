@@ -7,7 +7,12 @@ import {
   StyleSheet,
   Platform,
   Animated,
+  Alert,
 } from "react-native";
+import * as FileSystem from "expo-file-system/legacy";
+import * as Sharing from "expo-sharing";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import Constants from "expo-constants";
 import { useRouter, useFocusEffect } from "expo-router";
 import { ProgressSkeletonScreen } from "@/components/skeleton";
 import * as H from "@/lib/haptics";
@@ -535,6 +540,59 @@ export default function ProgressScreen() {
           <IconSymbol size={16} name="chevron.right" color={colors.muted} />
         </TouchableOpacity>
 
+        {/* Export Data Shortcut */}
+        <TouchableOpacity
+          accessibilityLabel="Export your data"
+          accessibilityHint="Exports all your TutorSnap data as a JSON file"
+          accessibilityRole="button"
+          onPress={async () => {
+            H.impactLight();
+            try {
+              const allKeys = await AsyncStorage.getAllKeys();
+              const tutorKeys = allKeys.filter((k) =>
+                k.startsWith("@tutorsnap/") ||
+                k.startsWith("math_") ||
+                k.startsWith("tutorsnap_") ||
+                k.startsWith("challenge_") ||
+                k.startsWith("streak_") ||
+                k.startsWith("global_grade") ||
+                k.startsWith("chat_grade")
+              );
+              const pairs = await AsyncStorage.multiGet(tutorKeys);
+              const exportObj: Record<string, any> = {
+                exportedAt: new Date().toISOString(),
+                appVersion: Constants.expoConfig?.version ?? "1.1.0",
+                data: {} as Record<string, any>,
+              };
+              for (const [key, value] of pairs) {
+                try { exportObj.data[key] = value ? JSON.parse(value) : null; }
+                catch { exportObj.data[key] = value; }
+              }
+              const json = JSON.stringify(exportObj, null, 2);
+              const fileName = `tutorsnap-export-${new Date().toISOString().slice(0, 10)}.json`;
+              const fileUri = (FileSystem.cacheDirectory ?? "") + fileName;
+              await FileSystem.writeAsStringAsync(fileUri, json, { encoding: FileSystem.EncodingType.UTF8 });
+              const canShare = await Sharing.isAvailableAsync();
+              if (canShare) {
+                await Sharing.shareAsync(fileUri, { mimeType: "application/json", dialogTitle: "Export TutorSnap Data", UTI: "public.json" });
+              } else {
+                Alert.alert("Exported", `Data saved to:\n${fileUri}`);
+              }
+            } catch {
+              Alert.alert("Export Failed", "Could not export your data. Please try again.");
+            }
+          }}
+          style={[styles.exportBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+          activeOpacity={0.8}
+        >
+          <Text style={{ fontSize: 20 }}>📤</Text>
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <Text style={[styles.rankingsEntryTitle, { color: colors.foreground }]}>Export My Data</Text>
+            <Text style={[styles.rankingsEntrySub, { color: colors.muted }]}>Download a backup of all your stats</Text>
+          </View>
+          <IconSymbol size={16} name="chevron.right" color={colors.muted} />
+        </TouchableOpacity>
+
         {/* Empty State */}
         {streak.totalSolved === 0 && (
           <View style={styles.emptyState}>
@@ -878,5 +936,15 @@ const styles = StyleSheet.create({
   rankingsEntrySub: {
     fontSize: 12,
     marginTop: 2,
+  },
+  exportBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 8,
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1.5,
   },
 });
