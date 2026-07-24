@@ -134,6 +134,7 @@ function PracticeScreenContent() {
   const [showAnswer, setShowAnswer] = useState(false);
   const [hintsShown, setHintsShown] = useState(0);
   const [consecutiveCorrect, setConsecutiveCorrect] = useState(0);
+  const [bestStreak, setBestStreak] = useState(0);
   const [showStreakNudge, setShowStreakNudge] = useState(false);
   const [practiceMilestoneCount, setPracticeMilestoneCount] = useState<number | null>(null);
   const [quizCount, setQuizCount] = useState(5);
@@ -156,6 +157,10 @@ function PracticeScreenContent() {
       getProgress().then(setProgressData).catch(() => {});
       getWeeklyData().then(setWeeklyData).catch(() => {});
       setSuggestionDismissed(false);
+      // Load persisted best streak
+      AsyncStorage.getItem("@tutorsnap/practice_best_streak")
+        .then((val) => { if (val) setBestStreak(parseInt(val, 10) || 0); })
+        .catch(() => {});
     }, [])
   );
 
@@ -222,6 +227,14 @@ function PracticeScreenContent() {
     setConsecutiveCorrect(next);
     if (correct) {
       H.notificationSuccess();
+      // Update best streak if this is a new record
+      setBestStreak((prev) => {
+        if (next > prev) {
+          AsyncStorage.setItem("@tutorsnap/practice_best_streak", String(next)).catch(() => {});
+          return next;
+        }
+        return prev;
+      });
       if (next >= 5) setShowStreakNudge(true);
       // Celebrate at 5 and 10 consecutive correct answers
       const PRACTICE_MILESTONES = new Set([5, 10]);
@@ -310,6 +323,21 @@ function PracticeScreenContent() {
           <Text style={[styles.subtitle, { color: colors.muted }]}>
             Generate problems to sharpen your skills
           </Text>
+          {/* Streak stats row */}
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginTop: 10 }}>
+            {/* Current streak */}
+            <View style={[styles.streakStatPill, { backgroundColor: `${colors.primary}14`, borderColor: `${colors.primary}30` }]}>
+              <Text style={{ fontSize: 14 }}>🔥</Text>
+              <Text style={[styles.streakStatLabel, { color: colors.muted }]}>Current</Text>
+              <Text style={[styles.streakStatValue, { color: colors.primary }]}>{consecutiveCorrect}</Text>
+            </View>
+            {/* Best streak */}
+            <View style={[styles.streakStatPill, { backgroundColor: `${colors.warning}14`, borderColor: `${colors.warning}30` }]}>
+              <Text style={{ fontSize: 14 }}>🏆</Text>
+              <Text style={[styles.streakStatLabel, { color: colors.muted }]}>Best</Text>
+              <Text style={[styles.streakStatValue, { color: colors.warning }]}>{bestStreak}</Text>
+            </View>
+          </View>
         </View>
 
         {/* Subject Selection */}
@@ -1243,6 +1271,17 @@ const styles = StyleSheet.create({
   practiceProgressDot: { width: 3, height: 3, borderRadius: 2 },
   practiceProgressTrack: { flex: 1, height: 4, borderRadius: 2, overflow: "hidden" },
   practiceProgressFill: { height: 4, borderRadius: 2 },
+  streakStatPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  streakStatLabel: { fontSize: 11, fontWeight: "500" },
+  streakStatValue: { fontSize: 15, fontWeight: "700" },
 });
 
 const pStyles = StyleSheet.create({
