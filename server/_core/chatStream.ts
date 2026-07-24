@@ -41,10 +41,11 @@ const CHAT_SYSTEM_PROMPT = `You are TutorSnap, an expert academic tutor covering
 - Use --- to separate major sections
 
 ### Length
-- Simple question (e.g. "What is 5+3?"): 2-4 sentences max.
-- Medium question (e.g. "Explain quadratic formula"): 1 worked example + summary.
-- Complex question (e.g. "Solve this integral step by step"): full working, all steps, summary.
-- Always end with a ###### Pro Tip or ###### Common Mistake if space allows.
+- Simple question (e.g. "What is 5+3?"): 4-8 sentences. Include a brief explanation of why the answer is correct and a quick related example.
+- Medium question (e.g. "Explain quadratic formula"): 2 fully worked examples + a summary table or key insight list.
+- Complex question (e.g. "Solve this integral step by step"): full working with ALL steps shown, a second verification pass, a summary, and a related extension problem.
+- Always end with a ###### Pro Tip AND a ###### Common Mistake section.
+- After every worked example, add a ## Try It Yourself section with a similar practice problem (no solution — just the problem statement).
 
 ## SUBMISSION READY SECTION — ALWAYS REQUIRED FOR SUBSTANTIVE RESPONSES:
 
@@ -169,13 +170,13 @@ export function registerChatStreamRoute(app: Express) {
       const systemPrompt = CHAT_SYSTEM_PROMPT + subjectContext + gradeCtx + profileCtx;
 
       // Scale max_tokens by the complexity of the last user message.
-      // Floors are intentionally generous — a math explanation always needs room.
-      // ≤10 words → 1200 (short question but may need a full worked solution)
-      // ≤30 words → 1600 (medium explanation)
-      // >30 words → 2000 (long/multi-part question)
+      // Doubled from previous values to allow richer, more complete responses.
+      // ≤10 words → 2400 (short question but may need a full worked solution)
+      // ≤30 words → 3200 (medium explanation)
+      // >30 words → 4000 (long/multi-part question)
       const lastUserMsg = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
       const wordCount = lastUserMsg.trim().split(/\s+/).filter(Boolean).length;
-      const streamMaxTokens = wordCount <= 10 ? 1200 : wordCount <= 30 ? 1600 : 2000;
+      const streamMaxTokens = wordCount <= 10 ? 2400 : wordCount <= 30 ? 3200 : 4000;
 
       const payload = {
         model: "gpt-4o-mini",

@@ -630,12 +630,13 @@ Respond ONLY with this JSON:
           })),
         ],
         // Scale chat response length by message complexity
+        // Doubled from previous values to allow richer, more complete responses.
         max_tokens: (() => {
           const lastMsg = input.messages[input.messages.length - 1]?.content ?? "";
           const wordCount = lastMsg.trim().split(/\s+/).length;
-          if (wordCount <= 10) return 600;   // short/simple question
-          if (wordCount <= 30) return 1000;  // medium question
-          return 1500;                        // long/complex question
+          if (wordCount <= 10) return 1200;   // short/simple question
+          if (wordCount <= 30) return 2000;   // medium question
+          return 3000;                         // long/complex question
         })(),
       });
       const rawContent = (result as any)?.error ? "" : (result.choices?.[0]?.message?.content ?? "");

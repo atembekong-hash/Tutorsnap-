@@ -914,3 +914,8 @@
 - [x] Fix missing icon mappings: arrow.clockwise, checkmark, checkmark.circle, doc.richtext, doc.text, exclamationmark.circle.fill, folder.badge.plus, folder.fill, info.circle.fill
 - [x] Confirm 0 TypeScript errors and 33/33 tests passing
 - [x] Checkpoint and trigger APK build
+## Round 57: Double AI Tutor Response Output
+- [x] Double streaming chat max_tokens: 1200/1600/2000 → 2400/3200/4000 (chatStream.ts)
+- [x] Double non-streaming chat max_tokens: 600/1000/1500 → 1200/2000/3000 (routers.ts)
+- [x] Update system prompt Length guidance: richer per-tier instructions, Try It Yourself section, Pro Tip + Common Mistake required
+- [x] TypeScript: 0 errors, Tests: 33/33 passed
