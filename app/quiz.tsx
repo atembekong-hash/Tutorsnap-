@@ -31,6 +31,7 @@ import { cleanMathText } from "@/lib/clean-math-text";
 import AsyncStorageLib from "@react-native-async-storage/async-storage";
 import { StreakMilestoneModal } from "@/components/streak-milestone-modal";
 import { checkStreakMilestone, type MilestoneInfo } from "@/lib/streak-milestones";
+import { SolveMilestoneModal, shouldCelebrateSolveMilestone } from "@/components/solve-milestone-modal";
 import PaywallScreen from "./paywall";
 import { SubmissionReadyCard } from "@/components/submission-ready-card";
 import { useFontSize } from "@/lib/font-size-provider";
@@ -372,6 +373,7 @@ export default function QuizScreen() {
   const progressAnim = useRef(new Animated.Value(1)).current;
   const [streakMilestone, setStreakMilestone] = useState<MilestoneInfo | null>(null);
   const [showPerfectScore, setShowPerfectScore] = useState(false);
+  const [quizMilestoneCount, setQuizMilestoneCount] = useState<number | null>(null);
   const { fadeStyle } = useScreenTransition({ duration: 280, translateY: 16 });
 
   // Full worked explanation — fetched after answer reveal
@@ -566,8 +568,18 @@ export default function QuizScreen() {
       if (pct === 100) {
         setTimeout(() => setShowPerfectScore(true), 400);
       }
-      // Trigger App Store review prompt on success (≥80%), gated by install age + rate limit
+      // Trigger App Store review prompt on success (>=80%), gated by install age + rate limit
       maybeRequestReview(pct).catch(() => {});
+      // Check cumulative quiz count for milestone celebration
+      try {
+        const raw = await AsyncStorageLib.getItem("quiz_history");
+        const history: unknown[] = raw ? JSON.parse(raw) : [];
+        const QUIZ_MILESTONES = new Set([10, 25, 50, 100]);
+        if (QUIZ_MILESTONES.has(history.length)) {
+          const should = await shouldCelebrateSolveMilestone(history.length * 1000); // offset to avoid collision with solve milestones
+          if (should) setQuizMilestoneCount(history.length);
+        }
+      } catch { /* non-critical */ }
     } else {
       setCurrentIdx((i) => i + 1);
       setSelectedOption(null);
@@ -771,6 +783,12 @@ export default function QuizScreen() {
       <PerfectScoreModal
         visible={showPerfectScore}
         onDismiss={() => setShowPerfectScore(false)}
+      />
+
+      {/* Quiz Milestone Celebration */}
+      <SolveMilestoneModal
+        solveCount={quizMilestoneCount}
+        onDismiss={() => setQuizMilestoneCount(null)}
       />
 
       {/* Paywall Modal — shown when free quiz question limit is reached */}

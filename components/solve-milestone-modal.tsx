@@ -22,8 +22,29 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Share } from "react-native";
 import * as H from "@/lib/haptics";
 import { useColors } from "@/hooks/use-colors";
+
+/** AsyncStorage key tracking which solve milestones have been celebrated. */
+const CELEBRATED_SOLVES_KEY = "@tutorsnap/celebratedSolveMilestones";
+
+/**
+ * Returns true if this solve milestone has NOT yet been celebrated.
+ * Marks it as celebrated so it never fires again.
+ */
+export async function shouldCelebrateSolveMilestone(count: number): Promise<boolean> {
+  try {
+    const raw = await AsyncStorage.getItem(CELEBRATED_SOLVES_KEY);
+    const celebrated: number[] = raw ? JSON.parse(raw) : [];
+    if (celebrated.includes(count)) return false;
+    await AsyncStorage.setItem(CELEBRATED_SOLVES_KEY, JSON.stringify([...celebrated, count]));
+    return true;
+  } catch {
+    return true; // fail open so the modal still shows if storage errors
+  }
+}
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 
@@ -201,17 +222,35 @@ function AnimatedCard({ solveCount, onDismiss }: CardProps) {
         </Text>
       </View>
 
-      {/* Dismiss button */}
-      <TouchableOpacity
-        onPress={onDismiss}
-        activeOpacity={0.8}
-        style={[styles.dismissBtn, { backgroundColor: meta.color }]}
-        accessibilityLabel="Continue solving"
-        accessibilityRole="button"
-        accessibilityHint="Closes this celebration and returns to the app"
-      >
-        <Text style={styles.dismissText}>Keep Solving!</Text>
-      </TouchableOpacity>
+      {/* Action row: Share + Dismiss */}
+      <View style={styles.actionRow}>
+        <TouchableOpacity
+          onPress={() => {
+            H.impactLight();
+            Share.share({
+              message: `I just solved my ${solveCount}th problem on TutorSnap! ${meta.emoji} Join me and level up your studies.`,
+            }).catch(() => {});
+          }}
+          activeOpacity={0.8}
+          style={[styles.shareBtn, { borderColor: meta.color }]}
+          accessibilityLabel="Share this milestone"
+          accessibilityRole="button"
+          accessibilityHint="Opens the share sheet to share your milestone"
+        >
+          <Text style={[styles.shareBtnText, { color: meta.color }]}>Share</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={onDismiss}
+          activeOpacity={0.8}
+          style={[styles.dismissBtn, { backgroundColor: meta.color }]}
+          accessibilityLabel="Continue solving"
+          accessibilityRole="button"
+          accessibilityHint="Closes this celebration and returns to the app"
+        >
+          <Text style={styles.dismissText}>Keep Solving!</Text>
+        </TouchableOpacity>
+      </View>
     </Animated.View>
   );
 }
@@ -329,12 +368,28 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     letterSpacing: 0.2,
   },
-  dismissBtn: {
-    paddingHorizontal: 32,
+  actionRow: {
+    flexDirection: "row",
+    gap: 10,
+    paddingHorizontal: 24,
+    alignSelf: "stretch",
+  },
+  shareBtn: {
+    flex: 1,
     paddingVertical: 13,
     borderRadius: 14,
-    marginHorizontal: 24,
-    alignSelf: "stretch",
+    borderWidth: 1.5,
+    alignItems: "center",
+  },
+  shareBtnText: {
+    fontSize: 15,
+    fontWeight: "700",
+    letterSpacing: 0.2,
+  },
+  dismissBtn: {
+    flex: 2,
+    paddingVertical: 13,
+    borderRadius: 14,
     alignItems: "center",
   },
   dismissText: {

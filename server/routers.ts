@@ -284,6 +284,7 @@ function buildPracticePrompt(subject: string, difficulty: string): string {
   return `You are TutorSnap, an expert academic tutor. Generate ONE ${difficulty} ${taskType} for: ${subject}.
 The "answer" field must be a FULL PARAGRAPH (4-6 sentences) explaining the complete solution.
 The "steps" array must have AT LEAST 5-8 steps, each with a detailed explanation (3-5 sentences).
+The "hints" array MUST contain EXACTLY 3 hints. Each hint is 1-2 sentences and progressively reveals more of the solution approach. This field is REQUIRED.
 The "submissionReady" field is a COMPLETELY INDEPENDENT second output. Do NOT summarise or extract from the explanation. Generate it fresh as if writing only the answer a student would hand in. Maths/science: numbered calculation lines, all substitutions, units, final answer on last line. Programming: final code only. Essays: complete polished prose. Definitions: concise precise definition. Multiple choice: correct option + essential supporting work only. NO prose commentary, NO preamble.
 Respond ONLY with this JSON (no extra text):
 {"id":"p1","subject":"${subject}","difficulty":"${difficulty}","problem":"<question>","answer":"<full paragraph answer, 4-6 sentences>","steps":[{"stepNumber":1,"title":"<descriptive title>","explanation":"<detailed explanation, 3-5 sentences>","expression":"<formula if any>"}],"hints":["<hint 1, 1-2 sentences>","<hint 2, 1-2 sentences>","<hint 3, 1-2 sentences>"],"submissionReady":"<independently generated submission answer>"}`;
@@ -525,8 +526,8 @@ Respond ONLY with this JSON (no extra text):
           throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned invalid JSON. Please try again." });
         }
       }
-      // Validate required fields — block malformed payloads before they reach the client
-      const requiredPracticeFields = ["problem", "answer", "steps", "hints"];
+      // Validate only truly required fields — hints and steps are auto-defaulted below
+      const requiredPracticeFields = ["problem", "answer"];
       const missingPracticeFields = requiredPracticeFields.filter((f) => !parsed[f]);
       if (missingPracticeFields.length > 0) {
         throw new TRPCError({
@@ -534,11 +535,11 @@ Respond ONLY with this JSON (no extra text):
           message: `AI response missing required fields: ${missingPracticeFields.join(", ")}. Please try again.`,
         });
       }
-      // Ensure steps is an array
+      // Ensure steps is an array — default to a single step derived from the answer if missing
       if (!Array.isArray(parsed.steps) || (parsed.steps as unknown[]).length === 0) {
-        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned no solution steps. Please try again." });
+        parsed.steps = [{ stepNumber: 1, title: "Solution", explanation: String(parsed.answer ?? ""), expression: "" }];
       }
-      // Ensure hints is an array
+      // Ensure hints is an array — default to empty if missing
       if (!Array.isArray(parsed.hints)) {
         parsed.hints = [];
       }

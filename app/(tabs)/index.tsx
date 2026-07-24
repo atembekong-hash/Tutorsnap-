@@ -53,7 +53,7 @@ import { useAuth } from "@/lib/auth-context";
 import { StreakMilestoneModal } from "@/components/streak-milestone-modal";
 import { checkStreakMilestone, type MilestoneInfo } from "@/lib/streak-milestones";
 import { HomeSkeletonScreen, DotsLoader } from "@/components/skeleton";
-import { SolveMilestoneModal } from "@/components/solve-milestone-modal";
+import { SolveMilestoneModal, shouldCelebrateSolveMilestone } from "@/components/solve-milestone-modal";
 
 function getAppearanceSubjectKey(subjectId: string): string {
   const def = getSubjectDef(subjectId);
@@ -846,10 +846,12 @@ function SolveScreenContent() {
         const h: HistoryItem[] = v ? JSON.parse(v) : [];
         setRecentSolves(h.slice(0, 3));
         // Show celebration modal at solve milestones (10, 25, 50, 100)
-        // The modal's onDismiss will fire the review prompt after the animation
+        // Guard ensures each milestone fires exactly once per user lifetime
         const SOLVE_MILESTONES = new Set([10, 25, 50, 100]);
         if (SOLVE_MILESTONES.has(h.length)) {
-          setSolveMilestoneCount(h.length);
+          shouldCelebrateSolveMilestone(h.length).then((should) => {
+            if (should) setSolveMilestoneCount(h.length);
+          }).catch(() => {});
         }
       }).catch(() => {});
       router.push({
