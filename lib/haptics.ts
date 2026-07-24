@@ -37,3 +37,11 @@ export function notificationWarning(): void {
 export function selectionFeedback(): void {
   if (isNative) void Haptics.selectionAsync();
 }
+
+/** Triple rapid-fire Light impacts at 80ms intervals — used for milestone confetti burst. */
+export function celebrationBurst(): void {
+  if (!isNative) return;
+  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  setTimeout(() => void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light), 80);
+  setTimeout(() => void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium), 160);
+}

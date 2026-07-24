@@ -1608,6 +1608,10 @@ function SolveScreenContent() {
             }).catch(() => {});
           }
         }}
+        onViewRank={() => {
+          setSolveMilestoneCount(null);
+          router.push("/(tabs)/leaderboard" as any);
+        }}
       />
       {/* Cheat Sheet Bottom Sheet */}
       <CheatSheetBottomSheet

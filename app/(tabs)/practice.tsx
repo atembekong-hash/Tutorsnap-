@@ -33,6 +33,7 @@ import { savePrefetchedQuiz } from "@/lib/quiz-prefetch";
 import { cleanMathText } from "@/lib/clean-math-text";
 import { SubmissionReadyCard } from "@/components/submission-ready-card";
 import { useFontSize } from "@/lib/font-size-provider";
+import { SolveMilestoneModal, shouldCelebrateSolveMilestone } from "@/components/solve-milestone-modal";
 const QUIZ_COUNTS = [3, 5, 10];
 
 function getDifficulties(gradeLevel: string | null): { id: Difficulty; label: string; color: string; desc: string }[] {
@@ -134,6 +135,7 @@ function PracticeScreenContent() {
   const [hintsShown, setHintsShown] = useState(0);
   const [consecutiveCorrect, setConsecutiveCorrect] = useState(0);
   const [showStreakNudge, setShowStreakNudge] = useState(false);
+  const [practiceMilestoneCount, setPracticeMilestoneCount] = useState<number | null>(null);
   const [quizCount, setQuizCount] = useState(5);
   const [quizStats, setQuizStats] = useState<QuizStats | null>(null);
   const [diffSuggestion, setDiffSuggestion] = useState<DifficultyUpSuggestion | null>(null);
@@ -221,6 +223,14 @@ function PracticeScreenContent() {
     if (correct) {
       H.notificationSuccess();
       if (next >= 5) setShowStreakNudge(true);
+      // Celebrate at 5 and 10 consecutive correct answers
+      const PRACTICE_MILESTONES = new Set([5, 10]);
+      if (PRACTICE_MILESTONES.has(next)) {
+        // Use negative offset to distinguish from solve/quiz milestones in AsyncStorage
+        shouldCelebrateSolveMilestone(-(next)).then((should) => {
+          if (should) setPracticeMilestoneCount(next);
+        }).catch(() => {});
+      }
     } else {
       H.notificationError();
     }
@@ -956,6 +966,11 @@ function PracticeScreenContent() {
           </View>
         </View>
       )}
+      {/* Practice Streak Milestone Celebration */}
+      <SolveMilestoneModal
+        solveCount={practiceMilestoneCount}
+        onDismiss={() => setPracticeMilestoneCount(null)}
+      />
     </ScreenContainer>
   );
 }

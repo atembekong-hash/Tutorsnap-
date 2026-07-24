@@ -49,7 +49,11 @@ export async function shouldCelebrateSolveMilestone(count: number): Promise<bool
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
 
 // ─── Milestone metadata ───────────────────────────────────────────────────────
-const MILESTONE_META: Record<number, { emoji: string; title: string; subtitle: string; color: string }> = {
+const MILESTONE_META: Record<number, { emoji: string; title: string; subtitle: string; color: string; badgeLabel?: string }> = {
+  // Practice consecutive-correct milestones (negative keys)
+  [-5]:  { emoji: "🔥", title: "5 in a Row!",          subtitle: "Five consecutive correct answers. You are on fire!",  color: "#F97316", badgeLabel: "5 correct in a row" },
+  [-10]: { emoji: "⚡", title: "10 in a Row!",          subtitle: "Ten straight correct answers. Unstoppable!",          color: "#8B5CF6", badgeLabel: "10 correct in a row" },
+  // Solve / quiz cumulative milestones
   10:  { emoji: "🌟", title: "10 Problems Solved!",  subtitle: "You are just getting started. Keep it up!",       color: "#F59E0B" },
   25:  { emoji: "🚀", title: "25 Problems Solved!",  subtitle: "A quarter-century of solutions. Impressive!",      color: "#6366F1" },
   50:  { emoji: "💎", title: "50 Problems Solved!",  subtitle: "Halfway to 100. You are on a roll!",               color: "#10B981" },
@@ -148,9 +152,10 @@ function PulsingEmoji({ emoji, color }: { emoji: string; color: string }) {
 interface CardProps {
   solveCount: number;
   onDismiss: () => void;
+  onViewRank?: () => void;
 }
 
-function AnimatedCard({ solveCount, onDismiss }: CardProps) {
+function AnimatedCard({ solveCount, onDismiss, onViewRank }: CardProps) {
   const colors = useColors();
   const meta   = MILESTONE_META[solveCount] ?? MILESTONE_META[10];
 
@@ -218,17 +223,17 @@ function AnimatedCard({ solveCount, onDismiss }: CardProps) {
       {/* Solve count badge */}
       <View style={[styles.badge, { backgroundColor: `${meta.color}20`, borderColor: `${meta.color}50` }]}>
         <Text style={[styles.badgeText, { color: meta.color }]}>
-          {solveCount} problems solved
+          {meta.badgeLabel ?? `${Math.abs(solveCount)} problems solved`}
         </Text>
       </View>
 
-      {/* Action row: Share + Dismiss */}
+      {/* Action row: Share + (View Rank or Dismiss) */}
       <View style={styles.actionRow}>
         <TouchableOpacity
           onPress={() => {
             H.impactLight();
             Share.share({
-              message: `I just solved my ${solveCount}th problem on TutorSnap! ${meta.emoji} Join me and level up your studies.`,
+              message: `I just solved my ${Math.abs(solveCount)}${meta.badgeLabel ? " problems" : "th problem"} on TutorSnap! ${meta.emoji} Join me and level up your studies.`,
             }).catch(() => {});
           }}
           activeOpacity={0.8}
@@ -240,16 +245,29 @@ function AnimatedCard({ solveCount, onDismiss }: CardProps) {
           <Text style={[styles.shareBtnText, { color: meta.color }]}>Share</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          onPress={onDismiss}
-          activeOpacity={0.8}
-          style={[styles.dismissBtn, { backgroundColor: meta.color }]}
-          accessibilityLabel="Continue solving"
-          accessibilityRole="button"
-          accessibilityHint="Closes this celebration and returns to the app"
-        >
-          <Text style={styles.dismissText}>Keep Solving!</Text>
-        </TouchableOpacity>
+        {onViewRank ? (
+          <TouchableOpacity
+            onPress={() => { H.impactLight(); onViewRank(); }}
+            activeOpacity={0.8}
+            style={[styles.dismissBtn, { backgroundColor: meta.color }]}
+            accessibilityLabel="View your rank"
+            accessibilityRole="button"
+            accessibilityHint="Opens the leaderboard to see your current rank"
+          >
+            <Text style={styles.dismissText}>View Rank</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            onPress={onDismiss}
+            activeOpacity={0.8}
+            style={[styles.dismissBtn, { backgroundColor: meta.color }]}
+            accessibilityLabel="Continue solving"
+            accessibilityRole="button"
+            accessibilityHint="Closes this celebration and returns to the app"
+          >
+            <Text style={styles.dismissText}>Keep Solving!</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </Animated.View>
   );
@@ -261,12 +279,15 @@ interface Props {
   solveCount: number | null;
   /** Called when the modal dismisses (auto or manual). Caller should then trigger review prompt. */
   onDismiss: () => void;
+  /** Optional: if provided, shows a "View Rank" button instead of "Keep Solving" that navigates to the leaderboard. */
+  onViewRank?: () => void;
 }
 
-export function SolveMilestoneModal({ solveCount, onDismiss }: Props) {
+export function SolveMilestoneModal({ solveCount, onDismiss, onViewRank }: Props) {
   useEffect(() => {
     if (solveCount !== null) {
-      H.notificationSuccess();
+      // Triple haptic burst at confetti entry for a physical celebration feel
+      H.celebrationBurst();
     }
   }, [solveCount]);
 
@@ -295,7 +316,7 @@ export function SolveMilestoneModal({ solveCount, onDismiss }: Props) {
 
         {/* Card — stop propagation so tapping card doesn't dismiss */}
         <TouchableOpacity activeOpacity={1} onPress={() => {}}>
-          <AnimatedCard solveCount={solveCount} onDismiss={onDismiss} />
+          <AnimatedCard solveCount={solveCount} onDismiss={onDismiss} onViewRank={onViewRank} />
         </TouchableOpacity>
       </TouchableOpacity>
     </Modal>
