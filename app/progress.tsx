@@ -113,7 +113,12 @@ export default function ProgressScreen() {
     );
   }
 
-  const { streak, subjectCounts, weeklyActivity } = progress;
+  const { streak, subjectCounts } = progress;
+  // Defensive fallback: weeklyActivity may be missing in old stored data formats
+  const weeklyActivity: number[] =
+    Array.isArray(progress.weeklyActivity) && progress.weeklyActivity.length === 7
+      ? progress.weeklyActivity
+      : [0, 0, 0, 0, 0, 0, 0];
   const dailyGoalPct = getDailyGoalPercent(streak.todaySolved, streak.dailyGoal);
   const streakEmoji = getStreakEmoji(streak.currentStreak);
   const maxWeekly = Math.max(...weeklyActivity, 1);

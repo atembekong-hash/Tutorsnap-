@@ -54,7 +54,17 @@ export async function getProgress(): Promise<ProgressData> {
   try {
     const stored = await AsyncStorage.getItem(PROGRESS_KEY);
     if (stored) {
-      return JSON.parse(stored) as ProgressData;
+      const parsed = JSON.parse(stored) as Partial<ProgressData>;
+      const defaults = getDefaultProgress();
+      // Merge with defaults to handle old data formats that may be missing new fields
+      return {
+        streak: { ...defaults.streak, ...(parsed.streak ?? {}) },
+        subjectCounts: parsed.subjectCounts ?? defaults.subjectCounts,
+        weeklyActivity:
+          Array.isArray(parsed.weeklyActivity) && parsed.weeklyActivity.length === 7
+            ? parsed.weeklyActivity
+            : defaults.weeklyActivity,
+      };
     }
   } catch (_) {
     // ignore
