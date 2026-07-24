@@ -39,10 +39,15 @@ const MAPPING = {
   "list.bullet": "list",
   "lightbulb.fill": "lightbulb",
   "checkmark.circle.fill": "check-circle",
+  "checkmark.circle": "check-circle-outline",
+  "checkmark": "check",
   "exclamationmark.triangle.fill": "warning",
+  "exclamationmark.circle.fill": "error",
   "trash.fill": "delete",
   "square.and.arrow.up": "share",
   "doc.on.doc": "content-copy",
+  "doc.richtext": "article",
+  "doc.text": "description",
   "pencil.and.list.clipboard": "assignment",
   "bubble.left.fill": "chat-bubble",
   "arrowshape.turn.up.left.fill": "reply",
@@ -62,6 +67,7 @@ const MAPPING = {
   "arrow.up.circle.fill": "arrow-circle-up",
   "arrow.down.circle.fill": "arrow-circle-down",
   "arrow.counterclockwise": "replay",
+  "arrow.clockwise": "refresh",
   "play.fill": "play-arrow",
   "pause.fill": "pause",
   "timer": "timer",
@@ -179,6 +185,9 @@ const MAPPING = {
   // Study blocks
   "text.book.closed.fill": "menu-book",
   "arrow.left.arrow.right": "compare-arrows",
+  "folder.fill": "folder",
+  "folder.badge.plus": "create-new-folder",
+  "info.circle.fill": "info",
 } as unknown as IconMapping;
 
 export function IconSymbol({
