@@ -25,6 +25,7 @@ const MAPPING = {
   "chart.bar.fill": "bar-chart",
   "brain.head.profile": "psychology",
   "wand.and.stars": "auto-fix-high",
+  "wand.and.stars.fill": "auto-fix-high",
   "bolt.fill": "bolt",
   // Camera / Media
   "camera.fill": "photo-camera",

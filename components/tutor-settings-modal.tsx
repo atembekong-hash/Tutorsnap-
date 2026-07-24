@@ -63,6 +63,7 @@ export interface TutorSettings {
   useEmojis: boolean;
   showWorking: boolean;
   followUpChips: boolean;
+  detailedMode: boolean; // When true, AI uses doubled token budgets for richer responses
 
   // 3. Chat Behaviour
   typingAnimation: boolean;
@@ -122,6 +123,7 @@ export const DEFAULT_TUTOR_SETTINGS: TutorSettings = {
   useEmojis: true,
   showWorking: true,
   followUpChips: true,
+  detailedMode: false,
 
   typingAnimation: false,
   typingSpeed: "fast",
@@ -781,6 +783,13 @@ export function TutorSettingsModal({
               sub="Show suggested follow-up questions"
               value={settings.followUpChips}
               onChange={(v) => onUpdate({ followUpChips: v })}
+            />
+            <ToggleRow
+              icon="wand.and.stars.fill"
+              label="Detailed Mode"
+              sub="Longer, richer AI responses with more examples"
+              value={settings.detailedMode}
+              onChange={(v) => onUpdate({ detailedMode: v })}
               last
             />
           </SettingsCard>

@@ -92,6 +92,7 @@ interface TutorProfile {
   language?: string;
   showWorking?: boolean;
   useEmojis?: boolean;
+  detailedMode?: boolean; // When true, use doubled token budgets and richer length guidance
 }
 
 function buildTutorProfileContext(profile?: TutorProfile): string {
@@ -141,6 +142,22 @@ function buildTutorProfileContext(profile?: TutorProfile): string {
     parts.push("You may use emoji sparingly to make responses friendlier.");
   }
 
+  if (profile.detailedMode === true) {
+    parts.push(
+      "DETAILED MODE is ON: Give the richest, most thorough response possible. " +
+      "For simple questions: 4-8 sentences with a related example. " +
+      "For medium questions: 2 fully worked examples plus a summary table or key insight list. " +
+      "For complex questions: full working with ALL steps, a verification pass, a summary, and a related extension problem. " +
+      "Always end with a Pro Tip AND a Common Mistake section. " +
+      "After every worked example, add a 'Try It Yourself' practice problem."
+    );
+  } else {
+    parts.push(
+      "CONCISE MODE is ON: Keep responses focused and efficient. " +
+      "Answer the question directly, show essential working steps only, and avoid over-explaining."
+    );
+  }
+
   return parts.length > 0 ? `\n\nTUTOR PERSONALISATION:\n${parts.map((p) => `- ${p}`).join("\n")}` : "";
 }
 
@@ -170,13 +187,14 @@ export function registerChatStreamRoute(app: Express) {
       const systemPrompt = CHAT_SYSTEM_PROMPT + subjectContext + gradeCtx + profileCtx;
 
       // Scale max_tokens by the complexity of the last user message.
-      // Doubled from previous values to allow richer, more complete responses.
-      // ≤10 words → 2400 (short question but may need a full worked solution)
-      // ≤30 words → 3200 (medium explanation)
-      // >30 words → 4000 (long/multi-part question)
+      // Detailed Mode (on): doubled budgets for richer, more complete responses.
+      // Concise Mode (off): halved budgets for focused, efficient responses.
+      const isDetailed = tutorProfile?.detailedMode !== false; // default to detailed (current behaviour)
       const lastUserMsg = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
       const wordCount = lastUserMsg.trim().split(/\s+/).filter(Boolean).length;
-      const streamMaxTokens = wordCount <= 10 ? 2400 : wordCount <= 30 ? 3200 : 4000;
+      const streamMaxTokens = isDetailed
+        ? (wordCount <= 10 ? 2400 : wordCount <= 30 ? 3200 : 4000)  // Detailed: full budgets
+        : (wordCount <= 10 ? 1200 : wordCount <= 30 ? 1600 : 2000); // Concise: halved budgets
 
       const payload = {
         model: "gpt-4o-mini",

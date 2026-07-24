@@ -611,6 +611,7 @@ Respond ONLY with this JSON:
       })),
       subject: z.string().optional(),
       gradeLevel: z.string().optional(),
+      detailedMode: z.boolean().optional(), // When true, use doubled token budgets
     }))
     .mutation(async ({ input }) => {
       const subjectContext = input.subject
@@ -619,7 +620,11 @@ Respond ONLY with this JSON:
       const gradeContext = input.gradeLevel && GRADE_LEVEL_DESCRIPTIONS[input.gradeLevel]
         ? `\nADAPT YOUR RESPONSE to this student's level: ${GRADE_LEVEL_DESCRIPTIONS[input.gradeLevel]}`
         : "";
-      const systemPrompt = CHAT_SYSTEM_PROMPT + subjectContext + gradeContext;
+      const isDetailed = input.detailedMode !== false; // default to detailed (current behaviour)
+      const detailedCtx = isDetailed
+        ? "\n\nDETAILED MODE is ON: Give the richest, most thorough response possible. For simple questions: 4-8 sentences with a related example. For medium questions: 2 fully worked examples plus a summary table. For complex questions: full working with ALL steps, a verification pass, a summary, and a related extension problem. Always end with a Pro Tip AND a Common Mistake section."
+        : "\n\nCONCISE MODE is ON: Keep responses focused and efficient. Answer the question directly, show essential working steps only, and avoid over-explaining.";
+      const systemPrompt = CHAT_SYSTEM_PROMPT + subjectContext + gradeContext + detailedCtx;
       const result = await invokeLLM({
         model: "claude-haiku-4-5",
         messages: [
@@ -629,14 +634,19 @@ Respond ONLY with this JSON:
             content: m.content,
           })),
         ],
-        // Scale chat response length by message complexity
-        // Doubled from previous values to allow richer, more complete responses.
+        // Scale chat response length by message complexity and detailedMode flag.
         max_tokens: (() => {
           const lastMsg = input.messages[input.messages.length - 1]?.content ?? "";
           const wordCount = lastMsg.trim().split(/\s+/).length;
-          if (wordCount <= 10) return 1200;   // short/simple question
-          if (wordCount <= 30) return 2000;   // medium question
-          return 3000;                         // long/complex question
+          if (isDetailed) {
+            if (wordCount <= 10) return 1200;   // Detailed: short question
+            if (wordCount <= 30) return 2000;   // Detailed: medium question
+            return 3000;                         // Detailed: long/complex question
+          } else {
+            if (wordCount <= 10) return 600;    // Concise: short question
+            if (wordCount <= 30) return 1000;   // Concise: medium question
+            return 1500;                         // Concise: long/complex question
+          }
         })(),
       });
       const rawContent = (result as any)?.error ? "" : (result.choices?.[0]?.message?.content ?? "");

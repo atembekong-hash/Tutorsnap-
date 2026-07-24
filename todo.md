@@ -919,3 +919,12 @@
 - [x] Double non-streaming chat max_tokens: 600/1000/1500 → 1200/2000/3000 (routers.ts)
 - [x] Update system prompt Length guidance: richer per-tier instructions, Try It Yourself section, Pro Tip + Common Mistake required
 - [x] TypeScript: 0 errors, Tests: 33/33 passed
+
+## Round 58: Detailed Mode Toggle in Tutor Settings
+- [x] Add detailedMode boolean to TutorSettings type and DEFAULT_TUTOR_SETTINGS (default: false)
+- [x] Add "Detailed Mode" ToggleRow to Response Style section in TutorSettingsModal
+- [x] Add wand.and.stars.fill icon mapping to icon-symbol.tsx
+- [x] Wire detailedMode into chatStream.ts: TutorProfile.detailedMode, token budget branching, system prompt instruction
+- [x] Wire detailedMode into routers.ts non-streaming chat: input schema, token budget branching, system prompt instruction
+- [x] Pass detailedMode from tutorSettings through sendStreamingChat tutorProfile payload in chat.tsx
+- [x] TypeScript: 0 errors, Tests: 33/33 passed

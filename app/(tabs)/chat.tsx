@@ -1454,6 +1454,7 @@ function ChatScreenContent() {
           language: tutorSettings.language !== "English" ? tutorSettings.language : undefined,
           showWorking: tutorSettings.showWorking,
           useEmojis: tutorSettings.useEmojis,
+          detailedMode: tutorSettings.detailedMode,
         };
 
         if (Platform.OS === "web") {
