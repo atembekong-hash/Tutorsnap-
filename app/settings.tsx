@@ -1502,6 +1502,15 @@ export default function SettingsScreen() {
             onPress={() => { setShowTutorSettings(true); H.impactLight(); }}
           />
         )}
+        {ms("AIRE Analytics", "response length feedback") && (
+          <SettingsRow
+            icon="chart.bar.fill"
+            label="AIRE Analytics"
+            subtitle="See how your response-length ratings break down by subject"
+            colors={colors}
+            onPress={() => { router.push("/aire-analytics" as any); H.impactLight(); }}
+          />
+        )}
 
         {/* ── SUBSCRIPTION & REFERRALS ──────────────────────────────── */}
         {(ms("TutorSnap Premium") || ms("View Premium Plans") || ms("Restore Purchases") || ms("Manage Subscription") || ms("Affiliate & Referrals") || ms("Redeem")) && <SectionHeader title="SUBSCRIPTION & REFERRALS" colors={colors} />}
