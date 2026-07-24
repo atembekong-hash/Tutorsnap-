@@ -50,36 +50,47 @@ export interface WeeklyData {
 }
 
 export async function getWeeklyData(): Promise<WeeklyData> {
-  const [history, weeklyGoal] = await Promise.all([
-    loadQuizHistory(),
-    getWeeklyQuizGoal(),
-  ]);
+  try {
+    const [history, weeklyGoal] = await Promise.all([
+      loadQuizHistory(),
+      getWeeklyQuizGoal(),
+    ]);
 
-  const today = getDayString(0);
+    const today = getDayString(0);
 
-  // Build a map of date -> quiz count from quiz history
-  const quizByDay: Record<string, number> = {};
-  for (const q of history) {
-    const d = new Date(q.completedAt).toISOString().split("T")[0];
-    quizByDay[d] = (quizByDay[d] || 0) + 1;
+    // Build a map of date -> quiz count from quiz history
+    const quizByDay: Record<string, number> = {};
+    for (const q of history) {
+      const d = new Date(q.completedAt).toISOString().split("T")[0];
+      quizByDay[d] = (quizByDay[d] || 0) + 1;
+    }
+
+    // Build 7-day window (index 0 = 6 days ago, index 6 = today)
+    const days: DayActivity[] = [];
+    for (let i = -6; i <= 0; i++) {
+      const date = getDayString(i);
+      days.push({
+        date,
+        label: getDayLabel(date),
+        solves: 0,   // will be filled from progress weeklyActivity below
+        quizzes: quizByDay[date] || 0,
+        isToday: date === today,
+      });
+    }
+
+    // Count quizzes this week (last 7 days)
+    const quizzesThisWeek = days.reduce((s, d) => s + d.quizzes, 0);
+    const goalPct = Math.min(100, Math.round((quizzesThisWeek / weeklyGoal) * 100));
+
+    return { days, quizzesThisWeek, weeklyGoal, goalPct };
+  } catch {
+    // Return a safe empty default if AsyncStorage is unavailable on app resume
+    const today = getDayString(0);
+    const days: DayActivity[] = [];
+    for (let i = -6; i <= 0; i++) {
+      const date = getDayString(i);
+      days.push({ date, label: getDayLabel(date), solves: 0, quizzes: 0, isToday: date === today });
+    }
+    return { days, quizzesThisWeek: 0, weeklyGoal: DEFAULT_WEEKLY_GOAL, goalPct: 0 };
   }
-
-  // Build 7-day window (index 0 = 6 days ago, index 6 = today)
-  const days: DayActivity[] = [];
-  for (let i = -6; i <= 0; i++) {
-    const date = getDayString(i);
-    days.push({
-      date,
-      label: getDayLabel(date),
-      solves: 0,   // will be filled from progress weeklyActivity below
-      quizzes: quizByDay[date] || 0,
-      isToday: date === today,
-    });
-  }
-
-  // Count quizzes this week (last 7 days)
-  const quizzesThisWeek = days.reduce((s, d) => s + d.quizzes, 0);
-  const goalPct = Math.min(100, Math.round((quizzesThisWeek / weeklyGoal) * 100));
-
-  return { days, quizzesThisWeek, weeklyGoal, goalPct };
 }

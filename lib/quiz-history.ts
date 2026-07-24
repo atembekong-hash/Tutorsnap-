@@ -73,20 +73,24 @@ export async function getAdaptiveDifficultySuggestion(
   currentDifficulty: "easy" | "medium" | "hard"
 ): Promise<DifficultyUpSuggestion | null> {
   if (currentDifficulty === "hard") return null;
-  const history = await loadQuizHistory();
-  const relevant = history
-    .filter((h) => h.subject === subject && h.difficulty === currentDifficulty)
-    .slice(0, 3);
-  if (relevant.length < 3) return null;
-  const avgPct = Math.round(relevant.reduce((s, h) => s + h.pct, 0) / relevant.length);
-  if (avgPct < 85) return null;
-  return {
-    subject,
-    currentDifficulty,
-    suggestedDifficulty: currentDifficulty === "easy" ? "medium" : "hard",
-    avgPct,
-    quizCount: relevant.length,
-  };
+  try {
+    const history = await loadQuizHistory();
+    const relevant = history
+      .filter((h) => h.subject === subject && h.difficulty === currentDifficulty)
+      .slice(0, 3);
+    if (relevant.length < 3) return null;
+    const avgPct = Math.round(relevant.reduce((s, h) => s + h.pct, 0) / relevant.length);
+    if (avgPct < 85) return null;
+    return {
+      subject,
+      currentDifficulty,
+      suggestedDifficulty: currentDifficulty === "easy" ? "medium" : "hard",
+      avgPct,
+      quizCount: relevant.length,
+    };
+  } catch {
+    return null;
+  }
 }
 
 // ─── Downward difficulty suggestion ───────────────────────────────────────────
@@ -108,26 +112,36 @@ export async function getDifficultyDownSuggestion(
   currentDifficulty: "easy" | "medium" | "hard"
 ): Promise<DifficultyDownSuggestion | null> {
   if (currentDifficulty === "easy") return null;
-  const history = await loadQuizHistory();
-  const relevant = history
-    .filter((h) => h.subject === subject && h.difficulty === currentDifficulty)
-    .slice(0, 3);
-  if (relevant.length < 3) return null;
-  const avgPct = Math.round(relevant.reduce((s, h) => s + h.pct, 0) / relevant.length);
-  if (avgPct >= 50) return null;
-  return {
-    subject,
-    currentDifficulty: currentDifficulty as "medium" | "hard",
-    suggestedDifficulty: currentDifficulty === "hard" ? "medium" : "easy",
-    avgPct,
-    quizCount: relevant.length,
-  };
+  try {
+    const history = await loadQuizHistory();
+    const relevant = history
+      .filter((h) => h.subject === subject && h.difficulty === currentDifficulty)
+      .slice(0, 3);
+    if (relevant.length < 3) return null;
+    const avgPct = Math.round(relevant.reduce((s, h) => s + h.pct, 0) / relevant.length);
+    if (avgPct >= 50) return null;
+    return {
+      subject,
+      currentDifficulty: currentDifficulty as "medium" | "hard",
+      suggestedDifficulty: currentDifficulty === "hard" ? "medium" : "easy",
+      avgPct,
+      quizCount: relevant.length,
+    };
+  } catch {
+    return null;
+  }
 }
 
 export async function loadQuizStats(): Promise<QuizStats> {
-  const history = await loadQuizHistory();
+  const EMPTY_STATS: QuizStats = { totalQuizzes: 0, bestScore: 0, averageScore: 0, bySubject: {}, byGrade: {} };
+  let history: QuizResult[];
+  try {
+    history = await loadQuizHistory();
+  } catch {
+    return EMPTY_STATS;
+  }
   if (history.length === 0) {
-    return { totalQuizzes: 0, bestScore: 0, averageScore: 0, bySubject: {}, byGrade: {} };
+    return EMPTY_STATS;
   }
   const best = Math.max(...history.map((h) => h.pct));
   const avg = Math.round(history.reduce((s, h) => s + h.pct, 0) / history.length);

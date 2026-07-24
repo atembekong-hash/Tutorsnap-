@@ -152,9 +152,9 @@ function PracticeScreenContent() {
 
   useFocusEffect(
     useCallback(() => {
-      loadQuizStats().then(setQuizStats);
-      getProgress().then(setProgressData);
-      getWeeklyData().then(setWeeklyData);
+      loadQuizStats().then(setQuizStats).catch(() => {});
+      getProgress().then(setProgressData).catch(() => {});
+      getWeeklyData().then(setWeeklyData).catch(() => {});
       setSuggestionDismissed(false);
     }, [])
   );
@@ -163,8 +163,8 @@ function PracticeScreenContent() {
   useEffect(() => {
     setSuggestionDismissed(false);
     setDownSuggestionDismissed(false);
-    getAdaptiveDifficultySuggestion(selectedSubject, selectedDifficulty).then(setDiffSuggestion);
-    getDifficultyDownSuggestion(selectedSubject, selectedDifficulty).then(setDiffDownSuggestion);
+    getAdaptiveDifficultySuggestion(selectedSubject, selectedDifficulty).then(setDiffSuggestion).catch(() => {});
+    getDifficultyDownSuggestion(selectedSubject, selectedDifficulty).then(setDiffDownSuggestion).catch(() => {});
   }, [selectedSubject, selectedDifficulty]);
 
   // ── Pre-fetch: keep a queued-up next problem ready ───────────────────────────
