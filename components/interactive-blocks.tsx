@@ -24,6 +24,7 @@ import {
 import { useColors } from '@/hooks/use-colors';
 import * as Haptics from 'expo-haptics';
 import { addBookmark } from '@/lib/bookmarks';
+import { useRouter } from 'expo-router';
 
 // ─── Checklist ─────────────────────────────────────────────────────────────────
 
@@ -96,6 +97,7 @@ interface FlashcardProps {
 
 export function InteractiveFlashcard({ front, back, subject }: FlashcardProps) {
   const colors = useColors();
+  const router = useRouter();
   const [flipped, setFlipped] = useState(false);
   const [saved, setSaved] = useState(false);
   const anim = useRef(new Animated.Value(0)).current;
@@ -112,7 +114,14 @@ export function InteractiveFlashcard({ front, back, subject }: FlashcardProps) {
         solvedAt: Date.now(),
       });
       setSaved(true);
-      Alert.alert('Saved to Deck', 'This flashcard has been added to your Flashcards deck.');
+      Alert.alert(
+        'Saved to Deck',
+        'This flashcard has been added to your Flashcards deck.',
+        [
+          { text: 'View Flashcards', onPress: () => router.push('/flashcards' as any) },
+          { text: 'OK', style: 'cancel' },
+        ]
+      );
     } catch {
       Alert.alert('Error', 'Could not save to deck. Please try again.');
     }

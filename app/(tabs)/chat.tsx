@@ -437,10 +437,12 @@ function SmartCopyButton({
   content,
   colors,
   fs,
+  sessionId,
 }: {
   content: string;
   colors: ReturnType<typeof useColors>;
   fs: (n: number) => number;
+  sessionId?: string;
 }) {
   const [copied, setCopied] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -499,6 +501,28 @@ function SmartCopyButton({
     if (notes) options.push({ text: 'Copy Notes', onPress: () => doCopy(notes, 'Notes') });
     if (summary) options.push({ text: 'Copy Summary', onPress: () => doCopy(summary, 'Summary') });
     options.push({ text: 'Save to Notes', onPress: doSaveToNotes });
+
+    if (sessionId) {
+      const doPinToTop = async () => {
+        try {
+          const { pinSession } = await import('@/lib/chat-sessions');
+          const ok = await pinSession(sessionId);
+          if (ok) {
+            if (Platform.OS !== 'web') {
+              const Haptics = require('expo-haptics');
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            }
+            Alert.alert('Pinned', 'This chat session has been pinned to the top of your Chat History.');
+          } else {
+            Alert.alert('Pin limit reached', 'You can pin up to 3 sessions. Unpin one from Chat History to pin this session.');
+          }
+        } catch {
+          Alert.alert('Error', 'Could not pin this session.');
+        }
+      };
+      options.push({ text: 'Pin Session to Top', onPress: doPinToTop });
+    }
+
     options.push({ text: 'Cancel', style: 'cancel' } as any);
 
     Alert.alert('Copy or Save', 'What would you like to do?', options);
@@ -548,6 +572,7 @@ function MessageBubble({
   showAccentBar = false,
   blocksStartCollapsed = false,
   compactBlocks = false,
+  sessionId,
 }: {
   message: ChatMessage;
   isFirstInRun: boolean;
@@ -561,6 +586,7 @@ function MessageBubble({
   showAccentBar?: boolean;
   blocksStartCollapsed?: boolean;
   compactBlocks?: boolean;
+  sessionId?: string;
 }) {
   const isUser = message.role === "user";
   const { settings } = useAppearance();
@@ -706,7 +732,7 @@ function MessageBubble({
               ) : null}
             </View>
             {!streaming && teachingContent.length > 0 && (
-              <SmartCopyButton content={teachingContent} colors={colors} fs={fs} />
+              <SmartCopyButton content={teachingContent} colors={colors} fs={fs} sessionId={sessionId} />
             )}
           </View>
           {/* Submission Ready Card — independently generated, submission-optimised answer */}
@@ -2498,6 +2524,7 @@ function ChatScreenContent() {
                     showAccentBar={tutorSettings.showAccentBar}
                     blocksStartCollapsed={tutorSettings.blocksStartCollapsed}
                     compactBlocks={tutorSettings.compactBlocks}
+                    sessionId={session?.id}
                   />
                 {/* Error bubble — shown when stream fails */}
                 {item.role === "assistant" && item.error && !isStreaming && (

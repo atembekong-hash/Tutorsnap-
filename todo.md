@@ -955,3 +955,8 @@
 - [x] Add Save to Notes option to SmartCopyButton action sheet (6th option alongside 5 copy options)
 - [x] Replace single Copy button on MermaidDiagram with Export action sheet (Copy Source + Share Diagram)
 - [x] TypeScript: 0 errors | Tests: 33/33 passed
+
+## Round 59: AI Tutor UX Improvements
+- [x] View in Flashcards in-app toast after Save to Deck on InteractiveFlashcard
+- [x] Pin to top option in SmartCopyButton action sheet
+- [x] Diagram type label in Mermaid header

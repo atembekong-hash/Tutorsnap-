@@ -106,6 +106,33 @@ function buildMermaidHtml(diagram: string, isDark: boolean): string {
 </html>`;
 }
 
+// ─── Diagram type label ───────────────────────────────────────────────────────
+
+const DIAGRAM_TYPE_LABELS: Record<string, string> = {
+  flowchart: 'Flowchart',
+  graph: 'Graph',
+  sequencediagram: 'Sequence Diagram',
+  classdiagram: 'Class Diagram',
+  statediagram: 'State Diagram',
+  erdiagram: 'ER Diagram',
+  gantt: 'Gantt Chart',
+  pie: 'Pie Chart',
+  mindmap: 'Mind Map',
+  timeline: 'Timeline',
+  gitgraph: 'Git Graph',
+  xychart: 'XY Chart',
+  block: 'Block Diagram',
+  quadrantchart: 'Quadrant Chart',
+  requirementdiagram: 'Requirement Diagram',
+};
+
+function parseDiagramType(code: string): string {
+  const firstLine = code.trim().split('\n')[0].toLowerCase().trim();
+  // Remove direction suffix e.g. "flowchart TD" -> "flowchart"
+  const keyword = firstLine.split(/[\s-]/)[0];
+  return DIAGRAM_TYPE_LABELS[keyword] ?? 'Diagram';
+}
+
 // ─── Component ─────────────────────────────────────────────────────────────────
 
 interface MermaidDiagramProps {
@@ -120,6 +147,7 @@ export function MermaidDiagram({ code, fontSize = 14 }: MermaidDiagramProps) {
   const [copied, setCopied] = useState(false);
 
   const isDark = colors.background === '#151718' || colors.background.toLowerCase().startsWith('#1');
+  const diagramTypeLabel = parseDiagramType(code);
 
   const handleMessage = useCallback((event: any) => {
     try {
@@ -177,24 +205,30 @@ export function MermaidDiagram({ code, fontSize = 14 }: MermaidDiagramProps) {
     return (
       <View style={[styles.container, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <View style={styles.header}>
-          <Text style={[styles.label, { color: colors.muted }]}>Diagram</Text>
-                  <TouchableOpacity onPress={handleExport} style={styles.copyBtn}>
-          <Text style={[styles.copyText, { color: colors.primary }]}>
-            {copied ? 'Copied!' : 'Export'}
-          </Text>
-        </TouchableOpacity>
+          <View>
+            <Text style={[styles.label, { color: colors.muted }]}>Diagram</Text>
+            <Text style={[styles.sublabel, { color: colors.primary }]}>{diagramTypeLabel}</Text>
+          </View>
+          <TouchableOpacity onPress={handleExport} style={styles.copyBtn}>
+            <Text style={[styles.copyText, { color: colors.primary }]}>
+              {copied ? 'Copied!' : 'Export'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+        <FallbackBlock />
       </View>
-      <FallbackBlock />
-    </View>
-  );
-}
+    );
+  }
 
   // ── Native: WebView renderer ─────────────────────────────────────────────────
   if (!WebView || error) {
     return (
       <View style={[styles.container, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <View style={styles.header}>
-          <Text style={[styles.label, { color: colors.muted }]}>Diagram</Text>
+          <View>
+            <Text style={[styles.label, { color: colors.muted }]}>Diagram</Text>
+            <Text style={[styles.sublabel, { color: colors.primary }]}>{diagramTypeLabel}</Text>
+          </View>
           <TouchableOpacity onPress={handleExport} style={styles.copyBtn}>
             <Text style={[styles.copyText, { color: colors.primary }]}>
               {copied ? 'Copied!' : 'Export'}
@@ -211,7 +245,10 @@ export function MermaidDiagram({ code, fontSize = 14 }: MermaidDiagramProps) {
   return (
     <View style={[styles.container, { backgroundColor: colors.surface, borderColor: colors.border }]}>
       <View style={styles.header}>
-        <Text style={[styles.label, { color: colors.muted }]}>Diagram</Text>
+        <View>
+          <Text style={[styles.label, { color: colors.muted }]}>Diagram</Text>
+          <Text style={[styles.sublabel, { color: colors.primary }]}>{diagramTypeLabel}</Text>
+        </View>
         <TouchableOpacity onPress={handleExport} style={styles.copyBtn}>
           <Text style={[styles.copyText, { color: colors.primary }]}>
             {copied ? 'Copied!' : 'Export'}
@@ -258,6 +295,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+  },
+  sublabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    marginTop: 1,
   },
   copyBtn: {
     paddingHorizontal: 8,
