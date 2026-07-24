@@ -1030,3 +1030,10 @@
 - [x] TypeScript: 0 errors
 - [x] Tests: all passing (57/57)
 - [x] Version bumped to 1.4.2
+
+## Round 65: Fix Practice Tab Progress Widget Crash
+- [x] Diagnose crash when tapping progress widget in Practice tab
+- [x] Fix the crash
+- [x] Test end-to-end as real user
+- [x] TypeScript: 0 errors, tests: 57/57 passing
+- [x] Save checkpoint

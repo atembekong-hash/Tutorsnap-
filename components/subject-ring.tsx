@@ -1,28 +1,23 @@
 /**
  * SubjectRing
  *
- * An animated SVG circular progress ring for a single subject.
- * Uses react-native-svg + Reanimated for a smooth stroke-dashoffset animation.
+ * An animated circular progress ring for a single subject.
+ *
+ * IMPORTANT: We intentionally do NOT use Animated.createAnimatedComponent(Circle)
+ * from react-native-svg because that pattern causes native crashes with Reanimated 4.
+ * Instead we animate a plain React Native Animated value and compute strokeDashoffset
+ * in JS state, updating via useEffect. This is safe on all platforms.
  */
-import React, { useEffect } from "react";
-import { View, Text, StyleSheet } from "react-native";
-import Animated, {
-  useSharedValue,
-  useAnimatedProps,
-  withTiming,
-  Easing,
-} from "react-native-reanimated";
+import React, { useEffect, useRef, useState } from "react";
+import { View, Text, StyleSheet, Animated as RNAnimated, Easing } from "react-native";
 import Svg, { Circle } from "react-native-svg";
 import { useColors } from "@/hooks/use-colors";
-
-// Animated version of SVG Circle
-const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 interface SubjectRingProps {
   label: string;
   emoji: string;
   color: string;
-  /** 0–100 percentage toward the next tier (or 100 if gold) */
+  /** 0-100 percentage toward the next tier (or 100 if gold) */
   pct: number;
   /** Raw solve count */
   solves: number;
@@ -46,18 +41,28 @@ export function SubjectRing({
   const radius = (size - STROKE_WIDTH) / 2;
   const circumference = 2 * Math.PI * radius;
 
-  const progress = useSharedValue(0);
+  // Use a plain RN Animated.Value to drive the dashoffset in JS
+  const animValue = useRef(new RNAnimated.Value(0)).current;
+  const [dashOffset, setDashOffset] = useState(circumference);
 
   useEffect(() => {
-    progress.value = withTiming(pct / 100, {
+    // Listen to the animated value and update state so SVG re-renders
+    const listener = animValue.addListener(({ value }) => {
+      setDashOffset(circumference * (1 - value));
+    });
+
+    // Animate from 0 to pct/100
+    RNAnimated.timing(animValue, {
+      toValue: Math.min(1, Math.max(0, pct / 100)),
       duration: 900,
       easing: Easing.out(Easing.cubic),
-    });
-  }, [pct]);
+      useNativeDriver: false, // must be false for JS-driven SVG updates
+    }).start();
 
-  const animatedProps = useAnimatedProps(() => ({
-    strokeDashoffset: circumference * (1 - progress.value),
-  }));
+    return () => {
+      animValue.removeListener(listener);
+    };
+  }, [pct, circumference]);
 
   return (
     <View style={[styles.container, { width: size + 16 }]}>
@@ -73,8 +78,8 @@ export function SubjectRing({
             strokeWidth={STROKE_WIDTH}
             fill="none"
           />
-          {/* Animated fill */}
-          <AnimatedCircle
+          {/* Animated fill - driven by JS state, no createAnimatedComponent */}
+          <Circle
             cx={size / 2}
             cy={size / 2}
             r={radius}
@@ -82,7 +87,7 @@ export function SubjectRing({
             strokeWidth={STROKE_WIDTH}
             fill="none"
             strokeDasharray={circumference}
-            animatedProps={animatedProps}
+            strokeDashoffset={dashOffset}
             strokeLinecap="round"
             rotation="-90"
             origin={`${size / 2}, ${size / 2}`}

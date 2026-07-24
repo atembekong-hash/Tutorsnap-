@@ -124,7 +124,7 @@ export default function ProgressScreen() {
     Array.isArray(progress.weeklyActivity) && progress.weeklyActivity.length === 7
       ? progress.weeklyActivity
       : [0, 0, 0, 0, 0, 0, 0];
-  const dailyGoalPct = getDailyGoalPercent(streak.todaySolved, streak.dailyGoal);
+  const dailyGoalPct = (() => { const v = getDailyGoalPercent(streak.todaySolved, streak.dailyGoal); return Number.isFinite(v) ? v : 0; })();
   const streakEmoji = getStreakEmoji(streak.currentStreak);
   const maxWeekly = Math.max(...weeklyActivity, 1);
 
