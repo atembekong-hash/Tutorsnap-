@@ -194,6 +194,26 @@ function SessionCard({
         </View>
       )}
 
+      {/* Content badges: diagrams and flashcards */}
+      {((session.diagramCount ?? 0) > 0 || (session.flashcardCount ?? 0) > 0) && (
+        <View style={styles.contentBadgeRow}>
+          {(session.diagramCount ?? 0) > 0 && (
+            <View style={[styles.contentBadge, { backgroundColor: `${colors.primary}12`, borderColor: `${colors.primary}25` }]}>
+              <Text style={[styles.contentBadgeText, { color: colors.primary, fontSize: fs(11) }]}>
+                {session.diagramCount} diagram{session.diagramCount !== 1 ? 's' : ''}
+              </Text>
+            </View>
+          )}
+          {(session.flashcardCount ?? 0) > 0 && (
+            <View style={[styles.contentBadge, { backgroundColor: `${colors.warning}12`, borderColor: `${colors.warning}25` }]}>
+              <Text style={[styles.contentBadgeText, { color: colors.warning, fontSize: fs(11) }]}>
+                {session.flashcardCount} flashcard{session.flashcardCount !== 1 ? 's' : ''}
+              </Text>
+            </View>
+          )}
+        </View>
+      )}
+
       {/* Actions */}
       <View style={[styles.cardActions, { borderTopColor: colors.border }]}>
         <TouchableOpacity
@@ -1114,6 +1134,25 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   tagChipText: { fontWeight: "600" },
+  // Content count badges (diagrams, flashcards)
+  contentBadgeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 6,
+    marginBottom: 2,
+  },
+  contentBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  contentBadgeText: {
+    fontWeight: '600',
+  },
   // Tag filter bar
   tagFilterBar: {
     flexDirection: "row",

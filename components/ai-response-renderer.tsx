@@ -63,6 +63,7 @@ export interface AIResponseRendererProps {
   onDefineWord?: (word: string) => void;
   blocksStartCollapsed?: boolean;
   compactBlocks?: boolean;
+  onRegenerateDiagram?: (code: string) => void;
 }
 
 // ─── Segment types ─────────────────────────────────────────────────────────────
@@ -471,6 +472,7 @@ function buildRenderRules(
   colors: ReturnType<typeof useColors>,
   fontSize: number,
   textColor: string,
+  onRegenerateDiagram?: (code: string) => void,
 ) {
   const primary = colors.primary;
   const border = colors.border;
@@ -483,7 +485,15 @@ function buildRenderRules(
       const lang = (node.sourceInfo ?? '').trim().toLowerCase();
       // Intercept mermaid blocks and render as interactive diagram
       if (lang === 'mermaid') {
-        return <MermaidDiagram key={node.key} code={code.trim()} fontSize={fontSize} />;
+        const trimmedCode = code.trim();
+        return (
+          <MermaidDiagram
+            key={node.key}
+            code={trimmedCode}
+            fontSize={fontSize}
+            onRegenerate={onRegenerateDiagram ? () => onRegenerateDiagram(trimmedCode) : undefined}
+          />
+        );
       }
       return <CodeCard key={node.key} code={code.trim()} language={lang} fontSize={fontSize} />;
     },
@@ -635,6 +645,7 @@ export function AIResponseRenderer({
   onDefineWord,
   blocksStartCollapsed = false,
   compactBlocks = false,
+  onRegenerateDiagram,
 }: AIResponseRendererProps) {
   const colors = useColors();
   const textColor = color ?? colors.foreground;
@@ -653,8 +664,8 @@ export function AIResponseRenderer({
   );
 
   const renderRules = useMemo(
-    () => buildRenderRules(colors, fontSize, textColor),
-    [colors, fontSize, textColor],
+    () => buildRenderRules(colors, fontSize, textColor, onRegenerateDiagram),
+    [colors, fontSize, textColor, onRegenerateDiagram],
   );
 
   const handleLinkPress = useCallback(

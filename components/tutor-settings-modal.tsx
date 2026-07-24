@@ -64,6 +64,7 @@ export interface TutorSettings {
   showWorking: boolean;
   followUpChips: boolean;
   detailedMode: boolean; // When true, AI uses doubled token budgets for richer responses
+  subjectDetailedModes: Record<string, boolean>; // Per-subject override: subjectId -> detailedMode
 
   // 3. Chat Behaviour
   typingAnimation: boolean;
@@ -124,6 +125,7 @@ export const DEFAULT_TUTOR_SETTINGS: TutorSettings = {
   showWorking: true,
   followUpChips: true,
   detailedMode: false,
+  subjectDetailedModes: {},
 
   typingAnimation: false,
   typingSpeed: "fast",

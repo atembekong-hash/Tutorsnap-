@@ -960,3 +960,20 @@
 - [x] View in Flashcards in-app toast after Save to Deck on InteractiveFlashcard
 - [x] Pin to top option in SmartCopyButton action sheet
 - [x] Diagram type label in Mermaid header
+
+## Round 60: AI Tutor Enhancements Batch
+- [ ] Unpin option in Smart Copy sheet when session is already pinned
+- [ ] Regenerate Diagram button on Mermaid blocks
+- [ ] Diagram/flashcard count badge on Chat History session cards
+- [ ] Detailed/Concise mode badge in chat header
+- [ ] Wand quick-toggle in chat input bar for Detailed Mode
+- [ ] Persist Detailed Mode preference per subject
+
+## Round 60: AI Tutor Follow-up Features
+- [x] Add Unpin option in Smart Copy sheet (dynamic Pin/Unpin based on state)
+- [x] Add Regenerate Diagram button on Mermaid blocks (onRegenerate prop + button)
+- [x] Add diagram and flashcard count badges to Chat History session cards
+- [x] Add Detailed/Concise mode badge in chat header (tappable, subject-aware)
+- [x] Add wand quick-toggle in input bar (per-subject mode flip)
+- [x] Persist Detailed Mode preference per subject (subjectDetailedModes map)
+- [x] Bump version to 1.1.8 (versionCode 13)

@@ -40,6 +40,8 @@ export interface ChatSessionSummary {
   pinned: boolean;         // Whether this session is pinned to the top
   tags: string[];          // User-defined tags
   topReactions: string[];  // Up to 3 most-used emoji reactions in this session
+  diagramCount: number;    // Number of Mermaid diagram blocks in AI messages
+  flashcardCount: number;  // Number of flashcard blocks in AI messages
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -268,6 +270,16 @@ export async function listSessionSummaries(): Promise<ChatSessionSummary[]> {
         .sort((a, b) => b[1] - a[1])
         .slice(0, 3)
         .map(([emoji]) => emoji);
+      // Count diagrams and flashcards in AI messages
+      let diagramCount = 0;
+      let flashcardCount = 0;
+      for (const m of s.messages) {
+        if (m.role !== 'assistant') continue;
+        const mermaidMatches = m.content.match(/```mermaid/gi);
+        if (mermaidMatches) diagramCount += mermaidMatches.length;
+        const flashcardMatches = m.content.match(/:::flashcard/gi);
+        if (flashcardMatches) flashcardCount += flashcardMatches.length;
+      }
       summaries.push({
         id: s.id,
         title: s.title,
@@ -280,6 +292,8 @@ export async function listSessionSummaries(): Promise<ChatSessionSummary[]> {
         pinned: pinSet.has(s.id),
         tags: s.tags ?? [],
         topReactions,
+        diagramCount,
+        flashcardCount,
       });
     } catch { /* skip malformed */ }
   }

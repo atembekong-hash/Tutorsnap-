@@ -503,24 +503,36 @@ function SmartCopyButton({
     options.push({ text: 'Save to Notes', onPress: doSaveToNotes });
 
     if (sessionId) {
-      const doPinToTop = async () => {
+      const doPinToggle = async () => {
         try {
-          const { pinSession } = await import('@/lib/chat-sessions');
-          const ok = await pinSession(sessionId);
-          if (ok) {
+          const { readPins, pinSession, unpinSession } = await import('@/lib/chat-sessions');
+          const pins = await readPins();
+          const isPinned = pins.includes(sessionId);
+          if (isPinned) {
+            await unpinSession(sessionId);
             if (Platform.OS !== 'web') {
               const Haptics = require('expo-haptics');
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             }
-            Alert.alert('Pinned', 'This chat session has been pinned to the top of your Chat History.');
+            Alert.alert('Unpinned', 'This session has been removed from your pinned sessions.');
           } else {
-            Alert.alert('Pin limit reached', 'You can pin up to 3 sessions. Unpin one from Chat History to pin this session.');
+            const ok = await pinSession(sessionId);
+            if (ok) {
+              if (Platform.OS !== 'web') {
+                const Haptics = require('expo-haptics');
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              }
+              Alert.alert('Pinned', 'This chat session has been pinned to the top of your Chat History.');
+            } else {
+              Alert.alert('Pin limit reached', 'You can pin up to 3 sessions. Unpin one from Chat History to pin this session.');
+            }
           }
         } catch {
-          Alert.alert('Error', 'Could not pin this session.');
+          Alert.alert('Error', 'Could not update pin state.');
         }
       };
-      options.push({ text: 'Pin Session to Top', onPress: doPinToTop });
+      // Determine label asynchronously — show generic label, action resolves at press time
+      options.push({ text: 'Pin / Unpin Session', onPress: doPinToggle });
     }
 
     options.push({ text: 'Cancel', style: 'cancel' } as any);
@@ -1565,7 +1577,11 @@ function ChatScreenContent() {
           language: tutorSettings.language !== "English" ? tutorSettings.language : undefined,
           showWorking: tutorSettings.showWorking,
           useEmojis: tutorSettings.useEmojis,
-          detailedMode: tutorSettings.detailedMode,
+          // Per-subject override: if the current subject has a saved preference, use it;
+          // otherwise fall back to the global detailedMode setting
+          detailedMode: subject && tutorSettings.subjectDetailedModes[subject] !== undefined
+            ? tutorSettings.subjectDetailedModes[subject]
+            : tutorSettings.detailedMode,
         };
 
         if (Platform.OS === "web") {
@@ -2356,12 +2372,48 @@ function ChatScreenContent() {
               )}
             </TouchableOpacity>
             <View style={{ flex: 1, minWidth: 0 }}>
-              <Text
-                style={[chatStyles.headerTitle, { color: colors.foreground, marginLeft: 0 }]}
-                numberOfLines={1}
-              >
-                AI Tutor
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text
+                  style={[chatStyles.headerTitle, { color: colors.foreground, marginLeft: 0 }]}
+                  numberOfLines={1}
+                >
+                  AI Tutor
+                </Text>
+                {/* Detailed / Concise mode badge — subject-aware */}
+                {(() => {
+                  const subj = selectedSubject;
+                  const effectiveDetailed = subj && tutorSettings.subjectDetailedModes[subj] !== undefined
+                    ? tutorSettings.subjectDetailedModes[subj]
+                    : tutorSettings.detailedMode;
+                  const toggleDetailed = () => {
+                    const next = !effectiveDetailed;
+                    if (subj) {
+                      updateTutorSetting({ subjectDetailedModes: { ...tutorSettings.subjectDetailedModes, [subj]: next } });
+                    } else {
+                      updateTutorSetting({ detailedMode: next });
+                    }
+                    H.impactLight();
+                  };
+                  return (
+                    <TouchableOpacity
+                      onPress={toggleDetailed}
+                      accessibilityLabel={effectiveDetailed ? 'Detailed mode active. Tap to switch to Concise.' : 'Concise mode active. Tap to switch to Detailed.'}
+                      style={[
+                        chatStyles.modeBadge,
+                        {
+                          backgroundColor: effectiveDetailed ? `${colors.primary}20` : `${colors.muted}18`,
+                          borderColor: effectiveDetailed ? `${colors.primary}50` : `${colors.border}`,
+                        },
+                      ]}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[chatStyles.modeBadgeText, { color: effectiveDetailed ? colors.primary : colors.muted }]}>
+                        {effectiveDetailed ? 'Detailed' : 'Concise'}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })()}
+              </View>
               {/* Online / speed indicators — only shown when user enables them in settings */}
               {(tutorSettings.showOnlineStatus || tutorSettings.showSpeedIndicator) && (
                 <View style={chatStyles.statusRow}>
@@ -2837,6 +2889,39 @@ function ChatScreenContent() {
                 {2000 - inputText.length}
               </Text>
             )}
+
+            {/* Wand quick-toggle — flips Detailed/Concise mode per-subject without opening settings */}
+            {!isStreaming && !inputText.trim() && (() => {
+              const subj = selectedSubject;
+              const effDetailed = subj && tutorSettings.subjectDetailedModes[subj] !== undefined
+                ? tutorSettings.subjectDetailedModes[subj]
+                : tutorSettings.detailedMode;
+              const wandToggle = () => {
+                const next = !effDetailed;
+                if (subj) {
+                  updateTutorSetting({ subjectDetailedModes: { ...tutorSettings.subjectDetailedModes, [subj]: next } });
+                } else {
+                  updateTutorSetting({ detailedMode: next });
+                }
+                H.impactLight();
+              };
+              return (
+                <TouchableOpacity
+                  onPress={wandToggle}
+                  accessibilityLabel={effDetailed ? 'Switch to Concise mode' : 'Switch to Detailed mode'}
+                  style={[
+                    chatStyles.wandBtn,
+                    {
+                      backgroundColor: effDetailed ? `${colors.primary}18` : 'transparent',
+                      borderColor: effDetailed ? `${colors.primary}40` : colors.border,
+                    },
+                  ]}
+                  activeOpacity={0.7}
+                >
+                  <IconSymbol size={17} name="wand.and.stars" color={effDetailed ? colors.primary : colors.muted} />
+                </TouchableOpacity>
+              );
+            })()}
 
             {/* Voice input button — only shown when not streaming, input is empty, and voice input is enabled */}
             {!isStreaming && !inputText.trim() && tutorSettings.voiceInput && (
@@ -4194,6 +4279,26 @@ const chatStyles = StyleSheet.create({
     borderWidth: 1,
     marginRight: 10,
     overflow: "hidden",
+  },
+  modeBadge: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  modeBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.2,
+  },
+  wandBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 2,
   },
 });
 

@@ -138,9 +138,10 @@ function parseDiagramType(code: string): string {
 interface MermaidDiagramProps {
   code: string;
   fontSize?: number;
+  onRegenerate?: () => void;
 }
 
-export function MermaidDiagram({ code, fontSize = 14 }: MermaidDiagramProps) {
+export function MermaidDiagram({ code, fontSize = 14, onRegenerate }: MermaidDiagramProps) {
   const colors = useColors();
   const [height, setHeight] = useState(200);
   const [error, setError] = useState(false);
@@ -209,11 +210,18 @@ export function MermaidDiagram({ code, fontSize = 14 }: MermaidDiagramProps) {
             <Text style={[styles.label, { color: colors.muted }]}>Diagram</Text>
             <Text style={[styles.sublabel, { color: colors.primary }]}>{diagramTypeLabel}</Text>
           </View>
-          <TouchableOpacity onPress={handleExport} style={styles.copyBtn}>
-            <Text style={[styles.copyText, { color: colors.primary }]}>
-              {copied ? 'Copied!' : 'Export'}
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            {onRegenerate && (
+              <TouchableOpacity onPress={onRegenerate} style={styles.copyBtn}>
+                <Text style={[styles.copyText, { color: colors.muted }]}>Regenerate</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity onPress={handleExport} style={styles.copyBtn}>
+              <Text style={[styles.copyText, { color: colors.primary }]}>
+                {copied ? 'Copied!' : 'Export'}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
         <FallbackBlock />
       </View>
@@ -229,11 +237,18 @@ export function MermaidDiagram({ code, fontSize = 14 }: MermaidDiagramProps) {
             <Text style={[styles.label, { color: colors.muted }]}>Diagram</Text>
             <Text style={[styles.sublabel, { color: colors.primary }]}>{diagramTypeLabel}</Text>
           </View>
-          <TouchableOpacity onPress={handleExport} style={styles.copyBtn}>
-            <Text style={[styles.copyText, { color: colors.primary }]}>
-              {copied ? 'Copied!' : 'Export'}
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            {onRegenerate && (
+              <TouchableOpacity onPress={onRegenerate} style={styles.copyBtn}>
+                <Text style={[styles.copyText, { color: colors.muted }]}>Regenerate</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity onPress={handleExport} style={styles.copyBtn}>
+              <Text style={[styles.copyText, { color: colors.primary }]}>
+                {copied ? 'Copied!' : 'Export'}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
         <FallbackBlock />
       </View>
@@ -249,11 +264,18 @@ export function MermaidDiagram({ code, fontSize = 14 }: MermaidDiagramProps) {
           <Text style={[styles.label, { color: colors.muted }]}>Diagram</Text>
           <Text style={[styles.sublabel, { color: colors.primary }]}>{diagramTypeLabel}</Text>
         </View>
-        <TouchableOpacity onPress={handleExport} style={styles.copyBtn}>
-          <Text style={[styles.copyText, { color: colors.primary }]}>
-            {copied ? 'Copied!' : 'Export'}
-          </Text>
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          {onRegenerate && (
+            <TouchableOpacity onPress={onRegenerate} style={styles.copyBtn}>
+              <Text style={[styles.copyText, { color: colors.muted }]}>Regenerate</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity onPress={handleExport} style={styles.copyBtn}>
+            <Text style={[styles.copyText, { color: colors.primary }]}>
+              {copied ? 'Copied!' : 'Export'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
       <WebView
         source={{ html }}
@@ -300,6 +322,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     marginTop: 1,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   copyBtn: {
     paddingHorizontal: 8,
