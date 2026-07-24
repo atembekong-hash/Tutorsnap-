@@ -570,7 +570,7 @@ export default function SolutionScreen() {
           >
             <Text style={{ color: "#FFFFFF", fontSize: fs(14), fontWeight: "700" }}>Try Again</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.back()} activeOpacity={0.75}>
+          <TouchableOpacity accessibilityLabel="Go back" accessibilityRole="button" onPress={() => router.back()} activeOpacity={0.75}>
             <Text style={{ color: colors.muted, fontSize: fs(14) }}>Go Back</Text>
           </TouchableOpacity>
         </View>
@@ -583,7 +583,7 @@ export default function SolutionScreen() {
       <ScreenContainer>
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
           <Text style={{ color: colors.foreground, fontSize: fs(16) }}>No solution data found</Text>
-          <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 16 }}>
+          <TouchableOpacity accessibilityLabel="Go back" accessibilityRole="button" onPress={() => router.back()} style={{ marginTop: 16 }}>
             <Text style={{ color: colors.primary, fontSize: fs(16) }}>Go Back</Text>
           </TouchableOpacity>
         </View>
@@ -1229,7 +1229,7 @@ export default function SolutionScreen() {
       <View style={[styles.navBarWrap, { borderBottomColor: colors.border }]}>
         {/* Row 1: back / title / actions */}
         <View style={styles.navBar}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <TouchableOpacity accessibilityLabel="Go back" accessibilityRole="button" onPress={() => router.back()} style={styles.backBtn}>
             <IconSymbol size={22} name="arrow.left" color={colors.foreground} />
           </TouchableOpacity>
           <Text style={[styles.navTitle, { color: colors.foreground }]}>Solution</Text>

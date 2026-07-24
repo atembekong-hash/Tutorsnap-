@@ -173,7 +173,7 @@ export default function LeaderboardScreen() {
       <Animated.View style={[{ flex: 1 }, fadeStyle]}>
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity accessibilityLabel="Go back" accessibilityRole="button" onPress={() => router.back()} style={styles.backBtn}>
           <IconSymbol size={24} name="arrow.left" color={colors.foreground} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>Streak Leaderboard</Text>

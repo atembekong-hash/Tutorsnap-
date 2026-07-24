@@ -287,7 +287,7 @@ export default function ReviewMissedScreen() {
       <Animated.View style={[{ flex: 1 }, fadeStyle]}>
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity accessibilityLabel="Go back" accessibilityRole="button" onPress={() => router.back()} style={styles.backBtn}>
           <IconSymbol size={22} name="arrow.left" color={colors.foreground} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
@@ -313,7 +313,7 @@ export default function ReviewMissedScreen() {
         <View style={styles.centered}>
           <IconSymbol size={40} name="exclamationmark.triangle.fill" color={colors.error} />
           <Text style={[styles.errorText, { color: colors.error, fontSize: fs(15) }]}>{error}</Text>
-          <TouchableOpacity
+          <TouchableOpacity accessibilityLabel="Go back" accessibilityRole="button"
             onPress={() => router.back()}
             style={[styles.backBtnLarge, { backgroundColor: colors.primary }]}
           >
@@ -329,7 +329,7 @@ export default function ReviewMissedScreen() {
           <Text style={[styles.perfectSubtitle, { color: colors.muted, fontSize: fs(14) }]}>
             You answered all {totalQuestions} questions correctly.
           </Text>
-          <TouchableOpacity
+          <TouchableOpacity accessibilityLabel="Go back" accessibilityRole="button"
             onPress={() => router.back()}
             style={[styles.backBtnLarge, { backgroundColor: colors.primary }]}
           >
@@ -384,7 +384,7 @@ export default function ReviewMissedScreen() {
           ))}
 
           {/* Done button */}
-          <TouchableOpacity
+          <TouchableOpacity accessibilityLabel="Confirm" accessibilityRole="button"
             onPress={() => router.back()}
             style={[styles.doneBtn, { backgroundColor: colors.primary }]}
             activeOpacity={0.85}

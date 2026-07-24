@@ -276,7 +276,7 @@ function ScoreSummary({
           <IconSymbol size={18} name="arrow.counterclockwise" color="#fff" />
           <Text style={styles.summaryBtnText}>Retry Quiz</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={onHome} style={[styles.summaryBtn, { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }]}>
+        <TouchableOpacity accessibilityLabel="Home" accessibilityRole="button" onPress={onHome} style={[styles.summaryBtn, { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }]}>
           <IconSymbol size={18} name="house.fill" color={colors.foreground} />
           <Text style={[styles.summaryBtnText, { color: colors.foreground }]}>Home</Text>
         </TouchableOpacity>

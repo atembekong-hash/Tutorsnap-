@@ -1329,7 +1329,7 @@ function SolveScreenContent() {
               <Text style={[styles.sectionLabelText, { color: colors.muted }]}>EXPLORE</Text>
             </View>
             <View style={styles.featureRow}>
-              <TouchableOpacity
+              <TouchableOpacity accessibilityLabel="Camera" accessibilityRole="button"
                 onPress={() => router.push("/(tabs)/scan" as any)}
                 style={[styles.featureCard, { backgroundColor: `${colors.primary}12`, borderColor: `${colors.primary}25` }]}
                 activeOpacity={0.8}

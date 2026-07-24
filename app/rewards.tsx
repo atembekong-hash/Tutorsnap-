@@ -19,6 +19,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { useScreenTransition } from "@/hooks/use-screen-transition";
+import { EmptyState } from "@/components/empty-state";
 import {
   getUserRewards,
   getRewardTiers,
@@ -108,7 +109,7 @@ export default function RewardsScreen() {
         {/* Header */}
         <View style={{ marginBottom: 24 }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
-            <TouchableOpacity onPress={() => router.back()} style={{ padding: 8, marginLeft: -8 }}>
+            <TouchableOpacity accessibilityLabel="Go back" accessibilityRole="button" onPress={() => router.back()} style={{ padding: 8, marginLeft: -8 }}>
               <IconSymbol size={24} name="chevron.left" color={colors.foreground} />
             </TouchableOpacity>
             <Text style={[styles.title, { color: colors.foreground }]}>Rewards</Text>
@@ -207,7 +208,7 @@ export default function RewardsScreen() {
 
         {/* Buttons Row */}
         <View style={{ flexDirection: "row", gap: 12, marginTop: 24 }}>
-          <TouchableOpacity
+          <TouchableOpacity accessibilityLabel="Share" accessibilityRole="button"
             onPress={handleShareReferral}
             style={[styles.shareBtn, { backgroundColor: colors.primary, flex: 1 }]}
           >
@@ -216,7 +217,7 @@ export default function RewardsScreen() {
               Share
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity
+          <TouchableOpacity accessibilityLabel="Confirm" accessibilityRole="button"
             onPress={() => router.push("/redeem-code" as any)}
             style={[styles.shareBtn, { backgroundColor: `${colors.primary}40`, flex: 1 }]}
           >
@@ -226,6 +227,16 @@ export default function RewardsScreen() {
             </Text>
           </TouchableOpacity>
         </View>
+
+        {/* Zero-referral empty state */}
+        {summary.totalEarned === 0 && summary.unclaimed === 0 && summary.progressPercent === 0 && (
+          <View style={{ marginTop: 8 }}>
+            <EmptyState
+              variant="rewards"
+              onAction={handleShareReferral}
+            />
+          </View>
+        )}
 
         {/* Tier Perks */}
         {perks && (

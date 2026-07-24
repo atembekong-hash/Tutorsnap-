@@ -192,7 +192,7 @@ export default function NotificationCenterScreen() {
       <Animated.View style={[{ flex: 1 }, fadeStyle]}>
       {/* Header */}
       <View style={[styles.navBar, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity accessibilityLabel="Go back" accessibilityRole="button" onPress={() => router.back()} style={styles.backBtn}>
           <IconSymbol size={22} name="arrow.left" color={colors.foreground} />
         </TouchableOpacity>
         <Text style={[styles.navTitle, { color: colors.foreground }]}>Notification Center</Text>

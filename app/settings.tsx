@@ -1097,7 +1097,7 @@ export default function SettingsScreen() {
       <Animated.View style={[{ flex: 1 }, fadeStyle]}>
       {/* Header */}
       <View style={[styles.navBar, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity accessibilityLabel="Go back" accessibilityRole="button" onPress={() => router.back()} style={styles.backBtn}>
           <IconSymbol size={22} name="arrow.left" color={colors.foreground} />
         </TouchableOpacity>
         <Text style={[styles.navTitle, { color: colors.foreground }]}>Settings</Text>
@@ -1133,7 +1133,7 @@ export default function SettingsScreen() {
 
           {/* Name + email */}
           <View style={styles.profileInfo}>
-            <TouchableOpacity
+            <TouchableOpacity accessibilityLabel="Edit" accessibilityRole="button"
               onPress={() => { setNameInput(userName || ""); setShowNameModal(true); }}
               activeOpacity={0.75}
               style={styles.profileNameRow}
@@ -1231,7 +1231,7 @@ export default function SettingsScreen() {
             autoCapitalize="none"
           />
           {settingsQuery.length > 0 && Platform.OS !== "ios" && (
-            <TouchableOpacity onPress={() => setSettingsQuery("")} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button" onPress={() => setSettingsQuery("")} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
               <IconSymbol size={16} name="xmark.circle.fill" color={colors.muted} />
             </TouchableOpacity>
           )}

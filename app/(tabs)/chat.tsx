@@ -2232,7 +2232,7 @@ function ChatScreenContent() {
         >
           <View style={chatStyles.headerLeft}>
             {/* User avatar — taps to Settings */}
-            <TouchableOpacity
+            <TouchableOpacity accessibilityLabel="Profile" accessibilityRole="button"
               onPress={() => router.push("/settings" as never)}
               style={[chatStyles.chatHeaderAvatar, { backgroundColor: `${colors.primary}20`, borderColor: `${colors.primary}40` }]}
               activeOpacity={0.75}
@@ -2671,7 +2671,7 @@ function ChatScreenContent() {
                   {replyTo}
                 </Text>
               </View>
-              <TouchableOpacity
+              <TouchableOpacity accessibilityLabel="Close" accessibilityRole="button"
                 onPress={() => setReplyTo(null)}
                 style={chatStyles.replyClose}
                 activeOpacity={0.7}
@@ -3029,13 +3029,13 @@ function ChatScreenContent() {
           onPress={() => setShowShareMenu(false)}
         >
           <View style={{ flex: 1 }} />
-          <TouchableOpacity activeOpacity={1} onPress={() => {}}>
+          <TouchableOpacity accessibilityLabel="Share" accessibilityRole="button" activeOpacity={1} onPress={() => {}}>
             <View style={[chatStyles.sheet, { backgroundColor: colors.surface, borderColor: colors.border, maxHeight: "75%" }]}>
               <View style={[chatStyles.sheetHandle, { backgroundColor: colors.border }]} />
               <Text style={[chatStyles.sheetTitle, { color: colors.foreground, fontSize: fs(16) }]}>Share Chat</Text>
 
               {/* Share as Text */}
-              <TouchableOpacity style={[chatStyles.shareMenuItem, { borderBottomWidth: 0.5, borderBottomColor: colors.border }]} onPress={handleShareText} activeOpacity={0.7}>
+              <TouchableOpacity accessibilityLabel="Share" accessibilityRole="button" style={[chatStyles.shareMenuItem, { borderBottomWidth: 0.5, borderBottomColor: colors.border }]} onPress={handleShareText} activeOpacity={0.7}>
                 <View style={[chatStyles.shareMenuIcon, { backgroundColor: `${colors.primary}18` }]}>
                   <IconSymbol size={18} name="square.and.arrow.up.fill" color={colors.primary} />
                 </View>
@@ -3073,7 +3073,7 @@ function ChatScreenContent() {
               </TouchableOpacity>
 
               {/* Practice This Topic */}
-              <TouchableOpacity style={[chatStyles.shareMenuItem, { borderBottomWidth: 0.5, borderBottomColor: colors.border }]} onPress={handlePracticeThisTopic} activeOpacity={0.7}>
+              <TouchableOpacity accessibilityLabel="Edit" accessibilityRole="button" style={[chatStyles.shareMenuItem, { borderBottomWidth: 0.5, borderBottomColor: colors.border }]} onPress={handlePracticeThisTopic} activeOpacity={0.7}>
                 <View style={[chatStyles.shareMenuIcon, { backgroundColor: `${colors.warning}18` }]}>
                   <IconSymbol size={18} name="pencil.and.list.clipboard" color={colors.warning} />
                 </View>
@@ -3109,7 +3109,7 @@ function ChatScreenContent() {
               </TouchableOpacity>
 
               {/* Invite a Friend */}
-              <TouchableOpacity style={chatStyles.shareMenuItem} onPress={handleInviteFriend} activeOpacity={0.7}>
+              <TouchableOpacity accessibilityLabel="Add" accessibilityRole="button" style={chatStyles.shareMenuItem} onPress={handleInviteFriend} activeOpacity={0.7}>
                 <View style={[chatStyles.shareMenuIcon, { backgroundColor: `${colors.success}18` }]}>
                   <IconSymbol size={18} name="person.badge.plus" color={colors.success} />
                 </View>

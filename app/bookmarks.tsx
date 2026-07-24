@@ -485,7 +485,7 @@ export default function BookmarksScreen() {
       <Animated.View style={[{ flex: 1 }, fadeStyle]}>
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity accessibilityLabel="Go back" accessibilityRole="button" onPress={() => router.back()} style={styles.backBtn}>
           <IconSymbol size={24} name="arrow.left" color={colors.foreground} />
         </TouchableOpacity>
         <View>
@@ -542,7 +542,7 @@ export default function BookmarksScreen() {
           <Text style={{ fontSize: 14, color: colors.muted }}>
             {selectedIds.size === 0 ? "Long-press or tap to select" : `${selectedIds.size} selected`}
           </Text>
-          <TouchableOpacity
+          <TouchableOpacity accessibilityLabel="Share" accessibilityRole="button"
             onPress={handleBulkShare}
             disabled={selectedIds.size === 0}
             style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: selectedIds.size > 0 ? colors.primary : `${colors.muted}30` }}
@@ -649,7 +649,7 @@ export default function BookmarksScreen() {
                     </TouchableOpacity>
                   );
                 })}
-                <TouchableOpacity
+                <TouchableOpacity accessibilityLabel="Add" accessibilityRole="button"
                   onPress={() => setShowFolderModal(true)}
                   style={[{ flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface }]}
                   activeOpacity={0.7}
@@ -661,7 +661,7 @@ export default function BookmarksScreen() {
             </View>
           )}
           {folders.length === 0 && (
-            <TouchableOpacity
+            <TouchableOpacity accessibilityLabel="Add" accessibilityRole="button"
               onPress={() => setShowFolderModal(true)}
               style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 16, paddingBottom: 4 }}
               activeOpacity={0.7}

@@ -196,7 +196,7 @@ export default function ChallengeScreen() {
       <Animated.View style={[{ flex: 1 }, fadeStyle]}>
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
+        <TouchableOpacity accessibilityLabel="Go back" accessibilityRole="button" onPress={() => router.back()} style={styles.backBtn} activeOpacity={0.7}>
           <IconSymbol size={22} name="chevron.left" color={colors.foreground} />
         </TouchableOpacity>
         <View style={styles.headerCenter}>

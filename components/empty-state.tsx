@@ -39,6 +39,28 @@ function MagnifyingGlassIllustration({ color, muted }: { color: string; muted: s
   );
 }
 
+function GiftIllustration({ color, muted }: { color: string; muted: string }) {
+  return (
+    <Svg width={96} height={96} viewBox="0 0 96 96">
+      {/* Box body */}
+      <Rect x={16} y={44} width={64} height={40} rx={4} fill={color} fillOpacity={0.15} stroke={color} strokeWidth={2} opacity={0.7} />
+      {/* Box lid */}
+      <Rect x={12} y={34} width={72} height={14} rx={3} fill={color} fillOpacity={0.25} stroke={color} strokeWidth={2} opacity={0.8} />
+      {/* Ribbon vertical */}
+      <Rect x={44} y={34} width={8} height={50} fill={color} opacity={0.5} />
+      {/* Ribbon horizontal */}
+      <Rect x={12} y={38} width={72} height={6} fill={color} opacity={0.5} />
+      {/* Bow left loop */}
+      <Path d="M48 34 C40 28 24 26 28 18 C32 10 44 16 48 28" fill={color} fillOpacity={0.3} stroke={color} strokeWidth={1.5} opacity={0.7} />
+      {/* Bow right loop */}
+      <Path d="M48 34 C56 28 72 26 68 18 C64 10 52 16 48 28" fill={color} fillOpacity={0.3} stroke={color} strokeWidth={1.5} opacity={0.7} />
+      {/* Stars */}
+      <Path d="M22 56 L23.2 59.6 L27 59.6 L24 61.8 L25.2 65.4 L22 63.2 L18.8 65.4 L20 61.8 L17 59.6 L20.8 59.6 Z" fill={color} opacity={0.6} />
+      <Path d="M74 58 L74.8 60.4 L77.4 60.4 L75.3 61.8 L76.1 64.2 L74 62.8 L71.9 64.2 L72.7 61.8 L70.6 60.4 L73.2 60.4 Z" fill={muted} opacity={0.5} />
+    </Svg>
+  );
+}
+
 function TrophyIllustration({ color, muted }: { color: string; muted: string }) {
   return (
     <Svg width={96} height={96} viewBox="0 0 96 96">
@@ -54,7 +76,7 @@ function TrophyIllustration({ color, muted }: { color: string; muted: string }) 
 
 // ─── EmptyState Component ─────────────────────────────────────────────────────
 
-type EmptyStateVariant = "bookmarks" | "history" | "quiz-history";
+type EmptyStateVariant = "bookmarks" | "history" | "quiz-history" | "rewards";
 
 interface EmptyStateProps {
   variant: EmptyStateVariant;
@@ -80,6 +102,11 @@ const CONFIGS: Record<EmptyStateVariant, {
     title: "No quizzes taken yet",
     subtitle: "Complete a quiz to see your results and track your progress over time.",
     actionLabel: "Take a quiz",
+  },
+  rewards: {
+    title: "No referrals yet",
+    subtitle: "Share your link with friends and earn free Premium days every time someone joins.",
+    actionLabel: "Share your link",
   },
 };
 
@@ -114,6 +141,7 @@ export function EmptyState({ variant, onAction }: EmptyStateProps) {
   const Illustration = () => {
     if (variant === "bookmarks") return <OpenBookIllustration color={colors.primary} muted={colors.muted} />;
     if (variant === "history") return <MagnifyingGlassIllustration color={colors.primary} muted={colors.muted} />;
+    if (variant === "rewards") return <GiftIllustration color={colors.primary} muted={colors.muted} />;
     return <TrophyIllustration color={colors.primary} muted={colors.muted} />;
   };
 

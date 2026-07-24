@@ -75,7 +75,7 @@ export default function ReportBugScreen() {
     return (
       <ScreenContainer>
         <View style={[styles.navBar, { borderBottomColor: colors.border }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <TouchableOpacity accessibilityLabel="Go back" accessibilityRole="button" onPress={() => router.back()} style={styles.backBtn}>
             <IconSymbol size={22} name="arrow.left" color={colors.foreground} />
           </TouchableOpacity>
           <Text style={[styles.navTitle, { color: colors.foreground }]}>Report a Bug</Text>
@@ -87,7 +87,7 @@ export default function ReportBugScreen() {
           <Text style={[styles.successDesc, { color: colors.muted }]}>
             Thank you for helping improve TutorSnap. Our team will investigate and fix the issue as soon as possible.
           </Text>
-          <TouchableOpacity
+          <TouchableOpacity accessibilityLabel="Go back" accessibilityRole="button"
             onPress={() => router.back()}
             style={[styles.doneBtn, { backgroundColor: colors.primary }]}
             activeOpacity={0.85}
@@ -109,7 +109,7 @@ export default function ReportBugScreen() {
       >
         {/* Header */}
         <View style={[styles.navBar, { borderBottomColor: colors.border }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <TouchableOpacity accessibilityLabel="Go back" accessibilityRole="button" onPress={() => router.back()} style={styles.backBtn}>
             <IconSymbol size={22} name="arrow.left" color={colors.foreground} />
           </TouchableOpacity>
           <Text style={[styles.navTitle, { color: colors.foreground }]}>Report a Bug</Text>
