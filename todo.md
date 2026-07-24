@@ -977,3 +977,10 @@
 - [x] Add wand quick-toggle in input bar (per-subject mode flip)
 - [x] Persist Detailed Mode preference per subject (subjectDetailedModes map)
 - [x] Bump version to 1.1.8 (versionCode 13)
+
+## Round 61: AI Tutor Tab Full Audit + Fix
+- [x] Audit all AI Tutor tab features (chat.tsx, interactive-blocks.tsx, mermaid-diagram.tsx, ai-response-renderer.tsx, chatStream.ts, routers.ts)
+- [x] Fix: onRegenerateDiagram prop was not passed to AIResponseRenderer in MessageBubble - Regenerate button now fires correctly
+- [x] Confirmed: all other features (Smart Copy, Pin/Unpin, Save to Notes, mode badge, wand toggle, per-subject persistence, interactive blocks, Mermaid diagrams) verified working
+- [x] Confirmed: dev server bundles cleanly with 0 errors after fix
+- [x] Version bumped to 1.1.9 (versionCode 14)

@@ -585,6 +585,7 @@ function MessageBubble({
   blocksStartCollapsed = false,
   compactBlocks = false,
   sessionId,
+  onRegenerateDiagram,
 }: {
   message: ChatMessage;
   isFirstInRun: boolean;
@@ -599,6 +600,7 @@ function MessageBubble({
   blocksStartCollapsed?: boolean;
   compactBlocks?: boolean;
   sessionId?: string;
+  onRegenerateDiagram?: (diagramCode: string) => void;
 }) {
   const isUser = message.role === "user";
   const { settings } = useAppearance();
@@ -724,6 +726,7 @@ function MessageBubble({
               stripPreamble={!streaming}
               blocksStartCollapsed={blocksStartCollapsed}
               compactBlocks={compactBlocks}
+              onRegenerateDiagram={onRegenerateDiagram}
             />
             {streaming && message.content.length > 0 && (
               <BlinkingCursor color={colors.muted} fontSize={fs(15)} />
