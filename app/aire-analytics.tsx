@@ -16,6 +16,8 @@ import { useColors } from "@/hooks/use-colors";
 import { useScreenTransition } from "@/hooks/use-screen-transition";
 import { getSubjectLabel, getSubjectColor, getSubjectEmoji } from "@/lib/subjects";
 import * as H from "@/lib/haptics";
+import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/hooks/use-auth";
 
 const AIRE_KEY = "@tutorsnap/aire_feedback";
 
@@ -36,9 +38,9 @@ interface SubjectStats {
 }
 
 const RATING_COLORS = {
-  short: "#F59E0B", // warning/amber — too short
-  right: "#22C55E", // success/green — just right
-  long: "#EF4444",  // error/red — too long
+  short: "#F59E0B", // warning/amber -- too short
+  right: "#22C55E", // success/green -- just right
+  long: "#EF4444",  // error/red -- too long
 };
 
 const RATING_LABELS = {
@@ -53,6 +55,18 @@ const RATING_ICONS: Record<string, any> = {
   long: "plus.circle",
 };
 
+/** Map a multiplier string to a human-readable calibration status */
+function calibrationStatus(multiplier: string): {
+  label: string;
+  color: string;
+  description: string;
+} {
+  const m = parseFloat(multiplier);
+  if (m <= 0.75) return { label: "Shorter", color: "#EF4444", description: "AIRE uses fewer tokens for this subject" };
+  if (m >= 1.25) return { label: "Longer", color: "#F59E0B", description: "AIRE uses more tokens for this subject" };
+  return { label: "Calibrated", color: "#22C55E", description: "AIRE is well-tuned for this subject" };
+}
+
 function computeStats(entries: FeedbackEntry[]): {
   total: number;
   short: number;
@@ -66,7 +80,6 @@ function computeStats(entries: FeedbackEntry[]): {
   const right = entries.filter((e) => e.rating === "right").length;
   const long = entries.filter((e) => e.rating === "long").length;
 
-  // Group by subject
   const subjectMap = new Map<string, { short: number; right: number; long: number }>();
   for (const e of entries) {
     const key = e.subject || "other";
@@ -92,9 +105,24 @@ export default function AireAnalyticsScreen() {
   const router = useRouter();
   const colors = useColors();
   const { fadeStyle } = useScreenTransition({ duration: 280, translateY: 16 });
+  const { user } = useAuth();
 
   const [entries, setEntries] = useState<FeedbackEntry[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Fetch per-subject calibrations from DB (authenticated users only)
+  const calibrationsQuery = trpc.aire.getSubjectCalibrations.useQuery(undefined, {
+    enabled: !!user,
+    retry: 1,
+  });
+
+  // Build a lookup map: subject -> calibration row
+  const calibrationMap = new Map<string, { multiplier: string; sampleCount: number }>();
+  if (calibrationsQuery.data?.calibrations) {
+    for (const row of calibrationsQuery.data.calibrations) {
+      calibrationMap.set(row.subject, { multiplier: row.multiplier, sampleCount: row.sampleCount });
+    }
+  }
 
   useEffect(() => {
     AsyncStorage.getItem(AIRE_KEY)
@@ -142,7 +170,7 @@ export default function AireAnalyticsScreen() {
 
           {loading ? (
             <View style={styles.emptyWrap}>
-              <Text style={[styles.emptyText, { color: colors.muted }]}>Loading…</Text>
+              <Text style={[styles.emptyText, { color: colors.muted }]}>Loading...</Text>
             </View>
           ) : stats.total === 0 ? (
             <View style={styles.emptyWrap}>
@@ -207,7 +235,7 @@ export default function AireAnalyticsScreen() {
                         ? "AIRE is generating responses that feel too long. Consider using Concise Mode in AI Tutor Settings."
                         : stats.short > stats.long && stats.short > stats.right
                         ? "AIRE is generating responses that feel too short. Consider using Detailed Mode in AI Tutor Settings."
-                        : `${Math.round((stats.right / stats.total) * 100)}% of responses felt just right — AIRE is well-calibrated.`}
+                        : `${Math.round((stats.right / stats.total) * 100)}% of responses felt just right -- AIRE is well-calibrated.`}
                     </Text>
                   </View>
                 )}
@@ -218,7 +246,7 @@ export default function AireAnalyticsScreen() {
                 <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                   <Text style={[styles.cardTitle, { color: colors.foreground }]}>By Subject</Text>
                   <Text style={[styles.cardSubtitle, { color: colors.muted }]}>
-                    Tap a subject to see which rating is most common
+                    {user ? "Calibration badges show how AIRE adjusts token budgets per subject" : "Sign in to see per-subject calibration"}
                   </Text>
 
                   {stats.bySubject.map((s) => {
@@ -229,6 +257,10 @@ export default function AireAnalyticsScreen() {
                     const shortPct = s.total > 0 ? Math.round((s.short / s.total) * 100) : 0;
                     const longPct = s.total > 0 ? Math.round((s.long / s.total) * 100) : 0;
 
+                    // Per-subject calibration badge from DB
+                    const calibRow = calibrationMap.get(s.subject);
+                    const calib = calibRow ? calibrationStatus(calibRow.multiplier) : null;
+
                     return (
                       <View key={s.subject} style={styles.subjectRow}>
                         <View style={styles.subjectLabelRow}>
@@ -236,8 +268,13 @@ export default function AireAnalyticsScreen() {
                           <Text style={[styles.subjectLabel, { color: colors.foreground }]} numberOfLines={1}>
                             {subjectEmoji} {subjectLabel}
                           </Text>
+                          {calib && (
+                            <View style={[styles.calibBadge, { backgroundColor: `${calib.color}18`, borderColor: `${calib.color}40` }]}>
+                              <Text style={[styles.calibBadgeText, { color: calib.color }]}>{calib.label}</Text>
+                            </View>
+                          )}
                           <Text style={[styles.subjectCount, { color: colors.muted }]}>
-                            {s.total} rating{s.total !== 1 ? "s" : ""}
+                            {s.total}
                           </Text>
                         </View>
 
@@ -270,13 +307,59 @@ export default function AireAnalyticsScreen() {
                             )}
                           </View>
                           <Text style={[styles.subjectPct, { color: RATING_COLORS.right }]}>
-                            {rightPct}% ✓
+                            {rightPct}% ok
                           </Text>
                         </View>
+
+                        {/* Calibration detail row (only when badge exists) */}
+                        {calib && calibRow && (
+                          <Text style={[styles.calibDetail, { color: colors.muted }]}>
+                            {calib.description} ({calibRow.sampleCount} sample{calibRow.sampleCount !== 1 ? "s" : ""})
+                          </Text>
+                        )}
                       </View>
                     );
                   })}
                 </View>
+              )}
+
+              {/* Subject Calibration Summary (DB-backed, authenticated only) */}
+              {user && calibrationMap.size > 0 && (
+                <>
+                  <Text style={[styles.sectionHeader, { color: colors.muted }]}>SUBJECT CALIBRATION</Text>
+                  <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                    <Text style={[styles.cardSubtitle, { color: colors.muted }]}>
+                      AIRE automatically adjusts token budgets per subject based on your feedback history.
+                    </Text>
+                    {Array.from(calibrationMap.entries()).map(([subject, row]) => {
+                      const status = calibrationStatus(row.multiplier);
+                      const subjectLabel = getSubjectLabel(subject);
+                      const subjectEmoji = getSubjectEmoji(subject);
+                      const multiplierNum = parseFloat(row.multiplier);
+                      const multiplierDisplay = multiplierNum === 1.0 ? "1.0x" : `${multiplierNum.toFixed(1)}x`;
+                      return (
+                        <View key={subject} style={[styles.calibRow, { borderTopColor: colors.border }]}>
+                          <View style={styles.calibRowLeft}>
+                            <Text style={[styles.calibSubjectText, { color: colors.foreground }]}>
+                              {subjectEmoji} {subjectLabel}
+                            </Text>
+                            <Text style={[styles.calibSampleText, { color: colors.muted }]}>
+                              {row.sampleCount} sample{row.sampleCount !== 1 ? "s" : ""}
+                            </Text>
+                          </View>
+                          <View style={styles.calibRowRight}>
+                            <Text style={[styles.calibMultiplierText, { color: status.color }]}>
+                              {multiplierDisplay}
+                            </Text>
+                            <View style={[styles.calibBadge, { backgroundColor: `${status.color}18`, borderColor: `${status.color}40` }]}>
+                              <Text style={[styles.calibBadgeText, { color: status.color }]}>{status.label}</Text>
+                            </View>
+                          </View>
+                        </View>
+                      );
+                    })}
+                  </View>
+                </>
               )}
 
               {/* Recent ratings */}
@@ -419,6 +502,15 @@ const styles = StyleSheet.create({
   subjectFill: { height: 8 },
   subjectPct: { fontSize: 11, fontWeight: "700", minWidth: 44, textAlign: "right" },
 
+  calibBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  calibBadgeText: { fontSize: 10, fontWeight: "700" },
+  calibDetail: { fontSize: 11, marginTop: 3, lineHeight: 15 },
+
   sectionHeader: {
     fontSize: 11,
     fontWeight: "700",
@@ -427,6 +519,19 @@ const styles = StyleSheet.create({
     marginTop: 24,
     marginBottom: 8,
   },
+
+  calibRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 10,
+    borderTopWidth: 0.5,
+  },
+  calibRowLeft: { flex: 1 },
+  calibSubjectText: { fontSize: 13, fontWeight: "600" },
+  calibSampleText: { fontSize: 11, marginTop: 2 },
+  calibRowRight: { flexDirection: "row", alignItems: "center", gap: 8 },
+  calibMultiplierText: { fontSize: 13, fontWeight: "700" },
 
   recentRow: {
     flexDirection: "row",

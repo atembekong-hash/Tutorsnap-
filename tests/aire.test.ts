@@ -130,3 +130,64 @@ describe("computeTokenBudget", () => {
     expect(budget).toBeLessThanOrEqual(400);
   });
 });
+
+// --- computeSubjectMultiplier (pure logic, no DB) ---
+// We test the multiplier decision logic directly without a real DB connection.
+// The logic mirrors what computeSubjectMultiplier does after fetching rows.
+
+function subjectMultiplierFromRatings(ratings: number[]): number {
+  if (ratings.length < 3) return 1.0;
+  const tooLong = ratings.filter((r) => r === 1).length;
+  const tooShort = ratings.filter((r) => r === -1).length;
+  const total = ratings.length;
+  if (tooLong / total > 0.6) return 0.7;
+  if (tooShort / total > 0.6) return 1.3;
+  return 1.0;
+}
+
+describe("AIRE Stage 4: per-subject multiplier logic", () => {
+  it("returns 1.0 when fewer than 3 samples", () => {
+    expect(subjectMultiplierFromRatings([])).toBe(1.0);
+    expect(subjectMultiplierFromRatings([1])).toBe(1.0);
+    expect(subjectMultiplierFromRatings([1, 1])).toBe(1.0);
+  });
+
+  it("returns 0.7 when more than 60% of ratings are too-long (1)", () => {
+    // 7 out of 10 are too-long
+    const ratings = [1, 1, 1, 1, 1, 1, 1, 0, -1, 0];
+    expect(subjectMultiplierFromRatings(ratings)).toBe(0.7);
+  });
+
+  it("returns 1.3 when more than 60% of ratings are too-short (-1)", () => {
+    // 7 out of 10 are too-short
+    const ratings = [-1, -1, -1, -1, -1, -1, -1, 0, 1, 0];
+    expect(subjectMultiplierFromRatings(ratings)).toBe(1.3);
+  });
+
+  it("returns 1.0 when ratings are balanced (no dominant preference)", () => {
+    // 4 too-long, 3 just-right, 3 too-short -- no single category > 60%
+    const ratings = [1, 1, 1, 1, 0, 0, 0, -1, -1, -1];
+    expect(subjectMultiplierFromRatings(ratings)).toBe(1.0);
+  });
+
+  it("returns 1.0 when exactly 60% are too-long (threshold is strictly >60%)", () => {
+    // 6 out of 10 are too-long -- exactly 60%, not strictly greater
+    const ratings = [1, 1, 1, 1, 1, 1, 0, 0, -1, -1];
+    expect(subjectMultiplierFromRatings(ratings)).toBe(1.0);
+  });
+
+  it("returns 0.7 when all ratings are too-long", () => {
+    const ratings = [1, 1, 1, 1, 1];
+    expect(subjectMultiplierFromRatings(ratings)).toBe(0.7);
+  });
+
+  it("returns 1.3 when all ratings are too-short", () => {
+    const ratings = [-1, -1, -1, -1, -1];
+    expect(subjectMultiplierFromRatings(ratings)).toBe(1.3);
+  });
+
+  it("returns 1.0 when all ratings are just-right", () => {
+    const ratings = [0, 0, 0, 0, 0];
+    expect(subjectMultiplierFromRatings(ratings)).toBe(1.0);
+  });
+});

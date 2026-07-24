@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { router, publicProcedure, protectedProcedure } from "./_core/trpc";
 import { getDb } from "./db";
-import { aireFeedback } from "../drizzle/schema";
-import { eq, desc } from "drizzle-orm";
+import { aireFeedback, aireSubjectCalibration } from "../drizzle/schema";
+import { eq, desc, and, sql } from "drizzle-orm";
 import { invokeLLM } from "./_core/llm";
 import { systemRouter } from "./_core/systemRouter";
 import { referralRouter } from "./routers/referrals";
@@ -621,28 +621,36 @@ const academicRouter = router({
         let tokenBudget = estimateSolveTokens(input.problem, input.subject);
 
         // ── AIRE per-user multiplier ────────────────────────────────────────────
-        // If the user is signed in and has ≥3 feedback ratings, adjust the
-        // token budget based on their preference history.
+        // If the user is signed in, look up the cached per-subject multiplier
+        // from aire_subject_calibration. Falls back to computing it on the fly
+        // if no cache row exists yet (first solve after feedback).
         if (ctx.user) {
           try {
             const db = await getDb();
             if (db) {
-              const rows = await db
-                .select({ rating: aireFeedback.rating })
-                .from(aireFeedback)
-                .where(eq(aireFeedback.userId, ctx.user.id))
-                .orderBy(desc(aireFeedback.createdAt))
-                .limit(10);
-              if (rows.length >= 3) {
-                const netScore = rows.reduce((sum: number, r: { rating: number }) => sum + r.rating, 0);
-                const normalised = netScore / rows.length;
-                const multiplier = Math.max(0.6, Math.min(1.5, 1.0 - normalised * 0.3));
-                tokenBudget = Math.round(tokenBudget * multiplier);
+              // Fast path: read from calibration cache
+              const cacheRows = await db
+                .select({ multiplier: aireSubjectCalibration.multiplier })
+                .from(aireSubjectCalibration)
+                .where(and(
+                  eq(aireSubjectCalibration.userId, ctx.user.id),
+                  eq(aireSubjectCalibration.subject, input.subject),
+                ))
+                .limit(1);
+              if (cacheRows.length > 0) {
+                const m = parseFloat(cacheRows[0].multiplier);
+                if (!isNaN(m) && m !== 1.0) {
+                  tokenBudget = Math.round(tokenBudget * m);
+                }
+              } else {
+                // Slow path: compute on the fly (no cache yet)
+                const m = await computeSubjectMultiplier(db, ctx.user.id, input.subject);
+                if (m !== 1.0) tokenBudget = Math.round(tokenBudget * m);
               }
             }
           } catch { /* non-fatal */ }
         }
-        // ── END per-user multiplier ─────────────────────────────────────────────
+        // ── END per-subject multiplier ──────────────────────────────────────────
 
         // ── AIRE TRIVIAL FAST-PATH ──────────────────────────────────────────────
         // For simple arithmetic / single-step questions (budget ≤ 800 tokens),
@@ -1168,6 +1176,66 @@ const userRouter = router({
 
 // ─── AIRE per-user memory router ────────────────────────────────────────────
 
+/**
+ * Compute a per-subject token-budget multiplier for a given user.
+ * Reads the last 20 ratings for the specified subject and returns:
+ *   0.7  if >60% are "too long"  (reduce tokens)
+ *   1.3  if >60% are "too short" (increase tokens)
+ *   1.0  otherwise               (calibrated)
+ */
+async function computeSubjectMultiplier(
+  db: Awaited<ReturnType<typeof getDb>>,
+  userId: number,
+  subject: string,
+): Promise<number> {
+  if (!db) return 1.0;
+  const rows = await db
+    .select({ rating: aireFeedback.rating })
+    .from(aireFeedback)
+    .where(and(eq(aireFeedback.userId, userId), eq(aireFeedback.subject, subject)))
+    .orderBy(desc(aireFeedback.createdAt))
+    .limit(20);
+  if (rows.length < 3) return 1.0;
+  const tooLong = rows.filter((r) => r.rating === 1).length;
+  const tooShort = rows.filter((r) => r.rating === -1).length;
+  const ratio = rows.length;
+  if (tooLong / ratio > 0.6) return 0.7;
+  if (tooShort / ratio > 0.6) return 1.3;
+  return 1.0;
+}
+
+/**
+ * Recompute and upsert the calibration cache row for a user+subject pair.
+ * Called after every logFeedback mutation so the solve path can do a fast
+ * single-row lookup instead of aggregating on every request.
+ */
+async function refreshSubjectCalibration(
+  db: Awaited<ReturnType<typeof getDb>>,
+  userId: number,
+  subject: string,
+): Promise<void> {
+  if (!db) return;
+  const multiplier = await computeSubjectMultiplier(db, userId, subject);
+  const rows = await db
+    .select({ id: aireSubjectCalibration.id })
+    .from(aireSubjectCalibration)
+    .where(and(eq(aireSubjectCalibration.userId, userId), eq(aireSubjectCalibration.subject, subject)))
+    .limit(1);
+  const countRows = await db
+    .select({ cnt: sql<number>`count(*)` })
+    .from(aireFeedback)
+    .where(and(eq(aireFeedback.userId, userId), eq(aireFeedback.subject, subject)));
+  const sampleCount = Number(countRows[0]?.cnt ?? 0);
+  if (rows.length > 0) {
+    await db
+      .update(aireSubjectCalibration)
+      .set({ multiplier: String(multiplier), sampleCount })
+      .where(and(eq(aireSubjectCalibration.userId, userId), eq(aireSubjectCalibration.subject, subject)));
+  } else {
+    await db.insert(aireSubjectCalibration).values({ userId, subject, multiplier: String(multiplier), sampleCount });
+  }
+}
+
 const aireRouter = router({
   /**
    * Log a user's feedback rating for an AI response.
@@ -1196,21 +1264,26 @@ const aireRouter = router({
           rating: input.rating,
         });
 
-        // Prune to keep only the most recent 10 rows per authenticated user
+        // Prune to keep only the most recent 20 rows per authenticated user
         if (userId) {
           const rows = await db
             .select({ id: aireFeedback.id })
             .from(aireFeedback)
             .where(eq(aireFeedback.userId, userId))
             .orderBy(desc(aireFeedback.createdAt))
-            .limit(20);
+            .limit(30);
 
-          if (rows.length > 10) {
-            const idsToDelete = rows.slice(10).map((r) => r.id);
+          if (rows.length > 20) {
+            const idsToDelete = rows.slice(20).map((r) => r.id);
             for (const id of idsToDelete) {
               await db.delete(aireFeedback).where(eq(aireFeedback.id, id));
             }
           }
+
+          // Refresh per-subject calibration cache (non-fatal)
+          try {
+            await refreshSubjectCalibration(db, userId, input.subject);
+          } catch { /* non-fatal */ }
         }
 
         return { ok: true };
@@ -1222,9 +1295,35 @@ const aireRouter = router({
     }),
 
   /**
+   * Returns per-subject calibration multipliers for the authenticated user.
+   * Used by the AIRE Analytics screen to show calibration badges.
+   */
+  getSubjectCalibrations: protectedProcedure
+    .query(async ({ ctx }) => {
+      try {
+        const db = await getDb();
+        if (!db) return { calibrations: [] };
+        const rows = await db
+          .select({
+            subject: aireSubjectCalibration.subject,
+            multiplier: aireSubjectCalibration.multiplier,
+            sampleCount: aireSubjectCalibration.sampleCount,
+            updatedAt: aireSubjectCalibration.updatedAt,
+          })
+          .from(aireSubjectCalibration)
+          .where(eq(aireSubjectCalibration.userId, ctx.user.id))
+          .orderBy(desc(aireSubjectCalibration.sampleCount));
+        return { calibrations: rows };
+      } catch (err) {
+        console.error("[AIRE] getSubjectCalibrations error:", err);
+        return { calibrations: [] };
+      }
+    }),
+
+  /**
    * Returns per-user adjusted token budget multipliers based on their
-   * last 10 feedback ratings. A net positive score (too long) → reduce
-   * budgets; net negative (too short) → increase budgets.
+   * last 10 feedback ratings. A net positive score (too long) reduces
+   * budgets; net negative (too short) increases budgets.
    */
   getThresholds: protectedProcedure
     .query(async ({ ctx }) => {

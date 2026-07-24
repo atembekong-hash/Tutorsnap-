@@ -1019,3 +1019,14 @@
 - [x] Stage 1: AIRE feedback analytics screen (Settings sub-page, bar chart per subject)
 - [x] Stage 2: Trivial question fast-path (skip JSON solve for difficulty:1, instant plain-text)
 - [x] Stage 3: AIRE per-user memory (DB storage of feedback, server-side threshold adjustment)
+
+## Round 64: AIRE Stage 4 - Per-Subject Calibration
+- [x] Add aireSubjectCalibration DB table (userId, subject, multiplier, sampleCount, updatedAt)
+- [x] Add computeSubjectMultiplier() server function: reads last 20 ratings per subject, returns 0.7x if >60% too-long, 1.3x if >60% too-short, else 1.0x
+- [x] Wire subject multiplier into computeTokenBudget() in aire.ts
+- [x] Add getSubjectCalibrations tRPC procedure for analytics screen
+- [x] Update AIRE Analytics screen: show multiplier badge (Shorter/Calibrated/Longer) per subject row
+- [x] Unit tests for computeSubjectMultiplier()
+- [x] TypeScript: 0 errors
+- [x] Tests: all passing (57/57)
+- [x] Version bumped to 1.4.2

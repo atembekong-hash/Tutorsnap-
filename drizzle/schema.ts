@@ -206,3 +206,30 @@ export const aireFeedback = mysqlTable(
 
 export type AireFeedback = typeof aireFeedback.$inferSelect;
 export type InsertAireFeedback = typeof aireFeedback.$inferInsert;
+
+/**
+ * Per-user, per-subject AIRE calibration cache.
+ * Stores the computed token-budget multiplier so the server does not
+ * re-aggregate on every solve request.
+ * multiplier: 0.7 = user finds responses too long, 1.3 = too short, 1.0 = calibrated.
+ */
+export const aireSubjectCalibration = mysqlTable(
+  "aire_subject_calibration",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId").references(() => users.id, { onDelete: "cascade" }),
+    /** Subject slug matching aire_feedback.subject */
+    subject: varchar("subject", { length: 64 }).notNull().default("other"),
+    /** Computed multiplier: 0.7 | 1.0 | 1.3 */
+    multiplier: varchar("multiplier", { length: 8 }).notNull().default("1.0"),
+    /** Number of feedback samples used to compute this multiplier */
+    sampleCount: int("sampleCount").notNull().default(0),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (t) => [
+    index("aire_calib_userId_subject_idx").on(t.userId, t.subject),
+  ],
+);
+
+export type AireSubjectCalibration = typeof aireSubjectCalibration.$inferSelect;
+export type InsertAireSubjectCalibration = typeof aireSubjectCalibration.$inferInsert;
