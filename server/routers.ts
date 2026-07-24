@@ -662,6 +662,14 @@ Respond ONLY with this JSON:
         ? "\n\nDETAILED MODE is ON: Give the richest, most thorough response possible. For simple questions: 4-8 sentences with a related example. For medium questions: 2 fully worked examples plus a summary table. For complex questions: full working with ALL steps, a verification pass, a summary, and a related extension problem. Always end with a Pro Tip AND a Common Mistake section."
         : "\n\nCONCISE MODE is ON: Keep responses focused and efficient. Answer the question directly, show essential working steps only, and avoid over-explaining.";
       const systemPrompt = CHAT_SYSTEM_PROMPT + subjectContext + gradeContext + detailedCtx;
+
+      // AIRE: Adaptive token budget for non-streaming fallback path
+      const lastMsgContent = input.messages[input.messages.length - 1]?.content ?? "";
+      const { detectUserOverride, classifyQuestion, computeTokenBudget } = await import("./_core/chatStream");
+      const nsFallbackOverride = detectUserOverride(lastMsgContent);
+      const nsFallbackClass = classifyQuestion(lastMsgContent, input.subject);
+      const chatMaxTokens = computeTokenBudget(nsFallbackClass, nsFallbackOverride, isDetailed);
+
       const result = await invokeLLM({
         model: "claude-haiku-4-5",
         messages: [
@@ -671,20 +679,7 @@ Respond ONLY with this JSON:
             content: m.content,
           })),
         ],
-        // Scale chat response length by message complexity and detailedMode flag.
-        max_tokens: (() => {
-          const lastMsg = input.messages[input.messages.length - 1]?.content ?? "";
-          const wordCount = lastMsg.trim().split(/\s+/).length;
-          if (isDetailed) {
-            if (wordCount <= 10) return 1200;   // Detailed: short question
-            if (wordCount <= 30) return 2000;   // Detailed: medium question
-            return 3000;                         // Detailed: long/complex question
-          } else {
-            if (wordCount <= 10) return 600;    // Concise: short question
-            if (wordCount <= 30) return 1000;   // Concise: medium question
-            return 1500;                         // Concise: long/complex question
-          }
-        })(),
+        max_tokens: chatMaxTokens,
       });
       const rawContent = (result as any)?.error ? "" : (result.choices?.[0]?.message?.content ?? "");
       const text = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);

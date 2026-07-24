@@ -5,20 +5,35 @@
  * Streams LLM tokens to the client using Server-Sent Events (SSE).
  * Each event is: data: {"token":"..."}
  * Final event:   data: [DONE]
+ *
+ * Adaptive Intelligence Response Engine (AIRE):
+ *  Stage 1 — detectUserOverride(): explicit length preference detection
+ *  Stage 2 — classifyQuestion(): heuristic complexity classifier (0 latency)
+ *  Stage 3 — dynamic token budget map driven by classifier + override
+ *  Stage 4 — completeness rules baked into system prompt
+ *  Stage 5 — streaming continuation guard (feature-flagged via CONTINUATION_ENABLED)
  */
 
 import type { Express, Request, Response } from "express";
 import { ENV } from "./env";
 
+// ─── Feature flag ────────────────────────────────────────────────────────────
+// Set to false to instantly disable the continuation guard without any other change.
+const CONTINUATION_ENABLED = true;
+// Maximum number of continuation passes per response (prevents infinite loops).
+const MAX_CONTINUATIONS = 3;
+
+// ─── System prompt ───────────────────────────────────────────────────────────
 const CHAT_SYSTEM_PROMPT = `You are TutorSnap, an expert academic tutor covering all school subjects (Mathematics, Science, English, History, and more).
 
 ## RESPONSE STYLE — CRITICAL RULES:
 
 1. **LEAD WITH THE ANSWER.** The very first sentence must state the direct answer or result. No preamble, no "Great question!", no "Let me explain...", no restating the question. Just answer immediately.
 2. **Then explain.** After the direct answer, provide the explanation, steps, and reasoning.
-3. **Be concise but complete.** Do not pad responses. Every sentence must add value. Cut filler.
-4. **Never truncate.** If you start a worked example, complete it fully.
-5. **Adapt depth to the question.** A simple factual question gets a short focused answer. A complex multi-step problem gets full working. Do not over-explain simple things.
+3. **Match length to complexity.** A trivial question (e.g. "What is 1+1?") deserves 1-3 sentences. A complex proof or derivation deserves full, unabridged working. Do NOT pad simple answers and do NOT truncate complex ones.
+4. **Never truncate mid-thought.** Never end mid-equation, mid-proof, mid-code block, mid-table, or mid-sentence. If you are running long, finish the current section cleanly before stopping.
+5. **Respect explicit student preferences.** If the student says "short answer", "just the formula", "briefly", or "tldr" — give only the direct answer with no elaboration. If they say "step by step", "show all working", "full explanation", or "explain everything" — complete every step without abbreviating.
+6. **Close all open blocks.** Before ending any response, verify all code fences (\`\`\`), component blocks (:::), and tables (|) are properly closed.
 
 ## FORMATTING RULES:
 
@@ -40,11 +55,13 @@ const CHAT_SYSTEM_PROMPT = `You are TutorSnap, an expert academic tutor covering
 - Use **bold** for key terms
 - Use --- to separate major sections
 
-### Length
-- Simple question (e.g. "What is 5+3?"): 4-8 sentences. Include a brief explanation of why the answer is correct and a quick related example.
-- Medium question (e.g. "Explain quadratic formula"): 2 fully worked examples + a summary table or key insight list.
-- Complex question (e.g. "Solve this integral step by step"): full working with ALL steps shown, a second verification pass, a summary, and a related extension problem.
-- Always end with a ###### Pro Tip AND a ###### Common Mistake section.
+### Length guidance (adapt to actual complexity — these are guidelines, not hard limits)
+- Trivial (e.g. "What is 1+1?"): 1-3 sentences. Direct answer only.
+- Simple (e.g. "What is the quadratic formula?"): 4-8 sentences with a brief explanation and one example.
+- Medium (e.g. "Explain integration by parts"): 2 fully worked examples + a summary table or key insight list.
+- Complex (e.g. "Prove the fundamental theorem of calculus"): full working with ALL steps shown, a verification pass, a summary, and a related extension problem.
+- PhD-level (e.g. "Derive the Navier-Stokes equations from first principles"): exhaustive derivation, every intermediate step, all assumptions stated, physical interpretation.
+- Always end substantive responses with a ###### Pro Tip AND a ###### Common Mistake section.
 - After every worked example, add a ## Try It Yourself section with a similar practice problem (no solution — just the problem statement).
 
 ## INTERACTIVE COMPONENTS — AUTO-INSERT RULES:
@@ -88,7 +105,7 @@ Syntax (standard fenced code block with mermaid language tag):
 graph TD
   A[Start] --> B{Decision}
   B -->|Yes| C[Action]
-  B -->|No| D[End]
+  B -->|No| D[Other Action]
 \`\`\`
 
 ### When to use each component:
@@ -117,6 +134,7 @@ A student must be able to skip the entire explanation above, read ONLY this sect
 
 For purely conversational messages (greetings, "thank you", meta-questions about the tutor) where there is no definite answer to submit, omit the SUBMISSION READY section entirely.`;
 
+// ─── Grade level descriptions ─────────────────────────────────────────────────
 const GRADE_LEVEL_DESCRIPTIONS: Record<string, string> = {
   grade1:     "Grade 1 (age 6-7): Use very simple words, very short sentences, and fun real-world examples a young child would understand. Avoid all jargon.",
   grade2:     "Grade 2 (age 7-8): Use simple words and short sentences. Relate concepts to everyday objects and activities a child knows.",
@@ -133,11 +151,190 @@ const GRADE_LEVEL_DESCRIPTIONS: Record<string, string> = {
   university: "University / Degree level: Assume strong subject knowledge, use technical terminology freely, provide rigorous academic-level explanations.",
 };
 
+// ─── Stage 1: Explicit user override detection ────────────────────────────────
+/**
+ * Scans the student's message for explicit length preferences.
+ * Returns "short" | "full" | null.
+ * Pure function — no side effects, zero latency.
+ */
+export function detectUserOverride(message: string): "short" | "full" | null {
+  const lower = message.toLowerCase();
+
+  const shortPatterns = [
+    /\bshort\s+answer\b/, /\bjust\s+the\s+formula\b/, /\bjust\s+the\s+answer\b/,
+    /\bbriefly\b/, /\bin\s+one\s+line\b/, /\bquick\s+answer\b/, /\bquickly\b/,
+    /\btldr\b/, /\btl;dr\b/, /\bsummarise\b/, /\bsummarize\b/, /\bshort\b.*\bonly\b/,
+    /\bdon'?t\s+explain\b/, /\bno\s+explanation\b/, /\bjust\s+tell\s+me\b/,
+    /\bkeep\s+it\s+short\b/, /\bkeep\s+it\s+brief\b/, /\bone\s+word\b/,
+  ];
+
+  const fullPatterns = [
+    /\bstep[\s-]by[\s-]step\b/, /\bshow\s+all\s+working\b/, /\bshow\s+your\s+work\b/,
+    /\bfull\s+explanation\b/, /\bexplain\s+everything\b/, /\bin\s+detail\b/,
+    /\bdetailed\s+explanation\b/, /\bfull\s+working\b/, /\bwalk\s+me\s+through\b/,
+    /\bexplain\s+fully\b/, /\bexplain\s+in\s+full\b/, /\bcomprehensive\b/,
+    /\bexhaustive\b/, /\bdon'?t\s+skip\b/, /\bshow\s+every\s+step\b/,
+    /\bfrom\s+scratch\b/, /\bfrom\s+first\s+principles\b/, /\bprove\s+it\b/,
+    /\bderive\b/, /\bderivation\b/,
+  ];
+
+  if (shortPatterns.some((p) => p.test(lower))) return "short";
+  if (fullPatterns.some((p) => p.test(lower))) return "full";
+  return null;
+}
+
+// ─── Stage 2: Heuristic complexity classifier ─────────────────────────────────
+/**
+ * Scores the question 1-5 based on keyword signals, equation density,
+ * question length, and subject weight.
+ * Pure function — no API call, zero latency.
+ */
+export interface ClassificationResult {
+  difficulty: 1 | 2 | 3 | 4 | 5;
+  type: "trivial" | "simple" | "medium" | "complex" | "phd";
+}
+
+export function classifyQuestion(message: string, subject?: string): ClassificationResult {
+  const lower = message.toLowerCase();
+  let score = 0;
+
+  // ── Length signal (word count) ──
+  const words = message.trim().split(/\s+/).filter(Boolean).length;
+  if (words <= 5)  score += 0;
+  else if (words <= 15) score += 1;
+  else if (words <= 40) score += 2;
+  else if (words <= 80) score += 3;
+  else score += 4;
+
+  // ── High-complexity keyword signals ──
+  const complexKeywords = [
+    "prove", "proof", "derive", "derivation", "deduce", "theorem", "lemma",
+    "integrate", "integration", "differentiate", "differentiation",
+    "eigenvalue", "eigenvector", "fourier", "laplace", "transform",
+    "differential equation", "partial derivative", "gradient", "divergence", "curl",
+    "navier", "stokes", "schrodinger", "hamiltonian", "lagrangian",
+    "algorithm", "complexity", "big o", "recursion", "dynamic programming",
+    "proof by induction", "proof by contradiction", "axiom", "corollary",
+    "convergence", "divergence series", "limit", "epsilon delta",
+    "quantum", "relativity", "thermodynamics", "entropy",
+    "organic chemistry", "reaction mechanism", "synthesis",
+    "essay", "analyse", "critically evaluate", "compare and contrast",
+  ];
+  const complexCount = complexKeywords.filter((k) => lower.includes(k)).length;
+  score += Math.min(complexCount * 2, 10);
+
+  // ── Medium-complexity keyword signals ──
+  const mediumKeywords = [
+    "solve", "calculate", "find", "simplify", "factorise", "factorize",
+    "expand", "equation", "formula", "explain", "describe", "what is",
+    "how does", "why does", "graph", "plot", "sketch", "draw",
+    "balance", "convert", "translate", "summarise", "summarize",
+  ];
+  const mediumCount = mediumKeywords.filter((k) => lower.includes(k)).length;
+  score += Math.min(mediumCount, 3);
+
+  // ── Equation/symbol density ──
+  const symbolPattern = /[=^∫∑√∂∇×÷±≤≥≠∞θΔΣΩαβγλμπφψ]/g;
+  const symbolCount = (message.match(symbolPattern) ?? []).length;
+  score += Math.min(symbolCount * 2, 6);
+
+  // ── LaTeX density ──
+  const latexPattern = /\$[^$]+\$|\\\w+/g;
+  const latexCount = (message.match(latexPattern) ?? []).length;
+  score += Math.min(latexCount, 4);
+
+  // ── Subject weight bonus ──
+  const heavySubjects = ["mathematics", "maths", "math", "physics", "chemistry", "computer science", "statistics"];
+  const mediumSubjects = ["biology", "economics", "engineering"];
+  const subjectLower = (subject ?? "").toLowerCase();
+  if (heavySubjects.some((s) => subjectLower.includes(s))) score += 2;
+  else if (mediumSubjects.some((s) => subjectLower.includes(s))) score += 1;
+
+  // ── Trivial override: very short, no keywords, no symbols ──
+  if (words <= 5 && complexCount === 0 && symbolCount === 0 && latexCount === 0) {
+    return { difficulty: 1, type: "trivial" };
+  }
+
+  // ── Map score to difficulty ──
+  if (score <= 2)  return { difficulty: 1, type: "trivial" };
+  if (score <= 5)  return { difficulty: 2, type: "simple" };
+  if (score <= 10) return { difficulty: 3, type: "medium" };
+  if (score <= 16) return { difficulty: 4, type: "complex" };
+  return { difficulty: 5, type: "phd" };
+}
+
+// ─── Stage 3: Dynamic token budget ───────────────────────────────────────────
+/**
+ * Returns the appropriate max_tokens budget based on:
+ * - Explicit user override ("short" / "full")
+ * - Heuristic difficulty (1-5)
+ * - Detailed Mode multiplier (1.5x when on, 0.6x when off)
+ */
+export function computeTokenBudget(
+  classification: ClassificationResult,
+  override: "short" | "full" | null,
+  detailedMode: boolean,
+): number {
+  // Explicit overrides take absolute priority
+  if (override === "short") return 300;
+  if (override === "full")  return 12000;
+
+  // Base budgets by difficulty
+  const BASE: Record<number, number> = {
+    1: 400,    // trivial
+    2: 900,    // simple
+    3: 2800,   // medium
+    4: 6500,   // complex
+    5: 10000,  // PhD-level
+  };
+
+  const base = BASE[classification.difficulty] ?? 2800;
+
+  // Detailed Mode: 1.5x multiplier; Concise Mode: 0.6x multiplier
+  const multiplier = detailedMode ? 1.5 : 0.6;
+  const budget = Math.round(base * multiplier);
+
+  // Hard cap at 12,000 tokens
+  return Math.min(budget, 12000);
+}
+
+// ─── Stage 5: Natural stop detection ─────────────────────────────────────────
+/**
+ * Returns true if the accumulated text ends at a natural stopping point.
+ * Used by the continuation guard to decide whether to continue generation.
+ */
+function endsNaturally(text: string): boolean {
+  const tail = text.slice(-120).trimEnd();
+  if (tail.length === 0) return true;
+
+  // Ends with sentence-ending punctuation
+  if (/[.!?]$/.test(tail)) return true;
+
+  // Ends with a closed code fence
+  if (/```\s*$/.test(tail)) return true;
+
+  // Ends with a closed component block
+  if (/:::\s*$/.test(tail)) return true;
+
+  // Ends with a Markdown heading (section boundary)
+  if (/^#{1,6}\s+.+$/m.test(tail.split("\n").pop() ?? "")) return true;
+
+  // Ends with the SUBMISSION_READY_END marker
+  if (tail.includes("===SUBMISSION_READY_END===")) return true;
+
+  // Ends with a horizontal rule (section separator)
+  if (/---\s*$/.test(tail)) return true;
+
+  return false;
+}
+
+// ─── API URL resolver ─────────────────────────────────────────────────────────
 const resolveApiUrl = () =>
   ENV.forgeApiUrl && ENV.forgeApiUrl.trim().length > 0
     ? `${ENV.forgeApiUrl.replace(/\/$/, "")}/v1/chat/completions`
     : "https://forge.manus.im/v1/chat/completions";
 
+// ─── TutorProfile ─────────────────────────────────────────────────────────────
 interface TutorProfile {
   nickname?: string;
   tone?: "encouraging" | "formal" | "casual" | "socratic";
@@ -146,7 +343,7 @@ interface TutorProfile {
   language?: string;
   showWorking?: boolean;
   useEmojis?: boolean;
-  detailedMode?: boolean; // When true, use doubled token budgets and richer length guidance
+  detailedMode?: boolean;
 }
 
 function buildTutorProfileContext(profile?: TutorProfile): string {
@@ -215,6 +412,93 @@ function buildTutorProfileContext(profile?: TutorProfile): string {
   return parts.length > 0 ? `\n\nTUTOR PERSONALISATION:\n${parts.map((p) => `- ${p}`).join("\n")}` : "";
 }
 
+// ─── Core streaming helper ────────────────────────────────────────────────────
+/**
+ * Streams a single LLM call to the response, collecting all emitted tokens.
+ * Returns the full accumulated text and the finish_reason.
+ */
+async function streamOnce(
+  messages: Array<{ role: string; content: string }>,
+  maxTokens: number,
+  res: Response,
+  emitTokens: boolean,
+): Promise<{ text: string; finishReason: string }> {
+  const payload = {
+    model: "gpt-4o-mini",
+    stream: true,
+    max_tokens: maxTokens,
+    messages,
+  };
+
+  const upstream = await fetch(resolveApiUrl(), {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${ENV.forgeApiKey}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!upstream.ok) {
+    const errText = await upstream.text();
+    throw new Error(`LLM error: ${upstream.status} ${errText}`);
+  }
+
+  const reader = upstream.body?.getReader();
+  if (!reader) return { text: "", finishReason: "stop" };
+
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let accumulated = "";
+  let finishReason = "stop";
+
+  const flush = () => {
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || !trimmed.startsWith("data:")) continue;
+      const raw = trimmed.slice(5).trim();
+      if (raw === "[DONE]") continue;
+      try {
+        const parsed = JSON.parse(raw) as {
+          choices?: Array<{ delta?: { content?: string }; finish_reason?: string }>;
+        };
+        const choice = parsed.choices?.[0];
+        const token = choice?.delta?.content;
+        if (token) {
+          accumulated += token;
+          if (emitTokens) {
+            res.write(`data: ${JSON.stringify({ token })}\n\n`);
+          }
+        }
+        if (choice?.finish_reason) {
+          finishReason = choice.finish_reason;
+        }
+      } catch {
+        // skip malformed chunk
+      }
+    }
+  };
+
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    flush();
+  }
+
+  if (buffer.trim()) {
+    buffer += "\n";
+    flush();
+  }
+
+  return { text: accumulated, finishReason };
+}
+
+// ─── Route registration ───────────────────────────────────────────────────────
 export function registerChatStreamRoute(app: Express) {
   app.post("/api/chat/stream", async (req: Request, res: Response) => {
     try {
@@ -230,6 +514,7 @@ export function registerChatStreamRoute(app: Express) {
         return;
       }
 
+      // ── Build system prompt ──
       const subjectContext = subject
         ? `\nThe student is currently focused on: ${subject}. Tailor your explanations to this subject when relevant.`
         : "";
@@ -240,96 +525,68 @@ export function registerChatStreamRoute(app: Express) {
       const profileCtx = buildTutorProfileContext(tutorProfile);
       const systemPrompt = CHAT_SYSTEM_PROMPT + subjectContext + gradeCtx + profileCtx;
 
-      // Scale max_tokens by the complexity of the last user message.
-      // Detailed Mode (on): doubled budgets for richer, more complete responses.
-      // Concise Mode (off): halved budgets for focused, efficient responses.
-      const isDetailed = tutorProfile?.detailedMode !== false; // default to detailed (current behaviour)
+      // ── Stage 1: Detect explicit user override ──
       const lastUserMsg = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
-      const wordCount = lastUserMsg.trim().split(/\s+/).filter(Boolean).length;
-      const streamMaxTokens = isDetailed
-        ? (wordCount <= 10 ? 2400 : wordCount <= 30 ? 3200 : 4000)  // Detailed: full budgets
-        : (wordCount <= 10 ? 1200 : wordCount <= 30 ? 1600 : 2000); // Concise: halved budgets
+      const override = detectUserOverride(lastUserMsg);
 
-      const payload = {
-        model: "gpt-4o-mini",
-        stream: true,
-        max_tokens: streamMaxTokens,
-        messages: [
-          { role: "system", content: systemPrompt },
-          ...messages.map((m) => ({ role: m.role, content: m.content })),
-        ],
-      };
+      // ── Stage 2: Classify question complexity ──
+      const classification = classifyQuestion(lastUserMsg, subject);
 
-      const upstream = await fetch(resolveApiUrl(), {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          authorization: `Bearer ${ENV.forgeApiKey}`,
-        },
-        body: JSON.stringify(payload),
-      });
+      // ── Stage 3: Compute dynamic token budget ──
+      const isDetailed = tutorProfile?.detailedMode !== false;
+      const tokenBudget = computeTokenBudget(classification, override, isDetailed);
 
-      if (!upstream.ok) {
-        const errText = await upstream.text();
-        res.status(502).json({ error: `LLM error: ${upstream.status} ${errText}` });
-        return;
-      }
-
-      // Set SSE headers
+      // ── Set SSE headers ──
       res.setHeader("Content-Type", "text/event-stream");
       res.setHeader("Cache-Control", "no-cache");
       res.setHeader("Connection", "keep-alive");
       res.setHeader("X-Accel-Buffering", "no");
       res.flushHeaders();
 
-      const reader = upstream.body?.getReader();
-      if (!reader) {
-        res.write("data: [DONE]\n\n");
-        res.end();
-        return;
-      }
+      // ── Stage 5: Streaming with continuation guard ──
+      const llmMessages: Array<{ role: string; content: string }> = [
+        { role: "system", content: systemPrompt },
+        ...messages.map((m) => ({ role: m.role, content: m.content })),
+      ];
 
-      const decoder = new TextDecoder();
-      let buffer = "";
+      let fullText = "";
+      let continuations = 0;
 
-      const flush = () => {
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
+      // First pass
+      const first = await streamOnce(llmMessages, tokenBudget, res, true);
+      fullText = first.text;
 
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed || !trimmed.startsWith("data:")) continue;
-          const raw = trimmed.slice(5).trim();
-          if (raw === "[DONE]") {
-            res.write("data: [DONE]\n\n");
-            return;
-          }
-          try {
-            const parsed = JSON.parse(raw) as {
-              choices?: Array<{ delta?: { content?: string } }>;
-            };
-            const token = parsed.choices?.[0]?.delta?.content;
-            if (token) {
-              res.write(`data: ${JSON.stringify({ token })}\n\n`);
-            }
-          } catch {
-            // skip malformed chunk
-          }
+      // Continuation passes (Stage 5)
+      if (CONTINUATION_ENABLED) {
+        while (
+          continuations < MAX_CONTINUATIONS &&
+          first.finishReason === "length" &&
+          !endsNaturally(fullText)
+        ) {
+          continuations++;
+
+          // Emit a special marker so the client knows continuation is starting
+          res.write(`data: ${JSON.stringify({ continuation: true })}\n\n`);
+
+          // Build continuation context: include the full response so far
+          const continuationMessages: Array<{ role: string; content: string }> = [
+            { role: "system", content: systemPrompt },
+            ...messages.map((m) => ({ role: m.role, content: m.content })),
+            {
+              role: "assistant",
+              content: fullText,
+            },
+            {
+              role: "user",
+              content: "Continue exactly from where you left off. Do not repeat anything already written. Do not add any preamble — just continue the response seamlessly.",
+            },
+          ];
+
+          const cont = await streamOnce(continuationMessages, tokenBudget, res, true);
+          fullText += cont.text;
+
+          if (cont.finishReason !== "length" || endsNaturally(fullText)) break;
         }
-      };
-
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        flush();
-      }
-
-      // Flush any remaining buffer
-      if (buffer.trim()) {
-        buffer += "\n";
-        flush();
       }
 
       res.write("data: [DONE]\n\n");

@@ -32,7 +32,7 @@ const env = {
 const config: ExpoConfig = {
   name: env.appName,
   slug: env.appSlug,
-  version: "1.1.9",
+  version: "1.2.0",
   orientation: "portrait",
   icon: "./assets/images/icon.png",
   scheme: env.scheme,
@@ -42,7 +42,7 @@ const config: ExpoConfig = {
   ios: {
     supportsTablet: true,
     bundleIdentifier: env.iosBundleId,
-    buildNumber: "14",
+    buildNumber: "15",
 
     associatedDomains: [
       `applinks:${PRODUCTION_DOMAIN}`,
@@ -78,7 +78,7 @@ const config: ExpoConfig = {
     },
   },
   android: {
-    versionCode: 14,
+    versionCode: 15,
     adaptiveIcon: {
       backgroundColor: "#E6F4FE",
       foregroundImage: "./assets/images/android-icon-foreground.png",

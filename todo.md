@@ -984,3 +984,24 @@
 - [x] Confirmed: all other features (Smart Copy, Pin/Unpin, Save to Notes, mode badge, wand toggle, per-subject persistence, interactive blocks, Mermaid diagrams) verified working
 - [x] Confirmed: dev server bundles cleanly with 0 errors after fix
 - [x] Version bumped to 1.1.9 (versionCode 14)
+
+## Round 62: Adaptive Intelligence Response Engine
+- [ ] Stage 1: Add detectUserOverride() function and unit tests
+- [ ] Stage 2: Add classifyQuestion() heuristic complexity classifier
+- [ ] Stage 3: Replace fixed token tiers with dynamic budget map
+- [ ] Stage 4: Update system prompts with completeness and length-matching rules
+- [ ] Stage 5: Implement streaming continuation guard (feature-flagged)
+
+## Round 62: AIRE (Adaptive Intelligence Response Engine) - COMPLETED
+- [x] Stage 1: detectUserOverride() -- detects "short answer", "step by step", etc.
+- [x] Stage 2: classifyQuestion() -- heuristic 1-5 difficulty classifier (0 latency)
+- [x] Stage 3: computeTokenBudget() -- dynamic token budget (trivial=400, simple=900, medium=2800, complex=6500, phd=10000; 1.5x detailed / 0.6x concise; hard cap 12000)
+- [x] Stage 4: System prompt updated with completeness/length-matching rules
+- [x] Stage 5: Streaming continuation guard (CONTINUATION_ENABLED feature flag, MAX_CONTINUATIONS=3)
+- [x] chatStream.ts fully rewritten with all 5 AIRE stages
+- [x] routers.ts non-streaming chat route updated to use AIRE dynamic import
+- [x] Complex keyword cap raised from 6 to 10 for better PhD-level detection
+- [x] Unit tests: 16 new AIRE tests added (aire.test.ts)
+- [x] TypeScript: 0 errors
+- [x] Tests: 49/49 passing (16 new AIRE + 33 existing)
+- [x] Version bumped to 1.2.0 (versionCode 15)
