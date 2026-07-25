@@ -1042,3 +1042,8 @@
 - [ ] Stage 1: Create 3 onboarding screens (Hook, How It Works, AIRE) with AsyncStorage gate
 - [ ] Stage 2: Wire onboarding into app/_layout.tsx — show on first launch only
 - [ ] Stage 3: Validate end-to-end, checkpoint
+
+## Classroom Profile Photo
+- [x] Stage 1: Add profile photo display to outside-classroom view (lobby/empty state header)
+- [x] Stage 2: Add profile photo display to inside-classroom view (header + Manage tab display-name card)
+- [x] Stage 3: TypeScript check + full test run + checkpoint

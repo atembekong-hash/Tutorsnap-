@@ -24,6 +24,7 @@ import {
   Share,
   Platform,
   Modal,
+  Image,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import * as H from "@/lib/haptics";
@@ -160,6 +161,9 @@ export default function ClassroomTabScreen() {
   // Expanded card ID for full problem text preview
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
 
+  // Profile photo — loaded from AsyncStorage, refreshed on focus
+  const [avatarUri, setAvatarUri] = useState<string | null>(null);
+
   const dateOptions = useMemo(() => getDateOptions(), []);
 
   // Load persisted homework completion state on mount
@@ -224,7 +228,10 @@ export default function ClassroomTabScreen() {
     setLoading(false);
   }, [refreshCommentCounts]);
 
-  useFocusEffect(useCallback(() => { loadData(); }, [loadData]));
+  useFocusEffect(useCallback(() => {
+    loadData();
+    AsyncStorage.getItem("@tutorsnap/avatarUri").then((uri) => setAvatarUri(uri || null)).catch(() => {});
+  }, [loadData]));
 
   const activeClassroom = myClassroom || joinedClassroom;
 
@@ -776,12 +783,35 @@ export default function ClassroomTabScreen() {
             <Text style={{ fontSize: 14 }}>🏆</Text>
             <Text style={[styles.rankingsBtnText, { color: colors.warning }]}>Rankings</Text>
           </TouchableOpacity>
+          {/* Profile avatar — tapping opens Settings */}
+          <TouchableOpacity
+            accessibilityLabel="Open settings"
+            accessibilityHint="Opens your profile settings"
+            onPress={() => router.push("/settings" as any)}
+            style={[styles.headerAvatar, { backgroundColor: `${colors.primary}15`, borderColor: `${colors.primary}30` }]}
+            activeOpacity={0.75}
+          >
+            {avatarUri ? (
+              <Image source={{ uri: avatarUri }} style={styles.headerAvatarImg} />
+            ) : (
+              <IconSymbol size={18} name="person.fill" color={colors.primary} />
+            )}
+          </TouchableOpacity>
         </View>
       </View>
 
       {/* No classroom */}
       {!activeClassroom && !showCreate && !showJoin && (
         <ScrollView keyboardDismissMode="on-drag" contentContainerStyle={styles.emptyContainer}>
+          {/* Profile identity card — shown in lobby when no classroom joined */}
+          {avatarUri && (
+            <View style={[styles.lobbyIdentityCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Image source={{ uri: avatarUri }} style={styles.lobbyAvatarImg} />
+              {displayName ? (
+                <Text style={[styles.lobbyDisplayName, { color: colors.foreground }]}>{displayName}</Text>
+              ) : null}
+            </View>
+          )}
           <Text style={styles.emptyIcon}>🏫</Text>
           <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No Classroom Yet</Text>
           <Text style={[styles.emptyText, { color: colors.muted }]}>
@@ -1341,9 +1371,34 @@ export default function ClassroomTabScreen() {
               {/* Display name (student only) */}
               {joinedClassroom && (
                 <View style={[styles.notifCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                  <Text style={[styles.notifCardTitle, { color: colors.foreground }]}>👤 Your Display Name</Text>
+                  <Text style={[styles.notifCardTitle, { color: colors.foreground }]}>👤 Your Profile</Text>
+                  {/* Profile photo preview */}
+                  <View style={[styles.manageAvatarRow, { borderTopColor: colors.border }]}>
+                    <TouchableOpacity
+                      accessibilityLabel="Change profile photo"
+                      accessibilityHint="Opens settings to change your profile photo"
+                      onPress={() => router.push("/settings" as any)}
+                      style={[styles.manageAvatarCircle, { backgroundColor: `${colors.primary}15`, borderColor: `${colors.primary}30` }]}
+                      activeOpacity={0.8}
+                    >
+                      {avatarUri ? (
+                        <Image source={{ uri: avatarUri }} style={styles.manageAvatarImg} />
+                      ) : (
+                        <IconSymbol size={28} name="person.fill" color={colors.primary} />
+                      )}
+                    </TouchableOpacity>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.notifRowLabel, { color: colors.foreground }]}>
+                        {displayName || "Set your name"}
+                      </Text>
+                      <Text style={[styles.notifRowSub, { color: colors.muted }]}>
+                        {avatarUri ? "Tap photo to change in Settings" : "Add a photo in Settings"}
+                      </Text>
+                    </View>
+                  </View>
+                  {/* Display name row */}
                   <TouchableOpacity
-                    accessibilityLabel="Edit" accessibilityHint="Opens the edit form"
+                    accessibilityLabel="Edit display name" accessibilityHint="Opens the edit form"
                     style={[styles.notifRow, { borderTopColor: colors.border }]}
                     onPress={handleEditDisplayName}
                     activeOpacity={0.75}
@@ -2147,4 +2202,61 @@ const styles = StyleSheet.create({
   hwEmptyIcon: { fontSize: 56, marginBottom: 8 },
   hwEmptyTitle: { fontSize: 18, fontWeight: "700", textAlign: "center" },
   hwEmptyText: { fontSize: 14, textAlign: "center", lineHeight: 21 },
+  // Profile photo styles
+  headerAvatar: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    overflow: "hidden",
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerAvatarImg: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+  },
+  lobbyIdentityCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    width: "100%",
+    marginBottom: 4,
+  },
+  lobbyAvatarImg: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+  },
+  lobbyDisplayName: {
+    fontSize: 15,
+    fontWeight: "700",
+    flex: 1,
+  },
+  manageAvatarRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    paddingVertical: 14,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  manageAvatarCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    overflow: "hidden",
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  manageAvatarImg: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+  },
 });
