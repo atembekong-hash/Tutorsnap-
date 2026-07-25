@@ -716,6 +716,20 @@ export default function OnboardingScreen() {
             </Text>
           </TouchableOpacity>
         )}
+        {/* Maybe Later link — only on the last (trial) slide */}
+        {isLastSlide && (
+          <TouchableOpacity
+            onPress={finishOnboarding}
+            activeOpacity={0.7}
+            style={styles.maybeLaterBtn}
+            accessibilityLabel="Maybe later, continue with free tier"
+            accessibilityRole="button"
+          >
+            <Text style={[styles.maybeLaterText, { color: colors.muted }]}>
+              Maybe Later — Start with Free Tier
+            </Text>
+          </TouchableOpacity>
+        )}
       </SafeAreaView>
       </KeyboardAvoidingView>
         {/* Confetti removed — celebration fires only after a real purchase on /premium-welcome */}
@@ -946,6 +960,17 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 16,
     lineHeight: 18,
+  },
+  maybeLaterBtn: {
+    alignItems: "center",
+    paddingVertical: 10,
+    marginBottom: 4,
+  },
+  maybeLaterText: {
+    fontSize: 13,
+    fontWeight: "500",
+    letterSpacing: 0.1,
+    textDecorationLine: "underline",
   },
   nameInput: {
     fontSize: 18,

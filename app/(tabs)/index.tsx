@@ -626,7 +626,9 @@ function SolveScreenContent() {
   const [homeworkBannerDismissed, setHomeworkBannerDismissed] = useState(false);
   const [_pendingNotifCount, setPendingNotifCount] = useState(0);
   const [showPaywallModal, setShowPaywallModal] = useState(false);
-  const { isPremium, usage, checkLimit, incrementUsage: incUsage, isDevMode } = usePremium();
+  const [paywallContext, setPaywallContext] = useState<string | null>(null);
+  const { isPremium, isTrialActive, trialDaysRemaining, usage, checkLimit, incrementUsage: incUsage, isDevMode } = usePremium();
+  const [trialBannerDismissed, setTrialBannerDismissed] = useState(false);
   const inputRef = useRef<TextInput>(null);
   const cursorPosRef = useRef<number>(0);
   const shieldToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -868,6 +870,7 @@ function SolveScreenContent() {
     if (!problem.trim()) return;
     // Usage limit check (free tier)
     if (!checkLimit("solves")) {
+      setPaywallContext(`You've used your ${FREE_LIMITS.solvesPerDay} free solve${(FREE_LIMITS.solvesPerDay as number) === 1 ? "" : "s"} today. Upgrade to solve unlimited problems.`);
       setShowPaywallModal(true);
       return;
     }
@@ -1096,6 +1099,41 @@ function SolveScreenContent() {
                 <Text style={[styles.goalBarPct, { color: dailyGoalPct >= 100 ? colors.success : colors.primary }]}>
                   {dailyGoalPct}%
                 </Text>
+              </View>
+            </TouchableOpacity>
+          )}
+
+          {/* Trial Countdown Banner — shown for free-trial users who have not yet purchased */}
+          {isTrialActive && !isPremium && !isDevMode && !trialBannerDismissed && (
+            <TouchableOpacity
+              accessibilityLabel={`${trialDaysRemaining} day${trialDaysRemaining === 1 ? '' : 's'} left in your free trial. Tap to upgrade.`}
+              style={[styles.trialBanner, { backgroundColor: `${colors.primary}12`, borderColor: `${colors.primary}30` }]}
+              onPress={() => { router.push("/paywall" as any); }}
+              activeOpacity={0.8}
+            >
+              <View style={styles.trialBannerLeft}>
+                <Text style={styles.trialBannerEmoji}>⏳</Text>
+                <View>
+                  <Text style={[styles.trialBannerTitle, { color: colors.foreground }]}>
+                    {trialDaysRemaining} day{trialDaysRemaining === 1 ? '' : 's'} left in your free trial
+                  </Text>
+                  <Text style={[styles.trialBannerSub, { color: colors.muted }]}>
+                    Upgrade to keep unlimited access
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.trialBannerRight}>
+                <View style={[styles.trialBannerChip, { backgroundColor: colors.primary }]}>
+                  <Text style={styles.trialBannerChipText}>Upgrade</Text>
+                </View>
+                <TouchableOpacity
+                  accessibilityLabel="Dismiss trial banner"
+                  onPress={() => setTrialBannerDismissed(true)}
+                  style={styles.trialBannerClose}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Text style={[styles.trialBannerCloseText, { color: colors.muted }]}>✕</Text>
+                </TouchableOpacity>
               </View>
             </TouchableOpacity>
           )}
@@ -1625,17 +1663,38 @@ function SolveScreenContent() {
         visible={showPaywallModal}
         animationType="slide"
         presentationStyle="pageSheet"
-        onRequestClose={() => setShowPaywallModal(false)}
+        onRequestClose={() => { setShowPaywallModal(false); setPaywallContext(null); }}
       >
         <View style={{ flex: 1 }}>
           {/* Inline close button so user can dismiss without going premium */}
           <TouchableOpacity
-            onPress={() => setShowPaywallModal(false)}
+            onPress={() => { setShowPaywallModal(false); setPaywallContext(null); }}
             style={{ position: "absolute", top: 16, right: 20, zIndex: 10, padding: 8 }}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
             <Text style={{ fontSize: 16, color: colors.muted }}>✕</Text>
           </TouchableOpacity>
+          {/* Contextual message banner — shown when the modal is triggered by a usage limit */}
+          {paywallContext && (
+            <View style={{
+              marginTop: 56,
+              marginHorizontal: 20,
+              paddingVertical: 12,
+              paddingHorizontal: 16,
+              borderRadius: 12,
+              backgroundColor: `${colors.warning}18`,
+              borderWidth: 1,
+              borderColor: `${colors.warning}40`,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 10,
+            }}>
+              <Text style={{ fontSize: 18 }}>⚠️</Text>
+              <Text style={{ flex: 1, fontSize: 13, fontWeight: "500", color: colors.foreground, lineHeight: 19 }}>
+                {paywallContext}
+              </Text>
+            </View>
+          )}
           {/* Lazy-import the paywall screen to avoid circular deps */}
           {React.createElement(require("../paywall").default)}
         </View>
@@ -2166,6 +2225,19 @@ const styles = StyleSheet.create({
   homeworkBannerDue: { fontSize: 12, fontWeight: "700" },
   homeworkBannerClose: { padding: 2 },
   homeworkBannerCloseText: { fontSize: 14, fontWeight: "600" },
+  trialBanner: {
+    borderRadius: 14, borderWidth: 1, padding: 14, marginHorizontal: 16, marginBottom: 12,
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+  },
+  trialBannerLeft: { flexDirection: "row", alignItems: "center", gap: 10, flex: 1 },
+  trialBannerEmoji: { fontSize: 22 },
+  trialBannerTitle: { fontSize: 13, fontWeight: "700" },
+  trialBannerSub: { fontSize: 12, marginTop: 1 },
+  trialBannerRight: { flexDirection: "row", alignItems: "center", gap: 8, marginLeft: 8 },
+  trialBannerChip: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
+  trialBannerChipText: { fontSize: 12, fontWeight: "700", color: "#fff" },
+  trialBannerClose: { padding: 2 },
+  trialBannerCloseText: { fontSize: 14, fontWeight: "600" },
   notifBadge: {
     position: "absolute",
     top: -4,

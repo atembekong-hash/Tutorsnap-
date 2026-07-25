@@ -1056,3 +1056,8 @@
 
 ## Onboarding Double-Celebration Fix
 - [x] Option A: Remove false confetti from trial slide CTA, navigate directly to paywall, clean up showConfetti state
+
+## Paywall Conversion Features
+- [x] Feature 1: Maybe Later link below See Plans button on onboarding trial slide
+- [x] Feature 2: Soft paywall modal when free user hits daily solve limit (contextual message banner added)
+- [x] Feature 3: Trial countdown banner on home screen (days remaining in trial)
