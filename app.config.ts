@@ -32,7 +32,7 @@ const env = {
 const config: ExpoConfig = {
   name: env.appName,
   slug: env.appSlug,
-  version: "1.5.2",
+  version: "1.5.3",
   orientation: "portrait",
   icon: "./assets/images/icon.png",
   scheme: env.scheme,
@@ -42,7 +42,7 @@ const config: ExpoConfig = {
   ios: {
     supportsTablet: true,
     bundleIdentifier: env.iosBundleId,
-    buildNumber: "21",
+    buildNumber: "22",
 
     associatedDomains: [
       `applinks:${PRODUCTION_DOMAIN}`,
@@ -78,7 +78,7 @@ const config: ExpoConfig = {
     },
   },
   android: {
-          versionCode: 21,
+          versionCode: 22,
     adaptiveIcon: {
       backgroundColor: "#E6F4FE",
       foregroundImage: "./assets/images/android-icon-foreground.png",
@@ -175,10 +175,12 @@ const config: ExpoConfig = {
     [
       "@sentry/react-native/expo",
       {
-        // Set your Sentry project org and project slugs here after creating a project at sentry.io
-        // These are used during EAS builds to upload source maps for readable stack traces
-        organization: process.env.SENTRY_ORG ?? "",
-        project: process.env.SENTRY_PROJECT ?? "",
+        // Hardcoded so EAS builds never fail due to missing env vars
+        organization: "etiendem-technologies",
+        project: "tutorsnap",
+        // Auto-upload source maps only when SENTRY_AUTH_TOKEN is available in the build environment
+        // Add SENTRY_AUTH_TOKEN to EAS secrets to enable readable stack traces in Sentry dashboard
+        disableAutoUpload: !process.env.SENTRY_AUTH_TOKEN,
       },
     ],
     [

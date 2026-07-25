@@ -144,6 +144,10 @@ export default function AireAnalyticsScreen() {
   }, []);
 
   const stats = computeStats(entries);
+  // Derive expired subjects for the top-level notification banner (AIRE Stage 6)
+  const expiredSubjects = Array.from(calibrationMap.entries())
+    .filter(([, row]) => row.isDecayed)
+    .map(([subject]) => getSubjectLabel(subject));
 
   const handleClear = () => {
     H.impactLight();
@@ -176,6 +180,20 @@ export default function AireAnalyticsScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* ── AIRE Stage 6: Expiry notification banner ────────────────── */}
+        {expiredSubjects.length > 0 && (
+          <View style={[styles.expiryBanner, { backgroundColor: `${colors.warning}18`, borderColor: `${colors.warning}40` }]}>
+            <Text style={{ fontSize: 18, marginRight: 8 }}>⏰</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 14, fontWeight: "700", color: colors.warning }}>
+                Calibration expired
+              </Text>
+              <Text style={{ fontSize: 13, color: colors.muted, marginTop: 2, lineHeight: 18 }}>
+                {expiredSubjects.join(", ")} {expiredSubjects.length === 1 ? "has" : "have"} not received feedback in 30 days. Give feedback on your next solve to re-train {expiredSubjects.length === 1 ? "it" : "them"}.
+              </Text>
+            </View>
+          </View>
+        )}
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 48 }}>
 
           {loading ? (
@@ -593,4 +611,14 @@ const styles = StyleSheet.create({
   recentProblem: { fontSize: 13, fontWeight: "600" },
   recentMeta: { fontSize: 11, marginTop: 2 },
   recentRating: { fontSize: 11, fontWeight: "700" },
+  expiryBanner: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 4,
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
 });

@@ -37,10 +37,17 @@ describe("Sentry source map credentials", () => {
     expect(project).toBeTruthy();
   });
 
-  it("eas.json should reference SENTRY_ORG and SENTRY_PROJECT in the Sentry plugin config", async () => {
+  it("app.config.ts should have Sentry plugin with hardcoded org and project values", async () => {
     const fs = await import("fs/promises");
     const appConfig = await fs.readFile("app.config.ts", "utf-8");
-    expect(appConfig).toContain("SENTRY_ORG");
-    expect(appConfig).toContain("SENTRY_PROJECT");
+    // Sentry plugin should have hardcoded org/project (not env vars) so EAS builds never fail
+    expect(appConfig).toContain("@sentry/react-native/expo");
+    expect(appConfig).toContain("organization:");
+    expect(appConfig).toContain("project:");
+    // Verify the actual org and project values from env are present in the config
+    const org = process.env.SENTRY_ORG;
+    const project = process.env.SENTRY_PROJECT;
+    if (org) expect(appConfig).toContain(org);
+    if (project) expect(appConfig).toContain(project);
   });
 });
