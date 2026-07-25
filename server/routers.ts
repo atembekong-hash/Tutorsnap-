@@ -12,6 +12,7 @@ import { COOKIE_NAME } from "../shared/const";
 import { transcribeAudio } from "./_core/voiceTranscription";
 import { storagePut } from "./storage";
 import { TRPCError } from "@trpc/server";
+import { captureServerError, addServerBreadcrumb } from "./_core/sentry-server";
 
 // ─── Subject-aware prompt builder ────────────────────────────────────────────
 
@@ -705,6 +706,7 @@ const academicRouter = router({
         const parsed = JSON.parse(jsonStr);
         return truncateForSimpleTier(parsed, tokenBudget);
       } catch (err: unknown) {
+        captureServerError(err, { procedure: "academic.solve", extra: { problem: input.problem?.slice(0, 100) } });
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err instanceof Error ? err.message : "Failed to solve problem. Please try again." });
       }
     }),
@@ -796,6 +798,7 @@ Respond ONLY with this JSON (no extra text):
         const jsonStr = await invokeLLMWithFallback("gemini-3-flash-preview", "claude-haiku-4-5", params);
         return JSON.parse(jsonStr);
       } catch (err: unknown) {
+        captureServerError(err, { procedure: "academic.solveFromImage", extra: { subject: input.subject } });
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err instanceof Error ? err.message : "Failed to process image. Please try again." });
       }
     }),
@@ -829,7 +832,8 @@ Respond ONLY with this JSON (no extra text):
         try {
           const repaired = repairTruncatedJson(jsonStr);
           parsed = JSON.parse(repaired);
-        } catch {
+        } catch (jsonErr) {
+          captureServerError(jsonErr, { procedure: "academic.generatePractice", extra: { subject: input.subject, difficulty: input.difficulty } });
           throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned invalid JSON. Please try again." });
         }
       }
@@ -1290,6 +1294,7 @@ const aireRouter = router({
       } catch (err) {
         // Non-fatal — feedback storage failure should not break the app
         console.error("[AIRE] logFeedback error:", err);
+        captureServerError(err, { procedure: "aire.logFeedback" });
         return { ok: false, reason: "error" };
       }
     }),
@@ -1316,6 +1321,7 @@ const aireRouter = router({
         return { calibrations: rows };
       } catch (err) {
         console.error("[AIRE] getSubjectCalibrations error:", err);
+        captureServerError(err, { procedure: "aire.getSubjectCalibrations" });
         return { calibrations: [] };
       }
     }),
@@ -1358,6 +1364,7 @@ const aireRouter = router({
         return { multiplier: parseFloat(clamped.toFixed(2)), sampleSize: rows.length };
       } catch (err) {
         console.error("[AIRE] getThresholds error:", err);
+        captureServerError(err, { procedure: "aire.getThresholds" });
         return { multiplier: 1.0, sampleSize: 0 };
       }
     }),
