@@ -243,7 +243,6 @@ export function getStreakEmoji(streak: number): string {
 }
 
 export function getDailyGoalPercent(todaySolved: number, dailyGoal: number): number {
-  if (!dailyGoal || dailyGoal <= 0) return 0;
   return Math.min(100, Math.round((todaySolved / dailyGoal) * 100));
 }
 

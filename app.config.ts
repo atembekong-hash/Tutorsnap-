@@ -32,7 +32,7 @@ const env = {
 const config: ExpoConfig = {
   name: env.appName,
   slug: env.appSlug,
-  version: "1.5.0",
+  version: "1.4.2",
   orientation: "portrait",
   icon: "./assets/images/icon.png",
   scheme: env.scheme,
@@ -42,7 +42,7 @@ const config: ExpoConfig = {
   ios: {
     supportsTablet: true,
     bundleIdentifier: env.iosBundleId,
-    buildNumber: "19",
+    buildNumber: "18",
 
     associatedDomains: [
       `applinks:${PRODUCTION_DOMAIN}`,
@@ -78,7 +78,7 @@ const config: ExpoConfig = {
     },
   },
   android: {
-          versionCode: 19,
+    versionCode: 18,
     adaptiveIcon: {
       backgroundColor: "#E6F4FE",
       foregroundImage: "./assets/images/android-icon-foreground.png",
@@ -172,15 +172,6 @@ const config: ExpoConfig = {
       },
     ],
     "@react-native-google-signin/google-signin",
-    [
-      "@sentry/react-native/expo",
-      {
-        // Set your Sentry project org and project slugs here after creating a project at sentry.io
-        // These are used during EAS builds to upload source maps for readable stack traces
-        organization: process.env.SENTRY_ORG ?? "",
-        project: process.env.SENTRY_PROJECT ?? "",
-      },
-    ],
     [
       "expo-build-properties",
       {
