@@ -611,13 +611,16 @@ export default function ProgressScreen() {
         )}
         </View>
       </ScrollView>
-      {/* Badge Unlock Modal */}
-      <BadgeUnlockModal
-        visible={!!unlockModal}
-        tier={unlockModal?.tier ?? "bronze"}
-        subjectLabel={unlockModal?.subjectLabel ?? ""}
-        onClose={() => setUnlockModal(null)}
-      />
+      {/* Badge Unlock Modal — only mounted when a badge is earned to prevent
+           18 Reanimated Particle worklets from firing on every progress screen load */}
+      {unlockModal && (
+        <BadgeUnlockModal
+          visible={true}
+          tier={unlockModal.tier}
+          subjectLabel={unlockModal.subjectLabel}
+          onClose={() => setUnlockModal(null)}
+        />
+      )}
     
       </Animated.View></ScreenContainer>
   );

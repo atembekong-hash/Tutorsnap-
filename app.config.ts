@@ -42,7 +42,7 @@ const config: ExpoConfig = {
   ios: {
     supportsTablet: true,
     bundleIdentifier: env.iosBundleId,
-    buildNumber: "21",
+    buildNumber: "22",
 
     associatedDomains: [
       `applinks:${PRODUCTION_DOMAIN}`,
@@ -78,7 +78,7 @@ const config: ExpoConfig = {
     },
   },
   android: {
-    versionCode: 21,
+    versionCode: 22,
     adaptiveIcon: {
       backgroundColor: "#E6F4FE",
       foregroundImage: "./assets/images/android-icon-foreground.png",
