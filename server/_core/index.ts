@@ -1,4 +1,7 @@
 import "dotenv/config";
+// Sentry server SDK must be initialised before any other imports
+import { initSentryServer } from "./sentry-server";
+initSentryServer();
 import express from "express";
 import { createServer } from "http";
 import net from "net";

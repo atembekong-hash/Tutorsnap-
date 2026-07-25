@@ -12,6 +12,7 @@ import { COOKIE_NAME } from "../shared/const";
 import { transcribeAudio } from "./_core/voiceTranscription";
 import { storagePut } from "./storage";
 import { TRPCError } from "@trpc/server";
+import { captureServerError } from "./_core/sentry-server";
 
 // ─── Subject-aware prompt builder ────────────────────────────────────────────
 
@@ -705,6 +706,7 @@ const academicRouter = router({
         const parsed = JSON.parse(jsonStr);
         return truncateForSimpleTier(parsed, tokenBudget);
       } catch (err: unknown) {
+        captureServerError(err, { route: "academic.solve" });
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err instanceof Error ? err.message : "Failed to solve problem. Please try again." });
       }
     }),
@@ -796,6 +798,7 @@ Respond ONLY with this JSON (no extra text):
         const jsonStr = await invokeLLMWithFallback("gemini-3-flash-preview", "claude-haiku-4-5", params);
         return JSON.parse(jsonStr);
       } catch (err: unknown) {
+        captureServerError(err, { route: "academic.solveFromImage" });
         throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err instanceof Error ? err.message : "Failed to process image. Please try again." });
       }
     }),
@@ -829,7 +832,8 @@ Respond ONLY with this JSON (no extra text):
         try {
           const repaired = repairTruncatedJson(jsonStr);
           parsed = JSON.parse(repaired);
-        } catch {
+        } catch (repairErr: unknown) {
+          captureServerError(repairErr, { route: "academic.generatePractice", reason: "invalid JSON from AI" });
           throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned invalid JSON. Please try again." });
         }
       }
