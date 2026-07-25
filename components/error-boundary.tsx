@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Platform } from "react-native
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useColors } from "@/hooks/use-colors";
 import type { ThemeColorPalette } from "@/constants/theme";
+import { captureError } from "@/lib/sentry";
 
 interface Props {
   children: ReactNode;
@@ -100,6 +101,13 @@ class ErrorBoundaryClass extends Component<InternalProps, State> {
       `[ErrorBoundary:${report.label}] ${report.message}\n` +
       `Component stack: ${report.componentStack}`
     );
+
+    // Send to Sentry for remote crash reporting
+    captureError(error, {
+      label: report.label,
+      componentStack: report.componentStack,
+      platform: report.platform,
+    });
 
     // Persist to AsyncStorage for later review / support
     persistCrashReport(report);
