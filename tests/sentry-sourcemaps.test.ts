@@ -1,7 +1,3 @@
-/**
- * Sentry source map upload credentials validation
- * Verifies SENTRY_ORG and SENTRY_PROJECT are set and have valid slug formats.
- */
 import { describe, it, expect } from "vitest";
 import * as dotenv from "dotenv";
 dotenv.config();
@@ -11,43 +7,28 @@ describe("Sentry source map credentials", () => {
     const org = process.env.SENTRY_ORG;
     expect(org, "SENTRY_ORG must be set").toBeTruthy();
     expect(org!.length, "SENTRY_ORG must be at least 2 chars").toBeGreaterThanOrEqual(2);
-    // Sentry slugs: lowercase letters, numbers, hyphens only
-    expect(org, "SENTRY_ORG must be a valid slug (lowercase, numbers, hyphens)").toMatch(
-      /^[a-z0-9][a-z0-9-]*[a-z0-9]$/
-    );
+    expect(org, "SENTRY_ORG must be a valid slug").toMatch(/^[a-z0-9][a-z0-9-]*[a-z0-9]$/);
   });
 
   it("SENTRY_PROJECT should be set and be a valid slug", () => {
     const project = process.env.SENTRY_PROJECT;
     expect(project, "SENTRY_PROJECT must be set").toBeTruthy();
     expect(project!.length, "SENTRY_PROJECT must be at least 2 chars").toBeGreaterThanOrEqual(2);
-    expect(project, "SENTRY_PROJECT must be a valid slug (lowercase, numbers, hyphens)").toMatch(
-      /^[a-z0-9][a-z0-9-]*[a-z0-9]$/
-    );
+    expect(project, "SENTRY_PROJECT must be a valid slug").toMatch(/^[a-z0-9][a-z0-9-]*[a-z0-9]$/);
   });
 
-  it("SENTRY_ORG and SENTRY_PROJECT should be different values", () => {
+  it("SENTRY_ORG and SENTRY_PROJECT should both be set", () => {
     const org = process.env.SENTRY_ORG;
     const project = process.env.SENTRY_PROJECT;
-    if (org && project) {
-      // They can be the same in some Sentry setups, so just warn
-      console.log(`Sentry config: org="${org}", project="${project}"`);
-    }
+    if (org && project) console.log(`Sentry config: org="${org}", project="${project}"`);
     expect(org).toBeTruthy();
     expect(project).toBeTruthy();
   });
 
-  it("app.config.ts should have Sentry plugin with hardcoded org and project values", async () => {
+  it("app.config.ts plugins array should NOT include Sentry expo plugin (removed to fix Android crash)", async () => {
     const fs = await import("fs/promises");
     const appConfig = await fs.readFile("app.config.ts", "utf-8");
-    // Sentry plugin should have hardcoded org/project (not env vars) so EAS builds never fail
-    expect(appConfig).toContain("@sentry/react-native/expo");
-    expect(appConfig).toContain("organization:");
-    expect(appConfig).toContain("project:");
-    // Verify the actual org and project values from env are present in the config
-    const org = process.env.SENTRY_ORG;
-    const project = process.env.SENTRY_PROJECT;
-    if (org) expect(appConfig).toContain(org);
-    if (project) expect(appConfig).toContain(project);
+    const pluginInArray = /["'`]@sentry\/react-native\/expo["'`]/.test(appConfig);
+    expect(pluginInArray, "Sentry expo plugin must not be in plugins array (causes Android crash)").toBe(false);
   });
 });
