@@ -61,6 +61,7 @@ import { getSubscriptionStatus,
 import { TutorSettingsModal } from "@/components/tutor-settings-modal";
 import { useTutorSettings } from "@/components/tutor-settings-modal";
 import { isSoundEffectsEnabled, setSoundEffectsEnabled } from "@/lib/sound-effects";
+import { StreakFreezeCard } from "@/components/streak-freeze-card";
 
 const GOAL_OPTIONS = [1, 2, 3, 5, 7, 10];
 const HOUR_OPTIONS = Array.from({ length: 18 }, (_, i) => i + 6);
@@ -1215,6 +1216,13 @@ export default function SettingsScreen() {
             <Text style={[styles.statLabel, { color: colors.muted }]}>Total Solved</Text>
           </View>
         </View>
+
+        {/* ── Streak Freeze Power-up ── */}
+        <StreakFreezeCard
+          currentStreak={streak}
+          onFreezeActivated={() => { /* streak state refreshes on next focus */ }}
+          onFreezeEarned={() => { /* toast shown inside card */ }}
+        />
 
         {/* Search bar */}
         <View style={[styles.searchBar, { backgroundColor: colors.surface, borderColor: colors.border }]}>

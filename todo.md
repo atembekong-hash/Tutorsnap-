@@ -1068,6 +1068,6 @@
 - [x] Feature 3: Streak milestone celebration (confetti + avatar + streak count at 7/14/30 days)
 
 ## Advanced Features Round 4
-- [ ] Feature 1: Staggered podium entrance animation (bronze slides in, silver, gold drops from above)
-- [ ] Feature 2: Share result as actual PNG image using react-native-view-shot
-- [ ] Feature 3: Streak Freeze power-up in Settings/Profile screen
+- [x] Feature 1: Staggered podium entrance animation (bronze slides in, silver, gold drops from above)
+- [x] Feature 2: Share result as actual PNG image using react-native-view-shot
+- [x] Feature 3: Streak Freeze power-up in Settings/Profile screen
