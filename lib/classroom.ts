@@ -33,6 +33,7 @@ export interface ClassroomProblem {
   steps: string[];
   sharedAt: string;      // ISO date
   sharedBy: string;      // display name or "You"
+  sharerAvatarUri?: string; // optional profile photo of the sharer
   classCode: string;
   // Homework fields (optional)
   isHomework?: boolean;
@@ -42,6 +43,7 @@ export interface ClassroomProblem {
 
 export interface LeaderboardEntry {
   name: string;
+  avatarUri?: string;             // optional profile photo
   challengesCompleted: number;
   challengesCorrect: number;
   bestTimeSeconds: number | null; // fastest correct solve
@@ -186,7 +188,8 @@ export async function recordChallengeResult(
   classCode: string,
   playerName: string,
   correct: boolean,
-  timeTakenSeconds: number
+  timeTakenSeconds: number,
+  avatarUri?: string
 ): Promise<void> {
   const board = await getLeaderboard(classCode);
   const idx = board.findIndex((e) => e.name === playerName);
@@ -200,10 +203,13 @@ export async function recordChallengeResult(
       }
     }
     entry.lastActive = new Date().toISOString();
+    // Update avatar if a newer one is provided
+    if (avatarUri) entry.avatarUri = avatarUri;
     board[idx] = entry;
   } else {
     board.push({
       name: playerName,
+      avatarUri: avatarUri ?? undefined,
       challengesCompleted: 1,
       challengesCorrect: correct ? 1 : 0,
       bestTimeSeconds: correct ? timeTakenSeconds : null,

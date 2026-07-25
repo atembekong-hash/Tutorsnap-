@@ -10,6 +10,7 @@ import {
   Image,
   Platform,
   Animated,
+  KeyboardAvoidingView,
 } from "react-native";
 import { useRouter } from "expo-router";
 import * as H from "@/lib/haptics";
@@ -363,6 +364,11 @@ export default function OnboardingScreen() {
       colors={[currentGradient[0], currentGradient[1], "transparent"]}
       style={StyleSheet.absoluteFillObject}
     />
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={0}
+      >
       <SafeAreaView style={[styles.root, { backgroundColor: "transparent" }]} edges={["top", "bottom", "left", "right"]}>
         {/* Back button */}
         {!isFirstSlide && (
@@ -710,6 +716,8 @@ export default function OnboardingScreen() {
             </Text>
           </TouchableOpacity>
         )}
+      </SafeAreaView>
+      </KeyboardAvoidingView>
         {/* Confetti burst on completion */}
         {showConfetti && (
           <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, pointerEvents: "none" }}>
@@ -727,7 +735,6 @@ export default function OnboardingScreen() {
             </View>
           </View>
         )}
-      </SafeAreaView>
     </View>
   );
 }
@@ -780,7 +787,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 32,
     paddingTop: 80,
-    paddingBottom: 20,
+    paddingBottom: 40,
   },
   emojiCircle: {
     width: 120,
@@ -982,5 +989,5 @@ const styles = StyleSheet.create({
   previewEmoji: { fontSize: 20, width: 28, textAlign: "center" },
   previewLabel: { fontSize: 11, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 },
   previewValue: { fontSize: 14, fontWeight: "500", lineHeight: 20 },
-  previewHint: { fontSize: 12, textAlign: "center", lineHeight: 18, marginTop: 4 },
+  previewHint: { fontSize: 12, textAlign: "center", lineHeight: 18, marginTop: 4, marginBottom: 16 },
 });

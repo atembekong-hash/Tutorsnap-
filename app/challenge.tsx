@@ -27,6 +27,7 @@ import { useScreenTransition } from "@/hooks/use-screen-transition";
 import { getSubjectColor, getSubjectLabel, getSubjectEmoji } from "@/lib/subjects";
 import { recordChallengeResult, getClassroomDisplayName } from "@/lib/classroom";
 import { saveChallengeAttempt } from "@/lib/challenge-history";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { MathSubject } from "@/shared/types";
 
 type Phase = "ready" | "active" | "result";
@@ -56,6 +57,12 @@ export default function ChallengeScreen() {
   const [userAnswer, setUserAnswer] = useState("");
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [timeTaken, setTimeTaken] = useState(0);
+  const [avatarUri, setAvatarUri] = useState<string | null>(null);
+
+  // Load profile photo for leaderboard entry
+  useEffect(() => {
+    AsyncStorage.getItem("@tutorsnap/avatarUri").then((uri) => setAvatarUri(uri || null)).catch(() => {});
+  }, []);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef<number>(0);
@@ -148,7 +155,7 @@ export default function ChallengeScreen() {
     // Record result in leaderboard if this came from a classroom
     if (classCode) {
       getClassroomDisplayName()
-        .then((name) => recordChallengeResult(classCode, name || "Student", correct, elapsed))
+        .then((name) => recordChallengeResult(classCode, name || "Student", correct, elapsed, avatarUri ?? undefined))
         .catch(() => {/* ignore */});
     }
 

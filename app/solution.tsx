@@ -750,6 +750,7 @@ export default function SolutionScreen() {
         // Store steps as JSON strings so they can be parsed back into SolutionStep objects
         steps: (solution!.steps || []).map((s) => JSON.stringify(s)),
         sharedBy: "You",
+        sharerAvatarUri: avatarUri ?? undefined,
       });
       Alert.alert("Shared!", `Problem added to "${classroom.name}" feed.`);
     } catch {

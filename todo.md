@@ -1047,3 +1047,9 @@
 - [x] Stage 1: Add profile photo display to outside-classroom view (lobby/empty state header)
 - [x] Stage 2: Add profile photo display to inside-classroom view (header + Manage tab display-name card)
 - [x] Stage 3: TypeScript check + full test run + checkpoint
+
+## Classroom Leaderboard + Feed Avatars & Onboarding Fixes
+- [x] Stage A: Leaderboard avatars — extend LeaderboardEntry with avatarUri, persist on challenge, render on Ranks tab
+- [x] Stage B: Feed card sharer avatars — extend ClassroomProblem with sharerAvatarUri, persist on share, render on feed cards
+- [x] Stage C: Onboarding keyboard fix — name input rises with keyboard (KeyboardAvoidingView); Meet Your AI Tutor bottom message pushed up
+- [x] Stage D: Bump versionCode to 24 (v1.4.3), trigger EAS APK build

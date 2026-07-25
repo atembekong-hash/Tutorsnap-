@@ -641,9 +641,14 @@ export default function ClassroomTabScreen() {
             )}
           </TouchableOpacity>
           <View style={styles.problemFooter}>
-            <Text style={[styles.sharedBy, { color: colors.muted }]}>
-              Shared by {item.sharedBy}
-            </Text>
+            <View style={styles.sharedByRow}>
+              {item.sharerAvatarUri ? (
+                <Image source={{ uri: item.sharerAvatarUri }} style={styles.sharerAvatar} />
+              ) : null}
+              <Text style={[styles.sharedBy, { color: colors.muted }]}>
+                Shared by {item.sharedBy}
+              </Text>
+            </View>
             <View style={styles.problemActions}>
               {/* Done button for homework items (student only) */}
               {item.isHomework && !myClassroom && (
@@ -728,6 +733,16 @@ export default function ClassroomTabScreen() {
             <Text style={[styles.lbRankNum, { color: colors.muted }]}>#{index + 1}</Text>
           )}
         </View>
+        {/* Player avatar */}
+        {item.avatarUri ? (
+          <Image source={{ uri: item.avatarUri }} style={styles.lbAvatar} />
+        ) : (
+          <View style={[styles.lbAvatarPlaceholder, { backgroundColor: `${colors.primary}20` }]}>
+            <Text style={[styles.lbAvatarInitial, { color: colors.primary }]}>
+              {item.name.charAt(0).toUpperCase()}
+            </Text>
+          </View>
+        )}
         <View style={styles.lbInfo}>
           <Text style={[styles.lbName, { color: colors.foreground }]}>{item.name}</Text>
           <Text style={[styles.lbMeta, { color: colors.muted }]}>
@@ -1894,12 +1909,18 @@ const styles = StyleSheet.create({
   lbRank: { width: 32, alignItems: "center" },
   lbMedal: { fontSize: 22 },
   lbRankNum: { fontSize: 15, fontWeight: "800" },
+  lbAvatar: { width: 36, height: 36, borderRadius: 18 },
+  lbAvatarPlaceholder: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
+  lbAvatarInitial: { fontSize: 15, fontWeight: "700" },
   lbInfo: { flex: 1 },
   lbName: { fontSize: 15, fontWeight: "700" },
   lbMeta: { fontSize: 11, marginTop: 2 },
   lbStats: { alignItems: "flex-end", gap: 2 },
   lbCorrect: { fontSize: 18, fontWeight: "800" },
   lbAccuracy: { fontSize: 11 },
+  // Feed card sharer avatar
+  sharedByRow: { flexDirection: "row", alignItems: "center", gap: 5 },
+  sharerAvatar: { width: 18, height: 18, borderRadius: 9 },
   // Analytics
   analyticsContainer: { padding: 16, gap: 14, paddingBottom: 40 },
   statsRow: {

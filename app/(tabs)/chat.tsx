@@ -2235,12 +2235,13 @@ function ChatScreenContent() {
         subject: selectedSubject ?? "general",
         steps: [],
         sharedBy: "You",
+        sharerAvatarUri: avatarUri ?? undefined,
       });
       Alert.alert("Shared!", `Added to "${classroom.name}" feed.`);
     } catch {
       Alert.alert("Error", "Could not share to classroom. Please try again.");
     }
-  }, [messages, selectedSubject]);
+  }, [messages, selectedSubject, avatarUri]);
 
   // ── Bookmark ────────────────────────────────────────────────────────────────
 
