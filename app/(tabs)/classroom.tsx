@@ -25,6 +25,7 @@ import {
   Platform,
   Modal,
   Image,
+  Animated,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import * as H from "@/lib/haptics";
@@ -100,6 +101,97 @@ function getDateOptions(): { label: string; iso: string }[] {
     opts.push({ label: labels[i], iso: d.toISOString() });
   });
   return opts;
+}
+
+// ─── Animated Podium Row ─────────────────────────────────────────────────────
+import type { ViewStyle } from "react-native";
+
+type PodiumColors = {
+  primary: string;
+  muted: string;
+  foreground: string;
+};
+
+type PodiumStyles = {
+  podiumSlot: ViewStyle;
+  podiumGold: ViewStyle;
+  podiumMedal: ViewStyle;
+  podiumAvatarLarge: ViewStyle;
+  podiumAvatar: ViewStyle;
+  podiumAvatarPlaceholderLarge: ViewStyle;
+  podiumAvatarPlaceholder: ViewStyle;
+  podiumAvatarInitialLarge: ViewStyle;
+  podiumAvatarInitial: ViewStyle;
+  podiumName: ViewStyle;
+  podiumScore: ViewStyle;
+  podiumRow: ViewStyle;
+};
+
+type PodiumSlotProps = {
+  entry: LeaderboardEntry;
+  medal: string;
+  isGold?: boolean;
+  delay: number;
+  colors: PodiumColors;
+  ps: PodiumStyles;
+};
+
+function PodiumSlotAnimated({ entry, medal, isGold, delay, colors, ps }: PodiumSlotProps) {
+  const translateY = useRef(new Animated.Value(-40)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      Animated.parallel([
+        Animated.timing(translateY, { toValue: 0, duration: 320, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 1, duration: 280, useNativeDriver: true }),
+      ]).start();
+    }, delay);
+    return () => clearTimeout(timer);
+  }, [delay, translateY, opacity]);
+
+  return (
+    <Animated.View style={[ps.podiumSlot, isGold ? ps.podiumGold : undefined, { transform: [{ translateY }], opacity }]}>
+      <Text style={ps.podiumMedal as any}>{medal}</Text>
+      {entry.avatarUri ? (
+        <Image source={{ uri: entry.avatarUri }} style={isGold ? ps.podiumAvatarLarge as any : ps.podiumAvatar as any} />
+      ) : (
+        <View style={[isGold ? ps.podiumAvatarPlaceholderLarge : ps.podiumAvatarPlaceholder, { backgroundColor: isGold ? `${colors.primary}20` : `${colors.muted}30` }]}>
+          <Text style={[isGold ? ps.podiumAvatarInitialLarge : ps.podiumAvatarInitial as any, { color: isGold ? colors.primary : colors.muted }]}>
+            {entry.name.charAt(0).toUpperCase()}
+          </Text>
+        </View>
+      )}
+      <Text style={[ps.podiumName as any, { color: colors.foreground, fontWeight: isGold ? "800" : "600" }]} numberOfLines={1}>
+        {entry.name}
+      </Text>
+      <Text style={[ps.podiumScore as any, { color: isGold ? colors.primary : colors.muted, fontWeight: isGold ? "800" : "700" }]}>
+        {entry.challengesCorrect}✓
+      </Text>
+    </Animated.View>
+  );
+}
+
+function AnimatedPodiumRow({
+  leaderboard,
+  colors,
+  podiumStyles,
+}: {
+  leaderboard: LeaderboardEntry[];
+  colors: PodiumColors;
+  podiumStyles: PodiumStyles;
+}) {
+  return (
+    <View style={[podiumStyles.podiumRow, { alignItems: "flex-end" }]}>
+      {leaderboard[1] ? (
+        <PodiumSlotAnimated entry={leaderboard[1]} medal="🦤" delay={0} colors={colors} ps={podiumStyles} />
+      ) : <View style={podiumStyles.podiumSlot} />}
+      <PodiumSlotAnimated entry={leaderboard[0]} medal="🥇" isGold delay={240} colors={colors} ps={podiumStyles} />
+      {leaderboard[2] ? (
+        <PodiumSlotAnimated entry={leaderboard[2]} medal="🥉" delay={120} colors={colors} ps={podiumStyles} />
+      ) : <View style={podiumStyles.podiumSlot} />}
+    </View>
+  );
 }
 
 export default function ClassroomTabScreen() {
@@ -1235,74 +1327,7 @@ export default function ClassroomTabScreen() {
 
                   {/* Top-3 Podium */}
                   {leaderboard.length >= 1 && (
-                    <View style={styles.podiumRow}>
-                      {/* Silver (2nd) */}
-                      {leaderboard[1] ? (
-                        <View style={[styles.podiumSlot, styles.podiumSilver]}>
-                          <Text style={styles.podiumMedal}>🦤</Text>
-                          {leaderboard[1].avatarUri ? (
-                            <Image source={{ uri: leaderboard[1].avatarUri }} style={styles.podiumAvatar} />
-                          ) : (
-                            <View style={[styles.podiumAvatarPlaceholder, { backgroundColor: `${colors.muted}30` }]}>
-                              <Text style={[styles.podiumAvatarInitial, { color: colors.muted }]}>
-                                {leaderboard[1].name.charAt(0).toUpperCase()}
-                              </Text>
-                            </View>
-                          )}
-                          <Text style={[styles.podiumName, { color: colors.foreground }]} numberOfLines={1}>
-                            {leaderboard[1].name}
-                          </Text>
-                          <Text style={[styles.podiumScore, { color: colors.muted }]}>
-                            {leaderboard[1].challengesCorrect}✓
-                          </Text>
-                          <View style={[styles.podiumBase, styles.podiumBaseSilver, { backgroundColor: `${colors.muted}20`, borderColor: `${colors.muted}40` }]} />
-                        </View>
-                      ) : <View style={styles.podiumSlot} />}
-
-                      {/* Gold (1st) */}
-                      <View style={[styles.podiumSlot, styles.podiumGold]}>
-                        <Text style={styles.podiumMedal}>🥇</Text>
-                        {leaderboard[0].avatarUri ? (
-                          <Image source={{ uri: leaderboard[0].avatarUri }} style={styles.podiumAvatarLarge} />
-                        ) : (
-                          <View style={[styles.podiumAvatarPlaceholderLarge, { backgroundColor: `${colors.primary}20` }]}>
-                            <Text style={[styles.podiumAvatarInitialLarge, { color: colors.primary }]}>
-                              {leaderboard[0].name.charAt(0).toUpperCase()}
-                            </Text>
-                          </View>
-                        )}
-                        <Text style={[styles.podiumName, { color: colors.foreground, fontWeight: "800" }]} numberOfLines={1}>
-                          {leaderboard[0].name}
-                        </Text>
-                        <Text style={[styles.podiumScore, { color: colors.primary, fontWeight: "800" }]}>
-                          {leaderboard[0].challengesCorrect}✓
-                        </Text>
-                        <View style={[styles.podiumBase, styles.podiumBaseGold, { backgroundColor: `#FFD70020`, borderColor: `#FFD70060` }]} />
-                      </View>
-
-                      {/* Bronze (3rd) */}
-                      {leaderboard[2] ? (
-                        <View style={[styles.podiumSlot, styles.podiumBronze]}>
-                          <Text style={styles.podiumMedal}>🥉</Text>
-                          {leaderboard[2].avatarUri ? (
-                            <Image source={{ uri: leaderboard[2].avatarUri }} style={styles.podiumAvatar} />
-                          ) : (
-                            <View style={[styles.podiumAvatarPlaceholder, { backgroundColor: `#CD7F3220` }]}>
-                              <Text style={[styles.podiumAvatarInitial, { color: "#CD7F32" }]}>
-                                {leaderboard[2].name.charAt(0).toUpperCase()}
-                              </Text>
-                            </View>
-                          )}
-                          <Text style={[styles.podiumName, { color: colors.foreground }]} numberOfLines={1}>
-                            {leaderboard[2].name}
-                          </Text>
-                          <Text style={[styles.podiumScore, { color: colors.muted }]}>
-                            {leaderboard[2].challengesCorrect}✓
-                          </Text>
-                          <View style={[styles.podiumBase, styles.podiumBaseBronze, { backgroundColor: `#CD7F3215`, borderColor: `#CD7F3240` }]} />
-                        </View>
-                      ) : <View style={styles.podiumSlot} />}
-                    </View>
+                    <AnimatedPodiumRow leaderboard={leaderboard} colors={colors} podiumStyles={styles as any} />
                   )}
 
                   <View style={styles.lbColHeaders}>
