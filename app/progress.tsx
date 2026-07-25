@@ -47,7 +47,6 @@ import { StreakShieldCard } from "@/components/streak-shield-card";
 import { StreakFreezeCard } from "@/components/streak-freeze-card";
 import { GRADE_LABELS } from "@/lib/grade-levels";
 import { cleanMathText } from "@/lib/clean-math-text";
-import { captureError, addBreadcrumb } from "@/lib/sentry";
 
 
 const GOAL_OPTIONS = [1, 3, 5, 10];
@@ -90,9 +89,8 @@ export default function ProgressScreen() {
         const ch = await getChallengeHistory();
         setChallengeHistory(ch);
       } catch { /* non-critical */ }
-    } catch (err) {
+    } catch {
       // getProgress has internal fallbacks; this handles unexpected failures
-      captureError(err, { screen: "progress", action: "loadProgress" });
     }
   };
 
@@ -107,7 +105,7 @@ export default function ProgressScreen() {
     try {
       await setDailyGoal(goal);
       await loadProgress();
-    } catch (err) { addBreadcrumb("setDailyGoal failed", "ui", { error: String(err) }); } finally {
+    } catch { /* goal save failure is non-critical */ } finally {
       setShowGoalPicker(false);
     }
   };

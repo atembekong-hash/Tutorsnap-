@@ -1,8 +1,4 @@
 import "dotenv/config";
-import { initSentryServer } from "./sentry-server";
-// Initialise Sentry as early as possible — before any other imports that could throw
-initSentryServer();
-
 import express from "express";
 import { createServer } from "http";
 import net from "net";

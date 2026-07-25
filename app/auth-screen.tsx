@@ -24,7 +24,6 @@ import { sendEmailOtp, verifyEmailOtp } from "@/lib/email-auth";
 import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { DotsLoader } from "@/components/skeleton";
-import { captureError } from "@/lib/sentry";
 
 async function getPostAuthRoute(): Promise<string> {
   const onboardingDone = await AsyncStorage.getItem("@tutorsnap/onboardingDone");
@@ -106,7 +105,6 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       }
     } catch (err) {
-      captureError(err, { screen: "auth", action: "googleSignIn" });
       setError(err instanceof Error ? err.message : "Sign-in failed");
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
@@ -141,7 +139,6 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       }
     } catch (err) {
-      captureError(err, { screen: "auth", action: "appleSignIn" });
       setError(err instanceof Error ? err.message : "Sign-in failed");
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
@@ -181,7 +178,6 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
         setError(result.error || "Failed to send code");
       }
     } catch (err) {
-      captureError(err, { screen: "auth", action: "sendEmailOtp" });
       setError(err instanceof Error ? err.message : "Failed to send code");
     } finally {
       setLoading(false);
@@ -208,7 +204,6 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       }
     } catch (err) {
-      captureError(err, { screen: "auth", action: "verifyEmailOtp" });
       setError(err instanceof Error ? err.message : "Verification failed");
     } finally {
       setLoading(false);

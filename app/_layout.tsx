@@ -41,8 +41,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { playTransitionSound } from "@/lib/sound-effects";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { useColors } from "@/hooks/use-colors";
-import { initSentry, setSentryUser, addBreadcrumb } from "@/lib/sentry";
-import { ErrorBoundary } from "@/components/error-boundary";
+import { initSentry, setSentryUser } from "@/lib/sentry";
 
 // Initialise Sentry crash reporting as early as possible
 initSentry();
@@ -138,7 +137,7 @@ export default function RootLayout() {
             router.push("/paywall" as any);
           }, 1500);
         }
-      } catch (err) { addBreadcrumb("paywall check failed", "ui", { error: String(err) }); }
+      } catch { /* ignore — paywall check failure is non-critical */ }
     }).catch(() => {});
   }, []);
 
@@ -154,7 +153,7 @@ export default function RootLayout() {
           try {
             await applyImportedAppearance(appearanceParam);
             Alert.alert("Appearance Applied", "A shared appearance preset has been applied. Open Appearance Settings to review.", [{ text: "OK" }]);
-          } catch (err) { addBreadcrumb("appearance deep-link parse failed", "navigation", { error: String(err) }); }
+          } catch { /* invalid payload — ignore */ }
           return;
         }
         const ref = (parsed.queryParams?.ref ?? parsed.queryParams?.code) as string | undefined;
@@ -175,7 +174,7 @@ export default function RootLayout() {
             [{ text: "Start Learning 🚀", style: "default" }]
           );
         }, 2000);
-      } catch (err) { addBreadcrumb("referral deep-link handling failed", "navigation", { error: String(err) }); }
+      } catch { /* non-critical */ }
     };
     // Check the URL that launched the app
     Linking.getInitialURL().then(handleUrl).catch(() => {});
@@ -578,7 +577,6 @@ export default function RootLayout() {
     );
   }
   return (
-    <ErrorBoundary label="App">
     <AppearanceProvider>
     <FontSizeProvider>
     <ThemeProvider>
@@ -586,6 +584,5 @@ export default function RootLayout() {
     </ThemeProvider>
     </FontSizeProvider>
     </AppearanceProvider>
-    </ErrorBoundary>
   );
 }
