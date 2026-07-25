@@ -37,7 +37,7 @@ const config: ExpoConfig = {
   icon: "./assets/images/icon.png",
   scheme: env.scheme,
   userInterfaceStyle: "automatic",
-  newArchEnabled: true,
+  newArchEnabled: false,
   description: "TutorSnap is your AI-powered academic tutor for every subject — from Algebra and Calculus to Chemistry, History, and Grammar. Snap a photo of any problem, type it in, or ask the AI tutor directly. Get step-by-step solutions, practice quizzes, flashcards, a study planner, and a classroom sharing tool for teachers and students.",
   ios: {
     supportsTablet: true,
@@ -78,7 +78,7 @@ const config: ExpoConfig = {
     },
   },
   android: {
-          versionCode: 22,
+          versionCode: 23,
     adaptiveIcon: {
       backgroundColor: "#E6F4FE",
       foregroundImage: "./assets/images/android-icon-foreground.png",
