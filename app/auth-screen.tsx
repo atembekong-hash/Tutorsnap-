@@ -24,6 +24,7 @@ import { sendEmailOtp, verifyEmailOtp } from "@/lib/email-auth";
 import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { DotsLoader } from "@/components/skeleton";
+import { addBreadcrumb } from "@/lib/sentry";
 
 async function getPostAuthRoute(): Promise<string> {
   const onboardingDone = await AsyncStorage.getItem("@tutorsnap/onboardingDone");
@@ -84,6 +85,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
 
   // ── Google Sign-In ───────────────────────────────────────────────────────
   const handleGoogleSignIn = async () => {
+    addBreadcrumb("auth", "Google Sign-In tapped");
     try {
       setLoading(true);
       setError(null);
@@ -114,6 +116,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
 
   // ── Apple Sign-In ────────────────────────────────────────────────────────
   const handleAppleSignIn = async () => {
+    addBreadcrumb("auth", "Apple Sign-In tapped");
     try {
       if (Platform.OS !== "ios") {
         setError("Apple Sign-In is only available on iOS");
@@ -158,6 +161,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
 
   // ── Email: send OTP ──────────────────────────────────────────────────────
   const handleSendOtp = async () => {
+    addBreadcrumb("auth", "Email OTP send requested");
     const trimmed = email.trim().toLowerCase();
     if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
       setError("Please enter a valid email address");
@@ -186,6 +190,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
 
   // ── Email: verify OTP ────────────────────────────────────────────────────
   const handleVerifyOtp = async () => {
+    addBreadcrumb("auth", "Email OTP verification attempted");
     if (otp.length !== 6) {
       setError("Please enter the 6-digit code");
       return;
