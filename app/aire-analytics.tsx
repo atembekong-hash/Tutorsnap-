@@ -117,22 +117,12 @@ export default function AireAnalyticsScreen() {
   });
 
   // Build a lookup map: subject -> calibration row
-  const calibrationMap = new Map<string, { multiplier: string; sampleCount: number; daysUntilDecay: number; isDecayed: boolean }>();
+  const calibrationMap = new Map<string, { multiplier: string; sampleCount: number }>();
   if (calibrationsQuery.data?.calibrations) {
     for (const row of calibrationsQuery.data.calibrations) {
-      calibrationMap.set(row.subject, {
-        multiplier: row.multiplier,
-        sampleCount: row.sampleCount,
-        daysUntilDecay: row.daysUntilDecay ?? 30,
-        isDecayed: row.isDecayed ?? false,
-      });
+      calibrationMap.set(row.subject, { multiplier: row.multiplier, sampleCount: row.sampleCount });
     }
   }
-
-  // Reset mutation for manual calibration reset
-  const resetCalibration = trpc.aire.resetSubjectCalibration.useMutation({
-    onSuccess: () => calibrationsQuery.refetch(),
-  });
 
   useEffect(() => {
     AsyncStorage.getItem(AIRE_KEY)
@@ -144,10 +134,6 @@ export default function AireAnalyticsScreen() {
   }, []);
 
   const stats = computeStats(entries);
-  // Derive expired subjects for the top-level notification banner (AIRE Stage 6)
-  const expiredSubjects = Array.from(calibrationMap.entries())
-    .filter(([, row]) => row.isDecayed)
-    .map(([subject]) => getSubjectLabel(subject));
 
   const handleClear = () => {
     H.impactLight();
@@ -180,20 +166,6 @@ export default function AireAnalyticsScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* ── AIRE Stage 6: Expiry notification banner ────────────────── */}
-        {expiredSubjects.length > 0 && (
-          <View style={[styles.expiryBanner, { backgroundColor: `${colors.warning}18`, borderColor: `${colors.warning}40` }]}>
-            <Text style={{ fontSize: 18, marginRight: 8 }}>⏰</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 14, fontWeight: "700", color: colors.warning }}>
-                Calibration expired
-              </Text>
-              <Text style={{ fontSize: 13, color: colors.muted, marginTop: 2, lineHeight: 18 }}>
-                {expiredSubjects.join(", ")} {expiredSubjects.length === 1 ? "has" : "have"} not received feedback in 30 days. Give feedback on your next solve to re-train {expiredSubjects.length === 1 ? "it" : "them"}.
-              </Text>
-            </View>
-          </View>
-        )}
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 48 }}>
 
           {loading ? (
@@ -365,7 +337,6 @@ export default function AireAnalyticsScreen() {
                       const subjectEmoji = getSubjectEmoji(subject);
                       const multiplierNum = parseFloat(row.multiplier);
                       const multiplierDisplay = multiplierNum === 1.0 ? "1.0x" : `${multiplierNum.toFixed(1)}x`;
-                      const isResetting = resetCalibration.isPending && (resetCalibration.variables as any)?.subject === subject;
                       return (
                         <View key={subject} style={[styles.calibRow, { borderTopColor: colors.border }]}>
                           <View style={styles.calibRowLeft}>
@@ -375,16 +346,6 @@ export default function AireAnalyticsScreen() {
                             <Text style={[styles.calibSampleText, { color: colors.muted }]}>
                               {row.sampleCount} sample{row.sampleCount !== 1 ? "s" : ""}
                             </Text>
-                            {/* Decay countdown */}
-                            {row.isDecayed ? (
-                              <Text style={[styles.calibDecayText, { color: colors.warning }]}>
-                                ⚠️ Expired — resets on next solve
-                              </Text>
-                            ) : multiplierNum !== 1.0 ? (
-                              <Text style={[styles.calibDecayText, { color: colors.muted }]}>
-                                Resets in {row.daysUntilDecay}d
-                              </Text>
-                            ) : null}
                           </View>
                           <View style={styles.calibRowRight}>
                             <Text style={[styles.calibMultiplierText, { color: status.color }]}>
@@ -393,21 +354,6 @@ export default function AireAnalyticsScreen() {
                             <View style={[styles.calibBadge, { backgroundColor: `${status.color}18`, borderColor: `${status.color}40` }]}>
                               <Text style={[styles.calibBadgeText, { color: status.color }]}>{status.label}</Text>
                             </View>
-                            {/* Manual reset button — only shown when calibration is active */}
-                            {multiplierNum !== 1.0 && (
-                              <TouchableOpacity
-                                style={[styles.calibResetBtn, { borderColor: colors.border }]}
-                                onPress={() => {
-                                  H.impactLight();
-                                  resetCalibration.mutate({ subject });
-                                }}
-                                disabled={isResetting}
-                              >
-                                <Text style={[styles.calibResetText, { color: colors.muted }]}>
-                                  {isResetting ? "Resetting…" : "Reset"}
-                                </Text>
-                              </TouchableOpacity>
-                            )}
                           </View>
                         </View>
                       );
@@ -584,11 +530,8 @@ const styles = StyleSheet.create({
   calibRowLeft: { flex: 1 },
   calibSubjectText: { fontSize: 13, fontWeight: "600" },
   calibSampleText: { fontSize: 11, marginTop: 2 },
-  calibRowRight: { flexDirection: "column", alignItems: "flex-end", gap: 4 },
+  calibRowRight: { flexDirection: "row", alignItems: "center", gap: 8 },
   calibMultiplierText: { fontSize: 13, fontWeight: "700" },
-  calibDecayText: { fontSize: 10, marginTop: 2 },
-  calibResetBtn: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1, marginTop: 2 },
-  calibResetText: { fontSize: 10, fontWeight: "600" },
 
   recentRow: {
     flexDirection: "row",
@@ -611,14 +554,4 @@ const styles = StyleSheet.create({
   recentProblem: { fontSize: 13, fontWeight: "600" },
   recentMeta: { fontSize: 11, marginTop: 2 },
   recentRating: { fontSize: 11, fontWeight: "700" },
-  expiryBanner: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    marginHorizontal: 16,
-    marginTop: 12,
-    marginBottom: 4,
-    padding: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
 });

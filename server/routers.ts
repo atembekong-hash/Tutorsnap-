@@ -631,10 +631,7 @@ const academicRouter = router({
             if (db) {
               // Fast path: read from calibration cache
               const cacheRows = await db
-                .select({
-                  multiplier: aireSubjectCalibration.multiplier,
-                  lastFeedbackAt: aireSubjectCalibration.lastFeedbackAt,
-                })
+                .select({ multiplier: aireSubjectCalibration.multiplier })
                 .from(aireSubjectCalibration)
                 .where(and(
                   eq(aireSubjectCalibration.userId, ctx.user.id),
@@ -642,27 +639,9 @@ const academicRouter = router({
                 ))
                 .limit(1);
               if (cacheRows.length > 0) {
-                // AIRE Stage 5: decay — if last feedback was >30 days ago, reset to 1.0
-                const DECAY_DAYS = 30;
-                const lastFeedback = cacheRows[0].lastFeedbackAt
-                  ? new Date(cacheRows[0].lastFeedbackAt).getTime()
-                  : 0;
-                const daysSinceLastFeedback = (Date.now() - lastFeedback) / (1000 * 60 * 60 * 24);
-                if (daysSinceLastFeedback > DECAY_DAYS) {
-                  // Stale calibration — reset to neutral and clear the cache row
-                  await db
-                    .update(aireSubjectCalibration)
-                    .set({ multiplier: "1.0", sampleCount: 0 })
-                    .where(and(
-                      eq(aireSubjectCalibration.userId, ctx.user.id),
-                      eq(aireSubjectCalibration.subject, input.subject),
-                    ));
-                  // tokenBudget stays at 1.0x (no adjustment)
-                } else {
-                  const m = parseFloat(cacheRows[0].multiplier);
-                  if (!isNaN(m) && m !== 1.0) {
-                    tokenBudget = Math.round(tokenBudget * m);
-                  }
+                const m = parseFloat(cacheRows[0].multiplier);
+                if (!isNaN(m) && m !== 1.0) {
+                  tokenBudget = Math.round(tokenBudget * m);
                 }
               } else {
                 // Slow path: compute on the fly (no cache yet)
@@ -1251,16 +1230,13 @@ async function refreshSubjectCalibration(
     .from(aireFeedback)
     .where(and(eq(aireFeedback.userId, userId), eq(aireFeedback.subject, subject)));
   const sampleCount = Number(countRows[0]?.cnt ?? 0);
-  const now = new Date();
   if (rows.length > 0) {
     await db
       .update(aireSubjectCalibration)
-      .set({ multiplier: String(multiplier), sampleCount, lastFeedbackAt: now })
+      .set({ multiplier: String(multiplier), sampleCount })
       .where(and(eq(aireSubjectCalibration.userId, userId), eq(aireSubjectCalibration.subject, subject)));
   } else {
-    await db.insert(aireSubjectCalibration).values({
-      userId, subject, multiplier: String(multiplier), sampleCount, lastFeedbackAt: now,
-    });
+    await db.insert(aireSubjectCalibration).values({ userId, subject, multiplier: String(multiplier), sampleCount });
   }
 }
 
@@ -1337,52 +1313,16 @@ const aireRouter = router({
             subject: aireSubjectCalibration.subject,
             multiplier: aireSubjectCalibration.multiplier,
             sampleCount: aireSubjectCalibration.sampleCount,
-            lastFeedbackAt: aireSubjectCalibration.lastFeedbackAt,
             updatedAt: aireSubjectCalibration.updatedAt,
           })
           .from(aireSubjectCalibration)
           .where(eq(aireSubjectCalibration.userId, ctx.user.id))
           .orderBy(desc(aireSubjectCalibration.sampleCount));
-        // Annotate each row with days until decay (30-day window)
-        const DECAY_DAYS = 30;
-        const annotated = rows.map((r) => {
-          const lastFeedback = r.lastFeedbackAt ? new Date(r.lastFeedbackAt).getTime() : 0;
-          const daysSince = (Date.now() - lastFeedback) / (1000 * 60 * 60 * 24);
-          const daysUntilDecay = Math.max(0, Math.ceil(DECAY_DAYS - daysSince));
-          const isDecayed = daysSince > DECAY_DAYS;
-          return { ...r, daysUntilDecay, isDecayed };
-        });
-        return { calibrations: annotated };
+        return { calibrations: rows };
       } catch (err) {
         console.error("[AIRE] getSubjectCalibrations error:", err);
         captureServerError(err, { procedure: "aire.getSubjectCalibrations" });
         return { calibrations: [] };
-      }
-    }),
-
-  /**
-   * Manually reset the calibration for a specific subject back to neutral (1.0x).
-   * Also clears the lastFeedbackAt so the 30-day decay timer restarts.
-   * Used by the "Reset calibration" button in AIRE Analytics.
-   */
-  resetSubjectCalibration: protectedProcedure
-    .input(z.object({ subject: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      try {
-        const db = await getDb();
-        if (!db) return { ok: false };
-        await db
-          .update(aireSubjectCalibration)
-          .set({ multiplier: "1.0", sampleCount: 0, lastFeedbackAt: new Date() })
-          .where(and(
-            eq(aireSubjectCalibration.userId, ctx.user.id),
-            eq(aireSubjectCalibration.subject, input.subject),
-          ));
-        return { ok: true };
-      } catch (err) {
-        console.error("[AIRE] resetSubjectCalibration error:", err);
-        captureServerError(err, { procedure: "aire.resetSubjectCalibration" });
-        return { ok: false };
       }
     }),
 

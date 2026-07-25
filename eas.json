@@ -10,9 +10,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://mathgenius-g8jxpbar.manus.space",
-        "SENTRY_ORG": "etiendem-technologies",
-        "SENTRY_PROJECT": "tutorsnap"
+        "EXPO_PUBLIC_API_BASE_URL": "https://mathgenius-g8jxpbar.manus.space"
       }
     },
     "preview-ios": {
@@ -20,9 +18,7 @@
         "simulator": false
       },
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://mathgenius-g8jxpbar.manus.space",
-        "SENTRY_ORG": "etiendem-technologies",
-        "SENTRY_PROJECT": "tutorsnap"
+        "EXPO_PUBLIC_API_BASE_URL": "https://mathgenius-g8jxpbar.manus.space"
       }
     },
     "preview2": {
@@ -30,9 +26,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://mathgenius-g8jxpbar.manus.space",
-        "SENTRY_ORG": "etiendem-technologies",
-        "SENTRY_PROJECT": "tutorsnap"
+        "EXPO_PUBLIC_API_BASE_URL": "https://mathgenius-g8jxpbar.manus.space"
       }
     },
     "preview3": {
@@ -40,9 +34,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://mathgenius-g8jxpbar.manus.space",
-        "SENTRY_ORG": "etiendem-technologies",
-        "SENTRY_PROJECT": "tutorsnap"
+        "EXPO_PUBLIC_API_BASE_URL": "https://mathgenius-g8jxpbar.manus.space"
       }
     },
     "production": {
@@ -53,9 +45,7 @@
         "simulator": false
       },
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://mathgenius-g8jxpbar.manus.space",
-        "SENTRY_ORG": "etiendem-technologies",
-        "SENTRY_PROJECT": "tutorsnap"
+        "EXPO_PUBLIC_API_BASE_URL": "https://mathgenius-g8jxpbar.manus.space"
       }
     }
   },

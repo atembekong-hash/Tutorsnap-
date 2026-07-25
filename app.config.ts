@@ -32,7 +32,7 @@ const env = {
 const config: ExpoConfig = {
   name: env.appName,
   slug: env.appSlug,
-  version: "1.5.3",
+  version: "1.5.1",
   orientation: "portrait",
   icon: "./assets/images/icon.png",
   scheme: env.scheme,
@@ -42,7 +42,7 @@ const config: ExpoConfig = {
   ios: {
     supportsTablet: true,
     bundleIdentifier: env.iosBundleId,
-    buildNumber: "22",
+    buildNumber: "20",
 
     associatedDomains: [
       `applinks:${PRODUCTION_DOMAIN}`,
@@ -78,7 +78,7 @@ const config: ExpoConfig = {
     },
   },
   android: {
-          versionCode: 27,
+          versionCode: 20,
     adaptiveIcon: {
       backgroundColor: "#E6F4FE",
       foregroundImage: "./assets/images/android-icon-foreground.png",
@@ -172,10 +172,15 @@ const config: ExpoConfig = {
       },
     ],
     "@react-native-google-signin/google-signin",
-    // NOTE: @sentry/react-native/expo plugin intentionally removed.
-    // The Sentry Android Gradle Plugin (SAGP) it injects (v6.15.0) causes a native crash on startup.
-    // SAGP auto-installs sentry-android at a version incompatible with RN 0.81 / Expo SDK 54.
-    // Sentry JS SDK still works via initSentry() in app/_layout.tsx.
+    [
+      "@sentry/react-native/expo",
+      {
+        // Set your Sentry project org and project slugs here after creating a project at sentry.io
+        // These are used during EAS builds to upload source maps for readable stack traces
+        organization: process.env.SENTRY_ORG ?? "",
+        project: process.env.SENTRY_PROJECT ?? "",
+      },
+    ],
     [
       "expo-build-properties",
       {

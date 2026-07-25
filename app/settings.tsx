@@ -166,7 +166,6 @@ export default function SettingsScreen() {
   // Modal states
   const [showHowTo, setShowHowTo] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
-  const [showCrashReports, setShowCrashReports] = useState(false);
   const [showSubjectPicker, setShowSubjectPicker] = useState(false);
 
   // Preferred categories
@@ -1772,15 +1771,6 @@ export default function SettingsScreen() {
           onPress={() => router.push("/report-bug" as any)}
           />
         )}
-        {ms("Crash Reports", "Sentry error monitoring") && (
-          <SettingsRow
-            icon="exclamationmark.shield.fill"
-            label="Crash Reports"
-            subtitle="Automatic crash reporting via Sentry"
-            colors={colors}
-            onPress={() => { setShowCrashReports(true); H.impactLight(); }}
-          />
-        )}
 
         {/* ── LEGAL & PRIVACY ───────────────────────────────────────────── */}
         {ms("Legal & Privacy Hub", "Privacy Policy, Terms") && <SectionHeader title="LEGAL & PRIVACY" colors={colors} />}
@@ -2510,57 +2500,6 @@ export default function SettingsScreen() {
         </View>
       </Modal>
 
-      {/* ── Crash Reports Modal ──────────────────────────────────────────── */}
-      <Modal
-        visible={showCrashReports}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowCrashReports(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalSheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
-            <Text style={[styles.modalTitle, { color: colors.foreground }]}>Crash Reports</Text>
-            <Text style={[styles.modalSubtitle, { color: colors.muted }]}>
-              TutorSnap automatically reports crashes and errors to Sentry so the team can fix issues before you notice them.
-            </Text>
-            <View style={{ gap: 12, marginTop: 8 }}>
-              <View style={[{ backgroundColor: colors.surface, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: colors.border }]}>
-                <Text style={{ fontSize: 13, fontWeight: "700", color: colors.foreground, marginBottom: 4 }}>What is reported?</Text>
-                <Text style={{ fontSize: 13, color: colors.muted, lineHeight: 20 }}>
-                  • Native crashes with full stack traces{"\n"}
-                  • Handled JavaScript errors (auth, solve, progress){"\n"}
-                  • Anonymous user ID (no personal data){"\n"}
-                  • Device OS and app version
-                </Text>
-              </View>
-              <View style={[{ backgroundColor: colors.surface, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: colors.border }]}>
-                <Text style={{ fontSize: 13, fontWeight: "700", color: colors.foreground, marginBottom: 4 }}>Set up alert rules in Sentry</Text>
-                <Text style={{ fontSize: 13, color: colors.muted, lineHeight: 20 }}>
-                  1. Go to sentry.io → your tutorsnap project{"\n"}
-                  2. Click Alerts → Create Alert Rule{"\n"}
-                  3. Choose "Number of occurrences"{"\n"}
-                  4. Set threshold: more than 5 times in 1 hour{"\n"}
-                  5. Add your email as the notification action{"\n"}
-                  6. Save — you will be emailed on new regressions
-                </Text>
-              </View>
-              <TouchableOpacity
-                style={[{ backgroundColor: colors.primary, borderRadius: 12, padding: 14, alignItems: "center" }]}
-                onPress={() => { Linking.openURL("https://sentry.io/organizations/etiendem-technologies/alerts/"); H.impactLight(); }}
-                activeOpacity={0.8}
-              >
-                <Text style={{ fontSize: 15, fontWeight: "700", color: "#fff" }}>Open Sentry Alerts</Text>
-              </TouchableOpacity>
-            </View>
-            <TouchableOpacity
-              style={[styles.modalBtn, { backgroundColor: colors.surface, borderColor: colors.border, marginTop: 12 }]}
-              onPress={() => setShowCrashReports(false)}
-            >
-              <Text style={[styles.modalBtnText, { color: colors.foreground }]}>Close</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
       {/* AI Tutor System Settings Modal */}
       <TutorSettingsModal
         visible={showTutorSettings}
