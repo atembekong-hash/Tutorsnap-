@@ -1,19 +1,21 @@
 /**
  * SubjectRing
  *
- * An animated SVG circular progress ring for a single subject.
+ * A static SVG circular progress ring for a single subject.
  *
- * Fix: Replaced Animated.createAnimatedComponent(Circle) with a plain Circle
- * whose strokeDashoffset is driven by a plain Animated.Value (not Reanimated
- * animatedProps). The Animated.View wrapper approach is used to keep the
- * animation safe on all platforms (web + Android + iOS).
+ * ANDROID CRASH HISTORY — two separate crash causes fixed here:
+ * 1. Animated.createAnimatedComponent(Circle) — crashes on Android/web. Removed.
+ * 2. Animated.Value interpolated into strokeDashoffset on a plain <Circle> —
+ *    also crashes on Android. React Native's Animated API can only drive
+ *    transform/opacity props via useNativeDriver, and layout props on native
+ *    Views via useNativeDriver:false. It CANNOT drive SVG element props like
+ *    strokeDashoffset on any platform.
  *
- * Root cause of the crash: Animated.createAnimatedComponent(Svg/Circle) is
- * not supported on web and causes a runtime crash. Per the project template
- * guidelines, wrap <Svg> with <Animated.View> instead.
+ * Solution: fully static ring. strokeDashoffset is a plain computed number.
+ * No Animated import, no useRef, no useEffect. Zero animation risk.
  */
-import React, { useEffect, useRef } from "react";
-import { View, Text, StyleSheet, Animated } from "react-native";
+import React from "react";
+import { View, Text, StyleSheet } from "react-native";
 import Svg, { Circle } from "react-native-svg";
 import { useColors } from "@/hooks/use-colors";
 
@@ -44,31 +46,16 @@ export function SubjectRing({
   const colors = useColors();
   const radius = (size - STROKE_WIDTH) / 2;
   const circumference = 2 * Math.PI * radius;
-
-  // Use plain React Native Animated.Value — safe on all platforms
-  const animatedPct = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.timing(animatedPct, {
-      toValue: pct / 100,
-      duration: 900,
-      useNativeDriver: false, // strokeDashoffset is a layout prop, not a transform
-    }).start();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pct]);
-
-  // Interpolate to strokeDashoffset value
-  const strokeDashoffset = animatedPct.interpolate({
-    inputRange: [0, 1],
-    outputRange: [circumference, 0],
-  });
+  // Clamp pct defensively to [0, 100]
+  const clampedPct = Math.min(100, Math.max(0, pct));
+  // Plain number — no Animated API involved at all
+  const strokeDashoffset = circumference * (1 - clampedPct / 100);
 
   return (
     <View style={[styles.container, { width: size + 16 }]}>
-      {/* Ring — plain Svg, no AnimatedComponent on SVG elements */}
       <View style={{ width: size, height: size }}>
         <Svg width={size} height={size}>
-          {/* Track */}
+          {/* Track (background ring) */}
           <Circle
             cx={size / 2}
             cy={size / 2}
@@ -77,7 +64,7 @@ export function SubjectRing({
             strokeWidth={STROKE_WIDTH}
             fill="none"
           />
-          {/* Static fill at target pct — no animated SVG props */}
+          {/* Progress arc — all props are plain numbers/strings */}
           <Circle
             cx={size / 2}
             cy={size / 2}
@@ -86,20 +73,18 @@ export function SubjectRing({
             strokeWidth={STROKE_WIDTH}
             fill="none"
             strokeDasharray={circumference}
-            strokeDashoffset={circumference * (1 - pct / 100)}
+            strokeDashoffset={strokeDashoffset}
             strokeLinecap="round"
             rotation="-90"
             origin={`${size / 2}, ${size / 2}`}
           />
         </Svg>
-        {/* Center content */}
+        {/* Center content — absolutely positioned over the SVG */}
         <View style={[styles.center, { width: size, height: size }]}>
           <Text style={styles.emoji}>{emoji}</Text>
-          <Text style={[styles.pctText, { color }]}>{pct}%</Text>
+          <Text style={[styles.pctText, { color }]}>{clampedPct}%</Text>
         </View>
       </View>
-
-      {/* Label */}
       <Text style={[styles.label, { color: colors.foreground }]} numberOfLines={1}>
         {label}
       </Text>
