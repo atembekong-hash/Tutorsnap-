@@ -1226,19 +1226,91 @@ export default function ClassroomTabScreen() {
               showsVerticalScrollIndicator={false}
               refreshing={lbRefreshing}
               onRefresh={handleRefreshLeaderboard}
-              ListHeaderComponent={
+              ListHeaderComponent={(
                 <View style={[styles.lbHeader, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                  <Text style={styles.lbTrophyIcon}>🏆</Text>
-                  <Text style={[styles.lbHeaderTitle, { color: colors.foreground }]}>Class Leaderboard</Text>
+                  <Text style={[styles.lbHeaderTitle, { color: colors.foreground }]}>🏆 Class Leaderboard</Text>
                   <Text style={[styles.lbHeaderSub, { color: colors.muted }]}>
                     Ranked by correct answers · Ties broken by fastest time
                   </Text>
+
+                  {/* Top-3 Podium */}
+                  {leaderboard.length >= 1 && (
+                    <View style={styles.podiumRow}>
+                      {/* Silver (2nd) */}
+                      {leaderboard[1] ? (
+                        <View style={[styles.podiumSlot, styles.podiumSilver]}>
+                          <Text style={styles.podiumMedal}>🦤</Text>
+                          {leaderboard[1].avatarUri ? (
+                            <Image source={{ uri: leaderboard[1].avatarUri }} style={styles.podiumAvatar} />
+                          ) : (
+                            <View style={[styles.podiumAvatarPlaceholder, { backgroundColor: `${colors.muted}30` }]}>
+                              <Text style={[styles.podiumAvatarInitial, { color: colors.muted }]}>
+                                {leaderboard[1].name.charAt(0).toUpperCase()}
+                              </Text>
+                            </View>
+                          )}
+                          <Text style={[styles.podiumName, { color: colors.foreground }]} numberOfLines={1}>
+                            {leaderboard[1].name}
+                          </Text>
+                          <Text style={[styles.podiumScore, { color: colors.muted }]}>
+                            {leaderboard[1].challengesCorrect}✓
+                          </Text>
+                          <View style={[styles.podiumBase, styles.podiumBaseSilver, { backgroundColor: `${colors.muted}20`, borderColor: `${colors.muted}40` }]} />
+                        </View>
+                      ) : <View style={styles.podiumSlot} />}
+
+                      {/* Gold (1st) */}
+                      <View style={[styles.podiumSlot, styles.podiumGold]}>
+                        <Text style={styles.podiumMedal}>🥇</Text>
+                        {leaderboard[0].avatarUri ? (
+                          <Image source={{ uri: leaderboard[0].avatarUri }} style={styles.podiumAvatarLarge} />
+                        ) : (
+                          <View style={[styles.podiumAvatarPlaceholderLarge, { backgroundColor: `${colors.primary}20` }]}>
+                            <Text style={[styles.podiumAvatarInitialLarge, { color: colors.primary }]}>
+                              {leaderboard[0].name.charAt(0).toUpperCase()}
+                            </Text>
+                          </View>
+                        )}
+                        <Text style={[styles.podiumName, { color: colors.foreground, fontWeight: "800" }]} numberOfLines={1}>
+                          {leaderboard[0].name}
+                        </Text>
+                        <Text style={[styles.podiumScore, { color: colors.primary, fontWeight: "800" }]}>
+                          {leaderboard[0].challengesCorrect}✓
+                        </Text>
+                        <View style={[styles.podiumBase, styles.podiumBaseGold, { backgroundColor: `#FFD70020`, borderColor: `#FFD70060` }]} />
+                      </View>
+
+                      {/* Bronze (3rd) */}
+                      {leaderboard[2] ? (
+                        <View style={[styles.podiumSlot, styles.podiumBronze]}>
+                          <Text style={styles.podiumMedal}>🥉</Text>
+                          {leaderboard[2].avatarUri ? (
+                            <Image source={{ uri: leaderboard[2].avatarUri }} style={styles.podiumAvatar} />
+                          ) : (
+                            <View style={[styles.podiumAvatarPlaceholder, { backgroundColor: `#CD7F3220` }]}>
+                              <Text style={[styles.podiumAvatarInitial, { color: "#CD7F32" }]}>
+                                {leaderboard[2].name.charAt(0).toUpperCase()}
+                              </Text>
+                            </View>
+                          )}
+                          <Text style={[styles.podiumName, { color: colors.foreground }]} numberOfLines={1}>
+                            {leaderboard[2].name}
+                          </Text>
+                          <Text style={[styles.podiumScore, { color: colors.muted }]}>
+                            {leaderboard[2].challengesCorrect}✓
+                          </Text>
+                          <View style={[styles.podiumBase, styles.podiumBaseBronze, { backgroundColor: `#CD7F3215`, borderColor: `#CD7F3240` }]} />
+                        </View>
+                      ) : <View style={styles.podiumSlot} />}
+                    </View>
+                  )}
+
                   <View style={styles.lbColHeaders}>
                     <Text style={[styles.lbColLabel, { color: colors.muted, flex: 1 }]}>Player</Text>
                     <Text style={[styles.lbColLabel, { color: colors.muted }]}>✓ Correct</Text>
                   </View>
                 </View>
-              }
+              )}
               ListEmptyComponent={
                 <View style={styles.feedEmpty}>
                   <Text style={styles.feedEmptyIcon}>🎯</Text>
@@ -1934,6 +2006,25 @@ const styles = StyleSheet.create({
   lbStats: { alignItems: "flex-end", gap: 2 },
   lbCorrect: { fontSize: 18, fontWeight: "800" },
   lbAccuracy: { fontSize: 11 },
+  // Podium
+  podiumRow: { flexDirection: "row", alignItems: "flex-end", justifyContent: "center", gap: 8, marginTop: 16, marginBottom: 8, width: "100%" },
+  podiumSlot: { flex: 1, alignItems: "center", gap: 4 },
+  podiumGold: { marginBottom: 0 },
+  podiumSilver: { marginBottom: -8 },
+  podiumBronze: { marginBottom: -16 },
+  podiumMedal: { fontSize: 22 },
+  podiumAvatarLarge: { width: 52, height: 52, borderRadius: 26 },
+  podiumAvatarPlaceholderLarge: { width: 52, height: 52, borderRadius: 26, alignItems: "center", justifyContent: "center" },
+  podiumAvatarInitialLarge: { fontSize: 20, fontWeight: "800" },
+  podiumAvatar: { width: 40, height: 40, borderRadius: 20 },
+  podiumAvatarPlaceholder: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
+  podiumAvatarInitial: { fontSize: 15, fontWeight: "700" },
+  podiumName: { fontSize: 12, fontWeight: "600", textAlign: "center", maxWidth: 80 },
+  podiumScore: { fontSize: 13, fontWeight: "700", textAlign: "center" },
+  podiumBase: { width: "100%", borderRadius: 8, borderWidth: 1, marginTop: 4 },
+  podiumBaseGold: { height: 48 },
+  podiumBaseSilver: { height: 36 },
+  podiumBaseBronze: { height: 24 },
   // Feed card sharer avatar
   sharedByRow: { flexDirection: "row", alignItems: "center", gap: 5 },
   sharerAvatar: { width: 18, height: 18, borderRadius: 9 },

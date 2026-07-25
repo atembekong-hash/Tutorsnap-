@@ -15,6 +15,7 @@ import React, { useEffect, useRef } from "react";
 import {
   Animated,
   Dimensions,
+  Image,
   Modal,
   Platform,
   Share,
@@ -112,9 +113,13 @@ function ConfettiParticle({ index }: { index: number }) {
 function AnimatedCard({
   info,
   onDismiss,
+  avatarUri,
+  displayName,
 }: {
   info: MilestoneInfo;
   onDismiss: () => void;
+  avatarUri?: string;
+  displayName?: string;
 }) {
   const colors = useColors();
   const cardScale = useRef(new Animated.Value(0.6)).current;
@@ -163,7 +168,24 @@ function AnimatedCard({
         },
       ]}
     >
-      <Text style={styles.cardEmoji}>{info.emoji}</Text>
+      {/* Avatar circle */}
+      {avatarUri ? (
+        <Image source={{ uri: avatarUri }} style={styles.cardAvatar} />
+      ) : (
+        <View style={[styles.cardAvatarPlaceholder, { backgroundColor: `${colors.primary}20` }]}>
+          <Text style={[styles.cardAvatarInitial, { color: colors.primary }]}>
+            {(displayName ?? "?").charAt(0).toUpperCase()}
+          </Text>
+        </View>
+      )}
+
+      {/* Streak count badge */}
+      <View style={[styles.streakBadge, { backgroundColor: `${colors.primary}15`, borderColor: `${colors.primary}30` }]}>
+        <Text style={styles.streakBadgeEmoji}>{info.emoji}</Text>
+        <Text style={[styles.streakBadgeCount, { color: colors.primary }]}>{info.days}</Text>
+        <Text style={[styles.streakBadgeLabel, { color: colors.muted }]}>day streak</Text>
+      </View>
+
       <Text style={[styles.cardTitle, { color: colors.foreground }]}>
         {info.title}
       </Text>
@@ -205,9 +227,11 @@ function AnimatedCard({
 interface Props {
   info: MilestoneInfo | null;
   onDismiss: () => void;
+  avatarUri?: string;
+  displayName?: string;
 }
 
-export function StreakMilestoneModal({ info, onDismiss }: Props) {
+export function StreakMilestoneModal({ info, onDismiss, avatarUri, displayName }: Props) {
   if (!info) return null;
 
   return (
@@ -234,7 +258,7 @@ export function StreakMilestoneModal({ info, onDismiss }: Props) {
 
         {/* Card -- stop propagation so tapping card doesn't dismiss */}
         <TouchableOpacity activeOpacity={1} onPress={() => {}}>
-          <AnimatedCard info={info} onDismiss={onDismiss} />
+          <AnimatedCard info={info} onDismiss={onDismiss} avatarUri={avatarUri} displayName={displayName} />
         </TouchableOpacity>
       </TouchableOpacity>
     </Modal>
@@ -260,6 +284,16 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     elevation: 12,
   },
+  cardAvatar: { width: 72, height: 72, borderRadius: 36, marginBottom: 12 },
+  cardAvatarPlaceholder: { width: 72, height: 72, borderRadius: 36, alignItems: "center", justifyContent: "center", marginBottom: 12 },
+  cardAvatarInitial: { fontSize: 28, fontWeight: "800" },
+  streakBadge: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1, marginBottom: 12,
+  },
+  streakBadgeEmoji: { fontSize: 22 },
+  streakBadgeCount: { fontSize: 28, fontWeight: "900" },
+  streakBadgeLabel: { fontSize: 13, fontWeight: "600" },
   cardEmoji: {
     fontSize: 64,
     marginBottom: 16,

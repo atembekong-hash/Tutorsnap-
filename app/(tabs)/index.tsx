@@ -635,7 +635,7 @@ function SolveScreenContent() {
   const [homeGradeLevel, setHomeGradeLevel] = useState<string | null>(null);
   const [showSolveGradePicker, setShowSolveGradePicker] = useState(false);
   const [rememberGrade, setRememberGrade] = useState(false);
-  const [_userName, setUserName] = useState<string | null>(null);
+  const [_userName, setUserName] = useState<string | null>(null); // used by StreakMilestoneModal
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [lastSession, setLastSession] = useState<ChatSessionSummary | null>(null);
@@ -1633,6 +1633,8 @@ function SolveScreenContent() {
       <StreakMilestoneModal
         info={streakMilestone}
         onDismiss={() => setStreakMilestone(null)}
+        avatarUri={avatarUri ?? undefined}
+        displayName={_userName ?? undefined}
       />
       {/* Solve Milestone Celebration — fires review prompt after dismiss */}
       <SolveMilestoneModal

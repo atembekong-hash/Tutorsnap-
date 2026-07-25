@@ -173,11 +173,28 @@ export default function ChallengeScreen() {
 
   const handleShareResult = async () => {
     const timedOut = !isCorrect && timeTaken >= selectedDuration;
-    const status = isCorrect ? "✅ Solved" : timedOut ? "⏰ Timed out" : "❌ Incorrect";
-    const timeStr = isCorrect ? `in ${timeTaken}s` : timedOut ? `(${selectedDuration}s limit)` : `after ${timeTaken}s`;
+    const resultLine = isCorrect
+      ? `✅ Solved in ${timeTaken}s`
+      : timedOut
+      ? `⏰ Timed out after ${selectedDuration}s`
+      : `❌ Incorrect (${timeTaken}s)`;
+    const playerLine = displayName ? `👤 ${displayName}` : "";
+    const classLine = classCode ? `🏫 Class ${classCode.toUpperCase()}` : "";
+    const lines = [
+      `TutorSnap Challenge Result`,
+      ``,
+      resultLine,
+      playerLine,
+      classLine,
+      ``,
+      `${subjectEmoji} ${subjectLabel}`,
+      `❓ ${problem}`,
+      ``,
+      `Challenge your classmates at tutorsnapai.tech`,
+    ].filter((l, i) => i === 0 || l !== "");
     try {
       await Share.share({
-        message: `TutorSnap Challenge ${status} ${timeStr}!\n\n📚 ${subjectEmoji} ${subjectLabel}\n❓ ${problem}\n\nChallenge your classmates at tutorsnapai.tech`,
+        message: lines.join("\n"),
         title: "TutorSnap Challenge Result",
       });
     } catch { /* ignore */ }

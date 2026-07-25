@@ -1061,3 +1061,8 @@
 - [x] Feature 1: Maybe Later link below See Plans button on onboarding trial slide
 - [x] Feature 2: Soft paywall modal when free user hits daily solve limit (contextual message banner added)
 - [x] Feature 3: Trial countdown banner on home screen (days remaining in trial)
+
+## Advanced Features Round 3
+- [x] Feature 1: Challenge result share card (avatar + score + time visual)
+- [x] Feature 2: Leaderboard top-3 podium row with avatars on Ranks tab
+- [x] Feature 3: Streak milestone celebration (confetti + avatar + streak count at 7/14/30 days)
