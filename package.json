@@ -43,7 +43,7 @@
     "drizzle-orm": "^0.44.7",
     "expo": "~54.0.36",
     "expo-apple-authentication": "^57.0.1",
-    "expo-asset": "^57.0.7",
+    "expo-asset": "~10.0.10",
     "expo-audio": "~1.1.1",
     "expo-blur": "~15.0.8",
     "expo-build-properties": "^1.0.10",
@@ -117,5 +117,14 @@
     "typescript": "~5.9.3",
     "vitest": "^2.1.9"
   },
-  "packageManager": "pnpm@9.12.0"
+  "packageManager": "pnpm@9.12.0",
+  "pnpm": {
+    "packageExtensions": {
+      "expo-audio@1.1.1": {
+        "peerDependencies": {
+          "expo-asset": "~10.0.10"
+        }
+      }
+    }
+  }
 }
