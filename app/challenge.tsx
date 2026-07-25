@@ -17,6 +17,7 @@ import {
   Platform,
   Alert,
   Animated,
+  Image,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import * as H from "@/lib/haptics";
@@ -58,10 +59,12 @@ export default function ChallengeScreen() {
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [timeTaken, setTimeTaken] = useState(0);
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState<string>("You");
 
-  // Load profile photo for leaderboard entry
+  // Load profile photo and display name for result card
   useEffect(() => {
     AsyncStorage.getItem("@tutorsnap/avatarUri").then((uri) => setAvatarUri(uri || null)).catch(() => {});
+    getClassroomDisplayName().then((name) => { if (name) setDisplayName(name); }).catch(() => {});
   }, []);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -340,6 +343,29 @@ export default function ChallengeScreen() {
         {/* RESULT phase */}
         {phase === "result" && (
           <View style={styles.resultContainer}>
+            {/* Player identity row */}
+            <View style={[styles.resultPlayerRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              {avatarUri ? (
+                <Image source={{ uri: avatarUri }} style={styles.resultAvatar} />
+              ) : (
+                <View style={[styles.resultAvatarPlaceholder, { backgroundColor: `${colors.primary}20` }]}>
+                  <Text style={[styles.resultAvatarInitial, { color: colors.primary }]}>
+                    {displayName.charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+              )}
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.resultPlayerName, { color: colors.foreground }]}>{displayName}</Text>
+                <Text style={[styles.resultPlayerSub, { color: colors.muted }]}>
+                  {classCode ? `Class · ${classCode.toUpperCase()}` : "Solo challenge"}
+                </Text>
+              </View>
+              <View style={[styles.resultTimeBadge, { backgroundColor: isCorrect ? `${colors.success}18` : `${colors.error}12` }]}>
+                <Text style={[styles.resultTimeValue, { color: isCorrect ? colors.success : colors.error }]}>{timeTaken}s</Text>
+                <Text style={[styles.resultTimeLabel, { color: colors.muted }]}>time</Text>
+              </View>
+            </View>
+
             <View
               style={[
                 styles.resultBadge,
@@ -512,6 +538,15 @@ const styles = StyleSheet.create({
   },
   submitBtnText: { color: "#FFFFFF", fontSize: 15, fontWeight: "700" },
   resultContainer: { gap: 16, alignItems: "center" },
+  resultPlayerRow: { width: "100%", flexDirection: "row", alignItems: "center", gap: 12, borderRadius: 14, borderWidth: 1, padding: 14 },
+  resultAvatar: { width: 48, height: 48, borderRadius: 24 },
+  resultAvatarPlaceholder: { width: 48, height: 48, borderRadius: 24, alignItems: "center", justifyContent: "center" },
+  resultAvatarInitial: { fontSize: 20, fontWeight: "700" },
+  resultPlayerName: { fontSize: 15, fontWeight: "700" },
+  resultPlayerSub: { fontSize: 12, marginTop: 2 },
+  resultTimeBadge: { alignItems: "center", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10 },
+  resultTimeValue: { fontSize: 18, fontWeight: "800" },
+  resultTimeLabel: { fontSize: 10, fontWeight: "600", textTransform: "uppercase" },
   resultBadge: {
     width: "100%",
     borderRadius: 16,

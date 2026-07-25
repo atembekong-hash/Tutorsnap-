@@ -113,6 +113,7 @@ export default function ClassroomTabScreen() {
   const [notifPrefs, setNotifPrefs] = useState<ClassroomNotifPrefs>({ enabled: true, newProblem: true, newHomework: true });
   const [activeTab, setActiveTab] = useState<Tab>("feed");
   const [_loading, setLoading] = useState(true);
+  const [lbRefreshing, setLbRefreshing] = useState(false);
 
   const [showCreate, setShowCreate] = useState(false);
   const [classroomName, setClassroomName] = useState("");
@@ -193,6 +194,19 @@ export default function ClassroomTabScreen() {
     );
     setCommentCounts(Object.fromEntries(entries));
   }, []);
+
+  const handleRefreshLeaderboard = useCallback(async () => {
+    setLbRefreshing(true);
+    try {
+      const activeClassroom = myClassroom || joinedClassroom;
+      if (activeClassroom) {
+        const lb = await getLeaderboard(activeClassroom.code);
+        setLeaderboard(lb);
+      }
+    } catch { /* ignore */ } finally {
+      setLbRefreshing(false);
+    }
+  }, [myClassroom, joinedClassroom]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -1210,6 +1224,8 @@ export default function ClassroomTabScreen() {
               renderItem={renderLeaderboardEntry}
               contentContainerStyle={styles.lbList}
               showsVerticalScrollIndicator={false}
+              refreshing={lbRefreshing}
+              onRefresh={handleRefreshLeaderboard}
               ListHeaderComponent={
                 <View style={[styles.lbHeader, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                   <Text style={styles.lbTrophyIcon}>🏆</Text>

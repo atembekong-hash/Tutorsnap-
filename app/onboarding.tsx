@@ -224,7 +224,11 @@ export default function OnboardingScreen() {
     if (isLastSlide) {
       finishOnboardingAndShowPaywall();
     } else {
-      const next = currentSlide + 1;
+      // Skip the photo slide if the user already has a profile photo set
+      let next = currentSlide + 1;
+      if (SLIDES[next]?.id === "photo" && avatarUri) {
+        next = next + 1;
+      }
       setCurrentSlide(next);
       animateDot(next);
       scrollRef.current?.scrollTo({ x: next * SCREEN_WIDTH, animated: true });
