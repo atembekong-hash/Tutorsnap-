@@ -1053,3 +1053,6 @@
 - [x] Stage B: Feed card sharer avatars — extend ClassroomProblem with sharerAvatarUri, persist on share, render on feed cards
 - [x] Stage C: Onboarding keyboard fix — name input rises with keyboard (KeyboardAvoidingView); Meet Your AI Tutor bottom message pushed up
 - [x] Stage D: Bump versionCode to 24 (v1.4.3), trigger EAS APK build
+
+## Onboarding Double-Celebration Fix
+- [x] Option A: Remove false confetti from trial slide CTA, navigate directly to paywall, clean up showConfetti state

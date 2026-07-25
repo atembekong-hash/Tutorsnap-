@@ -158,7 +158,6 @@ export default function OnboardingScreen() {
   const [selectedGrade, setSelectedGrade] = useState<string | null>(null);
   const [userName, setUserName] = useState("");
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
-  const [showConfetti, setShowConfetti] = useState(false);
   // Animated value for dot indicator
   const dotAnim = useRef(new Animated.Value(0)).current;
   // Animated value for progress bar
@@ -322,17 +321,14 @@ export default function OnboardingScreen() {
   };
 
   const finishOnboardingAndShowPaywall = async () => {
-    H.notificationSuccess();
-    setShowConfetti(true);
+    H.impactMedium();
     await AsyncStorage.setItem(ONBOARDING_DONE_KEY, "true");
     await persistOnboardingChoices();
-    // Brief confetti display before navigating
+    // Navigate to tabs first, then push paywall on top
+    router.replace("/(tabs)" as any);
     setTimeout(() => {
-      router.replace("/(tabs)" as any);
-      setTimeout(() => {
-        router.push("/paywall" as any);
-      }, 300);
-    }, 1800);
+      router.push("/paywall" as any);
+    }, 300);
   };
 
   const finishOnboarding = async () => {
@@ -716,29 +712,13 @@ export default function OnboardingScreen() {
             accessibilityRole="button"
           >
             <Text style={styles.ctaText}>
-              {isLastSlide ? "Start Free Trial" : "Next"}
+              {isLastSlide ? "See Plans" : "Next"}
             </Text>
           </TouchableOpacity>
         )}
       </SafeAreaView>
       </KeyboardAvoidingView>
-        {/* Confetti burst on completion */}
-        {showConfetti && (
-          <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, pointerEvents: "none" }}>
-            {Array.from({ length: 60 }).map((_, i) => (
-              <ConfettiParticle key={i} index={i} />
-            ))}
-            <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-              <Text style={{ fontSize: 72, marginBottom: 16 }}>🎉</Text>
-              <Text style={{ fontSize: 26, fontWeight: "800", color: "#fff", textAlign: "center", textShadowColor: "rgba(0,0,0,0.3)", textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 8 }}>
-                You're all set!
-              </Text>
-              <Text style={{ fontSize: 16, color: "rgba(255,255,255,0.85)", marginTop: 8, textAlign: "center" }}>
-                Let's start learning 🚀
-              </Text>
-            </View>
-          </View>
-        )}
+        {/* Confetti removed — celebration fires only after a real purchase on /premium-welcome */}
     </View>
   );
 }
