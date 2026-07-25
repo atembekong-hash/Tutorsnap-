@@ -29,6 +29,9 @@ import { getSubjectColor, getSubjectLabel, getSubjectEmoji } from "@/lib/subject
 import { recordChallengeResult, getClassroomDisplayName } from "@/lib/classroom";
 import { saveChallengeAttempt } from "@/lib/challenge-history";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Sharing from "expo-sharing";
+import * as FileSystem from "expo-file-system/legacy";
+import { captureRef } from "react-native-view-shot";
 import type { MathSubject } from "@/shared/types";
 
 type Phase = "ready" | "active" | "result";
@@ -171,21 +174,44 @@ export default function ChallengeScreen() {
     }
   };
 
+  const resultCardRef = useRef<View>(null);
+
   const handleShareResult = async () => {
+    // Try to capture the result card as a PNG image first (native only)
+    if (Platform.OS !== "web" && resultCardRef.current) {
+      try {
+        const uri = await captureRef(resultCardRef, {
+          format: "png",
+          quality: 1,
+          result: "tmpfile",
+        });
+        const canShare = await Sharing.isAvailableAsync();
+        if (canShare) {
+          await Sharing.shareAsync(uri, {
+            mimeType: "image/png",
+            dialogTitle: "Share your TutorSnap result",
+          });
+          // Clean up temp file after share
+          FileSystem.deleteAsync(uri, { idempotent: true }).catch(() => {});
+          return;
+        }
+      } catch {
+        // Fall through to text share if capture fails
+      }
+    }
+    // Fallback: plain text share (web or if capture failed)
     const timedOut = !isCorrect && timeTaken >= selectedDuration;
     const resultLine = isCorrect
       ? `✅ Solved in ${timeTaken}s`
       : timedOut
       ? `⏰ Timed out after ${selectedDuration}s`
       : `❌ Incorrect (${timeTaken}s)`;
-    const playerLine = displayName ? `👤 ${displayName}` : "";
-    const classLine = classCode ? `🏫 Class ${classCode.toUpperCase()}` : "";
     const lines = [
       `TutorSnap Challenge Result`,
       ``,
       resultLine,
-      playerLine,
-      classLine,
+      displayName ? `👤 ${displayName}` : "",
+      classCode ? `🏫 Class ${classCode.toUpperCase()}` : "",
       ``,
       `${subjectEmoji} ${subjectLabel}`,
       `❓ ${problem}`,
@@ -193,10 +219,7 @@ export default function ChallengeScreen() {
       `Challenge your classmates at tutorsnapai.tech`,
     ].filter((l, i) => i === 0 || l !== "");
     try {
-      await Share.share({
-        message: lines.join("\n"),
-        title: "TutorSnap Challenge Result",
-      });
+      await Share.share({ message: lines.join("\n"), title: "TutorSnap Challenge Result" });
     } catch { /* ignore */ }
   };
 
@@ -360,6 +383,8 @@ export default function ChallengeScreen() {
         {/* RESULT phase */}
         {phase === "result" && (
           <View style={styles.resultContainer}>
+            {/* Capturable card — wraps identity row + result badge */}
+            <View ref={resultCardRef} collapsable={false}>
             {/* Player identity row */}
             <View style={[styles.resultPlayerRow, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               {avatarUri ? (
@@ -401,6 +426,8 @@ export default function ChallengeScreen() {
                   ? `Solved in ${timeTaken} second${timeTaken !== 1 ? "s" : ""}`
                   : `Time taken: ${timeTaken}s / ${selectedDuration}s`}
               </Text>
+            </View>
+            {/* End of capturable card */}
             </View>
 
             {/* Correct answer reveal */}
