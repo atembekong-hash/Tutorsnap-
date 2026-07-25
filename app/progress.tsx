@@ -14,7 +14,6 @@ import * as Sharing from "expo-sharing";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
 import { useRouter, useFocusEffect } from "expo-router";
-import { ProgressSkeletonScreen } from "@/components/skeleton";
 import * as H from "@/lib/haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -26,6 +25,7 @@ import {
   getStreakEmoji,
   getDailyGoalPercent,
   getSubjectDisplay,
+  getDefaultProgress,
   type ProgressData,
 } from "@/lib/progress";
 import { loadQuizStats, type QuizStats } from "@/lib/quiz-history";
@@ -55,7 +55,9 @@ const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 export default function ProgressScreen() {
   const colors = useColors();
   const router = useRouter();
-  const [progress, setProgress] = useState<ProgressData | null>(null);
+  // Initialize with default data so the skeleton (with infinite Reanimated animations)
+  // never mounts. AsyncStorage loads near-instantly and updates the state silently.
+  const [progress, setProgress] = useState<ProgressData>(getDefaultProgress);
   const [quizStats, setQuizStats] = useState<QuizStats | null>(null);
   const [showGoalPicker, setShowGoalPicker] = useState(false);
   const [unlockModal, setUnlockModal] = useState<{ tier: BadgeTier; subjectLabel: string } | null>(null);
@@ -110,13 +112,7 @@ export default function ProgressScreen() {
     }
   };
 
-  if (!progress) {
-    return (
-      <ScreenContainer>
-        <ProgressSkeletonScreen />
-      </ScreenContainer>
-    );
-  }
+  // progress is always initialized with getDefaultProgress() — skeleton never mounts
 
   const { streak, subjectCounts } = progress;
   // Defensive fallback: weeklyActivity may be missing in old stored data formats

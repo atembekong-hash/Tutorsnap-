@@ -72,7 +72,7 @@ export async function getProgress(): Promise<ProgressData> {
   return getDefaultProgress();
 }
 
-function getDefaultProgress(): ProgressData {
+export function getDefaultProgress(): ProgressData {
   return {
     streak: {
       currentStreak: 0,
