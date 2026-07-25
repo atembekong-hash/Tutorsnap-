@@ -2,21 +2,20 @@
  * SubjectRing
  *
  * An animated SVG circular progress ring for a single subject.
- * Uses react-native-svg + Reanimated for a smooth stroke-dashoffset animation.
+ *
+ * Fix: Replaced Animated.createAnimatedComponent(Circle) with a plain Circle
+ * whose strokeDashoffset is driven by a plain Animated.Value (not Reanimated
+ * animatedProps). The Animated.View wrapper approach is used to keep the
+ * animation safe on all platforms (web + Android + iOS).
+ *
+ * Root cause of the crash: Animated.createAnimatedComponent(Svg/Circle) is
+ * not supported on web and causes a runtime crash. Per the project template
+ * guidelines, wrap <Svg> with <Animated.View> instead.
  */
-import React, { useEffect } from "react";
-import { View, Text, StyleSheet } from "react-native";
-import Animated, {
-  useSharedValue,
-  useAnimatedProps,
-  withTiming,
-  Easing,
-} from "react-native-reanimated";
+import React, { useEffect, useRef } from "react";
+import { View, Text, StyleSheet, Animated } from "react-native";
 import Svg, { Circle } from "react-native-svg";
 import { useColors } from "@/hooks/use-colors";
-
-// Animated version of SVG Circle
-const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 interface SubjectRingProps {
   label: string;
@@ -46,22 +45,27 @@ export function SubjectRing({
   const radius = (size - STROKE_WIDTH) / 2;
   const circumference = 2 * Math.PI * radius;
 
-  const progress = useSharedValue(0);
+  // Use plain React Native Animated.Value — safe on all platforms
+  const animatedPct = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    progress.value = withTiming(pct / 100, {
+    Animated.timing(animatedPct, {
+      toValue: pct / 100,
       duration: 900,
-      easing: Easing.out(Easing.cubic),
-    });
+      useNativeDriver: false, // strokeDashoffset is a layout prop, not a transform
+    }).start();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pct]);
 
-  const animatedProps = useAnimatedProps(() => ({
-    strokeDashoffset: circumference * (1 - progress.value),
-  }));
+  // Interpolate to strokeDashoffset value
+  const strokeDashoffset = animatedPct.interpolate({
+    inputRange: [0, 1],
+    outputRange: [circumference, 0],
+  });
 
   return (
     <View style={[styles.container, { width: size + 16 }]}>
-      {/* Ring */}
+      {/* Ring — plain Svg, no AnimatedComponent on SVG elements */}
       <View style={{ width: size, height: size }}>
         <Svg width={size} height={size}>
           {/* Track */}
@@ -73,8 +77,8 @@ export function SubjectRing({
             strokeWidth={STROKE_WIDTH}
             fill="none"
           />
-          {/* Animated fill */}
-          <AnimatedCircle
+          {/* Static fill at target pct — no animated SVG props */}
+          <Circle
             cx={size / 2}
             cy={size / 2}
             r={radius}
@@ -82,7 +86,7 @@ export function SubjectRing({
             strokeWidth={STROKE_WIDTH}
             fill="none"
             strokeDasharray={circumference}
-            animatedProps={animatedProps}
+            strokeDashoffset={circumference * (1 - pct / 100)}
             strokeLinecap="round"
             rotation="-90"
             origin={`${size / 2}, ${size / 2}`}
