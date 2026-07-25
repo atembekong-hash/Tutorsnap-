@@ -1037,3 +1037,8 @@
 - [ ] Stage 3: Add @sentry/node to server, wire captureException to key tRPC routes
 - [ ] Stage 4: Add Sentry breadcrumbs to auth flows
 - [ ] Stage 5: Validate end-to-end, real-user test all flows, checkpoint
+
+## Onboarding Flow
+- [ ] Stage 1: Create 3 onboarding screens (Hook, How It Works, AIRE) with AsyncStorage gate
+- [ ] Stage 2: Wire onboarding into app/_layout.tsx — show on first launch only
+- [ ] Stage 3: Validate end-to-end, checkpoint
