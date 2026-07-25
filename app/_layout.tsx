@@ -1,4 +1,7 @@
 import "@/global.css";
+// Sentry must be initialised before any other code that may throw
+import { initSentry } from "@/lib/sentry";
+initSentry();
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack , useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";

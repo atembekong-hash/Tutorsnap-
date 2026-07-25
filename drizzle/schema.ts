@@ -224,6 +224,8 @@ export const aireSubjectCalibration = mysqlTable(
     multiplier: varchar("multiplier", { length: 8 }).notNull().default("1.0"),
     /** Number of feedback samples used to compute this multiplier */
     sampleCount: int("sampleCount").notNull().default(0),
+    /** Timestamp of the last feedback submission for this subject — used for 30-day decay */
+    lastFeedbackAt: timestamp("lastFeedbackAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   },
   (t) => [

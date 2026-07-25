@@ -1030,3 +1030,10 @@
 - [x] TypeScript: 0 errors
 - [x] Tests: all passing (57/57)
 - [x] Version bumped to 1.4.2
+
+## Sentry Re-Integration (JS-Only, Safe — No Expo Plugin)
+- [ ] Stage 1: Install @sentry/react-native, initialise client SDK in app/_layout.tsx (no Expo plugin in app.config.ts)
+- [ ] Stage 2: Wire ErrorBoundary to Sentry.captureException
+- [ ] Stage 3: Add @sentry/node to server, wire captureException to key tRPC routes
+- [ ] Stage 4: Add Sentry breadcrumbs to auth flows
+- [ ] Stage 5: Validate end-to-end, real-user test all flows, checkpoint
