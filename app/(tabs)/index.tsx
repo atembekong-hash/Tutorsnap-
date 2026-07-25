@@ -1181,8 +1181,8 @@ function SolveScreenContent() {
               style={[
                 styles.inputCard,
                 {
-                  backgroundColor: colors.surface,
-                  borderColor: solveMutation.isPending ? colors.primary : colors.border,
+                  backgroundColor: solveMutation.isPending ? `${colors.primary}08` : `${colors.primary}05`,
+                  borderColor: solveMutation.isPending ? colors.primary : `${colors.primary}60`,
                 },
               ]}
             >
@@ -1841,16 +1841,16 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   inputCard: {
-    borderRadius: 20,
-    borderWidth: 1.5,
+    borderRadius: 16,
+    borderWidth: 2.5,
     overflow: "hidden",
   },
   input: {
-    padding: 16,
-    fontSize: 16,
-    minHeight: 150,
+    padding: 18,
+    fontSize: 17,
+    minHeight: 170,
     textAlignVertical: "top",
-    lineHeight: 24,
+    lineHeight: 26,
   },
   inputActions: {
     flexDirection: "row",
@@ -2290,12 +2290,12 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   sectionLabelDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   sectionLabelText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "700",
     letterSpacing: 1.2,
     flex: 1,

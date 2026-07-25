@@ -1385,7 +1385,7 @@ export default function SolutionScreen() {
               </Text>
             </TouchableOpacity>
           </View>
-          <Text style={[styles.answerText, { color: colors.foreground, fontSize: fs(22) }]}>{cleanMathText(solution.answer)}</Text>
+          <Text style={[styles.answerText, { color: colors.foreground, fontSize: fs(17) }]}>{cleanMathText(solution.answer)}</Text>
         </View>
 
         {/* View Mode Toggle */}
@@ -2175,7 +2175,7 @@ const styles = StyleSheet.create({
   answerLabel: { fontSize: 11, fontWeight: "700", letterSpacing: 1 },
   copyBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
   copyText: { fontSize: 13, fontWeight: "600" },
-  answerText: { fontSize: 22, fontWeight: "800", letterSpacing: -0.5 },
+  answerText: { fontSize: 17, fontWeight: "700", letterSpacing: -0.3 },
   stepsSection: { paddingHorizontal: 16, marginBottom: 16 },
   sectionHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 },
   sectionTitle: { fontSize: 16, fontWeight: "700" },
