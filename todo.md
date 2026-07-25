@@ -1046,3 +1046,8 @@
 - [x] Bump version to 1.5.0, versionCode 19
 - [x] TypeScript: 0 errors, Tests: 73/73 passing
 - [x] Save checkpoint
+
+## Round 66: Activate Sentry with real DSN
+- [x] EXPO_PUBLIC_SENTRY_DSN secret set and validated (4/4 DSN format tests passing)
+- [x] Full test suite: 77/77 passing
+- [x] Save checkpoint
