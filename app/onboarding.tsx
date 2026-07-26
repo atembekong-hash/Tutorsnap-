@@ -736,7 +736,7 @@ export default function OnboardingScreen() {
                     </View>
                   ))}
                   <Text style={[styles.trialPriceNote, { color: colors.muted }]}>
-                    Then $9.99/mo or $69.99/yr · Cancel anytime
+                    Prices shown on next screen · Cancel anytime
                   </Text>
                 </View>
               )}
@@ -788,7 +788,7 @@ export default function OnboardingScreen() {
             accessibilityRole="button"
           >
             <Text style={styles.ctaText}>
-              {isLastSlide ? "See Plans" : "Next"}
+              {isLastSlide ? "Start Free Trial" : "Next"}
             </Text>
           </TouchableOpacity>
         )}
@@ -1048,7 +1048,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "500",
     letterSpacing: 0.1,
-    textDecorationLine: "underline",
+    // textDecorationLine removed — underline looks like a web hyperlink on iOS
   },
   nameInput: {
     fontSize: 18,
