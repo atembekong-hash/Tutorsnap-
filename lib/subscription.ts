@@ -324,6 +324,28 @@ export async function openManageSubscriptions(): Promise<void> {
   throw new Error("manage_subscriptions_unavailable");
 }
 
+// ─── User identity (link RC app_user_id to our openId) ─────────────────────────
+
+/**
+ * Call this immediately after a successful sign-in so that RevenueCat's
+ * app_user_id matches the user's openId from our auth system.
+ * This allows the webhook to link subscription rows to real user accounts.
+ * Safe to call multiple times — RC de-dupes logIn calls.
+ */
+export async function loginRevenueCat(openId: string): Promise<void> {
+  if (!openId || _devMode || Platform.OS === "web") return;
+  await initRevenueCat();
+  if (!_rcAvailable) return;
+  try {
+    const Purchases = await getPurchases();
+    await Purchases.logIn(openId);
+    console.log("[RevenueCat] Logged in as:", openId);
+  } catch (err) {
+    // Non-fatal — RC will still work with anonymous ID
+    console.warn("[RevenueCat] logIn failed (non-fatal):", err);
+  }
+}
+
 // ─── Offerings (for displaying prices from the store) ────────────────────────
 
 export interface OfferingPackage {

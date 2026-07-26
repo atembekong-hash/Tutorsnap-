@@ -27,6 +27,7 @@ import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { DotsLoader } from "@/components/skeleton";
 import { addBreadcrumb } from "@/lib/sentry";
+import { loginRevenueCat } from "@/lib/subscription";
 
 async function getPostAuthRoute(): Promise<string> {
   const onboardingDone = await AsyncStorage.getItem("@tutorsnap/onboardingDone");
@@ -79,6 +80,8 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
       refreshExpiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
     });
     startTokenRefreshTimer();
+    // Link RevenueCat app_user_id to our openId so webhook can match subscriptions
+    loginRevenueCat(user.openId).catch(() => {}); // fire-and-forget, non-fatal
     // Reset the sync client so it picks up the new session token
     resetSyncClient();
     // Restore all cloud data (fire-and-forget — don't block navigation)
