@@ -18,6 +18,7 @@ import { getSubjectLabel, getSubjectColor, getSubjectEmoji } from "@/lib/subject
 import * as H from "@/lib/haptics";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/hooks/use-auth";
+import { AnimatedProgressBar } from "@/components/animated-progress-bar";
 
 const AIRE_KEY = "@tutorsnap/aire_feedback";
 
@@ -189,18 +190,22 @@ export default function AireAnalyticsScreen() {
                   Based on {stats.total} rating{stats.total !== 1 ? "s" : ""}
                 </Text>
 
-                {/* Three-segment bar */}
+                {/* Three-segment bar — animated */}
                 <View style={styles.segmentBarWrap}>
                   {(["short", "right", "long"] as const).map((r) => {
                     const pct = stats.total > 0 ? (stats[r] / stats.total) * 100 : 0;
                     if (pct === 0) return null;
                     return (
-                      <View
+                      <AnimatedProgressBar
                         key={r}
-                        style={[
-                          styles.segmentBarFill,
-                          { width: `${pct}%` as any, backgroundColor: RATING_COLORS[r] },
-                        ]}
+                        value={100}
+                        color={RATING_COLORS[r]}
+                        trackColor="transparent"
+                        height={10}
+                        borderRadius={0}
+                        delay={100}
+                        duration={500}
+                        style={{ width: `${pct}%` as any }}
                       />
                     );
                   })}

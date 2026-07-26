@@ -47,6 +47,7 @@ import { StreakShieldCard } from "@/components/streak-shield-card";
 import { StreakFreezeCard } from "@/components/streak-freeze-card";
 import { GRADE_LABELS } from "@/lib/grade-levels";
 import { cleanMathText } from "@/lib/clean-math-text";
+import { AnimatedProgressBar } from "@/components/animated-progress-bar";
 
 
 const GOAL_OPTIONS = [1, 3, 5, 10];
@@ -225,17 +226,14 @@ export default function ProgressScreen() {
                   {dailyGoalPct}%
                 </Text>
               </View>
-              <View style={[styles.progressTrack, { backgroundColor: `${colors.primary}20` }]}>
-                <View
-                  style={[
-                    styles.progressFill,
-                    {
-                      backgroundColor: dailyGoalPct >= 100 ? colors.success : colors.primary,
-                      width: `${dailyGoalPct}%`,
-                    },
-                  ]}
-                />
-              </View>
+              <AnimatedProgressBar
+                value={dailyGoalPct}
+                color={dailyGoalPct >= 100 ? colors.success : colors.primary}
+                trackColor={`${colors.primary}20`}
+                height={8}
+                delay={100}
+                style={styles.progressTrack}
+              />
               {dailyGoalPct >= 100 && (
                 <Text style={[styles.goalCompleteText, { color: colors.success }]}>
                   🎉 Goal complete! Keep going!
@@ -348,14 +346,14 @@ export default function ProgressScreen() {
                     <Text style={[styles.badgeSolves, { color: colors.muted }]}>{badge.solves} solved</Text>
                     {badge.nextTier && (
                       <View style={styles.badgeProgressWrap}>
-                        <View style={[styles.badgeProgressTrack, { backgroundColor: `${BADGE_COLORS[badge.nextTier]}25` }]}>
-                          <View
-                            style={[
-                              styles.badgeProgressFill,
-                              { backgroundColor: BADGE_COLORS[badge.nextTier], width: `${badge.progress}%` },
-                            ]}
-                          />
-                        </View>
+                        <AnimatedProgressBar
+                          value={badge.progress}
+                          color={BADGE_COLORS[badge.nextTier]}
+                          trackColor={`${BADGE_COLORS[badge.nextTier]}25`}
+                          height={5}
+                          delay={200}
+                          style={styles.badgeProgressTrack}
+                        />
                         <Text style={[styles.badgeProgressLabel, { color: colors.muted }]}>
                           {badge.nextThreshold! - badge.solves} to {badge.nextTier}
                         </Text>
@@ -396,14 +394,14 @@ export default function ProgressScreen() {
                       </Text>
                     </View>
                     <View style={styles.accuracyBarRow}>
-                      <View style={[styles.accuracyTrack, { backgroundColor: `${barColor}20` }]}>
-                        <View
-                          style={[
-                            styles.accuracyFill,
-                            { width: `${data.avg}%` as any, backgroundColor: barColor },
-                          ]}
-                        />
-                      </View>
+                      <AnimatedProgressBar
+                        value={data.avg}
+                        color={barColor}
+                        trackColor={`${barColor}20`}
+                        height={8}
+                        delay={150}
+                        style={styles.accuracyTrack}
+                      />
                       <Text style={[styles.accuracyPct, { color: barColor }]}>{data.avg}%</Text>
                     </View>
                     <View style={styles.accuracyMetaRow}>
@@ -445,14 +443,14 @@ export default function ProgressScreen() {
                       </Text>
                     </View>
                     <View style={styles.accuracyBarRow}>
-                      <View style={[styles.accuracyTrack, { backgroundColor: `${barColor}20` }]}>
-                        <View
-                          style={[
-                            styles.accuracyFill,
-                            { width: `${data.avg}%` as any, backgroundColor: barColor },
-                          ]}
-                        />
-                      </View>
+                      <AnimatedProgressBar
+                        value={data.avg}
+                        color={barColor}
+                        trackColor={`${barColor}20`}
+                        height={8}
+                        delay={150}
+                        style={styles.accuracyTrack}
+                      />
                       <Text style={[styles.accuracyPct, { color: barColor }]}>{data.avg}%</Text>
                     </View>
                     <View style={styles.accuracyMetaRow}>
