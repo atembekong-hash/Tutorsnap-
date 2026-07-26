@@ -665,14 +665,20 @@ export default function OnboardingScreen() {
 
               {/* Tutor personality preview */}
               {slide.id === "tutor-preview" && (
-                <View style={{ width: "100%", marginTop: 24, gap: 12 }}>
+                <ScrollView
+                  style={{ width: "100%", marginTop: 24 }}
+                  contentContainerStyle={{ gap: 12, paddingBottom: 8 }}
+                  showsVerticalScrollIndicator={false}
+                  nestedScrollEnabled={true}
+                  scrollEnabled={true}
+                >
                   {[
                     {
                       emoji: "🎓",
                       label: "Grade",
                       value: selectedGrade
                         ? GRADE_OPTIONS.find((g) => g.id === selectedGrade)?.label ?? selectedGrade
-                        : "Not set - you can change this anytime",
+                        : "Not set",
                     },
                     {
                       emoji: "📚",
@@ -711,7 +717,7 @@ export default function OnboardingScreen() {
                   <Text style={[styles.previewHint, { color: colors.muted }]}>
                     You can fine-tune all of this in Tutor Settings inside the chat.
                   </Text>
-                </View>
+                </ScrollView>
               )}
 
               {/* Trial slide */}
