@@ -22,6 +22,7 @@ import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import * as FileSystem from "expo-file-system/legacy";
 import { ScreenContainer } from "@/components/screen-container";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { toggleBookmark, isBookmarked } from "@/lib/bookmarks";
@@ -248,6 +249,7 @@ function WorkedExampleCopyButton({
 
 export default function SolutionScreen() {
   const colors = useColors();
+  const insets = useSafeAreaInsets();
   const { fs } = useFontSize();
   const router = useRouter();
   const params = useLocalSearchParams();
@@ -830,7 +832,7 @@ export default function SolutionScreen() {
   };
 
   return (
-    <ScreenContainer>
+    <ScreenContainer edges={["left", "right"]}>
       <ReAnimated.View entering={slideInEntering} style={{ flex: 1 }}>
       {/* Share Menu - Scrollable Bottom Sheet */}
       <Modal
@@ -1243,7 +1245,7 @@ export default function SolutionScreen() {
         </View>
       )}
       {/* Header */}
-      <View style={[styles.navBarWrap, { borderBottomColor: colors.border }]}>
+      <View style={[styles.navBarWrap, { borderBottomColor: colors.border, backgroundColor: colors.background, paddingTop: insets.top }]}>
         {/* Row 1: back / title / actions */}
         <View style={styles.navBar}>
           <TouchableOpacity accessibilityLabel="Go back" accessibilityHint="Returns to the previous screen" accessibilityRole="button" onPress={() => router.back()} style={styles.backBtn}>
