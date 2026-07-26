@@ -37,7 +37,7 @@ import { DotsLoader } from "@/components/skeleton";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CARD_WIDTH = SCREEN_WIDTH - 48;
-const CARD_HEIGHT = 320;
+const CARD_HEIGHT = 400;
 
 // ─── Flip Card ────────────────────────────────────────────────────────────────
 
@@ -149,9 +149,16 @@ function FlipCard({
         </View>
         <View style={styles.cardBody}>
           <Text style={[styles.cardHint, { color: colors.muted }]}>QUESTION</Text>
-          <Text style={[styles.cardQuestion, { color: colors.foreground }]} numberOfLines={8}>
-            {item.problem}
-          </Text>
+          <ScrollView
+            style={{ flex: 1 }}
+            showsVerticalScrollIndicator={false}
+            nestedScrollEnabled
+            onStartShouldSetResponder={() => true}
+          >
+            <Text style={[styles.cardQuestion, { color: colors.foreground }]}>
+              {item.problem}
+            </Text>
+          </ScrollView>
         </View>
         <View style={styles.cardFooter}>
           <Text style={[styles.tapHint, { color: colors.muted }]}>Tap to reveal answer</Text>
@@ -175,7 +182,7 @@ function FlipCard({
         <View style={[styles.cardBadge, { backgroundColor: `${subjectColor}15` }]}>
           <Text style={[styles.cardBadgeText, { color: subjectColor }]}>ANSWER</Text>
         </View>
-        <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+        <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} nestedScrollEnabled onStartShouldSetResponder={() => true}>
           <Text style={[styles.cardAnswer, { color: colors.foreground }]}>
             {item.answer}
           </Text>
