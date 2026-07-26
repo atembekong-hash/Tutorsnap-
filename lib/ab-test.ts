@@ -34,6 +34,8 @@ export interface TrialVariantConfig {
 
 const TRIAL_VARIANT_KEY = "@tutorsnap/trialVariant";
 const INSTALL_ID_KEY = "@tutorsnap/installId";
+const AB_ANALYTICS_KEY = "@tutorsnap/ab_analytics_events";
+const MAX_AB_EVENTS = 500;
 
 // ── Variant configs ───────────────────────────────────────────────────────────
 
@@ -126,4 +128,78 @@ export async function setTrialVariant(variant: TrialVariant | null): Promise<voi
 /** Synchronously returns the default config (for SSR / initial render). */
 export function getDefaultTrialVariantConfig(): TrialVariantConfig {
   return VARIANT_CONFIGS["14day"];
+}
+
+// ── Analytics ─────────────────────────────────────────────────────────────────
+
+export type AbTestEvent = "paywall_view" | "trial_started" | "purchase_completed" | "restore_completed";
+
+export interface AbTestAnalyticsEvent {
+  event: AbTestEvent;
+  variant: TrialVariant;
+  timestamp: number;
+  /** Optional extra metadata (e.g. selected plan product ID) */
+  meta?: Record<string, string | number | boolean>;
+}
+
+/**
+ * Log an A/B test analytics event to local AsyncStorage.
+ * Fire-and-forget — never throws.
+ *
+ * Events stored:
+ *   - paywall_view      : user opened the paywall screen
+ *   - trial_started     : user tapped "Start Free Trial" and purchase succeeded
+ *   - purchase_completed: user completed a paid purchase (no trial)
+ *   - restore_completed : user restored a previous purchase
+ *
+ * @example
+ *   logAbTestEvent("paywall_view", trialVariant.variant);
+ *   logAbTestEvent("trial_started", trialVariant.variant, { plan: selectedPlan });
+ */
+export async function logAbTestEvent(
+  event: AbTestEvent,
+  variant: TrialVariant,
+  meta?: Record<string, string | number | boolean>,
+): Promise<void> {
+  try {
+    const entry: AbTestAnalyticsEvent = {
+      event,
+      variant,
+      timestamp: Date.now(),
+      ...(meta ? { meta } : {}),
+    };
+    const stored = await AsyncStorage.getItem(AB_ANALYTICS_KEY);
+    const events: AbTestAnalyticsEvent[] = stored ? JSON.parse(stored) : [];
+    events.push(entry);
+    // Keep only the most recent MAX_AB_EVENTS to avoid unbounded growth
+    if (events.length > MAX_AB_EVENTS) events.splice(0, events.length - MAX_AB_EVENTS);
+    await AsyncStorage.setItem(AB_ANALYTICS_KEY, JSON.stringify(events));
+  } catch {
+    // non-critical — never throw
+  }
+}
+
+/**
+ * Retrieve all stored A/B test analytics events.
+ * Returns an empty array on error.
+ */
+export async function getAbTestAnalyticsEvents(): Promise<AbTestAnalyticsEvent[]> {
+  try {
+    const stored = await AsyncStorage.getItem(AB_ANALYTICS_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Clear all stored A/B test analytics events.
+ * Call after exporting/uploading to a backend.
+ */
+export async function clearAbTestAnalyticsEvents(): Promise<void> {
+  try {
+    await AsyncStorage.removeItem(AB_ANALYTICS_KEY);
+  } catch {
+    // non-critical
+  }
 }

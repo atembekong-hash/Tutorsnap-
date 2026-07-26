@@ -249,7 +249,7 @@ export default function RootLayout() {
         const progress = await getProgress();
         await scheduleStreakAtRiskCheck(
           progress.streak.lastSolvedDate,
-          progress.streak.current,
+          progress.streak.currentStreak,
         );
       } catch {
         // non-critical

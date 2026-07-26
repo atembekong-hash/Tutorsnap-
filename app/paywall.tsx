@@ -48,7 +48,7 @@ import {
   restorePurchases,
 } from "@/lib/subscription";
 import { DotsLoader } from "@/components/skeleton";
-import { getTrialVariantConfig, getDefaultTrialVariantConfig, type TrialVariantConfig } from "@/lib/ab-test";
+import { getTrialVariantConfig, getDefaultTrialVariantConfig, logAbTestEvent, type TrialVariantConfig } from "@/lib/ab-test";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -98,6 +98,8 @@ export default function PaywallScreen() {
           getTrialVariantConfig(),
         ]);
         setTrialVariant(variantConfig);
+        // Log paywall view for A/B test analytics
+        logAbTestEvent("paywall_view", variantConfig.variant).catch(() => {});
         setIsDevMode(status.isDevMode);
         if (trialStart !== null) {
           const remaining = getTrialDaysRemaining(trialStart);
@@ -128,6 +130,8 @@ export default function PaywallScreen() {
       const result = await purchaseProduct(selectedPlan);
       if (result.success) {
         H.notificationSuccess();
+        // Log trial/purchase conversion for A/B test analytics
+        logAbTestEvent("trial_started", trialVariant.variant, { plan: selectedPlan }).catch(() => {});
         // Navigate to the celebration screen instead of a plain Alert
         router.replace("/premium-welcome" as any);
       } else if (!result.cancelled) {
@@ -149,6 +153,8 @@ export default function PaywallScreen() {
       const restored = await restorePurchases();
       if (restored) {
         H.notificationSuccess();
+        // Log restore event for A/B test analytics
+        logAbTestEvent("restore_completed", trialVariant.variant).catch(() => {});
         // Navigate to the celebration screen with restored variant
         router.replace(("/premium-welcome?restored=true") as any);
       } else {

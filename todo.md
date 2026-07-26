@@ -1146,3 +1146,8 @@
 - [x] Feature A: Paywall A/B test — lib/ab-test.ts + paywall.tsx + onboarding.tsx variant switching
 - [x] Feature B: Streak at-risk notification — scheduleStreakAtRiskCheck in notifications.ts + _layout.tsx AppState hook + cancelStreakAtRiskReminder in index.tsx after solve
 - [x] Feature C: Classroom share deep link — tutorsnap://classroom/join?code=XXXX handler in _layout.tsx + classroom.tsx useFocusEffect pre-fill + handleShareCode deep link URL
+
+## v1.8.5 — Three New Features (Jul 26 2026)
+- [x] Feature A: A/B test analytics — logAbTestEvent in lib/ab-test.ts, fire on paywall view + conversion
+- [ ] Feature B: Classroom QR code — Show QR button in manage tab, Modal with react-native-qrcode-svg
+- [x] Feature C: Streak personalisation — ALREADY DONE (scheduleStreakAtRiskCheck body already includes streak count: "You're on a ${currentStreak}-day streak")
