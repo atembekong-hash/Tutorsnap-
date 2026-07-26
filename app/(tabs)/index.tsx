@@ -1,4 +1,11 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
+import ReAnimated, {
+  FadeInDown,
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withSpring,
+} from "react-native-reanimated";
 import { Modal ,
   View,
   Text,
@@ -449,6 +456,7 @@ function TodayRow({
     <View>
       {/* Horizontal small-widget strip (streak, study, badge, affiliate, etc.) */}
       {cards.length > 0 && (
+        <ReAnimated.View entering={FadeInDown.duration(350).delay(80)}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -460,10 +468,11 @@ function TodayRow({
           pagingEnabled={false}
         >
           {cards}
-        </ScrollView>
+                </ScrollView>
+        </ReAnimated.View>
       )}
-
       {/* ── Triple Widget: Daily Challenge + Rankings + Weekly Goal ── */}
+      <ReAnimated.View entering={FadeInDown.duration(350).delay(180)}>
       <View style={[trStyles.tripleCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         {/* Row 1: Daily Challenge */}
         {isWidgetVisible("challenge") && (
@@ -537,11 +546,11 @@ function TodayRow({
             <IconSymbol size={14} name="chevron.right" color={colors.muted} />
           </TouchableOpacity>
         )}
-      </View>
+            </View>
+      </ReAnimated.View>
     </View>
   );
 }
-
 const trStyles = StyleSheet.create({
   container: { marginTop: 8 },
   row: { paddingHorizontal: 16, gap: 10, paddingBottom: 4 },
@@ -644,6 +653,12 @@ function SolveScreenContent() {
   const [sessionPreviewTooltip, setSessionPreviewTooltip] = useState(false);
   const bannerScaleAnim = useRef(new Animated.Value(1)).current;
   const quickAskInputRef = useRef<TextInput>(null);
+  // Phase 7 animations
+  const [inputFocused, setInputFocused] = useState(false);
+  const solveBtnScale = useSharedValue(1);
+  const solveBtnAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: solveBtnScale.value }],
+  }));
   const [undoToast, setUndoToast] = useState(false);
   const undoToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showQuickAskSubjectPicker, setShowQuickAskSubjectPicker] = useState(false);
@@ -1230,7 +1245,8 @@ function SolveScreenContent() {
                 styles.inputCard,
                 {
                   backgroundColor: solveMutation.isPending ? `${colors.primary}08` : `${colors.primary}05`,
-                  borderColor: solveMutation.isPending ? colors.primary : `${colors.primary}60`,
+                  borderColor: solveMutation.isPending ? colors.primary : inputFocused ? colors.primary : `${colors.primary}60`,
+                  borderWidth: inputFocused || solveMutation.isPending ? 1.5 : 1,
                 },
               ]}
             >
@@ -1248,7 +1264,8 @@ function SolveScreenContent() {
                   onSelectionChange={(e) => {
                     cursorPosRef.current = e.nativeEvent.selection.end;
                   }}
-                  onFocus={() => setShowMathKeyboard(false)}
+                  onFocus={() => { setShowMathKeyboard(false); setInputFocused(true); }}
+                  onBlur={() => setInputFocused(false)}
                 />
                 {Platform.OS !== "web" && (
                   <View style={styles.inputMicWrapper} pointerEvents="box-none">
@@ -1337,11 +1354,17 @@ function SolveScreenContent() {
               />
 
               {/* Pill 3: Solve with AI */}
+              <ReAnimated.View style={solveBtnAnimStyle}>
               <TouchableOpacity
                 accessibilityLabel="Solve problem"
-                onPress={handleSolve}
+                onPress={() => {
+                  solveBtnScale.value = withSpring(1, { damping: 8, stiffness: 200 });
+                  handleSolve();
+                }}
+                onPressIn={() => { solveBtnScale.value = withTiming(0.96, { duration: 80 }); }}
+                onPressOut={() => { solveBtnScale.value = withSpring(1, { damping: 10, stiffness: 180 }); }}
                 disabled={!problem.trim() || solveMutation.isPending || !isOnline}
-                activeOpacity={0.85}
+                activeOpacity={1}
                 style={[styles.actionPill, styles.actionPillSolve, {
                   backgroundColor: isOnline ? colors.primary : colors.muted,
                   borderColor: isOnline ? colors.primary : colors.muted,
@@ -1356,6 +1379,7 @@ function SolveScreenContent() {
                   <><IconSymbol size={14} name="wand.and.stars" color="#FFFFFF" /><Text style={styles.actionPillSolveText}>Solve with AI</Text></>
                 )}
               </TouchableOpacity>
+              </ReAnimated.View>
 
             </View>
 
