@@ -1175,3 +1175,13 @@
 - [x] Feature 3a: Staggered entry animation on Scan and Practice tab screens
 - [x] Feature 3b: Staggered entry animation on History and Chat tab screens
 - [x] Deep scan: all features verified, tests passing, Metro clean
+
+## v1.9.0 — RC Integration + Chat Layout + Production Fixes (Jul 26 2026)
+- [x] Phase A: Fix failing test — update revenuecat-env.test.ts to reflect RC SDK is back in use
+- [ ] Phase B: RC logIn — call Purchases.logIn(openId) after user signs in (lib/subscription.ts + auth hook)
+- [ ] Phase C: tRPC subscription.getStatus — server-side query reading subscriptions table (server/routers.ts)
+- [ ] Phase D: U9 — hide paywall dev mode banner in production builds (__DEV__ guard in paywall.tsx)
+- [ ] Phase E: Q5 — fix paywall timer: longer delay (3000ms) + skip if already shown this session (_layout.tsx)
+- [ ] Phase F: Chat layout — pin composer to bottom, fix auto-scroll, remove scroll resistance (chat.tsx)
+- [ ] Phase G: Deep scan — TS check, all tests, screenshots of every changed screen
+- [ ] Phase H: Final checkpoint + EAS APK build
