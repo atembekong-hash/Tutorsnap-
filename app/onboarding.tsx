@@ -626,6 +626,8 @@ export default function OnboardingScreen() {
                 <ScrollView keyboardDismissMode="on-drag"
                   style={{ width: "100%", marginTop: 20 }}
                   showsVerticalScrollIndicator={false}
+                  nestedScrollEnabled={true}
+                  scrollEnabled={true}
                   contentContainerStyle={{ gap: 8, paddingBottom: 8 }}
                 >
                   {GRADE_OPTIONS.map((opt) => {
