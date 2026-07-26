@@ -17,6 +17,7 @@ export interface EmailOtpResult {
 export interface EmailVerifyResult {
   success: boolean;
   error?: string;
+  token?: string; // Real JWT session token (same format as Google OAuth)
   user?: {
     id: number;
     openId: string;

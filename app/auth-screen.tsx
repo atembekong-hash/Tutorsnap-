@@ -18,6 +18,7 @@ import { useRouter } from "expo-router";
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import { setUserInfo, setSessionToken, setAuthTokens } from "@/lib/_core/auth-enhanced";
+import { resetSyncClient, pullAllFromCloud, pushAllLocalDataToCloud } from "@/lib/cloud-sync";
 import { startTokenRefreshTimer } from "@/lib/token-refresh";
 import { validateOAuthCredentials } from "@/lib/oauth-service";
 import { sendEmailOtp, verifyEmailOtp } from "@/lib/email-auth";
@@ -77,6 +78,12 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
       refreshExpiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
     });
     startTokenRefreshTimer();
+    // Reset the sync client so it picks up the new session token
+    resetSyncClient();
+    // Restore all cloud data (fire-and-forget — don't block navigation)
+    pullAllFromCloud()
+      .then(() => pushAllLocalDataToCloud())
+      .catch((err) => console.warn("[Auth] Cloud sync after sign-in failed (non-fatal):", err));
     await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     onAuthSuccess?.();
     const route = await getPostAuthRoute();
@@ -201,9 +208,9 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       const result = await verifyEmailOtp(email.trim().toLowerCase(), otp);
       if (result.success && result.user) {
-        // Use email as a synthetic "token" for local auth storage
-        const syntheticToken = `email:${result.user.openId}:${Date.now()}`;
-        await finaliseSignIn(result.user, syntheticToken);
+        // Use the real JWT session token from the server (falls back to synthetic for offline dev)
+        const sessionToken = result.token ?? `email:${result.user.openId}:${Date.now()}`;
+        await finaliseSignIn(result.user, sessionToken);
       } else {
         setError(result.error || "Invalid code");
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);

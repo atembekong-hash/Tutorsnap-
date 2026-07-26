@@ -12,6 +12,7 @@
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { ChatMessage } from "@/shared/types";
+import { pushChatSession as cloudPushSession, deleteChatSessionFromCloud } from "@/lib/cloud-sync";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -198,6 +199,19 @@ export async function saveSession(session: ChatSession, limit?: number): Promise
   }
 
   await writeIndex(newIndex);
+  // Mirror to cloud (fire-and-forget)
+  cloudPushSession({
+    sessionId: trimmed.id,
+    title: trimmed.title,
+    subject: trimmed.subject,
+    gradeLevel: trimmed.gradeLevel,
+    messagesJson: JSON.stringify(trimmed.messages),
+    tags: (trimmed.tags ?? []).join(","),
+    pinned: pins.includes(trimmed.id),
+    messageCount: trimmed.messageCount,
+    sessionCreatedAt: trimmed.createdAt,
+    sessionUpdatedAt: trimmed.updatedAt,
+  }).catch(() => {});
 }
 
 /** Load a single session by ID. Returns null if not found. */
@@ -220,6 +234,8 @@ export async function deleteSession(id: string): Promise<void> {
   await writeIndex(index.filter((sid) => sid !== id));
   // Also remove from pins if present
   await unpinSession(id);
+  // Mirror to cloud (fire-and-forget)
+  deleteChatSessionFromCloud(id).catch(() => {});
 }
 
 /** Rename a session title. */

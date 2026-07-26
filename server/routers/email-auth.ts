@@ -57,6 +57,7 @@ import { eq, and, lt, gt, sql } from "drizzle-orm";
 import { createHmac, randomInt, timingSafeEqual } from "crypto";
 import { hostname } from "os";
 import type { Request } from "express";
+import { sdk } from "@/server/_core/sdk";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -466,8 +467,13 @@ export const emailAuthRouter = router({
           // console.log(`[EmailAuth] User signed in: ${openId}`);
         }
 
+        // Issue a real JWT session token (same format as Google OAuth)
+        const sessionToken = await sdk.createSessionToken(user.openId, {
+          name: user.name || user.email?.split("@")[0] || "",
+        });
         return {
           success: true,
+          token: sessionToken,
           user: {
             id: user.id,
             openId: user.openId,
@@ -481,7 +487,6 @@ export const emailAuthRouter = router({
         return { success: false, error: "Failed to sign in. Please try again." };
       }
     }),
-
   /**
    * Change-email step 1: Send an OTP to the new email address.
    */

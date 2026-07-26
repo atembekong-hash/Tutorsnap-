@@ -804,6 +804,16 @@ function SolveScreenContent() {
         const history: HistoryItem[] = existing ? JSON.parse(existing) : [];
         history.unshift(historyItem);
         await AsyncStorage.setItem("math_history", JSON.stringify(history.slice(0, 100)));
+        // Mirror to cloud (fire-and-forget)
+        const { pushSolve } = await import("@/lib/cloud-sync");
+        pushSolve({
+          problem: historyItem.problem,
+          answer: historyItem.answer,
+          subject: historyItem.subject,
+          solutionJson: JSON.stringify({ steps: historyItem.steps, conceptExplained: historyItem.conceptExplained }),
+          bookmarked: false,
+          solvedAt: historyItem.solvedAt ?? Date.now(),
+        }).catch(() => {});
       } catch (_) {
         // ignore
       }

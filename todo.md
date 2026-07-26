@@ -1076,3 +1076,12 @@
 - [x] Feature 1: Trial days-used progress bar on paywall screen
 - [x] Feature 2: Streak freeze earn toast in settings when freeze is earned
 - [x] Feature 3: Podium empty-state placeholder (Be first! ghost cards) for missing top-3 players
+
+## Cloud Sync / Data Persistence Fix (Forensic Investigation)
+
+- [ ] Add DB schema tables: solve_history, chat_sessions, user_progress, user_bookmarks, user_notes
+- [ ] Add tRPC server endpoints for each table (CRUD, keyed by userId)
+- [ ] Add client-side sync layer: upload on write, download on login
+- [ ] Wire sync trigger into auth flow (after sign-in, pull all cloud data)
+- [ ] Wire sync trigger into sign-out (no data wipe, just clear session token)
+- [ ] End-to-end test: sign-in → create data → reinstall → sign-in → verify data restored

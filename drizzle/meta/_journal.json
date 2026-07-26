@@ -57,6 +57,20 @@
       "when": 1784931305510,
       "tag": "0007_robust_reavers",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1785029455323,
+      "tag": "0008_narrow_zaladane",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1753490000000,
+      "tag": "0008_narrow_zaladane",
+      "breakpoints": true
     }
   ]
 }

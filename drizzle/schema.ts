@@ -235,3 +235,140 @@ export const aireSubjectCalibration = mysqlTable(
 
 export type AireSubjectCalibration = typeof aireSubjectCalibration.$inferSelect;
 export type InsertAireSubjectCalibration = typeof aireSubjectCalibration.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Cloud-sync tables — all user data that must survive reinstall / new builds
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Solve history — every problem the user has solved.
+ * Mirrors the local "math_history" AsyncStorage key.
+ * Synced to the server on every solve; pulled on sign-in.
+ */
+export const solveHistory = mysqlTable(
+  "solve_history",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    /** The problem text (may be a question or image description). */
+    problem: text("problem").notNull(),
+    /** The AI-generated answer (short form). */
+    answer: text("answer"),
+    /** Subject slug (e.g. "algebra", "calculus"). */
+    subject: varchar("subject", { length: 64 }),
+    /** Full solution JSON blob (steps, hints, etc.) — stored as TEXT. */
+    solutionJson: text("solutionJson"),
+    /** Whether the user bookmarked this solve. */
+    bookmarked: boolean("bookmarked").default(false).notNull(),
+    /** Client-side timestamp of when the solve happened. */
+    solvedAt: timestamp("solvedAt").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (t) => [index("solve_history_userId_idx").on(t.userId, t.solvedAt)],
+);
+
+export type SolveHistoryRow = typeof solveHistory.$inferSelect;
+export type InsertSolveHistory = typeof solveHistory.$inferInsert;
+
+/**
+ * Chat sessions — full AI tutor conversation history.
+ * Mirrors the local "@tutorsnap/chatSessions/*" AsyncStorage keys.
+ * Each row is one session; messages stored as JSON blob.
+ */
+export const chatSessions = mysqlTable(
+  "chat_sessions",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    /** Client-generated session ID (e.g. "session_1234_abc"). */
+    sessionId: varchar("sessionId", { length: 64 }).notNull(),
+    title: varchar("title", { length: 255 }),
+    subject: varchar("subject", { length: 64 }),
+    gradeLevel: varchar("gradeLevel", { length: 32 }),
+    /** Full messages JSON array. */
+    messagesJson: text("messagesJson").notNull(),
+    /** Comma-separated tag strings. */
+    tags: text("tags"),
+    pinned: boolean("pinned").default(false).notNull(),
+    messageCount: int("messageCount").default(0).notNull(),
+    /** Client-side timestamps. */
+    sessionCreatedAt: timestamp("sessionCreatedAt").notNull(),
+    sessionUpdatedAt: timestamp("sessionUpdatedAt").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (t) => [
+    index("chat_sessions_userId_idx").on(t.userId),
+    index("chat_sessions_sessionId_idx").on(t.userId, t.sessionId),
+  ],
+);
+
+export type ChatSessionRow = typeof chatSessions.$inferSelect;
+export type InsertChatSession = typeof chatSessions.$inferInsert;
+
+/**
+ * User progress — streak, subject counts, weekly activity.
+ * Mirrors the local "math_progress" AsyncStorage key.
+ * One row per user; upserted on every solve.
+ */
+export const userProgress = mysqlTable("user_progress", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }).unique(),
+  /** Full ProgressData JSON blob. */
+  progressJson: text("progressJson").notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type UserProgressRow = typeof userProgress.$inferSelect;
+export type InsertUserProgress = typeof userProgress.$inferInsert;
+
+/**
+ * User bookmarks — saved solutions.
+ * Mirrors the local "math_bookmarks" AsyncStorage key.
+ */
+export const userBookmarks = mysqlTable(
+  "user_bookmarks",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    /** Client-side bookmark ID (timestamp string). */
+    bookmarkId: varchar("bookmarkId", { length: 64 }).notNull(),
+    /** Full HistoryItem JSON blob. */
+    itemJson: text("itemJson").notNull(),
+    /** Subject slug for server-side filtering. */
+    subject: varchar("subject", { length: 64 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (t) => [
+    index("user_bookmarks_userId_idx").on(t.userId),
+    index("user_bookmarks_bookmarkId_idx").on(t.userId, t.bookmarkId),
+  ],
+);
+
+export type UserBookmarkRow = typeof userBookmarks.$inferSelect;
+export type InsertUserBookmark = typeof userBookmarks.$inferInsert;
+
+/**
+ * User notes — saved notes from the Notes screen.
+ * Mirrors the local "tutor_saved_notes" AsyncStorage key.
+ */
+export const userNotes = mysqlTable(
+  "user_notes",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    /** Client-side note ID. */
+    noteId: varchar("noteId", { length: 64 }).notNull(),
+    /** Full note JSON blob. */
+    noteJson: text("noteJson").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (t) => [
+    index("user_notes_userId_idx").on(t.userId),
+    index("user_notes_noteId_idx").on(t.userId, t.noteId),
+  ],
+);
+
+export type UserNoteRow = typeof userNotes.$inferSelect;
+export type InsertUserNote = typeof userNotes.$inferInsert;

@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { MathSubject } from "@/shared/types";
 import { getSubjectColor, getSubjectLabel } from "@/lib/subjects";
+import { pushProgress } from "@/lib/cloud-sync";
 
 export type StreakData = {
   currentStreak: number;
@@ -149,6 +150,8 @@ export async function recordSolve(subject: MathSubject): Promise<ProgressData> {
   };
 
   await AsyncStorage.setItem(PROGRESS_KEY, JSON.stringify(updated));
+  // Mirror to cloud (fire-and-forget)
+  pushProgress(JSON.stringify(updated)).catch(() => {});
   return updated;
 }
 
@@ -175,6 +178,8 @@ export async function recordQuizBonus(pct: number): Promise<{ awarded: boolean; 
   const updated = { ...progress, streak };
   await AsyncStorage.setItem(PROGRESS_KEY, JSON.stringify(updated));
   await AsyncStorage.setItem(bonusKey, "1");
+  // Mirror to cloud (fire-and-forget)
+  pushProgress(JSON.stringify(updated)).catch(() => {});
   return { awarded: true, newStreak: streak.currentStreak };
 }
 

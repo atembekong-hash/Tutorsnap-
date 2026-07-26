@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { router, publicProcedure, protectedProcedure } from "./_core/trpc";
 import { getDb } from "./db";
-import { aireFeedback, aireSubjectCalibration } from "../drizzle/schema";
+import { aireFeedback, aireSubjectCalibration, solveHistory, chatSessions, userProgress, userBookmarks, userNotes } from "../drizzle/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { invokeLLM } from "./_core/llm";
 import { systemRouter } from "./_core/systemRouter";
@@ -1367,6 +1367,378 @@ const aireRouter = router({
     }),
 });
 
+// ─── Cloud Sync Router ───────────────────────────────────────────────────────
+const cloudSyncRouter = router({
+  pushSolveHistory: protectedProcedure
+    .input(z.object({
+      items: z.array(z.object({
+        problem: z.string(),
+        answer: z.string().optional(),
+        subject: z.string().optional(),
+        solutionJson: z.string().optional(),
+        bookmarked: z.boolean().optional(),
+        solvedAt: z.number(),
+      })).max(200),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        const db = await getDb();
+        if (!db) return { ok: false };
+        const userId = ctx.user.id;
+        for (const item of input.items) {
+          await db.insert(solveHistory).values({
+            userId,
+            problem: item.problem,
+            answer: item.answer ?? null,
+            subject: item.subject ?? null,
+            solutionJson: item.solutionJson ?? null,
+            bookmarked: item.bookmarked ?? false,
+            solvedAt: new Date(item.solvedAt),
+          });
+        }
+        return { ok: true };
+      } catch (err) {
+        console.error("[cloudSync] pushSolveHistory error:", err);
+        return { ok: false };
+      }
+    }),
+
+  pullSolveHistory: protectedProcedure
+    .query(async ({ ctx }) => {
+      try {
+        const db = await getDb();
+        if (!db) return { items: [] };
+        const rows = await db
+          .select()
+          .from(solveHistory)
+          .where(eq(solveHistory.userId, ctx.user.id))
+          .orderBy(desc(solveHistory.solvedAt))
+          .limit(200);
+        return {
+          items: rows.map((r) => ({
+            problem: r.problem,
+            answer: r.answer ?? "",
+            subject: r.subject ?? "",
+            solutionJson: r.solutionJson ?? null,
+            bookmarked: r.bookmarked,
+            solvedAt: r.solvedAt.getTime(),
+          })),
+        };
+      } catch (err) {
+        console.error("[cloudSync] pullSolveHistory error:", err);
+        return { items: [] };
+      }
+    }),
+
+  pushChatSession: protectedProcedure
+    .input(z.object({
+      sessionId: z.string().max(64),
+      title: z.string().max(255).optional(),
+      subject: z.string().max(64).optional(),
+      gradeLevel: z.string().max(32).optional(),
+      messagesJson: z.string(),
+      tags: z.string().optional(),
+      pinned: z.boolean().optional(),
+      messageCount: z.number().int().optional(),
+      sessionCreatedAt: z.number(),
+      sessionUpdatedAt: z.number(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        const db = await getDb();
+        if (!db) return { ok: false };
+        const userId = ctx.user.id;
+        const existing = await db
+          .select({ id: chatSessions.id })
+          .from(chatSessions)
+          .where(and(eq(chatSessions.userId, userId), eq(chatSessions.sessionId, input.sessionId)))
+          .limit(1);
+        if (existing.length > 0) {
+          await db.update(chatSessions)
+            .set({
+              title: input.title ?? null,
+              subject: input.subject ?? null,
+              gradeLevel: input.gradeLevel ?? null,
+              messagesJson: input.messagesJson,
+              tags: input.tags ?? null,
+              pinned: input.pinned ?? false,
+              messageCount: input.messageCount ?? 0,
+              sessionUpdatedAt: new Date(input.sessionUpdatedAt),
+            })
+            .where(and(eq(chatSessions.userId, userId), eq(chatSessions.sessionId, input.sessionId)));
+        } else {
+          await db.insert(chatSessions).values({
+            userId,
+            sessionId: input.sessionId,
+            title: input.title ?? null,
+            subject: input.subject ?? null,
+            gradeLevel: input.gradeLevel ?? null,
+            messagesJson: input.messagesJson,
+            tags: input.tags ?? null,
+            pinned: input.pinned ?? false,
+            messageCount: input.messageCount ?? 0,
+            sessionCreatedAt: new Date(input.sessionCreatedAt),
+            sessionUpdatedAt: new Date(input.sessionUpdatedAt),
+          });
+        }
+        return { ok: true };
+      } catch (err) {
+        console.error("[cloudSync] pushChatSession error:", err);
+        return { ok: false };
+      }
+    }),
+
+  deleteChatSession: protectedProcedure
+    .input(z.object({ sessionId: z.string().max(64) }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        const db = await getDb();
+        if (!db) return { ok: false };
+        await db.delete(chatSessions)
+          .where(and(eq(chatSessions.userId, ctx.user.id), eq(chatSessions.sessionId, input.sessionId)));
+        return { ok: true };
+      } catch (err) {
+        console.error("[cloudSync] deleteChatSession error:", err);
+        return { ok: false };
+      }
+    }),
+
+  pullChatSessions: protectedProcedure
+    .query(async ({ ctx }) => {
+      try {
+        const db = await getDb();
+        if (!db) return { sessions: [] };
+        const rows = await db
+          .select()
+          .from(chatSessions)
+          .where(eq(chatSessions.userId, ctx.user.id))
+          .orderBy(desc(chatSessions.sessionUpdatedAt))
+          .limit(100);
+        return {
+          sessions: rows.map((r) => ({
+            sessionId: r.sessionId,
+            title: r.title ?? "",
+            subject: r.subject ?? null,
+            gradeLevel: r.gradeLevel ?? null,
+            messagesJson: r.messagesJson,
+            tags: r.tags ?? "",
+            pinned: r.pinned,
+            messageCount: r.messageCount,
+            sessionCreatedAt: r.sessionCreatedAt.getTime(),
+            sessionUpdatedAt: r.sessionUpdatedAt.getTime(),
+          })),
+        };
+      } catch (err) {
+        console.error("[cloudSync] pullChatSessions error:", err);
+        return { sessions: [] };
+      }
+    }),
+
+  pushProgress: protectedProcedure
+    .input(z.object({ progressJson: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        const db = await getDb();
+        if (!db) return { ok: false };
+        const userId = ctx.user.id;
+        const existing = await db
+          .select({ id: userProgress.id })
+          .from(userProgress)
+          .where(eq(userProgress.userId, userId))
+          .limit(1);
+        if (existing.length > 0) {
+          await db.update(userProgress)
+            .set({ progressJson: input.progressJson })
+            .where(eq(userProgress.userId, userId));
+        } else {
+          await db.insert(userProgress).values({ userId, progressJson: input.progressJson });
+        }
+        return { ok: true };
+      } catch (err) {
+        console.error("[cloudSync] pushProgress error:", err);
+        return { ok: false };
+      }
+    }),
+
+  pullProgress: protectedProcedure
+    .query(async ({ ctx }) => {
+      try {
+        const db = await getDb();
+        if (!db) return { progressJson: null };
+        const rows = await db
+          .select({ progressJson: userProgress.progressJson })
+          .from(userProgress)
+          .where(eq(userProgress.userId, ctx.user.id))
+          .limit(1);
+        return { progressJson: rows[0]?.progressJson ?? null };
+      } catch (err) {
+        console.error("[cloudSync] pullProgress error:", err);
+        return { progressJson: null };
+      }
+    }),
+
+  pushBookmarks: protectedProcedure
+    .input(z.object({
+      bookmarks: z.array(z.object({
+        bookmarkId: z.string().max(64),
+        itemJson: z.string(),
+        subject: z.string().max(64).optional(),
+      })).max(200),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        const db = await getDb();
+        if (!db) return { ok: false };
+        const userId = ctx.user.id;
+        await db.delete(userBookmarks).where(eq(userBookmarks.userId, userId));
+        if (input.bookmarks.length > 0) {
+          await db.insert(userBookmarks).values(
+            input.bookmarks.map((b) => ({
+              userId,
+              bookmarkId: b.bookmarkId,
+              itemJson: b.itemJson,
+              subject: b.subject ?? null,
+            }))
+          );
+        }
+        return { ok: true };
+      } catch (err) {
+        console.error("[cloudSync] pushBookmarks error:", err);
+        return { ok: false };
+      }
+    }),
+
+  pullBookmarks: protectedProcedure
+    .query(async ({ ctx }) => {
+      try {
+        const db = await getDb();
+        if (!db) return { bookmarks: [] };
+        const rows = await db
+          .select()
+          .from(userBookmarks)
+          .where(eq(userBookmarks.userId, ctx.user.id))
+          .orderBy(desc(userBookmarks.createdAt))
+          .limit(200);
+        return {
+          bookmarks: rows.map((r) => ({
+            bookmarkId: r.bookmarkId,
+            itemJson: r.itemJson,
+            subject: r.subject ?? null,
+          })),
+        };
+      } catch (err) {
+        console.error("[cloudSync] pullBookmarks error:", err);
+        return { bookmarks: [] };
+      }
+    }),
+
+  pushNotes: protectedProcedure
+    .input(z.object({
+      notes: z.array(z.object({
+        noteId: z.string().max(64),
+        noteJson: z.string(),
+      })).max(500),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      try {
+        const db = await getDb();
+        if (!db) return { ok: false };
+        const userId = ctx.user.id;
+        await db.delete(userNotes).where(eq(userNotes.userId, userId));
+        if (input.notes.length > 0) {
+          await db.insert(userNotes).values(
+            input.notes.map((n) => ({
+              userId,
+              noteId: n.noteId,
+              noteJson: n.noteJson,
+            }))
+          );
+        }
+        return { ok: true };
+      } catch (err) {
+        console.error("[cloudSync] pushNotes error:", err);
+        return { ok: false };
+      }
+    }),
+
+  pullNotes: protectedProcedure
+    .query(async ({ ctx }) => {
+      try {
+        const db = await getDb();
+        if (!db) return { notes: [] };
+        const rows = await db
+          .select()
+          .from(userNotes)
+          .where(eq(userNotes.userId, ctx.user.id))
+          .orderBy(desc(userNotes.updatedAt))
+          .limit(500);
+        return {
+          notes: rows.map((r) => ({
+            noteId: r.noteId,
+            noteJson: r.noteJson,
+          })),
+        };
+      } catch (err) {
+        console.error("[cloudSync] pullNotes error:", err);
+        return { notes: [] };
+      }
+    }),
+
+  /**
+   * Single round-trip to restore all user data after sign-in.
+   */
+  pullAll: protectedProcedure
+    .query(async ({ ctx }) => {
+      try {
+        const db = await getDb();
+        if (!db) return { solveHistory: [], chatSessions: [], progressJson: null, bookmarks: [], notes: [] };
+        const userId = ctx.user.id;
+        const [historyRows, chatRows, progressRows, bookmarkRows, noteRows] = await Promise.all([
+          db.select().from(solveHistory).where(eq(solveHistory.userId, userId)).orderBy(desc(solveHistory.solvedAt)).limit(200),
+          db.select().from(chatSessions).where(eq(chatSessions.userId, userId)).orderBy(desc(chatSessions.sessionUpdatedAt)).limit(100),
+          db.select({ progressJson: userProgress.progressJson }).from(userProgress).where(eq(userProgress.userId, userId)).limit(1),
+          db.select().from(userBookmarks).where(eq(userBookmarks.userId, userId)).orderBy(desc(userBookmarks.createdAt)).limit(200),
+          db.select().from(userNotes).where(eq(userNotes.userId, userId)).orderBy(desc(userNotes.updatedAt)).limit(500),
+        ]);
+        return {
+          solveHistory: historyRows.map((r) => ({
+            problem: r.problem,
+            answer: r.answer ?? "",
+            subject: r.subject ?? "",
+            solutionJson: r.solutionJson ?? null,
+            bookmarked: r.bookmarked,
+            solvedAt: r.solvedAt.getTime(),
+          })),
+          chatSessions: chatRows.map((r) => ({
+            sessionId: r.sessionId,
+            title: r.title ?? "",
+            subject: r.subject ?? null,
+            gradeLevel: r.gradeLevel ?? null,
+            messagesJson: r.messagesJson,
+            tags: r.tags ?? "",
+            pinned: r.pinned,
+            messageCount: r.messageCount,
+            sessionCreatedAt: r.sessionCreatedAt.getTime(),
+            sessionUpdatedAt: r.sessionUpdatedAt.getTime(),
+          })),
+          progressJson: progressRows[0]?.progressJson ?? null,
+          bookmarks: bookmarkRows.map((r) => ({
+            bookmarkId: r.bookmarkId,
+            itemJson: r.itemJson,
+            subject: r.subject ?? null,
+          })),
+          notes: noteRows.map((r) => ({
+            noteId: r.noteId,
+            noteJson: r.noteJson,
+          })),
+        };
+      } catch (err) {
+        console.error("[cloudSync] pullAll error:", err);
+        return { solveHistory: [], chatSessions: [], progressJson: null, bookmarks: [], notes: [] };
+      }
+    }),
+});
+
 // Auth router stub (required by tests)
 const authRouter = router({
   logout: protectedProcedure.mutation(async ({ ctx }) => {
@@ -1383,6 +1755,7 @@ const authRouter = router({
 
 export const appRouter = router({
   math: mathRouter,
+  cloudSync: cloudSyncRouter,
   academic: academicRouter,
   auth: authRouter,
   user: userRouter,
