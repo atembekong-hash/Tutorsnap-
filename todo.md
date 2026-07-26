@@ -1085,3 +1085,10 @@
 - [ ] Wire sync trigger into auth flow (after sign-in, pull all cloud data)
 - [ ] Wire sync trigger into sign-out (no data wipe, just clear session token)
 - [ ] End-to-end test: sign-in → create data → reinstall → sign-in → verify data restored
+
+## Animation Revolution — Phase 1: Shared Utilities
+- [x] Create hooks/use-animated-list.ts (staggered FadeInDown for FlatList items, respects reduceMotion)
+- [x] Create components/animated-number.tsx (count-up from 0 to target, withTiming)
+- [x] TypeScript check passes
+- [x] All tests pass
+- [ ] Checkpoint saved
