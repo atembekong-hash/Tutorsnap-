@@ -29,6 +29,9 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
+import ReAnimated from "react-native-reanimated";
+import { useTabFocusTransition } from "@/hooks/use-tab-focus-transition";
+import { useAppearance } from "@/lib/appearance-context";
 import * as H from "@/lib/haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -224,6 +227,8 @@ function AnimatedPodiumRow({
 export default function ClassroomTabScreen() {
   const colors = useColors();
   const router = useRouter();
+  const { settings: _classroomAppearance } = useAppearance();
+  const { transitionStyle: tabTransitionStyle } = useTabFocusTransition({ reduceMotion: _classroomAppearance.reduceMotion });
 
   const [myClassroom, setMyClassroom] = useState<ClassroomInfo | null>(null);
   const [joinedClassroom, setJoinedClassroom] = useState<ClassroomInfo | null>(null);
@@ -959,6 +964,7 @@ export default function ClassroomTabScreen() {
 
   return (
     <ScreenContainer>
+      <ReAnimated.View style={[{ flex: 1 }, tabTransitionStyle]}>
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <View style={{ flex: 1 }}>
@@ -1680,6 +1686,7 @@ export default function ClassroomTabScreen() {
         </>
       )}
 
+      </ReAnimated.View>{/* end tabTransitionStyle */}
       {/* Homework Assignment Modal */}
       <Modal
         visible={!!homeworkModalItem}

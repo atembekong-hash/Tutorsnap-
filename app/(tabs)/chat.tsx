@@ -70,6 +70,7 @@ import { useFontSize } from "@/lib/font-size-provider";
 import { ErrorBoundary } from "@/components/error-boundary";
 import ReAnimated from "react-native-reanimated";
 import { useOnboardingEntry } from "@/hooks/use-onboarding-transition";
+import { useTabFocusTransition } from "@/hooks/use-tab-focus-transition";
 import { VoiceButton } from "@/components/voice-button";
 import {
   AIResponseRenderer,
@@ -1134,6 +1135,7 @@ function ChatScreenContent() {
   const { isOnline, wasJustReconnected, wasJustDisconnected } = useNetworkStatus();
   const colorScheme = useColorScheme();
   const { getSubjectAccent, settings: appearanceSettings, updateSetting } = useAppearance();
+  const { transitionStyle: tabTransitionStyle } = useTabFocusTransition({ reduceMotion: appearanceSettings?.reduceMotion ?? false });
   const { settings: tutorSettings, update: updateTutorSetting, reset: resetTutorSettings } = useTutorSettings();
 
   const scrollToBottom = useCallback((animated = true) => {
@@ -2381,6 +2383,7 @@ function ChatScreenContent() {
   return (
     <ScreenContainer edges={["top", "left", "right"]} containerClassName="">
       {/* Plain background — no gradient to avoid tint/filter effect */}
+      <ReAnimated.View style={[{ flex: 1 }, tabTransitionStyle]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1, flexDirection: "column" }}
@@ -3060,6 +3063,7 @@ function ChatScreenContent() {
         </View>{/* end bottomDock */}
         </ReAnimated.View>{/* end staggeredStyles[1] */}
       </KeyboardAvoidingView>
+      </ReAnimated.View>{/* end tabTransitionStyle */}
 
       {/* ── Floating scroll buttons (always rendered, opacity-animated + scale press) ── */}
       <Animated.View

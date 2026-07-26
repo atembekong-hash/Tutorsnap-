@@ -16,6 +16,8 @@ import {
 import { useFocusEffect, useRouter, useLocalSearchParams } from "expo-router";
 import ReAnimated from "react-native-reanimated";
 import { useOnboardingEntry } from "@/hooks/use-onboarding-transition";
+import { useTabFocusTransition } from "@/hooks/use-tab-focus-transition";
+import { useAppearance } from "@/lib/appearance-context";
 import * as H from "@/lib/haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -156,6 +158,8 @@ function HistoryScreenContent() {
   const router = useRouter();
   const { fromOnboarding } = useLocalSearchParams<{ fromOnboarding?: string }>();
   const { staggeredStyles } = useOnboardingEntry(fromOnboarding === "1");
+  const { settings: _historyAppearance } = useAppearance();
+  const { transitionStyle: tabTransitionStyle } = useTabFocusTransition({ reduceMotion: _historyAppearance.reduceMotion });
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState("");
@@ -472,6 +476,7 @@ function HistoryScreenContent() {
 
   return (
     <ScreenContainer>
+      <ReAnimated.View style={[{ flex: 1 }, tabTransitionStyle]}>
       <ReAnimated.View style={[{ flex: 1 }, staggeredStyles[1]]}>
       {filteredHistory.length === 0 ? (
         <FlatList
@@ -515,6 +520,7 @@ function HistoryScreenContent() {
         />
       )}
       </ReAnimated.View>
+      </ReAnimated.View>{/* end tabTransitionStyle */}
     </ScreenContainer>
   );
 }

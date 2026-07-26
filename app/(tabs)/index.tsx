@@ -22,6 +22,7 @@ import { Modal ,
 } from "react-native";
 import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useOnboardingEntry } from "@/hooks/use-onboarding-transition";
+import { useTabFocusTransition } from "@/hooks/use-tab-focus-transition";
 import * as H from "@/lib/haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -667,6 +668,9 @@ function SolveScreenContent() {
     if (fromOnboarding === "1") { startEntry(); }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // Tab-to-tab transition
+  const { settings: _solveAppearance } = useAppearance();
+  const { transitionStyle: tabTransitionStyle } = useTabFocusTransition({ reduceMotion: _solveAppearance.reduceMotion });
   const [undoToast, setUndoToast] = useState(false);
   const undoToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showQuickAskSubjectPicker, setShowQuickAskSubjectPicker] = useState(false);
@@ -993,11 +997,12 @@ function SolveScreenContent() {
 
   return (
     <ScreenContainer>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={{ flex: 1 }}
-        keyboardVerticalOffset={showMathKeyboard ? 0 : undefined}
-      >
+      <ReAnimated.View style={[{ flex: 1 }, tabTransitionStyle]}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={{ flex: 1 }}
+          keyboardVerticalOffset={showMathKeyboard ? 0 : undefined}
+        >
         <ScrollView
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
@@ -1675,7 +1680,8 @@ function SolveScreenContent() {
             onClear={handleKeyboardClear}
           />
         )}
-      </KeyboardAvoidingView>
+        </KeyboardAvoidingView>
+      </ReAnimated.View>{/* end tabTransitionStyle */}
 
       {/* Badge Unlock Modal */}
       {pendingBadge && (

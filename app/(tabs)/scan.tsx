@@ -21,6 +21,8 @@ import {
 } from "react-native";
 import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useOnboardingEntry } from "@/hooks/use-onboarding-transition";
+import { useTabFocusTransition } from "@/hooks/use-tab-focus-transition";
+import { useAppearance } from "@/lib/appearance-context";
 import * as ImagePicker from "expo-image-picker";
 import * as H from "@/lib/haptics";
 import * as FileSystem from "expo-file-system/legacy";
@@ -44,6 +46,8 @@ function ScanScreenContent() {
   const router = useRouter();
   const { fromOnboarding } = useLocalSearchParams<{ fromOnboarding?: string }>();
   const { staggeredStyles } = useOnboardingEntry(fromOnboarding === "1");
+  const { settings: _scanAppearance } = useAppearance();
+  const { transitionStyle: tabTransitionStyle } = useTabFocusTransition({ reduceMotion: _scanAppearance.reduceMotion });
   const cameraRef = useRef<any>(null);
 
   // On native, default to camera mode. On web, show gallery picker.
@@ -490,6 +494,7 @@ function ScanScreenContent() {
   // ===== WEB FALLBACK: Gallery-only picker =====
   return (
     <ScreenContainer>
+      <ReAnimated.View style={[{ flex: 1 }, tabTransitionStyle]}>
       <ReAnimated.View style={staggeredStyles[0]}>
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
           <Text style={[styles.title, { color: colors.foreground }]}>Scan Problem</Text>
@@ -587,6 +592,7 @@ function ScanScreenContent() {
         </View>
       )}
       </ReAnimated.View>
+      </ReAnimated.View>{/* end tabTransitionStyle */}
         </ScreenContainer>
   );
 }

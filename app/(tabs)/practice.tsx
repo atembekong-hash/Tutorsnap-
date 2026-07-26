@@ -12,6 +12,8 @@ import {
 import { useRouter, useLocalSearchParams , useFocusEffect } from "expo-router";
 import ReAnimated from "react-native-reanimated";
 import { useOnboardingEntry } from "@/hooks/use-onboarding-transition";
+import { useTabFocusTransition } from "@/hooks/use-tab-focus-transition";
+import { useAppearance } from "@/lib/appearance-context";
 import * as H from "@/lib/haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -83,6 +85,8 @@ function PracticeScreenContent() {
   const router = useRouter();
   const params = useLocalSearchParams<{ subject?: string; fromOnboarding?: string }>();
   const { staggeredStyles } = useOnboardingEntry(params.fromOnboarding === "1");
+  const { settings: _practiceAppearance } = useAppearance();
+  const { transitionStyle: tabTransitionStyle } = useTabFocusTransition({ reduceMotion: _practiceAppearance.reduceMotion });
   const [selectedSubject, setSelectedSubject] = useState<SubjectId>("algebra");
   const [selectedDifficulty, setSelectedDifficulty] = useState<Difficulty>("medium");
   const [preferredCategories, setPreferredCategories] = useState<SubjectCategory[]>([]);
@@ -293,6 +297,7 @@ function PracticeScreenContent() {
 
   return (
     <ScreenContainer>
+      <ReAnimated.View style={[{ flex: 1 }, tabTransitionStyle]}>
       <ReAnimated.View style={staggeredStyles[0]}>
         {/* Header */}
         <View style={styles.header}>
@@ -963,6 +968,7 @@ function PracticeScreenContent() {
         )}
       </ScrollView>
       </ReAnimated.View>
+      </ReAnimated.View>{/* end tabTransitionStyle */}
 
       {showGradePicker && (
         <View style={StyleSheet.absoluteFillObject}>
