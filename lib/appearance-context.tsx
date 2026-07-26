@@ -425,6 +425,8 @@ export interface AppearanceSettings {
   // AI Tutor
   /** Hide the tab bar when the AI Tutor (chat) screen is open. Adjustable in Settings. */
   hideTabBarOnChat: boolean;
+  /** Show red notification dots on Solve and Practice tab icons. Off by default. */
+  showTabDots: boolean;
   // Accessibility
   reduceMotion: boolean;
   highContrast: boolean;
@@ -465,6 +467,7 @@ export const DEFAULT_APPEARANCE: AppearanceSettings = {
   subjectSpeedOverrides: {},
   stepStyle: "cards",
   hideTabBarOnChat: true,
+  showTabDots: false,
   reduceMotion: false,
   highContrast: false,
   largeTapTargets: false,

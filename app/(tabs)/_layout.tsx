@@ -169,7 +169,7 @@ function SolveTabIcon({ color, focused }: { color: string; focused: boolean }) {
   return (
     <Animated.View style={{ position: "relative", transform: [{ scale: iconScale }] }}>
       <IconSymbol size={30} name="sum" color={color} />
-      {badgeVisible && (
+      {badgeVisible && settings.showTabDots && (
         <Animated.View
           style={[
             styles.practiceBadge,
@@ -209,7 +209,7 @@ function PracticeTabIcon({ color, focused }: { color: string; focused: boolean }
   return (
     <Animated.View style={{ position: "relative", transform: [{ scale: iconScale }] }}>
       <IconSymbol size={24} name="pencil.and.list.clipboard" color={color} />
-      {!dailyDone && (
+      {!dailyDone && settings.showTabDots && (
         <Animated.View
           style={[
             styles.practiceBadge,

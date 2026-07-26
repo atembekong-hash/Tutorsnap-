@@ -1117,6 +1117,13 @@ export function TutorSettingsModal({
               sub="Automatically hide the navigation bar when the chat screen is open"
               value={appearance.settings.hideTabBarOnChat}
               onChange={(v) => appearance.updateSetting("hideTabBarOnChat", v)}
+            />
+            <ToggleRow
+              icon="circle.fill"
+              label="Show Tab Notification Dots"
+              sub="Show red dots on Solve and Practice icons when daily goals are incomplete"
+              value={appearance.settings.showTabDots}
+              onChange={(v) => appearance.updateSetting("showTabDots", v)}
               last
             />
           </SettingsCard>
