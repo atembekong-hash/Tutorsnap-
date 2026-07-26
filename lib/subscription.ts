@@ -123,8 +123,22 @@ export async function initRevenueCat(): Promise<void> {
 
   if (!apiKey) {
     // No key configured — fall back to local trial management
+    console.warn(
+      "[RevenueCat] No API key configured. Set EXPO_PUBLIC_REVENUECAT_APPLE_KEY (iOS) " +
+      "or EXPO_PUBLIC_REVENUECAT_GOOGLE_KEY (Android) in your environment."
+    );
     _initialised = true;
     return;
+  }
+
+  // Validate key format — iOS keys start with 'appl_', Android with 'goog_'
+  const expectedPrefix = Platform.OS === "ios" ? "appl_" : "goog_";
+  if (!apiKey.startsWith(expectedPrefix)) {
+    console.warn(
+      `[RevenueCat] API key format looks wrong for ${Platform.OS}. ` +
+      `Expected key starting with '${expectedPrefix}', got '${apiKey.slice(0, 8)}...'. ` +
+      "Check your RevenueCat dashboard → Project → API Keys."
+    );
   }
 
   try {
