@@ -61,14 +61,19 @@ interface OfferingInfo {
 // ─── Feature list ─────────────────────────────────────────────────────────────
 
 const FEATURES = [
-  { icon: "∞", label: "Unlimited AI math solves per day" },
-  { icon: "∞", label: "Unlimited quiz questions per day" },
-  { icon: "∞", label: "Unlimited AI tutor chat messages" },
-  { icon: "📄", label: "PDF export of chat sessions" },
-  { icon: "🏫", label: "Full classroom & homework features" },
-  { icon: "📷", label: "Camera scan to solve problems" },
-  { icon: "📊", label: "Detailed progress analytics" },
-  { icon: "🏆", label: "Leaderboard & challenge history" },
+  { icon: "∞", label: "Unlimited AI solves across all subjects" },
+  { icon: "∞", label: "Unlimited quiz questions and practice sets" },
+  { icon: "∞", label: "Unlimited AI Tutor chat messages per day" },
+  { icon: "📷", label: "Camera scan: photograph any problem to solve" },
+  { icon: "🧠", label: "Step-by-step explanations with worked examples" },
+  { icon: "📊", label: "Detailed progress analytics and mastery tracking" },
+  { icon: "🏫", label: "Full Classroom: join or create study groups" },
+  { icon: "📄", label: "PDF and text export of all chat sessions" },
+  { icon: "🏆", label: "Leaderboard rankings and challenge history" },
+  { icon: "🔥", label: "Streak shields to protect your daily streak" },
+  { icon: "📚", label: "Flashcard decks with spaced repetition" },
+  { icon: "🔔", label: "Smart study reminders and daily goal nudges" },
+  { icon: "⭐", label: "Priority support from the TutorSnap team" },
 ];
 
 // ─── Main screen ──────────────────────────────────────────────────────────────

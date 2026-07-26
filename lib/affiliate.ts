@@ -87,10 +87,10 @@ export const TIER_META: Record<RewardTier, {
   daysPerReferral: number; minReferrals: number; maxReferrals: number | null;
   perks: string[];
 }> = {
-  starter:   { label: "Starter",   emoji: "🌱", color: "#22C55E", daysPerReferral: 14, minReferrals: 0,  maxReferrals: 4,    perks: ["14 days per referral", "Invite up to 100 friends"] },
-  advocate:  { label: "Advocate",  emoji: "⭐", color: "#0a7ea4", daysPerReferral: 21, minReferrals: 5,  maxReferrals: 9,    perks: ["21 days per referral", "Advocate badge", "Priority support"] },
-  champion:  { label: "Champion",  emoji: "🏆", color: "#F59E0B", daysPerReferral: 30, minReferrals: 10, maxReferrals: 24,   perks: ["30 days per referral", "Champion badge", "Early feature access"] },
-  legend:    { label: "Legend",    emoji: "👑", color: "#8B5CF6", daysPerReferral: 60, minReferrals: 25, maxReferrals: null, perks: ["60 days per referral", "Legend badge", "2 free months bonus", "VIP support"] },
+  starter:   { label: "Starter",   emoji: "🌱", color: "#22C55E", daysPerReferral: 14, minReferrals: 0,  maxReferrals: 4,    perks: ["14 days of Premium per referral", "Invite up to 100 friends", "Access to the referral leaderboard", "Earn a 1-month bonus at 5 referrals"] },
+  advocate:  { label: "Advocate",  emoji: "⭐", color: "#0a7ea4", daysPerReferral: 21, minReferrals: 5,  maxReferrals: 9,    perks: ["21 days of Premium per referral", "Exclusive Advocate badge on your profile", "Priority support response within 24 hours", "1-month milestone bonus at 5 referrals", "Early access to new features before public release"] },
+  champion:  { label: "Champion",  emoji: "🏆", color: "#F59E0B", daysPerReferral: 30, minReferrals: 10, maxReferrals: 24,   perks: ["30 days of Premium per referral", "Exclusive Champion badge on your profile", "2-month milestone bonus at 10 referrals", "Early access to beta features", "Featured on the top referrer leaderboard", "Priority support response within 12 hours"] },
+  legend:    { label: "Legend",    emoji: "👑", color: "#8B5CF6", daysPerReferral: 60, minReferrals: 25, maxReferrals: null, perks: ["60 days of Premium per referral (2 months!)", "Exclusive Legend crown badge on your profile", "4-month milestone bonus at 25 referrals", "VIP support with dedicated response within 6 hours", "Direct input on new TutorSnap features", "Lifetime recognition on the Hall of Fame leaderboard"] },
 };
 
 export const MILESTONE_BONUSES: { at: number; bonus: number; label: string }[] = [

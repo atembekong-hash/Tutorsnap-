@@ -180,13 +180,13 @@ export default function PremiumWelcomeScreen() {
           </Text>
           <Text style={[styles.body, { color: colors.muted }]}>
             {isRestored
-              ? "Great to have you back. Your unlimited access to solves, quizzes, and AI chat is fully restored."
-              : "You now have unlimited solves, quizzes, and AI chat. Keep your streak alive and make every study session count."}
+              ? "Great to have you back. Your unlimited access to solves, quizzes, AI chat, classroom, and all premium features is fully restored. Pick up right where you left off."
+              : "You now have full access to everything TutorSnap has to offer. Solve unlimited problems, practice with unlimited quizzes, chat with your AI Tutor anytime, and join or create classrooms. Keep your streak alive and make every study session count."}
           </Text>
 
           {/* Feature pills */}
           <View style={styles.pillRow}>
-            {["∞ Solves", "∞ Quizzes", "∞ AI Chat"].map((label) => (
+            {["∞ Solves", "∞ Quizzes", "∞ AI Chat", "📷 Camera Scan", "🏫 Classroom", "🔥 Streak Shields"].map((label) => (
               <View key={label} style={[styles.pill, { backgroundColor: "#F59E0B18", borderColor: "#F59E0B40" }]}>
                 <Text style={[styles.pillText, { color: "#F59E0B" }]}>{label}</Text>
               </View>
