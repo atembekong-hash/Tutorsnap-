@@ -1136,3 +1136,8 @@
 - [x] Feature 1: Notes cloud push — wire pushNotes after note save in chat.tsx and solution.tsx
 - [x] Feature 2: ScanSkeletonScreen — build component in skeleton.tsx, wire into scan.tsx
 - [x] Feature 3: Offline sync retry queue — lib/sync-retry-queue.ts + NetInfo flush in _layout.tsx
+
+## v1.8.3 — Three New Features
+- [x] Feature 1: Sync retry test coverage — tests/sync-retry-queue.test.ts (13 tests, all passing)
+- [ ] Feature 2: Chat session real-time push — pushChatSession after each message send in chat.tsx
+- [ ] Feature 3: Onboarding screen transition — migrate from RN Animated to useScreenTransition
