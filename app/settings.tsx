@@ -1642,7 +1642,7 @@ export default function SettingsScreen() {
         {/* ── COMMUNITY ─────────────────────────────────────────────────── */}
         {(ms("Leaderboard") || ms("Share Progress")) && <SectionHeader title="COMMUNITY" colors={colors} />}
         {ms("Leaderboard", "weekly top learners") && (
-          <SettingsRow icon="trophy.fill" label="Leaderboard" subtitle="Compare streaks and see the weekly top learners" colors={colors} onPress={() => router.push("/leaderboard" as any)} />
+          <SettingsRow icon="trophy.fill" label="Leaderboard" subtitle="Compare streaks and see the weekly top learners" colors={colors} onPress={() => router.push("/(tabs)/leaderboard" as any)} />
         )}
         {ms("Share Progress", "streak and stats") && (
           <SettingsRow icon="square.and.arrow.up.fill" label="Share Progress" subtitle="Share your streak and stats with friends" colors={colors} onPress={handleShareProgress} />

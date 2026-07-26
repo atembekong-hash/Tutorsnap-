@@ -298,8 +298,7 @@ function PracticeScreenContent() {
   return (
     <ScreenContainer>
       <ReAnimated.View style={[{ flex: 1 }, tabTransitionStyle]}>
-      <ReAnimated.View style={[{ flex: 1 }, staggeredStyles[1]]}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+      <ReAnimated.View style={staggeredStyles[0]}>
         {/* Header */}
         <View style={styles.header}>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
@@ -395,6 +394,10 @@ function PracticeScreenContent() {
             })}
           </View>
         </View>
+      </ReAnimated.View>
+      <ReAnimated.View style={[{ flex: 1 }, staggeredStyles[1]]}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+
         {/* Progress nudge strip above generate button */}
         {progressData && (
           <TouchableOpacity

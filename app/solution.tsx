@@ -278,8 +278,6 @@ export default function SolutionScreen() {
   const [markdownPreviewText, setMarkdownPreviewText] = useState<string | null>(null);
   const markdownPreviewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [headerTooltip, setHeaderTooltip] = useState<string | null>(null);
-  const [copiedTopicIndex, setCopiedTopicIndex] = useState<number | null>(null);
-  const copiedTopicTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tooltipOpacity = useRef(new Animated.Value(0)).current;
   const tooltipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [headerIconsSeenRef] = useState(() => ({ seen: false }));
@@ -1245,7 +1243,7 @@ export default function SolutionScreen() {
         </View>
       )}
       {/* Header */}
-      <View style={[styles.navBarWrap, { borderBottomColor: colors.border, backgroundColor: colors.background }]}>
+      <View style={[styles.navBarWrap, { borderBottomColor: colors.border }]}>
         {/* Row 1: back / title / actions */}
         <View style={styles.navBar}>
           <TouchableOpacity accessibilityLabel="Go back" accessibilityHint="Returns to the previous screen" accessibilityRole="button" onPress={() => router.back()} style={styles.backBtn}>
@@ -1269,14 +1267,6 @@ export default function SolutionScreen() {
               ) : (
                 <IconSymbol size={22} name="square.and.arrow.up" color={colors.primary} />
               )}
-            </TouchableOpacity>
-            {/* Done Button */}
-            <TouchableOpacity
-              onPress={() => { H.impactLight(); router.back(); }}
-              style={[styles.navActionBtn, styles.doneBtn]}
-              accessibilityLabel="Done" accessibilityHint="Returns to the previous screen" accessibilityRole="button"
-            >
-              <Text style={[styles.doneBtnText, { color: colors.primary }]}>Done</Text>
             </TouchableOpacity>
           </View>
           {headerTooltip && (
@@ -1606,22 +1596,12 @@ export default function SolutionScreen() {
             <Text style={[styles.relatedLabel, { color: colors.muted }]}>Related Topics</Text>
             <View style={styles.relatedChips}>
               {solution.relatedTopics.map((topic, index) => (
-                <TouchableOpacity
+                <View
                   key={index}
-                  style={[styles.relatedChip, { backgroundColor: colors.surface, borderColor: colors.border, flexDirection: "row", alignItems: "center", gap: 4 }]}
-                  onPress={async () => {
-                    await Clipboard.setStringAsync(topic);
-                    H.impactLight();
-                    setCopiedTopicIndex(index);
-                    if (copiedTopicTimerRef.current) clearTimeout(copiedTopicTimerRef.current);
-                    copiedTopicTimerRef.current = setTimeout(() => setCopiedTopicIndex(null), 1500);
-                  }}
-                  activeOpacity={0.7}
-                  accessibilityLabel={`Copy topic: ${topic}`}
+                  style={[styles.relatedChip, { backgroundColor: colors.surface, borderColor: colors.border }]}
                 >
                   <Text style={[styles.relatedChipText, { color: colors.foreground, fontSize: fs(13) }]}>{topic}</Text>
-                  <IconSymbol size={12} name={copiedTopicIndex === index ? "checkmark" : "doc.on.doc"} color={copiedTopicIndex === index ? colors.success : colors.muted} />
-                </TouchableOpacity>
+                </View>
               ))}
             </View>
           </View>
@@ -2146,8 +2126,6 @@ const styles = StyleSheet.create({
   navTitle: { fontSize: 17, fontWeight: "700" },
   navActions: { flexDirection: "row", alignItems: "center", gap: 4 },
   navActionBtn: { padding: 4 },
-  doneBtn: { paddingHorizontal: 8, paddingVertical: 4 },
-  doneBtnText: { fontSize: 16, fontWeight: "600" },
   headerTooltip: { position: "absolute", bottom: -28, right: 12, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, zIndex: 999 },
   headerTooltipText: { fontSize: 12, fontWeight: "600" },
   badgeRow: {

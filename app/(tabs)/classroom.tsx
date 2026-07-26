@@ -981,7 +981,7 @@ export default function ClassroomTabScreen() {
           )}
           <TouchableOpacity
             accessibilityLabel="View global rankings"
-            onPress={() => router.push("/leaderboard" as any)}
+            onPress={() => router.push("/(tabs)/leaderboard" as any)}
             style={[styles.rankingsBtn, { backgroundColor: `${colors.warning}15`, borderColor: `${colors.warning}35` }]}
             activeOpacity={0.75}
           >

@@ -522,7 +522,7 @@ export default function ProgressScreen() {
         {/* Global Rankings entry */}
         <TouchableOpacity
           accessibilityLabel="View global rankings"
-          onPress={() => router.push("/leaderboard" as any)}
+          onPress={() => router.push("/(tabs)/leaderboard" as any)}
           style={[styles.rankingsEntry, { backgroundColor: colors.surface, borderColor: `${colors.warning}40` }]}
           activeOpacity={0.8}
         >

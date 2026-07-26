@@ -149,11 +149,9 @@ function FlipCard({
         </View>
         <View style={styles.cardBody}>
           <Text style={[styles.cardHint, { color: colors.muted }]}>QUESTION</Text>
-          <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} nestedScrollEnabled>
-            <Text style={[styles.cardQuestion, { color: colors.foreground }]}>
-              {item.problem}
-            </Text>
-          </ScrollView>
+          <Text style={[styles.cardQuestion, { color: colors.foreground }]} numberOfLines={8}>
+            {item.problem}
+          </Text>
         </View>
         <View style={styles.cardFooter}>
           <Text style={[styles.tapHint, { color: colors.muted }]}>Tap to reveal answer</Text>
