@@ -39,6 +39,8 @@ import { SubmissionReadyCard } from "@/components/submission-ready-card";
 import { StudyBlockCard, StudyBlockSkeleton } from "@/components/study-block-card";
 import { SolvingOverlay, DotsLoader } from "@/components/skeleton";
 import { useScreenTransition } from "@/hooks/use-screen-transition";
+import ReAnimated, { SlideInUp } from "react-native-reanimated";
+import { useAppearance } from "@/lib/appearance-context";
 
 function StepCard({ step, colors, fs, delay = 0 }: { step: SolutionStep; colors: any; fs: (n: number) => number; delay?: number }) {
   const [expanded, setExpanded] = useState(true);
@@ -600,6 +602,10 @@ export default function SolutionScreen() {
   const subjectColor = getSubjectColor(solution.subject);
   const subjectLabel = getSubjectLabel(solution.subject);
   const { fadeStyle } = useScreenTransition({ duration: 300, translateY: 20 });
+  const { settings: appearanceSettings } = useAppearance();
+  const slideInEntering = appearanceSettings.reduceMotion
+    ? undefined
+    : SlideInUp.springify().damping(18).stiffness(200);
 
   const buildShareHtml = () => {
     const subjectLbl = getSubjectLabel(solution!.subject);
@@ -821,7 +827,7 @@ export default function SolutionScreen() {
 
   return (
     <ScreenContainer>
-      <Animated.View style={[{ flex: 1 }, fadeStyle]}>
+      <ReAnimated.View entering={slideInEntering} style={{ flex: 1 }}>
       {/* Share Menu - Scrollable Bottom Sheet */}
       <Modal
         visible={showShareMenu}
@@ -2081,7 +2087,7 @@ export default function SolutionScreen() {
         )}
 
       </ScrollView>
-      </Animated.View>
+      </ReAnimated.View>
     </ScreenContainer>
   );
 }

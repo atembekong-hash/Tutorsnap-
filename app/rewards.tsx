@@ -29,6 +29,7 @@ import {
   getRewardSummary,
   getTierPerks,
 } from "@/lib/rewards";
+import { RewardsSkeletonScreen } from "@/components/skeleton";
 
 const { width } = Dimensions.get("window");
 
@@ -104,8 +105,8 @@ export default function RewardsScreen() {
 
   if (loading || !summary) {
     return (
-      <ScreenContainer className="p-6">
-        <Text style={{ color: colors.foreground }}>Loading rewards...</Text>
+      <ScreenContainer>
+        <RewardsSkeletonScreen />
       </ScreenContainer>
     );
   }

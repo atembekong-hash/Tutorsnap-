@@ -26,6 +26,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { loadGlobalGrade, GRADE_OPTIONS } from "@/lib/grade-levels";
 import Animated from "react-native-reanimated";
 import { useAnimatedList } from "@/hooks/use-animated-list";
+import { LeaderboardSkeletonScreen } from "@/components/skeleton";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface LeaderboardEntry {
@@ -128,6 +129,7 @@ export default function LeaderboardScreen() {
   const router = useRouter();
   const colors = useColors();
   const [board, setBoard] = useState<LeaderboardEntry[]>([]);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [weekLabel, setWeekLabel] = useState("");
   const [filterGrade, setFilterGrade] = useState<string | "all">("all");
@@ -153,7 +155,7 @@ export default function LeaderboardScreen() {
     setGlobalGrade(grade);
     if (grade) setFilterGrade(grade);
     setBoard(generateBoard(userSolved, userStreak, userName, grade));
-    // grade already loaded above
+    setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -173,6 +175,14 @@ export default function LeaderboardScreen() {
   const filteredBoard = filterGrade === "all"
     ? board
     : board.filter((e) => e.isCurrentUser || e.gradeLevel === filterGrade).map((e, i) => ({ ...e, rank: i + 1 }));
+
+  if (loading) {
+    return (
+      <ScreenContainer>
+        <LeaderboardSkeletonScreen />
+      </ScreenContainer>
+    );
+  }
 
   return (
     <ScreenContainer>

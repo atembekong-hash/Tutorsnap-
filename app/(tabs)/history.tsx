@@ -6,6 +6,7 @@ import {
   Text,
   FlatList,
   TouchableOpacity,
+  Pressable,
   StyleSheet,
   Alert,
   Platform,
@@ -25,7 +26,13 @@ import { Share } from "react-native";
 import { GRADE_LABELS } from "@/lib/grade-levels";
 import { cleanMathText } from "@/lib/clean-math-text";
 import { HistorySkeletonList } from "@/components/skeleton";
-import Animated from "react-native-reanimated";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withSpring,
+  FadeInDown,
+} from "react-native-reanimated";
 import { useAnimatedList } from "@/hooks/use-animated-list";
 
 function formatTime(timestamp: number): string {
@@ -42,6 +49,106 @@ function formatTime(timestamp: number): string {
   return new Date(timestamp).toLocaleDateString();
 }
 
+// ─── HistoryCard at module level so hooks are called at component scope ───────
+interface HistoryCardProps {
+  item: HistoryItem;
+  index: number;
+  subjectColor: string;
+  subjectLabel: string;
+  bookmarkedIds: Set<string>;
+  shareCounts: Record<string, number>;
+  colors: ReturnType<typeof useColors>;
+  getEntering: (i: number) => FadeInDown | undefined;
+  onPress: () => void;
+  onLongPress: () => void;
+  onBookmark: () => void;
+  onShareDirect: (item: HistoryItem) => Promise<void>;
+}
+
+function HistoryCard({
+  item,
+  index,
+  subjectColor,
+  subjectLabel,
+  bookmarkedIds,
+  shareCounts,
+  colors,
+  getEntering,
+  onPress,
+  onLongPress,
+  onBookmark,
+  onShareDirect,
+}: HistoryCardProps) {
+  const scale = useSharedValue(1);
+  const cardStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  const entering = getEntering(index);
+  return (
+    <Animated.View entering={entering} style={cardStyle}>
+      <Pressable
+        onPress={onPress}
+        onLongPress={onLongPress}
+        onPressIn={() => { scale.value = withTiming(0.97, { duration: 80 }); }}
+        onPressOut={() => { scale.value = withSpring(1, { damping: 15, stiffness: 300 }); }}
+        style={[styles.historyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
+      >
+        <View style={styles.cardLeft}>
+          <View style={styles.cardBadgeRow}>
+            <View style={[styles.subjectBadge, { backgroundColor: `${subjectColor}20` }]}>
+              <Text style={[styles.subjectBadgeText, { color: subjectColor }]}>{subjectLabel}</Text>
+            </View>
+            {(item as any).gradeLevel && (() => {
+              const label = GRADE_LABELS[(item as any).gradeLevel] ?? (item as any).gradeLevel;
+              return (
+                <View style={[styles.gradeBadge, { backgroundColor: `${colors.primary}12`, borderColor: `${colors.primary}25` }]}>
+                  <Text style={{ fontSize: 10 }}>📚</Text>
+                  <Text style={[styles.gradeBadgeText, { color: colors.primary }]}>{label}</Text>
+                </View>
+              );
+            })()}
+          </View>
+          <Text style={[styles.problemText, { color: colors.foreground }]} numberOfLines={2}>
+            {cleanMathText(item.problem)}
+          </Text>
+          <View style={styles.answerRow}>
+            <IconSymbol size={12} name="checkmark.circle.fill" color={colors.success} />
+            <Text style={[styles.answerText, { color: colors.success }]} numberOfLines={1}>
+              {cleanMathText(item.answer)}
+            </Text>
+          </View>
+          <Text style={[styles.timeText, { color: colors.muted }]}>
+            {formatTime(item.solvedAt)}
+          </Text>
+        </View>
+        <View style={styles.cardRight}>
+          <TouchableOpacity
+            onPress={onBookmark}
+            style={{ padding: 6, marginBottom: 4 }}
+          >
+            <IconSymbol
+              size={18}
+              name={bookmarkedIds.has(item.problem) ? "bookmark.fill" : "bookmark"}
+              color={bookmarkedIds.has(item.problem) ? colors.warning : colors.muted}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => onShareDirect(item)}
+            style={{ padding: 6, marginTop: 4 }}
+          >
+            <IconSymbol size={18} name="paperplane.fill" color={shareCounts[item.id] ? colors.primary : colors.muted} />
+            {shareCounts[item.id] ? (
+              <Text style={{ fontSize: 9, color: colors.primary, fontWeight: "600", marginTop: 1 }}>
+                {shareCounts[item.id]}
+              </Text>
+            ) : null}
+          </TouchableOpacity>
+          <IconSymbol size={18} name="chevron.right" color={colors.muted} />
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 function HistoryScreenContent() {
   const colors = useColors();
   const router = useRouter();
@@ -53,7 +160,6 @@ function HistoryScreenContent() {
   const [historyLoading, setHistoryLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [shareCounts, setShareCounts] = useState<Record<string, number>>({});
-  const SHARE_COUNTS_KEY = "history_share_counts";
 
   const loadHistory = async () => {
     try {
@@ -138,6 +244,22 @@ function HistoryScreenContent() {
     });
   };
 
+  const handleShareDirect = async (item: HistoryItem) => {
+    H.impactLight();
+    try {
+      const result = await Share.share({
+        message: `I solved this on TutorSnap!\n\n${item.problem}\n\nAnswer: ${item.answer}\n\nDownload TutorSnap to solve problems instantly.`,
+        title: "TutorSnap Solution",
+      });
+      if (result.action === Share.sharedAction) {
+        H.notificationSuccess();
+        const updated = { ...shareCounts, [item.id]: (shareCounts[item.id] || 0) + 1 };
+        setShareCounts(updated);
+        await AsyncStorage.setItem("history_share_counts", JSON.stringify(updated));
+      }
+    } catch {}
+  };
+
   const filteredHistory = history.filter((item) => {
     const matchesSearch =
       searchQuery === "" ||
@@ -164,82 +286,20 @@ function HistoryScreenContent() {
     const subjectLabel = getSubjectLabel(item.subject);
 
     return (
-      <Animated.View entering={getEntering(index)}>
-      <TouchableOpacity
+      <HistoryCard
+        item={item}
+        index={index}
+        subjectColor={subjectColor}
+        subjectLabel={subjectLabel}
+        bookmarkedIds={bookmarkedIds}
+        shareCounts={shareCounts}
+        colors={colors}
+        getEntering={getEntering}
         onPress={() => handleViewSolution(item)}
         onLongPress={() => handleDelete(item.id)}
-        style={[styles.historyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-        activeOpacity={0.75}
-      >
-        <View style={styles.cardLeft}>
-          <View style={styles.cardBadgeRow}>
-            <View style={[styles.subjectBadge, { backgroundColor: `${subjectColor}20` }]}>
-              <Text style={[styles.subjectBadgeText, { color: subjectColor }]}>{subjectLabel}</Text>
-            </View>
-            {(item as any).gradeLevel && (() => {
-              const label = GRADE_LABELS[(item as any).gradeLevel] ?? (item as any).gradeLevel;
-              return (
-                <View style={[styles.gradeBadge, { backgroundColor: `${colors.primary}12`, borderColor: `${colors.primary}25` }]}>
-                  <Text style={{ fontSize: 10 }}>📚</Text>
-                  <Text style={[styles.gradeBadgeText, { color: colors.primary }]}>{label}</Text>
-                </View>
-              );
-            })()}
-          </View>
-          <Text style={[styles.problemText, { color: colors.foreground }]} numberOfLines={2}>
-            {cleanMathText(item.problem)}
-          </Text>
-          <View style={styles.answerRow}>
-            <IconSymbol size={12} name="checkmark.circle.fill" color={colors.success} />
-            <Text style={[styles.answerText, { color: colors.success }]} numberOfLines={1}>
-              {cleanMathText(item.answer)}
-            </Text>
-          </View>
-          <Text style={[styles.timeText, { color: colors.muted }]}>
-            {formatTime(item.solvedAt)}
-          </Text>
-        </View>
-        <View style={styles.cardRight}>
-          <TouchableOpacity
-            onPress={() => handleQuickBookmark(item)}
-            style={{ padding: 6, marginBottom: 4 }}
-          >
-            <IconSymbol
-              size={18}
-              name={bookmarkedIds.has(item.problem) ? "bookmark.fill" : "bookmark"}
-              color={bookmarkedIds.has(item.problem) ? colors.warning : colors.muted}
-            />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={async (e) => {
-              e.stopPropagation();
-              H.impactLight();
-              try {
-                const result = await Share.share({
-                  message: `I solved this on TutorSnap!\n\n${item.problem}\n\nAnswer: ${item.answer}\n\nDownload TutorSnap to solve problems instantly.`,
-                  title: "TutorSnap Solution",
-                });
-                if (result.action === Share.sharedAction) {
-                  H.notificationSuccess();
-                  const updated = { ...shareCounts, [item.id]: (shareCounts[item.id] || 0) + 1 };
-                  setShareCounts(updated);
-                  await AsyncStorage.setItem("history_share_counts", JSON.stringify(updated));
-                }
-              } catch {}
-            }}
-            style={{ padding: 6, marginTop: 4 }}
-          >
-            <IconSymbol size={18} name="paperplane.fill" color={shareCounts[item.id] ? colors.primary : colors.muted} />
-            {shareCounts[item.id] ? (
-              <Text style={{ fontSize: 9, color: colors.primary, fontWeight: "600", marginTop: 1 }}>
-                {shareCounts[item.id]}
-              </Text>
-            ) : null}
-          </TouchableOpacity>
-          <IconSymbol size={18} name="chevron.right" color={colors.muted} />
-        </View>
-      </TouchableOpacity>
-      </Animated.View>
+        onBookmark={() => handleQuickBookmark(item)}
+        onShareDirect={handleShareDirect}
+      />
     );
   };
 

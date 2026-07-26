@@ -25,6 +25,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
 import Animated from "react-native-reanimated";
 import { useAnimatedList } from "@/hooks/use-animated-list";
+import { GlossarySkeletonScreen } from "@/components/skeleton";
 import {
   clearGlossary,
   GlossaryEntry,
@@ -225,7 +226,9 @@ export default function GlossaryScreen() {
       )}
 
       {/* List */}
-      {!loading && entries.length === 0 ? (
+      {loading ? (
+        <GlossarySkeletonScreen />
+      ) : !loading && entries.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={{ fontSize: 48, marginBottom: 16 }}>📚</Text>
           <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No definitions yet</Text>

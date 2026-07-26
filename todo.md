@@ -1109,3 +1109,16 @@
 - [ ] TypeScript check passes
 - [ ] All tests pass
 - [ ] Checkpoint saved
+
+## Deep Scan + Animation Revolution — Phase 4 (v1.8.0)
+- [x] Fix history.tsx: move HistoryCard to module level (resolve circular TS type error from hooks-inside-renderItem)
+- [x] Feature B: SlideInUp spring entrance on solution screen (Reanimated, respects reduceMotion)
+- [x] Feature C: AnalyticsSkeletonScreen — replace "Loading..." text in aire-analytics.tsx
+- [x] Feature C: RewardsSkeletonScreen — replace "Loading rewards..." text in rewards.tsx
+- [x] Feature C: LeaderboardSkeletonScreen — add loading state to leaderboard.tsx (was rendering empty board)
+- [x] Feature C: GlossarySkeletonScreen — replace missing loading state in glossary.tsx
+- [x] Add 4 new skeleton components to skeleton.tsx (Analytics, Rewards, Leaderboard, Glossary)
+- [x] Bump version to 1.8.0 / versionCode 33
+- [x] 76/76 tests passing
+- [x] TypeScript: 0 errors
+- [x] Checkpoint saved

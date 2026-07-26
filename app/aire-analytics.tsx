@@ -19,6 +19,7 @@ import * as H from "@/lib/haptics";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/hooks/use-auth";
 import { AnimatedProgressBar } from "@/components/animated-progress-bar";
+import { AnalyticsSkeletonScreen } from "@/components/skeleton";
 
 const AIRE_KEY = "@tutorsnap/aire_feedback";
 
@@ -170,9 +171,7 @@ export default function AireAnalyticsScreen() {
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 48 }}>
 
           {loading ? (
-            <View style={styles.emptyWrap}>
-              <Text style={[styles.emptyText, { color: colors.muted }]}>Loading...</Text>
-            </View>
+            <AnalyticsSkeletonScreen />
           ) : stats.total === 0 ? (
             <View style={styles.emptyWrap}>
               <Text style={styles.emptyEmoji}>🤖</Text>
