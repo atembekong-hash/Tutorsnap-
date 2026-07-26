@@ -111,6 +111,7 @@ import { pinDefinition, readGlossary, unpinDefinition, clearGlossary, type Gloss
 import { cleanMathText } from "@/lib/clean-math-text";
 import { SubmissionReadyCard } from "@/components/submission-ready-card";
 import { DotsLoader } from "@/components/skeleton";
+import { pushNotes } from "@/lib/cloud-sync";
 
 function getAppearanceSubjectKey(subjectId: string | null): string {
   if (!subjectId) return "Mathematics";
@@ -141,7 +142,10 @@ async function saveNote(content: string): Promise<void> {
       : [];
     notes.unshift({ id: `note-${Date.now()}`, content, savedAt: Date.now(), type: "chat" });
     // Keep last 200 notes
-    await AsyncStorage.setItem(SAVED_NOTES_KEY, JSON.stringify(notes.slice(0, 200)));
+    const trimmed = notes.slice(0, 200);
+    await AsyncStorage.setItem(SAVED_NOTES_KEY, JSON.stringify(trimmed));
+    // Fire-and-forget cloud push so notes sync immediately after save
+    pushNotes(trimmed.map((n) => ({ noteId: n.id, noteJson: JSON.stringify(n) }))).catch(() => {});
   } catch { /* ignore */ }
 }
 

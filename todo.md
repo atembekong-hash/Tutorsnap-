@@ -1131,3 +1131,8 @@
 - [x] 76/76 tests passing
 - [x] TypeScript: 0 errors
 - [x] Checkpoint saved
+
+## v1.8.2 — Three New Features
+- [x] Feature 1: Notes cloud push — wire pushNotes after note save in chat.tsx and solution.tsx
+- [ ] Feature 2: ScanSkeletonScreen — build component in skeleton.tsx, wire into scan.tsx
+- [ ] Feature 3: Offline sync retry queue — lib/sync-retry-queue.ts + NetInfo flush in _layout.tsx

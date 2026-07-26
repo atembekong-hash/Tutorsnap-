@@ -38,6 +38,7 @@ import { cleanMathText } from "@/lib/clean-math-text";
 import { SubmissionReadyCard } from "@/components/submission-ready-card";
 import { StudyBlockCard, StudyBlockSkeleton } from "@/components/study-block-card";
 import { SolvingOverlay, DotsLoader, SolutionSkeletonScreen } from "@/components/skeleton";
+import { pushNotes } from "@/lib/cloud-sync";
 import { useScreenTransition } from "@/hooks/use-screen-transition";
 import ReAnimated, { SlideInUp } from "react-native-reanimated";
 import { useAppearance } from "@/lib/appearance-context";
@@ -529,7 +530,10 @@ export default function SolutionScreen() {
       const raw = await AsyncStorage.getItem(SAVED_NOTES_KEY);
       const notes: { id: string; content: string; savedAt: number; type?: string }[] = raw ? JSON.parse(raw) : [];
       notes.unshift({ id: `note-${Date.now()}`, content: noteContent, savedAt: Date.now(), type: "study_block" });
-      await AsyncStorage.setItem(SAVED_NOTES_KEY, JSON.stringify(notes.slice(0, 200)));
+      const trimmedStudy = notes.slice(0, 200);
+      await AsyncStorage.setItem(SAVED_NOTES_KEY, JSON.stringify(trimmedStudy));
+      // Fire-and-forget cloud push
+      pushNotes(trimmedStudy.map((n) => ({ noteId: n.id, noteJson: JSON.stringify(n) }))).catch(() => {});
       // Show floating save confirmation toast
       setStudyBlockSavedToast(block.title);
       if (studyBlockSavedTimerRef.current) clearTimeout(studyBlockSavedTimerRef.current);
@@ -1955,7 +1959,10 @@ export default function SolutionScreen() {
                   const raw = await AsyncStorage.getItem(SAVED_NOTES_KEY);
                   const notes: { id: string; content: string; savedAt: number; type?: string }[] = raw ? JSON.parse(raw) : [];
                   notes.unshift({ id: `note-${Date.now()}`, content: noteContent, savedAt: Date.now(), type: "explanation" });
-                  await AsyncStorage.setItem(SAVED_NOTES_KEY, JSON.stringify(notes.slice(0, 200)));
+                  const trimmedExp = notes.slice(0, 200);
+                  await AsyncStorage.setItem(SAVED_NOTES_KEY, JSON.stringify(trimmedExp));
+                  // Fire-and-forget cloud push
+                  pushNotes(trimmedExp.map((n) => ({ noteId: n.id, noteJson: JSON.stringify(n) }))).catch(() => {});
                   setSaveNoteFeedback(true);
                   H.notificationSuccess();
                   if (saveNoteTimerRef.current) clearTimeout(saveNoteTimerRef.current);
