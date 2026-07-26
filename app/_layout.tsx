@@ -15,7 +15,7 @@ import { Inter_800ExtraBold } from "@expo-google-fonts/inter/800ExtraBold";
 import { JetBrainsMono_400Regular } from "@expo-google-fonts/jetbrains-mono/400Regular";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import "react-native-reanimated";
-import { Platform , Alert, View } from "react-native";
+import { Platform , Alert, View, AppState } from "react-native";
 // Removed: React Navigation Stack is not compatible with Expo Router
 import "@/lib/_core/nativewind-pressable";
 import { ThemeProvider } from "@/lib/theme-provider";
@@ -46,6 +46,8 @@ import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { useColors } from "@/hooks/use-colors";
 import { useNetworkStatus } from "@/hooks/use-network-status";
 import { flushSyncQueueIfDirty } from "@/lib/sync-retry-queue";
+import { scheduleStreakAtRiskCheck } from "@/lib/notifications";
+import { getProgress } from "@/lib/progress";
 
 // Show notifications as banners when app is in foreground
 if (Platform.OS !== "web") {
@@ -229,6 +231,27 @@ export default function RootLayout() {
       flushSyncQueueIfDirty().catch(() => {});
     }
   }, [wasJustReconnected]);
+  // Schedule streak at-risk notification when app comes to foreground
+  useEffect(() => {
+    const checkStreak = async () => {
+      try {
+        const progress = await getProgress();
+        await scheduleStreakAtRiskCheck(
+          progress.streak.lastSolvedDate,
+          progress.streak.current,
+        );
+      } catch {
+        // non-critical
+      }
+    };
+    // Check on mount
+    checkStreak();
+    // Check every time the app comes back to the foreground
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") checkStreak();
+    });
+    return () => sub.remove();
+  }, []);
 
   const { updateAvailable, updateInfo, forceUpdate, dismiss } = useUpdateCheck();
   const [queryClient] = useState(

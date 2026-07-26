@@ -283,3 +283,95 @@ export async function isBackupReminderEnabled(): Promise<boolean> {
     return false;
   }
 }
+
+// ── Streak At-Risk Notification ───────────────────────────────────────────────
+
+const STREAK_AT_RISK_ID_KEY = "@tutorsnap/streakAtRiskNotifId";
+
+/**
+ * Schedules a 9 PM notification for today if the user has an active streak
+ * but has NOT solved anything today. Cancels any existing at-risk notification
+ * if the user has already solved today (streak is safe).
+ *
+ * Should be called:
+ *  - On app foreground (AppState "active")
+ *  - After a successful solve (to cancel the notification)
+ *
+ * Respects the "streakAlerts" notification preference.
+ */
+export async function scheduleStreakAtRiskCheck(
+  lastSolvedDate: string | null,
+  currentStreak: number,
+): Promise<void> {
+  if (Platform.OS === "web") return;
+  try {
+    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+    // Cancel any existing at-risk notification first
+    const existingId = await AsyncStorage.getItem(STREAK_AT_RISK_ID_KEY);
+    if (existingId) {
+      await Notifications.cancelScheduledNotificationAsync(existingId).catch(() => {});
+      await AsyncStorage.removeItem(STREAK_AT_RISK_ID_KEY);
+    }
+
+    // If user already solved today, streak is safe — nothing more to do
+    if (lastSolvedDate === today) return;
+
+    // Only warn if user has an active streak worth protecting
+    if (currentStreak <= 0) return;
+
+    // Respect user notification preference
+    const enabled = await isNotifEnabled("streakAlerts");
+    if (!enabled) return;
+
+    // Check permission
+    const granted = await requestNotificationPermission();
+    if (!granted) return;
+
+    // Build the 9 PM trigger for today
+    const now = new Date();
+    const fireAt = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 21, 0, 0);
+
+    // If 9 PM has already passed today, don't schedule
+    if (fireAt <= now) return;
+
+    if (Platform.OS === "android") {
+      await Notifications.setNotificationChannelAsync("streak-alerts", {
+        name: "Streak Alerts",
+        importance: Notifications.AndroidImportance.HIGH,
+        sound: "default",
+      });
+    }
+
+    const id = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: "Your streak is at risk! 🔥",
+        body: `You're on a ${currentStreak}-day streak — solve one problem before midnight to keep it alive.`,
+        sound: "default",
+        data: { screen: "home" },
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: fireAt,
+      },
+    });
+
+    await AsyncStorage.setItem(STREAK_AT_RISK_ID_KEY, id);
+  } catch {
+    // non-critical — ignore
+  }
+}
+
+/** Cancel the streak at-risk notification (call after a successful solve). */
+export async function cancelStreakAtRiskReminder(): Promise<void> {
+  if (Platform.OS === "web") return;
+  try {
+    const id = await AsyncStorage.getItem(STREAK_AT_RISK_ID_KEY);
+    if (id) {
+      await Notifications.cancelScheduledNotificationAsync(id).catch(() => {});
+      await AsyncStorage.removeItem(STREAK_AT_RISK_ID_KEY);
+    }
+  } catch {
+    // ignore
+  }
+}

@@ -843,6 +843,11 @@ function SolveScreenContent() {
           await cancelStreakAlert();
         }
       } catch { /* ignore */ }
+      // Cancel streak at-risk notification — user just solved, streak is safe
+      try {
+        const { cancelStreakAtRiskReminder } = await import("@/lib/notifications");
+        await cancelStreakAtRiskReminder();
+      } catch { /* ignore */ }
       // Check for streak milestone celebration
       try {
         const hit = await checkStreakMilestone(updatedProgress.streak.currentStreak);
