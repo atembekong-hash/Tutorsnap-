@@ -16,6 +16,7 @@ import { useRouter } from "expo-router";
 import * as H from "@/lib/haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useColors } from "@/hooks/use-colors";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { SUBJECT_CATEGORIES, type SubjectCategory } from "@/lib/subjects";
 import { GRADE_OPTIONS, saveGlobalGrade, loadGlobalGrade } from "@/lib/grade-levels";
@@ -189,9 +190,12 @@ function SlideWrapper({ active, children }: { active: boolean; children: React.R
 
 export default function OnboardingScreen() {
   const colors = useColors();
+  const colorScheme = useColorScheme();
   const router = useRouter();
   const { fadeStyle } = useScreenTransition({ duration: 320, translateY: 20 });
-  const { startExit, portalStyle, bloomStyle } = useOnboardingExit();
+  // Dark mode: brand-violet bloom; light mode: white bloom
+  const bloomColor = colorScheme === "dark" ? "rgba(124,58,237,0.45)" : "rgba(255,255,255,0.95)";
+  const { startExit, portalStyle, bloomStyle } = useOnboardingExit(bloomColor);
   const [trialVariant, setTrialVariant] = React.useState<TrialVariantConfig>(getDefaultTrialVariantConfig());
   React.useEffect(() => {
     getTrialVariantConfig().then(setTrialVariant).catch(() => {});

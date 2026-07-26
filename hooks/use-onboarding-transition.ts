@@ -32,7 +32,7 @@ const SECTION_OFFSET  = 28;
 
 // ─── EXIT (onboarding.tsx) ────────────────────────────────────────────────────
 
-export function useOnboardingExit() {
+export function useOnboardingExit(bloomColor = "#ffffff") {
   const portalScale   = useSharedValue(1);
   const portalOpacity = useSharedValue(1);
   const bloomOpacity  = useSharedValue(0);
@@ -46,7 +46,7 @@ export function useOnboardingExit() {
     opacity: bloomOpacity.value,
     position: "absolute" as const,
     top: 0, left: 0, right: 0, bottom: 0,
-    backgroundColor: "#ffffff",
+    backgroundColor: bloomColor,
     zIndex: 999,
   }));
 
