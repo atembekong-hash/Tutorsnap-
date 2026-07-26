@@ -347,8 +347,8 @@ export default function PaywallScreen() {
           </View>
         )}
 
-        {/* Dev mode notice */}
-        {isDevMode && (
+        {/* Dev mode notice — only visible in development builds, never in production */}
+        {isDevMode && __DEV__ && (
           <View style={s.devNotice}>
             <Text style={s.devNoticeText}>
               🛠 Dev mode - RevenueCat API key not configured. Purchases are simulated.
