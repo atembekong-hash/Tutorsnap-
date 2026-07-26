@@ -26,6 +26,7 @@ import {
   Modal,
   Image,
   Animated,
+  ActivityIndicator,
 } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import * as H from "@/lib/haptics";
@@ -63,6 +64,9 @@ import {
 } from "@/lib/homework-notifications";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import QRCode from "react-native-qrcode-svg";
+import * as Sharing from "expo-sharing";
+import * as FileSystem from "expo-file-system/legacy";
+import { captureRef } from "react-native-view-shot";
 import { ProblemCommentSheet } from "@/components/problem-comment-sheet";
 import { getCommentCount } from "@/lib/problem-comments";
 import { toggleBookmark, isBookmarked } from "@/lib/bookmarks";
@@ -253,6 +257,8 @@ export default function ClassroomTabScreen() {
   // Edit display-name modal
   const [showEditNameModal, setShowEditNameModal] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false);
+  const [qrSharing, setQrSharing] = useState(false);
+  const qrViewRef = useRef<View>(null);
   const [editNameValue, setEditNameValue] = useState("");
 
   // Feed search
@@ -475,6 +481,43 @@ export default function ClassroomTabScreen() {
         title: "Join my TutorSnap Classroom",
       });
     } catch { /* ignore */ }
+  };
+
+  const handleShareQR = async () => {
+    if (!activeClassroom) return;
+    H.impactLight();
+    setQrSharing(true);
+    try {
+      if (Platform.OS !== "web" && qrViewRef.current) {
+        // Capture the QR view as a PNG image and share it
+        const uri = await captureRef(qrViewRef, {
+          format: "png",
+          quality: 1,
+          result: "tmpfile",
+        });
+        const canShare = await Sharing.isAvailableAsync();
+        if (canShare) {
+          await Sharing.shareAsync(uri, {
+            mimeType: "image/png",
+            dialogTitle: `Share QR code for ${activeClassroom.name}`,
+          });
+          FileSystem.deleteAsync(uri, { idempotent: true }).catch(() => {});
+        } else {
+          Alert.alert("Sharing unavailable", "Sharing is not available on this device.");
+        }
+      } else {
+        // Web / fallback: share the deep link as text
+        const deepLink = `tutorsnap://classroom/join?code=${encodeURIComponent(activeClassroom.code)}`;
+        await Share.share({
+          message: `Scan to join "${activeClassroom.name}":\n${deepLink}\n\nCode: ${activeClassroom.code}`,
+          title: "Join my TutorSnap Classroom",
+        });
+      }
+    } catch {
+      // User cancelled or share failed — silently ignore
+    } finally {
+      setQrSharing(false);
+    }
   };
 
   const handleRemoveProblem = (id: string) => {
@@ -1889,24 +1932,51 @@ export default function ClassroomTabScreen() {
             <Text style={{ color: colors.muted, fontSize: 13, marginBottom: 20, textAlign: "center" }}>
               Students scan this QR code to join{activeClassroom ? ` "${activeClassroom.name}"` : ""}
             </Text>
-            {activeClassroom ? (
-              <QRCode
-                value={`tutorsnap://classroom/join?code=${activeClassroom.code}`}
-                size={200}
-                color={colors.foreground}
-                backgroundColor={colors.surface}
-              />
-            ) : null}
+            {/* Wrap QR code in a ref-able View so captureRef can snapshot it */}
+            <View
+              ref={qrViewRef}
+              style={{ padding: 16, backgroundColor: colors.surface, borderRadius: 12 }}
+              collapsable={false}
+            >
+              {activeClassroom ? (
+                <QRCode
+                  value={`tutorsnap://classroom/join?code=${activeClassroom.code}`}
+                  size={200}
+                  color={colors.foreground}
+                  backgroundColor={colors.surface}
+                />
+              ) : null}
+            </View>
             <Text style={{ color: colors.muted, fontSize: 12, marginTop: 16, letterSpacing: 2, fontWeight: "700" }}>
               {activeClassroom?.code ?? ""}
             </Text>
-            <TouchableOpacity
-              style={[styles.modalAssignBtn, { backgroundColor: colors.primary, marginTop: 24, width: "100%" }]}
-              onPress={() => { H.impactLight(); setShowQRModal(false); }}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.modalAssignText, { color: "#FFFFFF" }]}>Done</Text>
-            </TouchableOpacity>
+            {/* Action row: Share QR + Done */}
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 24, width: "100%" }}>
+              <TouchableOpacity
+                style={[styles.modalAssignBtn, { backgroundColor: `${colors.primary}20`, borderWidth: 1.5, borderColor: colors.primary, flex: 1 }]}
+                onPress={handleShareQR}
+                activeOpacity={0.8}
+                disabled={qrSharing}
+                accessibilityLabel="Share QR code"
+                accessibilityHint="Exports the QR code as an image and opens the share sheet"
+              >
+                {qrSharing ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <>
+                    <IconSymbol size={16} name="square.and.arrow.up" color={colors.primary} />
+                    <Text style={[styles.modalAssignText, { color: colors.primary }]}>Share QR</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalAssignBtn, { backgroundColor: colors.primary, flex: 1 }]}
+                onPress={() => { H.impactLight(); setShowQRModal(false); }}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.modalAssignText, { color: "#FFFFFF" }]}>Done</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
