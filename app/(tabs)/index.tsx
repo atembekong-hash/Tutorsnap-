@@ -1104,7 +1104,7 @@ function SolveScreenContent() {
           )}
 
           {/* Trial Countdown Banner — shown for free-trial users who have not yet purchased */}
-          {isTrialActive && !isPremium && !isDevMode && !trialBannerDismissed && (
+          {isTrialActive && !isDevMode && !trialBannerDismissed && (
             <TouchableOpacity
               accessibilityLabel={`${trialDaysRemaining} day${trialDaysRemaining === 1 ? '' : 's'} left in your free trial. Tap to upgrade.`}
               style={[styles.trialBanner, { backgroundColor: `${colors.primary}12`, borderColor: `${colors.primary}30` }]}

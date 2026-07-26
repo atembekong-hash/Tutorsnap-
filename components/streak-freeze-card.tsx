@@ -32,7 +32,7 @@ export function StreakFreezeCard({ currentStreak, onFreezeActivated, onFreezeEar
   const justEarnedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const justActivatedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = new Date().toLocaleDateString("en-CA"); // local YYYY-MM-DD, matches progress.ts getTodayString()
   const isActiveToday = state.activeUntil === today;
 
   const load = useCallback(async () => {

@@ -179,6 +179,13 @@ function AnimatedCard({
         </View>
       )}
 
+      {/* Display name below avatar */}
+      {displayName ? (
+        <Text style={[styles.cardDisplayName, { color: colors.foreground }]} numberOfLines={1}>
+          {displayName}
+        </Text>
+      ) : null}
+
       {/* Streak count badge */}
       <View style={[styles.streakBadge, { backgroundColor: `${colors.primary}15`, borderColor: `${colors.primary}30` }]}>
         <Text style={styles.streakBadgeEmoji}>{info.emoji}</Text>
@@ -287,6 +294,7 @@ const styles = StyleSheet.create({
   cardAvatar: { width: 72, height: 72, borderRadius: 36, marginBottom: 12 },
   cardAvatarPlaceholder: { width: 72, height: 72, borderRadius: 36, alignItems: "center", justifyContent: "center", marginBottom: 12 },
   cardAvatarInitial: { fontSize: 28, fontWeight: "800" },
+  cardDisplayName: { fontSize: 15, fontWeight: "700", marginBottom: 10, textAlign: "center" },
   streakBadge: {
     flexDirection: "row", alignItems: "center", gap: 6,
     paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1, marginBottom: 12,

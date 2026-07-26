@@ -184,7 +184,7 @@ function AnimatedPodiumRow({
   return (
     <View style={[podiumStyles.podiumRow, { alignItems: "flex-end" }]}>
       {leaderboard[1] ? (
-        <PodiumSlotAnimated entry={leaderboard[1]} medal="🦤" delay={0} colors={colors} ps={podiumStyles} />
+        <PodiumSlotAnimated entry={leaderboard[1]} medal="🥈" delay={0} colors={colors} ps={podiumStyles} />
       ) : <View style={podiumStyles.podiumSlot} />}
       <PodiumSlotAnimated entry={leaderboard[0]} medal="🥇" isGold delay={240} colors={colors} ps={podiumStyles} />
       {leaderboard[2] ? (
