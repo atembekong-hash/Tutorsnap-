@@ -23,6 +23,13 @@ import {
   Pressable,
   Platform,
 } from "react-native";
+import ReAnimated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  withSequence,
+} from "react-native-reanimated";
 import * as H from "@/lib/haptics";
 import { useColors } from "@/hooks/use-colors";
 import {
@@ -289,32 +296,45 @@ function SubjectCell({
   onSelect: (id: SubjectId) => void;
   colors: ReturnType<typeof useColors>;
 }) {
+  const scale = useSharedValue(1);
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
   return (
-    <TouchableOpacity
-      style={[
-        styles.cell,
-        {
-          backgroundColor: selected ? item.color + "22" : colors.surface,
-          borderColor: selected ? item.color : colors.border,
-        },
-      ]}
-      onPress={() => onSelect(item.id)}
-      activeOpacity={0.75}
-    >
-      <Text style={styles.cellEmoji}>{item.emoji}</Text>
-      <Text
+    <ReAnimated.View style={[animStyle, styles.cellWrapper]}>
+      <TouchableOpacity
         style={[
-          styles.cellLabel,
-          { color: selected ? item.color : colors.foreground },
+          styles.cell,
+          {
+            backgroundColor: selected ? item.color + "22" : colors.surface,
+            borderColor: selected ? item.color : colors.border,
+          },
         ]}
-        numberOfLines={2}
+        onPress={() => {
+          scale.value = withSequence(
+            withTiming(0.92, { duration: 80 }),
+            withSpring(1, { damping: 7, stiffness: 220 }),
+          );
+          onSelect(item.id);
+        }}
+        activeOpacity={1}
       >
-        {item.label}
-      </Text>
-      {selected && (
-        <Text style={[styles.cellCheck, { color: item.color }]}>{"✓"}</Text>
-      )}
-    </TouchableOpacity>
+        <Text style={styles.cellEmoji}>{item.emoji}</Text>
+        <Text
+          style={[
+            styles.cellLabel,
+            { color: selected ? item.color : colors.foreground },
+          ]}
+          numberOfLines={2}
+        >
+          {item.label}
+        </Text>
+        {selected && (
+          <Text style={[styles.cellCheck, { color: item.color }]}>{"✓"}</Text>
+        )}
+      </TouchableOpacity>
+    </ReAnimated.View>
   );
 }
 
@@ -478,6 +498,9 @@ const styles = StyleSheet.create({
     padding: 12,
     gap: 8,
     paddingBottom: 32,
+  },
+  cellWrapper: {
+    flex: 1,
   },
   cell: {
     flex: 1,

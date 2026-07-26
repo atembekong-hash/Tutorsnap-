@@ -7,6 +7,14 @@ import {
   StyleSheet,
   Platform,
 } from "react-native";
+import ReAnimated, {
+  FadeInUp,
+  useSharedValue,
+  useAnimatedStyle,
+  withSequence,
+  withTiming,
+  withSpring,
+} from "react-native-reanimated";
 import * as H from "@/lib/haptics";
 import { useColors } from "@/hooks/use-colors";
 
@@ -132,6 +140,44 @@ interface MathKeyboardProps {
   onClear: () => void;
 }
 
+/** Animated key button — scales down on press and springs back */
+function AnimatedKey({
+  symbol,
+  display,
+  onPress,
+  colors,
+}: {
+  symbol: string;
+  display?: string;
+  onPress: (s: string) => void;
+  colors: ReturnType<typeof useColors>;
+}) {
+  const scale = useSharedValue(1);
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  return (
+    <ReAnimated.View style={[styles.key, animStyle, { backgroundColor: colors.background, borderColor: colors.border }]}>
+      <TouchableOpacity
+        onPress={() => {
+          scale.value = withSequence(
+            withTiming(0.82, { duration: 70 }),
+            withSpring(1, { damping: 8, stiffness: 260 }),
+          );
+          onPress(symbol);
+        }}
+        style={styles.keyInner}
+        activeOpacity={1}
+      >
+        <Text style={[styles.keyText, { color: colors.foreground }]}>
+          {display || symbol}
+        </Text>
+      </TouchableOpacity>
+    </ReAnimated.View>
+  );
+}
+
 export function MathKeyboard({ onInsert, onBackspace, onClear }: MathKeyboardProps) {
   const colors = useColors();
   const [activeTab, setActiveTab] = useState<KeyboardTab>("basic");
@@ -147,7 +193,10 @@ export function MathKeyboard({ onInsert, onBackspace, onClear }: MathKeyboardPro
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
+    <ReAnimated.View
+      entering={FadeInUp.duration(260).springify()}
+      style={[styles.container, { backgroundColor: colors.surface, borderTopColor: colors.border }]}
+    >
       {/* Tab Row */}
       <View style={[styles.tabRow, { borderBottomColor: colors.border }]}>
         {KEYBOARD_TABS.map((tab) => {
@@ -200,23 +249,17 @@ export function MathKeyboard({ onInsert, onBackspace, onClear }: MathKeyboardPro
       >
         <View style={styles.keysGrid}>
           {KEYS[activeTab].map((key, index) => (
-            <TouchableOpacity
+            <AnimatedKey
               key={`${activeTab}-${index}`}
-              onPress={() => handleKey(key.symbol)}
-              style={[
-                styles.key,
-                { backgroundColor: colors.background, borderColor: colors.border },
-              ]}
-              activeOpacity={0.65}
-            >
-              <Text style={[styles.keyText, { color: colors.foreground }]}>
-                {key.display || key.symbol}
-              </Text>
-            </TouchableOpacity>
+              symbol={key.symbol}
+              display={key.display}
+              onPress={handleKey}
+              colors={colors}
+            />
           ))}
         </View>
       </ScrollView>
-    </View>
+    </ReAnimated.View>
   );
 }
 
@@ -273,6 +316,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     minWidth: 44,
     minHeight: 36,
+    overflow: "hidden",
+  },
+  keyInner: {
+    flex: 1,
+    width: "100%",
+    alignItems: "center",
+    justifyContent: "center",
   },
   keyText: {
     fontSize: 15,
