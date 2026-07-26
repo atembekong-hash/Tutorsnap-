@@ -626,7 +626,7 @@ export default function QuizScreen() {
       maybeRequestReview(pct).catch(() => {});
       // Check cumulative quiz count for milestone celebration
       try {
-        const raw = await AsyncStorageLib.getItem("quiz_history");
+        const raw = await AsyncStorageLib.getItem("tutorsnap_quiz_history");
         const history: unknown[] = raw ? JSON.parse(raw) : [];
         const QUIZ_MILESTONES = new Set([10, 25, 50, 100]);
         if (QUIZ_MILESTONES.has(history.length)) {
