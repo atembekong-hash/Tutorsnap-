@@ -359,6 +359,16 @@ export default function ClassroomTabScreen() {
   useFocusEffect(useCallback(() => {
     loadData();
     AsyncStorage.getItem("@tutorsnap/avatarUri").then((uri) => setAvatarUri(uri || null)).catch(() => {});
+    // Check for a pending classroom join code from a deep link
+    AsyncStorage.getItem("@tutorsnap/pendingClassroomJoinCode")
+      .then(async (code) => {
+        if (code && code.length >= 4) {
+          await AsyncStorage.removeItem("@tutorsnap/pendingClassroomJoinCode");
+          setJoinCode(code);
+          setShowJoin(true);
+        }
+      })
+      .catch(() => { /* non-critical */ });
   }, [loadData]));
 
   const activeClassroom = myClassroom || joinedClassroom;
@@ -457,8 +467,9 @@ export default function ClassroomTabScreen() {
 
   const handleShareCode = async (code: string, name: string) => {
     try {
+      const deepLink = `tutorsnap://classroom/join?code=${encodeURIComponent(code)}`;
       await Share.share({
-        message: `Join my TutorSnap classroom "${name}"!\n\nUse code: ${code}\n\nDownload TutorSnap at ${APP_URL.replace("https://", "")}`,
+        message: `Join my TutorSnap classroom "${name}"!\n\nTap to join: ${deepLink}\n\nOr enter code: ${code}\n\nDownload TutorSnap at ${APP_URL.replace("https://", "")}`,
         title: "Join my TutorSnap Classroom",
       });
     } catch { /* ignore */ }

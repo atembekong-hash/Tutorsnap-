@@ -1145,4 +1145,4 @@
 ## v1.8.4 — Three New Features (Jul 26 2026)
 - [x] Feature A: Paywall A/B test — lib/ab-test.ts + paywall.tsx + onboarding.tsx variant switching
 - [x] Feature B: Streak at-risk notification — scheduleStreakAtRiskCheck in notifications.ts + _layout.tsx AppState hook + cancelStreakAtRiskReminder in index.tsx after solve
-- [ ] Feature C: Classroom share deep link — tutorsnap://classroom/join?code=XXXX handler in _layout.tsx + classroom.tsx pre-fill
+- [x] Feature C: Classroom share deep link — tutorsnap://classroom/join?code=XXXX handler in _layout.tsx + classroom.tsx useFocusEffect pre-fill + handleShareCode deep link URL

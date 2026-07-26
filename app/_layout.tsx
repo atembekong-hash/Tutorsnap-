@@ -155,6 +155,17 @@ export default function RootLayout() {
           } catch { /* invalid payload — ignore */ }
           return;
         }
+        // Handle classroom join deep links: tutorsnap://classroom/join?code=XXXX
+        const path = parsed.path ?? "";
+        const joinCodeParam = parsed.queryParams?.code as string | undefined;
+        if ((path === "classroom/join" || path === "/classroom/join") && joinCodeParam) {
+          const code = joinCodeParam.trim().toUpperCase();
+          if (code.length >= 4) {
+            await AsyncStorage.setItem("@tutorsnap/pendingClassroomJoinCode", code);
+            router.push("/(tabs)/classroom" as any);
+          }
+          return;
+        }
         const ref = (parsed.queryParams?.ref ?? parsed.queryParams?.code) as string | undefined;
         if (!ref) return;
         // Don't apply your own code
