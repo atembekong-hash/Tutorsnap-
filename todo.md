@@ -1139,5 +1139,5 @@
 
 ## v1.8.3 — Three New Features
 - [x] Feature 1: Sync retry test coverage — tests/sync-retry-queue.test.ts (13 tests, all passing)
-- [ ] Feature 2: Chat session real-time push — pushChatSession after each message send in chat.tsx
-- [ ] Feature 3: Onboarding screen transition — migrate from RN Animated to useScreenTransition
+- [x] Feature 2: Chat session real-time push — already wired in lib/chat-sessions.ts saveSession() (cloudPushSession fire-and-forget on every save)
+- [x] Feature 3: Onboarding screen transition — useScreenTransition (320ms, translateY 20) wraps root Animated.View in onboarding.tsx

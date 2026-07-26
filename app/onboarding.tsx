@@ -22,6 +22,7 @@ import { GRADE_OPTIONS, saveGlobalGrade, loadGlobalGrade } from "@/lib/grade-lev
 import { TUTOR_SETTINGS_KEY, DEFAULT_TUTOR_SETTINGS } from "@/components/tutor-settings-modal";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
+import { useScreenTransition } from "@/hooks/use-screen-transition";
 
 const { width: SCREEN_WIDTH, height: SCREEN_H } = Dimensions.get("window");
 
@@ -152,6 +153,7 @@ const CATEGORY_ORDER: SubjectCategory[] = ["math", "english", "science", "social
 export default function OnboardingScreen() {
   const colors = useColors();
   const router = useRouter();
+  const { fadeStyle } = useScreenTransition({ duration: 320, translateY: 20 });
   const scrollRef = useRef<ScrollView>(null);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [selectedCategories, setSelectedCategories] = useState<Set<SubjectCategory>>(new Set());
@@ -359,7 +361,7 @@ export default function OnboardingScreen() {
   const currentGradient = SLIDE_GRADIENTS[SLIDES[currentSlide]?.id] ?? ["#0a7ea420", "#0a7ea405"];
 
   return (
-    <View style={[styles.gradientRoot, { backgroundColor: colors.background }]}>
+    <Animated.View style={[styles.gradientRoot, { backgroundColor: colors.background }, fadeStyle]}>
     <LinearGradient
       colors={[currentGradient[0], currentGradient[1], "transparent"]}
       style={StyleSheet.absoluteFillObject}
@@ -733,7 +735,7 @@ export default function OnboardingScreen() {
       </SafeAreaView>
       </KeyboardAvoidingView>
         {/* Confetti removed — celebration fires only after a real purchase on /premium-welcome */}
-    </View>
+    </Animated.View>
   );
 }
 
