@@ -1,21 +1,20 @@
 /**
  * lib/subscription.ts
  *
- * Local subscription layer for TutorSnap.
+ * RevenueCat subscription layer for TutorSnap.
  *
  * Product IDs (configure these in App Store Connect & Google Play Console):
  *   - tutorsnap_monthly   → $9.99/month, 14-day free trial
  *   - tutorsnap_annual    → $69.99/year, 14-day free trial
  *
- * This module manages subscription state locally using AsyncStorage.
- * When RevenueCat integration is needed in the future, add react-native-purchases
- * back once a version compatible with the project's architecture is available.
+ * Environment variables:
+ *   EXPO_PUBLIC_REVENUECAT_APPLE_KEY  — iOS public key (starts with appl_)
+ *   EXPO_PUBLIC_REVENUECAT_GOOGLE_KEY — Android public key (starts with goog_)
  *
- * Current behavior:
- * - All users get a 14-day free trial from first launch
- * - After trial expires, free tier limits apply
- * - Premium purchase state is stored locally (for development/testing)
- * - In dev mode (__DEV__), all features are unlocked
+ * Behaviour:
+ * - In __DEV__ or web: all features unlocked (no SDK calls)
+ * - In production iOS/Android: real RevenueCat SDK used
+ * - Falls back to local AsyncStorage trial if SDK not configured
  */
 
 import { Platform } from "react-native";
@@ -94,36 +93,49 @@ export async function incrementUsage(type: "solves" | "quiz" | "chat"): Promise<
   }
 }
 
-// ─── Subscription initialisation ────────────────────────────────────────────
+// ─── RevenueCat SDK (lazy import to avoid web/dev crashes) ───────────────────
 
 let _initialised = false;
-let _devMode = false; // true in __DEV__ or when no store integration is configured
+let _devMode = false;
+let _rcAvailable = false; // true when SDK was successfully configured
+
+async function getPurchases() {
+  // Dynamic import so web bundle doesn't crash on missing native module
+  const mod = await import("react-native-purchases");
+  return mod.default;
+}
+
+// ─── Subscription initialisation ────────────────────────────────────────────
 
 export async function initRevenueCat(): Promise<void> {
   if (_initialised) return;
 
-  // In development or web, unlock all features
+  // In development or web, unlock all features without SDK
   if (__DEV__ || Platform.OS === "web") {
     _devMode = true;
     _initialised = true;
     return;
   }
 
-  // In production builds, check if RevenueCat keys are configured
-  const iosKey = process.env.EXPO_PUBLIC_RC_API_KEY_IOS ?? "";
-  const androidKey = process.env.EXPO_PUBLIC_RC_API_KEY_ANDROID ?? "";
+  const iosKey = process.env.EXPO_PUBLIC_REVENUECAT_APPLE_KEY ?? "";
+  const androidKey = process.env.EXPO_PUBLIC_REVENUECAT_GOOGLE_KEY ?? "";
   const apiKey = Platform.OS === "ios" ? iosKey : androidKey;
 
-  if (!apiKey || apiKey.startsWith("test_")) {
-    // No production key configured — use local subscription management
-    // Trial + local premium state will be used
+  if (!apiKey) {
+    // No key configured — fall back to local trial management
     _initialised = true;
     return;
   }
 
-  // Future: when a compatible react-native-purchases version is available,
-  // initialize it here. For now, use local management.
-  _initialised = true;
+  try {
+    const Purchases = await getPurchases();
+    Purchases.configure({ apiKey });
+    _rcAvailable = true;
+    _initialised = true;
+  } catch (err) {
+    console.warn("[RevenueCat] configure failed:", err);
+    _initialised = true;
+  }
 }
 
 // ─── Entitlement check ────────────────────────────────────────────────────────
@@ -155,11 +167,30 @@ export async function getSubscriptionStatus(): Promise<SubscriptionStatus> {
     };
   }
 
-  // Check local premium state
+  // Check RevenueCat entitlement (production)
+  if (_rcAvailable) {
+    try {
+      const Purchases = await getPurchases();
+      const customerInfo = await Purchases.getCustomerInfo();
+      const entitlement = customerInfo.entitlements.active[RC_ENTITLEMENT_ID];
+      if (entitlement) {
+        return {
+          isPremium: true,
+          isTrialActive: false,
+          trialDaysRemaining,
+          activeProductId: entitlement.productIdentifier,
+          isDevMode: false,
+        };
+      }
+    } catch (err) {
+      console.warn("[RevenueCat] getCustomerInfo failed:", err);
+    }
+  }
+
+  // Fall back to local premium state (e.g. after offline purchase)
   try {
     const premiumActive = await AsyncStorage.getItem(PREMIUM_KEY);
     const productId = await AsyncStorage.getItem(PREMIUM_PRODUCT_KEY);
-
     if (premiumActive === "true") {
       return {
         isPremium: true,
@@ -188,18 +219,77 @@ export type PurchaseResult =
   | { success: false; cancelled: boolean; error?: string };
 
 export async function purchaseProduct(productId: string): Promise<PurchaseResult> {
-  // Grant free trial access — works in dev mode, web, and production preview builds.
-  // RevenueCat integration can be added later for store billing.
-  // Trial start is already tracked by ensureTrialStartRecorded() on app launch.
+  await initRevenueCat();
+
+  if (_devMode || Platform.OS === "web") {
+    // Dev / web: grant immediately
+    await AsyncStorage.setItem(PREMIUM_KEY, "true");
+    await AsyncStorage.setItem(PREMIUM_PRODUCT_KEY, productId);
+    return { success: true, productId };
+  }
+
+  if (_rcAvailable) {
+    try {
+      const Purchases = await getPurchases();
+      // Get the current offering and find the matching package
+      const offerings = await Purchases.getOfferings();
+      const current = offerings.current;
+      if (!current) {
+        return { success: false, cancelled: false, error: "No offerings available" };
+      }
+
+      const pkg = current.availablePackages.find(
+        (p) => p.product.identifier === productId
+      );
+      if (!pkg) {
+        return { success: false, cancelled: false, error: `Product ${productId} not found in offering` };
+      }
+
+      const result = await Purchases.purchasePackage(pkg);
+      const entitlement = result.customerInfo.entitlements.active[RC_ENTITLEMENT_ID];
+      if (entitlement) {
+        // Cache locally for offline access
+        await AsyncStorage.setItem(PREMIUM_KEY, "true");
+        await AsyncStorage.setItem(PREMIUM_PRODUCT_KEY, productId);
+        return { success: true, productId };
+      }
+      return { success: false, cancelled: false, error: "Entitlement not activated" };
+    } catch (err: any) {
+      if (err?.userCancelled) {
+        return { success: false, cancelled: true };
+      }
+      return { success: false, cancelled: false, error: err?.message ?? "Purchase failed" };
+    }
+  }
+
+  // Fallback: local grant (no SDK)
   await AsyncStorage.setItem(PREMIUM_KEY, "true");
   await AsyncStorage.setItem(PREMIUM_PRODUCT_KEY, productId);
   return { success: true, productId };
 }
 
 export async function restorePurchases(): Promise<boolean> {
+  await initRevenueCat();
+
   if (_devMode || Platform.OS === "web") return false;
 
-  // Check local premium state
+  if (_rcAvailable) {
+    try {
+      const Purchases = await getPurchases();
+      const customerInfo = await Purchases.restorePurchases();
+      const entitlement = customerInfo.entitlements.active[RC_ENTITLEMENT_ID];
+      if (entitlement) {
+        await AsyncStorage.setItem(PREMIUM_KEY, "true");
+        await AsyncStorage.setItem(PREMIUM_PRODUCT_KEY, entitlement.productIdentifier);
+        return true;
+      }
+      return false;
+    } catch (err) {
+      console.warn("[RevenueCat] restorePurchases failed:", err);
+    }
+  }
+
+  // Fallback: check local state
   try {
     const premiumActive = await AsyncStorage.getItem(PREMIUM_KEY);
     return premiumActive === "true";
@@ -209,7 +299,14 @@ export async function restorePurchases(): Promise<boolean> {
 }
 
 export async function openManageSubscriptions(): Promise<void> {
-  // Cannot open native subscription manager without store integration
+  await initRevenueCat();
+  if (_rcAvailable) {
+    try {
+      const Purchases = await getPurchases();
+      await Purchases.showManageSubscriptions();
+      return;
+    } catch { /* fall through */ }
+  }
   throw new Error("manage_subscriptions_unavailable");
 }
 
@@ -223,7 +320,27 @@ export interface OfferingPackage {
 }
 
 export async function getOfferings(): Promise<OfferingPackage[]> {
-  // Return static pricing data for the paywall UI
+  await initRevenueCat();
+
+  if (_rcAvailable) {
+    try {
+      const Purchases = await getPurchases();
+      const offerings = await Purchases.getOfferings();
+      const current = offerings.current;
+      if (current && current.availablePackages.length > 0) {
+        return current.availablePackages.map((pkg) => ({
+          productId: pkg.product.identifier,
+          title: pkg.packageType === "MONTHLY" ? "Monthly" : "Annual",
+          priceString: pkg.product.priceString,
+          introPrice: pkg.product.introPrice?.priceString ?? null,
+        }));
+      }
+    } catch (err) {
+      console.warn("[RevenueCat] getOfferings failed:", err);
+    }
+  }
+
+  // Fallback: static pricing data
   return [
     {
       productId: PRODUCT_MONTHLY,
