@@ -68,6 +68,8 @@ import { useNetworkStatus } from "@/hooks/use-network-status";
 
 import { useFontSize } from "@/lib/font-size-provider";
 import { ErrorBoundary } from "@/components/error-boundary";
+import ReAnimated from "react-native-reanimated";
+import { useOnboardingEntry } from "@/hooks/use-onboarding-transition";
 import { VoiceButton } from "@/components/voice-button";
 import {
   AIResponseRenderer,
@@ -1036,7 +1038,9 @@ function ChatScreenContent() {
     newSession?: string;
     seedMessage?: string;
     subject?: string;
+    fromOnboarding?: string;
   }>();
+  const { staggeredStyles } = useOnboardingEntry(params.fromOnboarding === "1");
   const seedSentRef = useRef(false);
 
   const [session, setSession] = useState<ChatSession | null>(null);
@@ -2382,6 +2386,8 @@ function ChatScreenContent() {
         style={{ flex: 1, flexDirection: "column" }}
         keyboardVerticalOffset={0}
       >
+        {/* ── Transparent header + message area ── */}
+        <ReAnimated.View style={[{ flex: 1, minHeight: 0 }, staggeredStyles[0]]}>
         {/* ── Transparent header ── */}
         <BlurView
           intensity={0}
@@ -2805,9 +2811,11 @@ function ChatScreenContent() {
           />
         )}
         </View>
+        </ReAnimated.View>
 
         {/* ── Pending queued message bubbles (shown while offline) ── */}
         {/* ── Pinned bottom dock: offline queue + input bar ── */}
+        <ReAnimated.View style={staggeredStyles[1]}>
         <View
           style={[chatStyles.bottomDock, { position: "relative", bottom: "auto", borderTopColor: colors.border }]}
           onLayout={(e) => {
@@ -3046,11 +3054,11 @@ function ChatScreenContent() {
                 </TouchableOpacity>
               )}
             </Animated.View>
-          </View>
+          </View>{/* end inputCard */}
+        </View>{/* end floatingBarWrapper */}
 
-
-        </View>
         </View>{/* end bottomDock */}
+        </ReAnimated.View>{/* end staggeredStyles[1] */}
       </KeyboardAvoidingView>
 
       {/* ── Floating scroll buttons (always rendered, opacity-animated + scale press) ── */}

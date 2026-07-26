@@ -19,7 +19,8 @@ import {
   Alert,
   ScrollView,
 } from "react-native";
-import { useRouter, useFocusEffect } from "expo-router";
+import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useOnboardingEntry } from "@/hooks/use-onboarding-transition";
 import * as ImagePicker from "expo-image-picker";
 import * as H from "@/lib/haptics";
 import * as FileSystem from "expo-file-system/legacy";
@@ -41,6 +42,8 @@ type ScanMode = "camera" | "preview" | "web-picker";
 function ScanScreenContent() {
   const colors = useColors();
   const router = useRouter();
+  const { fromOnboarding } = useLocalSearchParams<{ fromOnboarding?: string }>();
+  const { staggeredStyles } = useOnboardingEntry(fromOnboarding === "1");
   const cameraRef = useRef<any>(null);
 
   // On native, default to camera mode. On web, show gallery picker.
@@ -487,12 +490,15 @@ function ScanScreenContent() {
   // ===== WEB FALLBACK: Gallery-only picker =====
   return (
     <ScreenContainer>
-      <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <Text style={[styles.title, { color: colors.foreground }]}>Scan Problem</Text>
-        <Text style={[styles.subtitle, { color: colors.muted }]}>
-          Upload an image to solve
-        </Text>
-      </View>
+      <ReAnimated.View style={staggeredStyles[0]}>
+        <View style={[styles.header, { borderBottomColor: colors.border }]}>
+          <Text style={[styles.title, { color: colors.foreground }]}>Scan Problem</Text>
+          <Text style={[styles.subtitle, { color: colors.muted }]}>
+            Upload an image to solve
+          </Text>
+        </View>
+      </ReAnimated.View>
+      <ReAnimated.View style={[{ flex: 1 }, staggeredStyles[1]]}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
         <TouchableOpacity accessibilityLabel="Gallery" accessibilityHint="Opens your photo library" accessibilityRole="button"
           onPress={pickFromGallery}
@@ -580,6 +586,7 @@ function ScanScreenContent() {
           </View>
         </View>
       )}
+      </ReAnimated.View>
         </ScreenContainer>
   );
 }

@@ -10,6 +10,8 @@ import {
   Image,
 } from "react-native";
 import { useRouter, useLocalSearchParams , useFocusEffect } from "expo-router";
+import ReAnimated from "react-native-reanimated";
+import { useOnboardingEntry } from "@/hooks/use-onboarding-transition";
 import * as H from "@/lib/haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -79,7 +81,8 @@ function PracticeScreenContent() {
   const colors = useColors();
   const { fs } = useFontSize();
   const router = useRouter();
-  const params = useLocalSearchParams<{ subject?: string }>();
+  const params = useLocalSearchParams<{ subject?: string; fromOnboarding?: string }>();
+  const { staggeredStyles } = useOnboardingEntry(params.fromOnboarding === "1");
   const [selectedSubject, setSelectedSubject] = useState<SubjectId>("algebra");
   const [selectedDifficulty, setSelectedDifficulty] = useState<Difficulty>("medium");
   const [preferredCategories, setPreferredCategories] = useState<SubjectCategory[]>([]);
@@ -290,7 +293,7 @@ function PracticeScreenContent() {
 
   return (
     <ScreenContainer>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+      <ReAnimated.View style={staggeredStyles[0]}>
         {/* Header */}
         <View style={styles.header}>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
@@ -386,6 +389,9 @@ function PracticeScreenContent() {
             })}
           </View>
         </View>
+      </ReAnimated.View>
+      <ReAnimated.View style={[{ flex: 1 }, staggeredStyles[1]]}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
 
         {/* Progress nudge strip above generate button */}
         {progressData && (
@@ -956,8 +962,8 @@ function PracticeScreenContent() {
           </View>
         )}
       </ScrollView>
+      </ReAnimated.View>
 
-      {/* Grade Picker Sheet */}
       {showGradePicker && (
         <View style={StyleSheet.absoluteFillObject}>
           <TouchableOpacity

@@ -11,6 +11,7 @@
  * All animations run on the native thread via Reanimated 4 shared values.
  * No hooks are called inside loops or conditionals (rules-of-hooks safe).
  */
+import React, { useEffect } from "react";
 import {
   useSharedValue,
   useAnimatedStyle,
@@ -86,7 +87,7 @@ export function useOnboardingExit(bloomColor = "#ffffff") {
 
 // ─── ENTRY (index.tsx) ────────────────────────────────────────────────────────
 
-export function useOnboardingEntry() {
+export function useOnboardingEntry(triggerOnMount = false) {
   // Background fade
   const bgOpacity = useSharedValue(0);
 
@@ -128,25 +129,37 @@ export function useOnboardingEntry() {
   // Tuple so consumers can index by section number
   const staggeredStyles = [s0Style, s1Style, s2Style, s3Style, s4Style] as const;
 
+  // startEntry must be declared before useEffect so it is in scope
   const startEntry = () => {
-    "worklet";
     bgOpacity.value = withTiming(1, { duration: ENTRY_FADE, easing: Easing.out(Easing.cubic) });
-
     s0Op.value = withTiming(1, { duration: SECTION_DUR, easing: Easing.out(Easing.cubic) });
     s0Ty.value = withTiming(0, { duration: SECTION_DUR, easing: Easing.out(Easing.cubic) });
-
     s1Op.value = withDelay(STAGGER_MS * 1, withTiming(1, { duration: SECTION_DUR, easing: Easing.out(Easing.cubic) }));
     s1Ty.value = withDelay(STAGGER_MS * 1, withTiming(0, { duration: SECTION_DUR, easing: Easing.out(Easing.cubic) }));
-
     s2Op.value = withDelay(STAGGER_MS * 2, withTiming(1, { duration: SECTION_DUR, easing: Easing.out(Easing.cubic) }));
     s2Ty.value = withDelay(STAGGER_MS * 2, withTiming(0, { duration: SECTION_DUR, easing: Easing.out(Easing.cubic) }));
-
     s3Op.value = withDelay(STAGGER_MS * 3, withTiming(1, { duration: SECTION_DUR, easing: Easing.out(Easing.cubic) }));
     s3Ty.value = withDelay(STAGGER_MS * 3, withTiming(0, { duration: SECTION_DUR, easing: Easing.out(Easing.cubic) }));
-
     s4Op.value = withDelay(STAGGER_MS * 4, withTiming(1, { duration: SECTION_DUR, easing: Easing.out(Easing.cubic) }));
     s4Ty.value = withDelay(STAGGER_MS * 4, withTiming(0, { duration: SECTION_DUR, easing: Easing.out(Easing.cubic) }));
   };
+
+  useEffect(() => {
+    if (!triggerOnMount) {
+      // Snap to fully visible instantly — returning user, no animation needed
+      s0Op.value = 1; s0Ty.value = 0;
+      s1Op.value = 1; s1Ty.value = 0;
+      s2Op.value = 1; s2Ty.value = 0;
+      s3Op.value = 1; s3Ty.value = 0;
+      s4Op.value = 1; s4Ty.value = 0;
+      bgOpacity.value = 1;
+      return;
+    }
+    // Slight delay so the screen has fully mounted before animating
+    const t = setTimeout(() => { startEntry(); }, 80);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return { startEntry, bgStyle, staggeredStyles };
 }
