@@ -209,6 +209,15 @@ export default function SettingsScreen() {
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
   const [avatarLoading, setAvatarLoading] = useState(false);
 
+  // Streak freeze earn toast
+  const [freezeEarnedToast, setFreezeEarnedToast] = useState(false);
+  const freezeToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleFreezeEarned = () => {
+    setFreezeEarnedToast(true);
+    if (freezeToastTimerRef.current) clearTimeout(freezeToastTimerRef.current);
+    freezeToastTimerRef.current = setTimeout(() => setFreezeEarnedToast(false), 4000);
+  };
+
   const handlePickAvatar = async () => {
     H.impactLight();
     if (Platform.OS !== "web") {
@@ -1218,10 +1227,15 @@ export default function SettingsScreen() {
         </View>
 
         {/* ── Streak Freeze Power-up ── */}
+        {freezeEarnedToast && (
+          <View style={[styles.freezeToast, { backgroundColor: `${colors.success}18`, borderColor: `${colors.success}40` }]}>
+            <Text style={[styles.freezeToastText, { color: colors.success }]}>🧊 Streak Freeze earned! Your streak is protected for one missed day.</Text>
+          </View>
+        )}
         <StreakFreezeCard
           currentStreak={streak}
           onFreezeActivated={() => { /* streak state refreshes on next focus */ }}
-          onFreezeEarned={() => { /* toast shown inside card */ }}
+          onFreezeEarned={handleFreezeEarned}
         />
 
         {/* Search bar */}
@@ -2872,5 +2886,19 @@ const styles = StyleSheet.create({
   rerunWizardChevron: {
     fontSize: 22,
     fontWeight: "300",
+  },
+  freezeToast: {
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 14,
+    marginHorizontal: 16,
+    marginBottom: 10,
+    alignItems: "center",
+  },
+  freezeToastText: {
+    fontSize: 14,
+    fontWeight: "700",
+    textAlign: "center",
+    lineHeight: 20,
   },
 });

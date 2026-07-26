@@ -1071,3 +1071,8 @@
 - [x] Feature 1: Staggered podium entrance animation (bronze slides in, silver, gold drops from above)
 - [x] Feature 2: Share result as actual PNG image using react-native-view-shot
 - [x] Feature 3: Streak Freeze power-up in Settings/Profile screen
+
+## Advanced Features Round 5
+- [x] Feature 1: Trial days-used progress bar on paywall screen
+- [x] Feature 2: Streak freeze earn toast in settings when freeze is earned
+- [x] Feature 3: Podium empty-state placeholder (Be first! ghost cards) for missing top-3 players

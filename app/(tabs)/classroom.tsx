@@ -110,21 +110,25 @@ type PodiumColors = {
   primary: string;
   muted: string;
   foreground: string;
+  border: string;
 };
 
 type PodiumStyles = {
   podiumSlot: ViewStyle;
   podiumGold: ViewStyle;
-  podiumMedal: ViewStyle;
+  podiumMedal: any;
   podiumAvatarLarge: ViewStyle;
   podiumAvatar: ViewStyle;
   podiumAvatarPlaceholderLarge: ViewStyle;
   podiumAvatarPlaceholder: ViewStyle;
-  podiumAvatarInitialLarge: ViewStyle;
-  podiumAvatarInitial: ViewStyle;
-  podiumName: ViewStyle;
-  podiumScore: ViewStyle;
+  podiumAvatarInitialLarge: any;
+  podiumAvatarInitial: any;
+  podiumName: any;
+  podiumScore: any;
   podiumRow: ViewStyle;
+  podiumBase: ViewStyle;
+  podiumBaseSilver: ViewStyle;
+  podiumBaseBronze: ViewStyle;
 };
 
 type PodiumSlotProps = {
@@ -185,11 +189,29 @@ function AnimatedPodiumRow({
     <View style={[podiumStyles.podiumRow, { alignItems: "flex-end" }]}>
       {leaderboard[1] ? (
         <PodiumSlotAnimated entry={leaderboard[1]} medal="🥈" delay={0} colors={colors} ps={podiumStyles} />
-      ) : <View style={podiumStyles.podiumSlot} />}
+      ) : (
+        <View style={podiumStyles.podiumSlot}>
+          <Text style={podiumStyles.podiumMedal}>🥈</Text>
+          <View style={[podiumStyles.podiumAvatarPlaceholder, { backgroundColor: colors.border }]}>
+            <Text style={[podiumStyles.podiumAvatarInitial, { color: colors.muted }]}>?</Text>
+          </View>
+          <Text style={[podiumStyles.podiumName, { color: colors.muted }]} numberOfLines={1}>Be first!</Text>
+          <View style={[podiumStyles.podiumBase, podiumStyles.podiumBaseSilver, { borderColor: colors.border }]} />
+        </View>
+      )}
       <PodiumSlotAnimated entry={leaderboard[0]} medal="🥇" isGold delay={240} colors={colors} ps={podiumStyles} />
       {leaderboard[2] ? (
         <PodiumSlotAnimated entry={leaderboard[2]} medal="🥉" delay={120} colors={colors} ps={podiumStyles} />
-      ) : <View style={podiumStyles.podiumSlot} />}
+      ) : (
+        <View style={podiumStyles.podiumSlot}>
+          <Text style={podiumStyles.podiumMedal}>🥉</Text>
+          <View style={[podiumStyles.podiumAvatarPlaceholder, { backgroundColor: colors.border }]}>
+            <Text style={[podiumStyles.podiumAvatarInitial, { color: colors.muted }]}>?</Text>
+          </View>
+          <Text style={[podiumStyles.podiumName, { color: colors.muted }]} numberOfLines={1}>Be first!</Text>
+          <View style={[podiumStyles.podiumBase, podiumStyles.podiumBaseBronze, { borderColor: colors.border }]} />
+        </View>
+      )}
     </View>
   );
 }
@@ -1327,7 +1349,7 @@ export default function ClassroomTabScreen() {
 
                   {/* Top-3 Podium */}
                   {leaderboard.length >= 1 && (
-                    <AnimatedPodiumRow leaderboard={leaderboard} colors={colors} podiumStyles={styles as any} />
+                    <AnimatedPodiumRow leaderboard={leaderboard} colors={{ primary: colors.primary, muted: colors.muted, foreground: colors.foreground, border: colors.border }} podiumStyles={styles as any} />
                   )}
 
                   <View style={styles.lbColHeaders}>

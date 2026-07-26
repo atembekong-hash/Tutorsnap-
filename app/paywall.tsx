@@ -41,6 +41,8 @@ import {
   PRODUCT_MONTHLY,
   getOfferings,
   getSubscriptionStatus,
+  getTrialStartDate,
+  getTrialDaysRemaining,
   purchaseProduct,
   restorePurchases,
 } from "@/lib/subscription";
@@ -80,16 +82,22 @@ export default function PaywallScreen() {
   const [restoring, setRestoring] = useState(false);
   const [offeringsLoaded, setOfferingsLoaded] = useState(false);
   const [isDevMode, setIsDevMode] = useState(false);
+  const [trialDaysUsed, setTrialDaysUsed] = useState<number | null>(null);
 
   // Load offerings on mount
   useEffect(() => {
     (async () => {
       try {
-        const [pkgs, status] = await Promise.all([
+        const [pkgs, status, trialStart] = await Promise.all([
           getOfferings(),
           getSubscriptionStatus(),
+          getTrialStartDate(),
         ]);
         setIsDevMode(status.isDevMode);
+        if (trialStart !== null) {
+          const remaining = getTrialDaysRemaining(trialStart);
+          setTrialDaysUsed(14 - remaining);
+        }
         const map: Record<string, OfferingInfo> = {};
         for (const pkg of pkgs) {
           map[pkg.productId] = pkg;
@@ -185,6 +193,28 @@ export default function PaywallScreen() {
           <Text style={s.heroSubtitle}>
             Solve unlimited problems, ace every quiz, and get personalised AI tutoring - free for 14 days.
           </Text>
+
+          {/* Trial progress bar — shown when trial has started */}
+          {trialDaysUsed !== null && (
+            <View style={s.trialProgressWrap}>
+              <View style={s.trialProgressRow}>
+                <Text style={s.trialProgressLabel}>
+                  {trialDaysUsed === 0 ? "Trial just started" : `Day ${trialDaysUsed} of 14`}
+                </Text>
+                <Text style={s.trialProgressDaysLeft}>
+                  {Math.max(0, 14 - trialDaysUsed)} days left
+                </Text>
+              </View>
+              <View style={s.trialProgressTrack}>
+                <View
+                  style={[
+                    s.trialProgressFill,
+                    { width: `${Math.min(100, (trialDaysUsed / 14) * 100)}%` as any },
+                  ]}
+                />
+              </View>
+            </View>
+          )}
         </View>
 
         {/* ── Plan cards ───────────────────────────────────────────── */}
@@ -381,6 +411,39 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
       textAlign: "center",
       lineHeight: 22,
       paddingHorizontal: 8,
+    },
+
+    // Trial progress bar
+    trialProgressWrap: {
+      width: "100%",
+      marginTop: 20,
+      paddingHorizontal: 4,
+    },
+    trialProgressRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      marginBottom: 6,
+    },
+    trialProgressLabel: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: colors.foreground,
+    },
+    trialProgressDaysLeft: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: ACCENT,
+    },
+    trialProgressTrack: {
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: colors.border,
+      overflow: "hidden",
+    },
+    trialProgressFill: {
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: ACCENT,
     },
 
     // Plan cards
