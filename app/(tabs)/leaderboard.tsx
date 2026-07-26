@@ -24,6 +24,8 @@ import { useColors } from "@/hooks/use-colors";
 import { getProgress } from "@/lib/progress";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { loadGlobalGrade, GRADE_OPTIONS } from "@/lib/grade-levels";
+import Animated from "react-native-reanimated";
+import { useAnimatedList } from "@/hooks/use-animated-list";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface LeaderboardEntry {
@@ -165,6 +167,7 @@ export default function LeaderboardScreen() {
     setRefreshing(false);
   }, [loadBoard]);
 
+  const { getEntering } = useAnimatedList({ staggerMs: 40, durationMs: 260 });
   const userEntry = board.find((e) => e.isCurrentUser);
   // Filter board by grade — always include the current user so they can see their rank
   const filteredBoard = filterGrade === "all"
@@ -250,9 +253,10 @@ export default function LeaderboardScreen() {
 
         {/* Top 3 podium */}
         <View style={styles.podium}>
-          {filteredBoard.slice(0, 3).map((entry) => (
-            <View
+          {filteredBoard.slice(0, 3).map((entry, pi) => (
+            <Animated.View
               key={entry.name}
+              entering={getEntering(pi)}
               style={[
                 styles.podiumItem,
                 entry.rank === 1 && styles.podiumFirst,
@@ -264,14 +268,14 @@ export default function LeaderboardScreen() {
               <Text style={[styles.podiumName, { color: colors.foreground }]} numberOfLines={1}>{entry.name}</Text>
               <Text style={[styles.podiumCount, { color: colors.primary }]}>{entry.solvedThisWeek}</Text>
               <Text style={[styles.podiumLabel, { color: colors.muted }]}>solved</Text>
-            </View>
+            </Animated.View>
           ))}
         </View>
 
         {/* Full list */}
         <View style={[styles.listCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           {filteredBoard.map((entry, idx) => (
-            <View key={entry.name}>
+            <Animated.View key={entry.name} entering={getEntering(3 + idx)}>
               {idx > 0 && <View style={[styles.divider, { backgroundColor: colors.border }]} />}
               <View
                 style={[
@@ -296,10 +300,9 @@ export default function LeaderboardScreen() {
                   <Text style={[styles.rowCountLabel, { color: colors.muted }]}>solved</Text>
                 </View>
               </View>
-            </View>
+            </Animated.View>
           ))}
         </View>
-
         <Text style={[styles.footnote, { color: colors.muted }]}>
           Rankings reset every Monday. Solve more problems to climb the board!
         </Text>

@@ -25,6 +25,8 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { useScreenTransition } from "@/hooks/use-screen-transition";
 import { Animated } from "react-native";
+import ReAnimated from "react-native-reanimated";
+import { useAnimatedList } from "@/hooks/use-animated-list";
 import { getBookmarks, removeBookmark } from "@/lib/bookmarks";
 import {
   getFolders,
@@ -265,7 +267,9 @@ export default function BookmarksScreen() {
     </TouchableOpacity>
   );
 
-  const renderItem = ({ item }: { item: HistoryItem }) => {
+  const { getEntering: getListEntering } = useAnimatedList({ staggerMs: 45, durationMs: 280 });
+
+  const renderItem = ({ item, index }: { item: HistoryItem; index: number }) => {
     const subjectColor = getSubjectColor(item.subject);
     const subjectLabel = getSubjectLabel(item.subject);
     const subjectEmoji = getSubjectEmoji(item.subject);
@@ -275,6 +279,7 @@ export default function BookmarksScreen() {
     const isSelected = selectedIds.has(item.id);
 
     return (
+      <ReAnimated.View entering={getListEntering(index)}>
       <Swipeable
         renderRightActions={selectMode ? undefined : () => renderRightActions(item)}
         rightThreshold={60}
@@ -403,6 +408,7 @@ export default function BookmarksScreen() {
         </TouchableOpacity>
       )}
       </Swipeable>
+    </ReAnimated.View>
     );
   };
 

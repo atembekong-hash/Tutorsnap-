@@ -23,6 +23,8 @@ import * as Haptics from "expo-haptics";
 
 import { ScreenContainer } from "@/components/screen-container";
 import { useColors } from "@/hooks/use-colors";
+import Animated from "react-native-reanimated";
+import { useAnimatedList } from "@/hooks/use-animated-list";
 import {
   clearGlossary,
   GlossaryEntry,
@@ -140,6 +142,7 @@ function EntryCard({
 
 export default function GlossaryScreen() {
   const colors = useColors();
+  const { getEntering } = useAnimatedList({ staggerMs: 40, durationMs: 260 });
   const [entries, setEntries] = useState<GlossaryEntry[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -236,12 +239,14 @@ export default function GlossaryScreen() {
           data={filtered}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
-          renderItem={({ item }) => (
-            <EntryCard
-              entry={item}
-              colors={colors}
-              onUnpin={() => handleUnpin(item.id)}
-            />
+          renderItem={({ item, index }) => (
+            <Animated.View entering={getEntering(index)}>
+              <EntryCard
+                entry={item}
+                colors={colors}
+                onUnpin={() => handleUnpin(item.id)}
+              />
+            </Animated.View>
           )}
           ListEmptyComponent={
             <View style={styles.emptyState}>

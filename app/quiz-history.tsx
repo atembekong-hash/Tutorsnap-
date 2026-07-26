@@ -18,6 +18,8 @@ import { useColors } from "@/hooks/use-colors";
 import { useScreenTransition } from "@/hooks/use-screen-transition";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useAppearance } from "@/lib/appearance-context";
+import ReAnimated from "react-native-reanimated";
+import { useAnimatedList } from "@/hooks/use-animated-list";
 import { loadQuizHistory, type QuizResult } from "@/lib/quiz-history";
 import { HistorySkeletonList } from "@/components/skeleton";
 import { getSubjectDef, getSubjectLabel } from "@/lib/subjects";
@@ -135,6 +137,7 @@ function QuizResultCard({
 
 export default function QuizHistoryScreen() {
   const colors = useColors();
+  const { getEntering: getListEntering } = useAnimatedList({ staggerMs: 45, durationMs: 280 });
   const colorScheme = useColorScheme();
   const { getSubjectAccent } = useAppearance();
   const router = useRouter();
@@ -356,18 +359,20 @@ export default function QuizHistoryScreen() {
             <FlatList
               data={filtered}
               keyExtractor={(item) => item.id}
-              renderItem={({ item }) => (
-                <QuizResultCard
-                  item={item}
-                  colors={colors}
-                  subjectAccent={getSubjectAccent(getAppearanceSubjectKey(item.subject), colorScheme)}
-                  onPress={() =>
-                    router.push({
-                      pathname: "/quiz-history-detail",
-                      params: { id: item.id },
-                    } as any)
-                  }
-                />
+              renderItem={({ item, index }) => (
+                <ReAnimated.View entering={getListEntering(index)}>
+                  <QuizResultCard
+                    item={item}
+                    colors={colors}
+                    subjectAccent={getSubjectAccent(getAppearanceSubjectKey(item.subject), colorScheme)}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/quiz-history-detail",
+                        params: { id: item.id },
+                      } as any)
+                    }
+                  />
+                </ReAnimated.View>
               )}
               contentContainerStyle={styles.listContent}
               showsVerticalScrollIndicator={false}

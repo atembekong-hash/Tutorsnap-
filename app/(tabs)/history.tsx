@@ -25,6 +25,8 @@ import { Share } from "react-native";
 import { GRADE_LABELS } from "@/lib/grade-levels";
 import { cleanMathText } from "@/lib/clean-math-text";
 import { HistorySkeletonList } from "@/components/skeleton";
+import Animated from "react-native-reanimated";
+import { useAnimatedList } from "@/hooks/use-animated-list";
 
 function formatTime(timestamp: number): string {
   const now = Date.now();
@@ -155,11 +157,14 @@ function HistoryScreenContent() {
     )
   );
 
-  const renderItem = ({ item }: { item: HistoryItem }) => {
+  const { getEntering } = useAnimatedList({ staggerMs: 45, durationMs: 280 });
+
+  const renderItem = ({ item, index }: { item: HistoryItem; index: number }) => {
     const subjectColor = getSubjectColor(item.subject);
     const subjectLabel = getSubjectLabel(item.subject);
 
     return (
+      <Animated.View entering={getEntering(index)}>
       <TouchableOpacity
         onPress={() => handleViewSolution(item)}
         onLongPress={() => handleDelete(item.id)}
@@ -234,6 +239,7 @@ function HistoryScreenContent() {
           <IconSymbol size={18} name="chevron.right" color={colors.muted} />
         </View>
       </TouchableOpacity>
+      </Animated.View>
     );
   };
 
