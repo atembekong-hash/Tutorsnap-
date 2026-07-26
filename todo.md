@@ -1100,3 +1100,12 @@
 - [ ] TypeScript check passes
 - [ ] All tests pass
 - [ ] Checkpoint saved
+
+## Animation Revolution — Phase 3: Quiz Overhaul
+- [x] Shake animation on wrong answer selection
+- [x] Green bounce/pulse on correct answer selection
+- [x] Slide-left/right transition between questions
+- [x] Count-up score reveal on quiz results screen
+- [ ] TypeScript check passes
+- [ ] All tests pass
+- [ ] Checkpoint saved

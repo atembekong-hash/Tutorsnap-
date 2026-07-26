@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
-import { Share, Modal ,
+import { Share, Modal,
   View,
   Text,
   TouchableOpacity,
@@ -7,6 +7,7 @@ import { Share, Modal ,
   ScrollView,
   Platform,
   Animated,
+  Easing,
 } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -77,6 +78,7 @@ function OptionRow({
   revealed,
   onPress,
   colors,
+  reduceMotion,
 }: {
   optKey: OptionKey;
   text: string;
@@ -85,7 +87,35 @@ function OptionRow({
   revealed: boolean;
   onPress: () => void;
   colors: any;
+  reduceMotion?: boolean;
 }) {
+  const shakeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const prevRevealed = useRef(false);
+
+  useEffect(() => {
+    if (!prevRevealed.current && revealed && selected && !reduceMotion) {
+      if (!correct) {
+        // Shake: rapid left-right oscillation on wrong answer
+        Animated.sequence([
+          Animated.timing(shakeAnim, { toValue: -8, duration: 55, useNativeDriver: true }),
+          Animated.timing(shakeAnim, { toValue: 8, duration: 55, useNativeDriver: true }),
+          Animated.timing(shakeAnim, { toValue: -6, duration: 55, useNativeDriver: true }),
+          Animated.timing(shakeAnim, { toValue: 6, duration: 55, useNativeDriver: true }),
+          Animated.timing(shakeAnim, { toValue: -3, duration: 55, useNativeDriver: true }),
+          Animated.timing(shakeAnim, { toValue: 0, duration: 55, useNativeDriver: true }),
+        ]).start();
+      } else {
+        // Bounce: scale up then spring back on correct answer
+        Animated.sequence([
+          Animated.timing(scaleAnim, { toValue: 1.04, duration: 100, useNativeDriver: true, easing: Easing.out(Easing.quad) }),
+          Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, tension: 200, friction: 10 }),
+        ]).start();
+      }
+    }
+    prevRevealed.current = revealed;
+  }, [revealed, selected, correct, reduceMotion, shakeAnim, scaleAnim]);
+
   let bg = colors.surface;
   let border = colors.border;
   let textColor = colors.foreground;
@@ -101,22 +131,24 @@ function OptionRow({
 
   const stateLabel = revealed ? (correct ? " - correct" : selected ? " - incorrect" : "") : selected ? " - selected" : "";
   return (
-    <TouchableOpacity
-      onPress={onPress}
-      disabled={revealed}
-      style={[styles.optionRow, { backgroundColor: bg, borderColor: border }]}
-      activeOpacity={0.75}
-      accessibilityLabel={`Option ${optKey}: ${text}${stateLabel}`}
-      accessibilityRole="radio"
-      accessibilityState={{ selected, disabled: revealed }}
-    >
-      <View style={[styles.optionBadge, { backgroundColor: revealed && correct ? colors.success : revealed && selected ? colors.error : selected ? colors.primary : colors.border }]}>
-        <Text style={[styles.optionBadgeText, { color: revealed || selected ? "#fff" : colors.muted }]}>{optKey}</Text>
-      </View>
-      <Text style={[styles.optionText, { color: textColor }]}>{cleanMathText(text)}</Text>
-      {revealed && correct && <IconSymbol size={18} name="checkmark.circle.fill" color={colors.success} />}
-      {revealed && selected && !correct && <IconSymbol size={18} name="xmark.circle.fill" color={colors.error} />}
-    </TouchableOpacity>
+    <Animated.View style={{ transform: [{ translateX: shakeAnim }, { scale: scaleAnim }] }}>
+      <TouchableOpacity
+        onPress={onPress}
+        disabled={revealed}
+        style={[styles.optionRow, { backgroundColor: bg, borderColor: border }]}
+        activeOpacity={0.75}
+        accessibilityLabel={`Option ${optKey}: ${text}${stateLabel}`}
+        accessibilityRole="radio"
+        accessibilityState={{ selected, disabled: revealed }}
+      >
+        <View style={[styles.optionBadge, { backgroundColor: revealed && correct ? colors.success : revealed && selected ? colors.error : selected ? colors.primary : colors.border }]}>
+          <Text style={[styles.optionBadgeText, { color: revealed || selected ? "#fff" : colors.muted }]}>{optKey}</Text>
+        </View>
+        <Text style={[styles.optionText, { color: textColor }]}>{cleanMathText(text)}</Text>
+        {revealed && correct && <IconSymbol size={18} name="checkmark.circle.fill" color={colors.success} />}
+        {revealed && selected && !correct && <IconSymbol size={18} name="xmark.circle.fill" color={colors.error} />}
+      </TouchableOpacity>
+    </Animated.View>
   );
 }
 
@@ -375,6 +407,28 @@ export default function QuizScreen() {
   const [showPerfectScore, setShowPerfectScore] = useState(false);
   const [quizMilestoneCount, setQuizMilestoneCount] = useState<number | null>(null);
   const { fadeStyle } = useScreenTransition({ duration: 280, translateY: 16 });
+  const { settings: quizSettings } = useAppearance();
+  // Slide transition between questions
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const slideOpacity = useRef(new Animated.Value(1)).current;
+  const prevIdxRef = useRef(currentIdx);
+  useEffect(() => {
+    if (prevIdxRef.current !== currentIdx && !quizSettings.reduceMotion) {
+      slideAnim.setValue(0);
+      slideOpacity.setValue(1);
+      Animated.parallel([
+        Animated.timing(slideAnim, { toValue: -30, duration: 120, useNativeDriver: true, easing: Easing.in(Easing.quad) }),
+        Animated.timing(slideOpacity, { toValue: 0, duration: 120, useNativeDriver: true }),
+      ]).start(() => {
+        slideAnim.setValue(30);
+        Animated.parallel([
+          Animated.timing(slideAnim, { toValue: 0, duration: 220, useNativeDriver: true, easing: Easing.out(Easing.cubic) }),
+          Animated.timing(slideOpacity, { toValue: 1, duration: 220, useNativeDriver: true }),
+        ]).start();
+      });
+    }
+    prevIdxRef.current = currentIdx;
+  }, [currentIdx, quizSettings.reduceMotion, slideAnim, slideOpacity]);
 
   // Full worked explanation — fetched after answer reveal
   const [fullExplanations, setFullExplanations] = useState<Record<string, string>>({});
@@ -697,6 +751,8 @@ export default function QuizScreen() {
             </Text>
           </View>
 
+          {/* Question + Options — wrapped in slide transition */}
+          <Animated.View style={{ transform: [{ translateX: slideAnim }], opacity: slideOpacity }}>
           {/* Question */}
           <View style={[styles.questionCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <Text style={[styles.questionText, { color: colors.foreground }]}>{cleanMathText(q.problem)}</Text>
@@ -720,8 +776,10 @@ export default function QuizScreen() {
               revealed={revealed}
               onPress={() => handleSelectOption(key)}
               colors={colors}
+              reduceMotion={quizSettings.reduceMotion}
             />
           ))}
+          </Animated.View>
 
           {/* Explanation (after reveal) */}
           {revealed && (
