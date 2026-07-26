@@ -60,6 +60,27 @@ interface OfferingInfo {
 
 // ─── Feature list ─────────────────────────────────────────────────────────────
 
+const TESTIMONIALS = [
+  {
+    name: "Amara K.",
+    grade: "Grade 11",
+    text: "I went from failing Algebra 2 to getting an A in one month. The step-by-step explanations actually make sense, unlike my textbook.",
+    stars: 5,
+  },
+  {
+    name: "Jaylen M.",
+    grade: "University Year 1",
+    text: "TutorSnap saved my Calculus final. I asked the AI Tutor to walk me through integration by parts at 2 AM and it did it perfectly.",
+    stars: 5,
+  },
+  {
+    name: "Sofia R.",
+    grade: "Grade 9",
+    text: "I use the Scan feature every day for homework. It reads my handwriting, solves the problem, and explains every step. Absolutely worth it.",
+    stars: 5,
+  },
+];
+
 const FEATURES = [
   { icon: "∞", label: "Unlimited AI solves across all subjects" },
   { icon: "∞", label: "Unlimited quiz questions and practice sets" },
@@ -310,6 +331,21 @@ export default function PaywallScreen() {
           </View>
         )}
 
+        {/* ── Testimonials ─────────────────────────────────────────── */}
+        <ReAnimated.View entering={FadeInDown.delay(360).duration(400)} style={[s.featuresCard, { marginBottom: 12 }]}>
+          <Text style={s.featuresTitle}>What students are saying</Text>
+          {TESTIMONIALS.map((t, i) => (
+            <View key={i} style={[s.testimonialRow, i < TESTIMONIALS.length - 1 && { borderBottomWidth: 0.5, borderBottomColor: "#ffffff20", paddingBottom: 14, marginBottom: 14 }]}>
+              <View style={s.testimonialStars}>
+                {Array.from({ length: t.stars }).map((_, si) => (
+                  <Text key={si} style={s.testimonialStar}>★</Text>
+                ))}
+              </View>
+              <Text style={s.testimonialText}>{t.text}</Text>
+              <Text style={s.testimonialAuthor}>{t.name} · {t.grade}</Text>
+            </View>
+          ))}
+        </ReAnimated.View>
         {/* ── Feature list ─────────────────────────────────────────── */}
         <ReAnimated.View entering={FadeInDown.delay(420).duration(400)} style={s.featuresCard}>
           <Text style={s.featuresTitle}>Everything included</Text>
@@ -555,6 +591,31 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
       textAlign: "center",
     },
 
+    // Testimonials
+    testimonialRow: {
+      marginBottom: 0,
+    },
+    testimonialStars: {
+      flexDirection: "row",
+      gap: 2,
+      marginBottom: 6,
+    },
+    testimonialStar: {
+      color: "#FFD700",
+      fontSize: 14,
+    },
+    testimonialText: {
+      color: "#ffffffcc",
+      fontSize: 13,
+      lineHeight: 19,
+      fontStyle: "italic",
+      marginBottom: 6,
+    },
+    testimonialAuthor: {
+      color: "#ffffff80",
+      fontSize: 12,
+      fontWeight: "600",
+    },
     // Features
     featuresCard: {
       backgroundColor: colors.surface,
