@@ -11,25 +11,80 @@ import { getDailyChallengeState } from "@/lib/daily-challenge";
 import { getProgress } from "@/lib/progress";
 import { useAppearance } from "@/lib/appearance-context";
 
-function ScanTabIcon({ color: _color, focused: _focused }: { color: string; focused: boolean }) {
+// ─── Shared: spring-scale on focus ───────────────────────────────────────────
+function useTabFocusScale(focused: boolean, reduceMotion: boolean) {
+  const scale = useRef(new Animated.Value(focused ? 1.12 : 1)).current;
+  useEffect(() => {
+    if (reduceMotion) {
+      scale.setValue(focused ? 1.12 : 1);
+      return;
+    }
+    Animated.spring(scale, {
+      toValue: focused ? 1.12 : 1,
+      useNativeDriver: true,
+      tension: 260,
+      friction: 18,
+    }).start();
+  }, [focused, reduceMotion, scale]);
+  return scale;
+}
+
+// ─── ScanTabIcon ─────────────────────────────────────────────────────────────
+function ScanTabIcon({ color: _color, focused }: { color: string; focused: boolean }) {
   const colors = useColors();
+  const { settings } = useAppearance();
+  const scale = useTabFocusScale(focused, settings.reduceMotion);
+  // Ambient pulse ring behind the button
+  const ringScale = useRef(new Animated.Value(1)).current;
+  const ringOpacity = useRef(new Animated.Value(0.5)).current;
+  useEffect(() => {
+    if (settings.reduceMotion) return;
+    const loop = Animated.loop(
+      Animated.parallel([
+        Animated.sequence([
+          Animated.timing(ringScale, { toValue: 1.55, duration: 1200, useNativeDriver: true, easing: Easing.out(Easing.quad) }),
+          Animated.timing(ringScale, { toValue: 1, duration: 0, useNativeDriver: true }),
+        ]),
+        Animated.sequence([
+          Animated.timing(ringOpacity, { toValue: 0, duration: 1200, useNativeDriver: true, easing: Easing.out(Easing.quad) }),
+          Animated.timing(ringOpacity, { toValue: 0.5, duration: 0, useNativeDriver: true }),
+        ]),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [settings.reduceMotion, ringScale, ringOpacity]);
+
   return (
-    <View
-      style={[
-        styles.scanIconContainer,
-        { backgroundColor: colors.primary },
-      ]}
-    >
-      <IconSymbol size={26} name="camera.fill" color="#FFFFFF" />
+    <View style={{ alignItems: "center", justifyContent: "center" }}>
+      {/* Pulse ring */}
+      <Animated.View
+        style={[
+          styles.scanPulseRing,
+          { borderColor: colors.primary, transform: [{ scale: ringScale }], opacity: ringOpacity },
+        ]}
+      />
+      {/* Main button */}
+      <Animated.View
+        style={[
+          styles.scanIconContainer,
+          { backgroundColor: colors.primary, transform: [{ scale }] },
+        ]}
+      >
+        <IconSymbol size={26} name="camera.fill" color="#FFFFFF" />
+      </Animated.View>
     </View>
   );
 }
 
-function ChatTabIcon({ color, focused: _focused }: { color: string; focused: boolean }) {
+// ─── ChatTabIcon ──────────────────────────────────────────────────────────────
+function ChatTabIcon({ color, focused }: { color: string; focused: boolean }) {
   const colors = useColors();
+  const { settings } = useAppearance();
   const { unreadCount, markAsRead } = useChatBadge();
   const badgeScaleAnim = useRef(new Animated.Value(1)).current;
   const prevUnreadRef = useRef(unreadCount);
+  const iconScale = useTabFocusScale(focused, settings.reduceMotion);
 
   useEffect(() => {
     if (unreadCount > prevUnreadRef.current) {
@@ -40,13 +95,13 @@ function ChatTabIcon({ color, focused: _focused }: { color: string; focused: boo
       ]).start();
     }
     prevUnreadRef.current = unreadCount;
-    if (unreadCount > 0 && _focused) {
+    if (unreadCount > 0 && focused) {
       markAsRead();
     }
-  }, [unreadCount, _focused, badgeScaleAnim, markAsRead]);
+  }, [unreadCount, focused, badgeScaleAnim, markAsRead]);
 
   return (
-    <View style={{ position: "relative" }}>
+    <Animated.View style={{ position: "relative", transform: [{ scale: iconScale }] }}>
       <IconSymbol size={24} name="bubble.left.fill" color={color} />
       {unreadCount > 0 && (
         <Animated.View style={[
@@ -58,16 +113,19 @@ function ChatTabIcon({ color, focused: _focused }: { color: string; focused: boo
           </Text>
         </Animated.View>
       )}
-    </View>
+    </Animated.View>
   );
 }
 
+// ─── SolveTabIcon ─────────────────────────────────────────────────────────────
 function SolveTabIcon({ color, focused }: { color: string; focused: boolean }) {
+  const { settings } = useAppearance();
   const [goalMet, setGoalMet] = useState(true);
   const [badgeVisible, setBadgeVisible] = useState(false);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const dismissAnim = useRef(new Animated.Value(1)).current;
   const prevGoalMet = useRef(true);
+  const iconScale = useTabFocusScale(focused, settings.reduceMotion);
 
   useFocusEffect(
     useCallback(() => {
@@ -97,7 +155,7 @@ function SolveTabIcon({ color, focused }: { color: string; focused: boolean }) {
 
   // Pulse animation when badge is visible and tab not focused
   useEffect(() => {
-    if (!badgeVisible || goalMet || focused) return;
+    if (!badgeVisible || goalMet || focused || settings.reduceMotion) return;
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, { toValue: 1.5, duration: 600, useNativeDriver: true, easing: Easing.out(Easing.quad) }),
@@ -106,10 +164,10 @@ function SolveTabIcon({ color, focused }: { color: string; focused: boolean }) {
     );
     loop.start();
     return () => loop.stop();
-  }, [badgeVisible, goalMet, focused, pulseAnim]);
+  }, [badgeVisible, goalMet, focused, pulseAnim, settings.reduceMotion]);
 
   return (
-    <View style={{ position: "relative" }}>
+    <Animated.View style={{ position: "relative", transform: [{ scale: iconScale }] }}>
       <IconSymbol size={30} name="sum" color={color} />
       {badgeVisible && (
         <Animated.View
@@ -119,13 +177,16 @@ function SolveTabIcon({ color, focused }: { color: string; focused: boolean }) {
           ]}
         />
       )}
-    </View>
+    </Animated.View>
   );
 }
 
+// ─── PracticeTabIcon ──────────────────────────────────────────────────────────
 function PracticeTabIcon({ color, focused }: { color: string; focused: boolean }) {
+  const { settings } = useAppearance();
   const [dailyDone, setDailyDone] = useState(true);
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const iconScale = useTabFocusScale(focused, settings.reduceMotion);
 
   useFocusEffect(
     useCallback(() => {
@@ -134,7 +195,7 @@ function PracticeTabIcon({ color, focused }: { color: string; focused: boolean }
   );
 
   useEffect(() => {
-    if (dailyDone || focused) return;
+    if (dailyDone || focused || settings.reduceMotion) return;
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, { toValue: 1.5, duration: 600, useNativeDriver: true, easing: Easing.out(Easing.quad) }),
@@ -143,10 +204,10 @@ function PracticeTabIcon({ color, focused }: { color: string; focused: boolean }
     );
     loop.start();
     return () => loop.stop();
-  }, [dailyDone, focused, pulseAnim]);
+  }, [dailyDone, focused, pulseAnim, settings.reduceMotion]);
 
   return (
-    <View style={{ position: "relative" }}>
+    <Animated.View style={{ position: "relative", transform: [{ scale: iconScale }] }}>
       <IconSymbol size={24} name="pencil.and.list.clipboard" color={color} />
       {!dailyDone && (
         <Animated.View
@@ -156,10 +217,22 @@ function PracticeTabIcon({ color, focused }: { color: string; focused: boolean }
           ]}
         />
       )}
-    </View>
+    </Animated.View>
   );
 }
 
+// ─── ClassroomTabIcon ─────────────────────────────────────────────────────────
+function ClassroomTabIcon({ color, focused }: { color: string; focused: boolean }) {
+  const { settings } = useAppearance();
+  const iconScale = useTabFocusScale(focused, settings.reduceMotion);
+  return (
+    <Animated.View style={{ transform: [{ scale: iconScale }] }}>
+      <IconSymbol size={24} name="person.2.fill" color={color} />
+    </Animated.View>
+  );
+}
+
+// ─── TabLayout ────────────────────────────────────────────────────────────────
 export default function TabLayout() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -256,7 +329,7 @@ export default function TabLayout() {
         name="classroom"
         options={{
           title: "Classroom",
-          tabBarIcon: ({ color }) => <IconSymbol size={24} name="person.2.fill" color={color} />,
+          tabBarIcon: ({ color, focused }) => <ClassroomTabIcon color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen
@@ -295,6 +368,13 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     backgroundColor: "#EF4444",
+  },
+  scanPulseRing: {
+    position: "absolute",
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    borderWidth: 2,
   },
   scanIconContainer: {
     width: 54,

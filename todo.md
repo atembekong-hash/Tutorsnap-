@@ -1092,3 +1092,11 @@
 - [x] TypeScript check passes
 - [x] All tests pass
 - [ ] Checkpoint saved
+
+## Animation Revolution — Phase 2: Tab Bar Spring-Scale + HapticTab Press
+- [x] HapticTab: add scale-down on press, scale-up on release
+- [x] Tab icons: spring-scale up when focused, scale down when unfocused
+- [x] ScanTabIcon: pulse ring animation on the floating button
+- [ ] TypeScript check passes
+- [ ] All tests pass
+- [ ] Checkpoint saved
