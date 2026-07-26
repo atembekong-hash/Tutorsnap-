@@ -48,7 +48,7 @@ import {
   restorePurchases,
 } from "@/lib/subscription";
 import { DotsLoader } from "@/components/skeleton";
-import { getTrialVariantConfig, getDefaultTrialVariantConfig, logAbTestEvent, type TrialVariantConfig } from "@/lib/ab-test";
+import { getTrialVariantConfig, getDefaultTrialVariantConfig, logAbTestEvent, lockVariant, type TrialVariantConfig } from "@/lib/ab-test";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -132,6 +132,8 @@ export default function PaywallScreen() {
         H.notificationSuccess();
         // Log trial/purchase conversion for A/B test analytics
         logAbTestEvent("trial_started", trialVariant.variant, { plan: selectedPlan }).catch(() => {});
+        // Lock the variant so it never re-randomises after a trial is started
+        lockVariant().catch(() => {});
         // Navigate to the celebration screen instead of a plain Alert
         router.replace("/premium-welcome" as any);
       } else if (!result.cancelled) {

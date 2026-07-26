@@ -33,6 +33,7 @@ export interface TrialVariantConfig {
 // ── Storage keys ──────────────────────────────────────────────────────────────
 
 const TRIAL_VARIANT_KEY = "@tutorsnap/trialVariant";
+const TRIAL_VARIANT_LOCKED_KEY = "@tutorsnap/trialVariantLocked";
 const INSTALL_ID_KEY = "@tutorsnap/installId";
 const AB_ANALYTICS_KEY = "@tutorsnap/ab_analytics_events";
 const MAX_AB_EVENTS = 500;
@@ -86,12 +87,22 @@ function hashToBucket(str: string): number {
 
 /**
  * Returns the trial variant config for this install.
- * - First checks for an explicit override stored in AsyncStorage.
+ * - First checks if the variant is locked (set after trial started) — if so,
+ *   returns the stored variant without re-randomising.
+ * - Then checks for an explicit override stored in AsyncStorage.
  * - Falls back to deterministic assignment from install ID hash.
  * - 50% control (14day), 50% variant B (7day_50off).
  */
 export async function getTrialVariantConfig(): Promise<TrialVariantConfig> {
   try {
+    // If variant is locked, always return the stored variant (no re-randomisation)
+    const locked = await AsyncStorage.getItem(TRIAL_VARIANT_LOCKED_KEY);
+    if (locked === "true") {
+      const stored = await AsyncStorage.getItem(TRIAL_VARIANT_KEY);
+      if (stored === "14day" || stored === "7day_50off") {
+        return VARIANT_CONFIGS[stored];
+      }
+    }
     // Check for explicit override (set by remote config fetch or debug menu)
     const override = await AsyncStorage.getItem(TRIAL_VARIANT_KEY);
     if (override === "14day" || override === "7day_50off") {
@@ -120,6 +131,32 @@ export async function setTrialVariant(variant: TrialVariant | null): Promise<voi
     } else {
       await AsyncStorage.setItem(TRIAL_VARIANT_KEY, variant);
     }
+  } catch {
+    // non-critical
+  }
+}
+
+/**
+ * Lock the current trial variant so it is never re-randomised.
+ * Call this after a trial is successfully started to ensure the user
+ * always sees the same variant they converted on.
+ * Fire-and-forget — never throws.
+ */
+export async function lockVariant(): Promise<void> {
+  try {
+    await AsyncStorage.setItem(TRIAL_VARIANT_LOCKED_KEY, "true");
+  } catch {
+    // non-critical
+  }
+}
+
+/**
+ * Unlock the variant lock (e.g. for testing or after a refund).
+ * Fire-and-forget — never throws.
+ */
+export async function unlockVariant(): Promise<void> {
+  try {
+    await AsyncStorage.removeItem(TRIAL_VARIANT_LOCKED_KEY);
   } catch {
     // non-critical
   }
