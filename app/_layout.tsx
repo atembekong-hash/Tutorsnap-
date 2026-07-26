@@ -123,21 +123,27 @@ export default function RootLayout() {
     scheduleWeeklyAffiliateDigest().catch(() => {});
     // Initialise RevenueCat and check trial / subscription status
     // Only show paywall for users who are already signed in — never interrupt the sign-in flow
+    let paywallTimer: ReturnType<typeof setTimeout> | null = null;
     initRevenueCat().then(async () => {
       try {
         const { isAuthenticated } = await import("@/lib/_core/auth-enhanced");
         const authed = await isAuthenticated();
         if (!authed) return; // Not signed in — paywall will be shown after sign-in/onboarding
         const status = await getSubscriptionStatus();
-        // If trial has expired and user is not premium, show paywall
+        // If trial has expired and user is not premium, show paywall exactly once
         if (!status.isPremium && !status.isTrialActive && !status.isDevMode) {
           // Small delay so the app UI settles before presenting paywall
-          setTimeout(() => {
+          paywallTimer = setTimeout(() => {
+            paywallTimer = null;
             router.push("/paywall" as any);
           }, 1500);
         }
       } catch { /* ignore — paywall check failure is non-critical */ }
     }).catch(() => {});
+    // Cancel the timer if the root layout unmounts before it fires
+    return () => {
+      if (paywallTimer !== null) clearTimeout(paywallTimer);
+    };
   }, []);
 
   // Handle referral deep-link on initial URL and subsequent opens
