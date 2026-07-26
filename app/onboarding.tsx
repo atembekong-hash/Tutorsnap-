@@ -17,7 +17,7 @@ import * as H from "@/lib/haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useColors } from "@/hooks/use-colors";
 import { useColorScheme } from "@/hooks/use-color-scheme";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { SUBJECT_CATEGORIES, type SubjectCategory } from "@/lib/subjects";
 import { GRADE_OPTIONS, saveGlobalGrade, loadGlobalGrade } from "@/lib/grade-levels";
 import { TUTOR_SETTINGS_KEY, DEFAULT_TUTOR_SETTINGS } from "@/components/tutor-settings-modal";
@@ -191,6 +191,8 @@ function SlideWrapper({ active, children }: { active: boolean; children: React.R
 export default function OnboardingScreen() {
   const colors = useColors();
   const colorScheme = useColorScheme();
+  const insets = useSafeAreaInsets();
+  const safeTop = insets.top;
   const router = useRouter();
   const { fadeStyle } = useScreenTransition({ duration: 320, translateY: 20 });
   // Dark mode: brand-violet bloom; light mode: white bloom
@@ -436,7 +438,7 @@ export default function OnboardingScreen() {
         {/* Back button */}
         {!isFirstSlide && (
           <TouchableOpacity
-            style={styles.backBtn}
+            style={[styles.backBtn, { top: safeTop + 8 }]}
             onPress={goBack}
             activeOpacity={0.7}
             accessibilityLabel="Go back" accessibilityHint="Returns to the previous screen"
@@ -448,7 +450,7 @@ export default function OnboardingScreen() {
 
         {/* Skip button — hidden on first and last slide */}
         {!isFirstSlide && !isLastSlide && (
-          <Reanimated.View style={[styles.skipBtn, skipBtnStyle]}>
+          <Reanimated.View style={[styles.skipBtn, skipBtnStyle, { top: safeTop + 10 }]}>
             <TouchableOpacity
               onPress={handleSkipWithAnimation}
               activeOpacity={0.7}
@@ -461,7 +463,7 @@ export default function OnboardingScreen() {
         )}
 
         {/* Progress bar */}
-        <View style={styles.progressBarContainer}>
+        <View style={[styles.progressBarContainer, { top: safeTop + 10 }]}>
           <Animated.View
             style={[
               styles.progressBarFill,
