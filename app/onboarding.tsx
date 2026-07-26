@@ -586,7 +586,13 @@ export default function OnboardingScreen() {
 
               {/* Subject category picker */}
               {slide.id === "subjects" && (
-                <View style={styles.categoryGrid}>
+                <ScrollView
+                  style={{ width: "100%", maxHeight: 340 }}
+                  contentContainerStyle={styles.categoryGrid}
+                  showsVerticalScrollIndicator={false}
+                  nestedScrollEnabled={true}
+                  scrollEnabled={true}
+                >
                   {CATEGORY_ORDER.map((cat) => {
                     const def = SUBJECT_CATEGORIES[cat];
                     const selected = selectedCategories.has(cat);
@@ -617,10 +623,9 @@ export default function OnboardingScreen() {
                         )}
                       </TouchableOpacity>
                     );
-                  })}
-                </View>
+                                    })}
+                </ScrollView>
               )}
-
               {/* Grade level picker */}
               {slide.id === "grade" && (
                 <ScrollView keyboardDismissMode="on-drag"
