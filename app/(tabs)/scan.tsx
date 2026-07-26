@@ -1,4 +1,13 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
+import ReAnimated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withSpring,
+  withRepeat,
+  withSequence,
+  Easing,
+} from "react-native-reanimated";
 import { ErrorBoundary } from "@/components/error-boundary";
 import {
   View,
@@ -44,6 +53,38 @@ function ScanScreenContent() {
   const { isOnline } = useNetworkStatus();
   const [gradeLevel, setGradeLevel] = useState<string | null>(null);
   const [showGradePicker, setShowGradePicker] = useState(false);
+
+  // Phase 8 animations
+  const shutterScale = useSharedValue(1);
+  const shutterRipple = useSharedValue(0);
+  const scanLineY = useSharedValue(0);
+  const shutterAnimStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: shutterScale.value }],
+  }));
+  const rippleAnimStyle = useAnimatedStyle(() => ({
+    opacity: 1 - shutterRipple.value,
+    transform: [{ scale: 1 + shutterRipple.value * 0.6 }],
+  }));
+  const scanLineStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: scanLineY.value }],
+  }));
+
+  // Animate scanning line when processing
+  useEffect(() => {
+    if (isProcessing) {
+      scanLineY.value = 0;
+      scanLineY.value = withRepeat(
+        withSequence(
+          withTiming(200, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
+          withTiming(0, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
+        ),
+        -1,
+        false,
+      );
+    } else {
+      scanLineY.value = withTiming(0, { duration: 200 });
+    }
+  }, [isProcessing]);
 
   // Load global grade default on mount
   useEffect(() => {
@@ -283,9 +324,32 @@ function ScanScreenContent() {
           </TouchableOpacity>
 
           {/* Shutter */}
-          <TouchableOpacity onPress={takePicture} style={styles.shutterBtn} activeOpacity={0.8}>
-            <View style={styles.shutterInner} />
-          </TouchableOpacity>
+          <ReAnimated.View style={shutterAnimStyle}>
+            {/* Ripple ring */}
+            <ReAnimated.View
+              style={[
+                styles.shutterRipple,
+                rippleAnimStyle,
+              ]}
+            />
+            <TouchableOpacity
+              onPress={() => {
+                // Press scale
+                shutterScale.value = withSequence(
+                  withTiming(0.88, { duration: 80 }),
+                  withSpring(1, { damping: 8, stiffness: 200 }),
+                );
+                // Ripple
+                shutterRipple.value = 0;
+                shutterRipple.value = withTiming(1, { duration: 500 });
+                takePicture();
+              }}
+              style={styles.shutterBtn}
+              activeOpacity={1}
+            >
+              <View style={styles.shutterInner} />
+            </TouchableOpacity>
+          </ReAnimated.View>
 
           {/* Spacer to balance layout */}
           <View style={styles.galleryCircleBtn} />
@@ -307,6 +371,16 @@ function ScanScreenContent() {
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
           <View style={[styles.imagePreview, { borderColor: colors.border }]}>
             <Image source={{ uri: selectedImage }} style={styles.previewImage} resizeMode="contain" accessibilityLabel="Captured problem image" />
+            {/* Animated scanning line — visible while processing */}
+            {isProcessing && (
+              <ReAnimated.View
+                style={[
+                  styles.scanLine,
+                  { backgroundColor: colors.primary },
+                  scanLineStyle,
+                ]}
+              />
+            )}
             <TouchableOpacity accessibilityLabel="Close" accessibilityHint="Dismisses this panel" accessibilityRole="button"
               onPress={handleRetake}
               style={[styles.clearOverlay, { backgroundColor: `${colors.error}E0` }]}
@@ -565,6 +639,19 @@ const styles = StyleSheet.create({
     alignItems: "center", justifyContent: "center",
   },
   shutterInner: { width: 58, height: 58, borderRadius: 29, backgroundColor: "#FFFFFF" },
+  shutterRipple: {
+    position: "absolute",
+    width: 76, height: 76, borderRadius: 38,
+    borderWidth: 2, borderColor: "rgba(255,255,255,0.8)",
+    top: 0, left: 0,
+  },
+  scanLine: {
+    position: "absolute",
+    left: 0, right: 0,
+    height: 2,
+    opacity: 0.7,
+    top: 0,
+  },
 
   // Gallery button (web)
   galleryBtn: { flexDirection: "row", alignItems: "center", padding: 16, borderRadius: 16, borderWidth: 2, gap: 12, marginBottom: 20 },
