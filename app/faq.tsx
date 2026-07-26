@@ -366,17 +366,6 @@ const CATEGORIES = [
   { id: "Premium & Billing", label: "Premium", emoji: "⭐" },
 ];
 
-const CATEGORIES = [
-  { id: "all", label: "All", emoji: "🔍" },
-  { id: "Getting Started", label: "Getting Started", emoji: "🚀" },
-  { id: "Camera & Scanning", label: "Camera", emoji: "📸" },
-  { id: "Streaks & Progress", label: "Streaks", emoji: "🔥" },
-  { id: "Practice & Quizzes", label: "Practice", emoji: "📝" },
-  { id: "AI Tutor", label: "AI Tutor", emoji: "🤖" },
-  { id: "Data & Privacy", label: "Privacy", emoji: "🔒" },
-  { id: "Troubleshooting", label: "Help", emoji: "🛠️" },
-];
-
 export default function FAQScreen() {
   const colors = useColors();
   const router = useRouter();

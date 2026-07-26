@@ -22,32 +22,107 @@ import { useScreenTransition } from "@/hooks/use-screen-transition";
 import { COMPANY_NAME, APP_FULL_NAME, COPYRIGHT } from "@/constants/app";
 
 // ─── Cookie Policy Content ─────────────────────────────────────────────────
-const COOKIE_POLICY = `Last updated: July 2025
+const COOKIE_POLICY = `COOKIE AND LOCAL STORAGE POLICY
+Last updated: July 2026
+Effective date: July 1, 2026
 
-TutorSnap uses local storage technologies (similar to cookies) to provide you with a better experience. This policy explains what data is stored and why.
+This Cookie and Local Storage Policy explains how TutorSnap AI ("TutorSnap", "we", "us", or "our"), developed by Etiendem Technologies, uses local storage technologies on your device. Because TutorSnap is a mobile application rather than a website, we use device-based storage (AsyncStorage) rather than traditional browser cookies. This policy describes what data is stored, why it is stored, and how you can manage or delete it.
 
-WHAT WE STORE LOCALLY
+1. WHAT IS LOCAL STORAGE?
 
-• Study Progress — Your streak, daily goal, total problems solved, and badge history are stored on your device using AsyncStorage.
+Local storage refers to data stored directly on your device by the TutorSnap application. Unlike server-side databases, this data never leaves your device unless you explicitly share it. It is similar in function to browser cookies but is specific to mobile app storage.
 
-• Preferences — Your dark/light mode choice, text size preference, preferred subjects, and notification settings are stored locally.
+TutorSnap uses React Native AsyncStorage as its primary local storage mechanism. All data is stored in a sandboxed app container that is inaccessible to other apps on your device.
 
-• History — Your solved problems, bookmarks, and flashcard decks are stored on your device.
+2. CATEGORIES OF DATA WE STORE LOCALLY
 
-• Session Data — Temporary session tokens for AI chat continuity are stored locally.
+2.1 Essential Storage (Required for app functionality)
 
-WHAT WE DO NOT DO
+Study Progress Data: Your current streak count, longest streak achieved, daily goal setting, total number of problems solved, XP (experience points) accumulated, subject mastery levels (Bronze, Silver, Gold), and badge history. This data is essential for the streak and progress features to function.
 
-• We do not use third-party advertising cookies.
-• We do not track you across other apps or websites.
-• We do not sell your data to third parties.
-• We do not use analytics cookies without your consent.
+Solve History: A record of every problem you have solved, including the problem text, the AI-generated solution, the date and time, and any bookmarks you have added. This data powers the History tab and allows you to review past solutions.
 
-MANAGING YOUR DATA
+Flashcard Data: All flashcard decks you have created, including card fronts, card backs, deck names, review history, and spaced repetition scheduling data.
 
-You can clear all locally stored data at any time via Settings → Clear History or Settings → Reset All Progress.
+Notes: Any notes you have written within the app.
 
-For questions, contact privacy@tutorsnapai.tech.`;
+App Preferences: Your chosen theme (light or dark mode), text size preference, preferred subjects, grade level setting, language preference, and any custom settings you have configured.
+
+Notification Settings: Your notification preferences, daily reminder times, and notification type toggles.
+
+Session Continuity Data: Temporary session identifiers that allow the AI Chat Tutor to maintain conversation context across app restarts. These identifiers are rotated regularly and do not contain personal information.
+
+2.2 Optional Storage (Only with your consent)
+
+Analytics Preferences: If you consent to analytics, a flag indicating your consent is stored locally. Anonymized usage data (such as which features are used most often) may then be collected to help us improve the app. You can withdraw this consent at any time via Settings > Legal and Privacy > Consent Management.
+
+Marketing Preferences: If you consent to marketing communications, your preference is stored locally. You can withdraw consent at any time.
+
+2.3 Authentication Data (Only if you create an account)
+
+If you create a TutorSnap account, an encrypted authentication token is stored locally to keep you signed in. This token does not contain your password. It is invalidated when you sign out.
+
+3. WHAT WE DO NOT STORE
+
+TutorSnap does not store the following on your device or our servers:
+- Your name, address, phone number, or payment information
+- Your device's location or GPS coordinates
+- Your contact list or call history
+- Photos or camera roll content (images are processed temporarily and not saved)
+- Biometric data
+- Advertising identifiers (IDFA on iOS, GAID on Android)
+- Cross-app tracking data
+
+4. THIRD-PARTY STORAGE
+
+TutorSnap does not use third-party advertising cookies, tracking pixels, or behavioral analytics SDKs. The only third-party data processing that occurs is:
+
+AI Processing: When you submit a problem for solving, the problem text is sent to our AI processing service. This is a transient operation; the data is processed to generate a solution and is not stored by the third-party service beyond the processing window.
+
+Crash Reporting (optional): If you consent to analytics, anonymized crash reports may be sent to help us identify and fix bugs. These reports contain no personal information or problem content.
+
+5. HOW LONG IS DATA RETAINED?
+
+Local data is retained on your device until you explicitly delete it or uninstall the app. There is no automatic expiry for local data.
+
+Specific retention periods:
+- Solve history: Retained indefinitely until you clear it via Settings > Clear History
+- Flashcard decks: Retained until you delete individual decks
+- Session tokens: Rotated every 30 days automatically
+- Consent preferences: Retained until you change them in Consent Management
+
+6. HOW TO MANAGE OR DELETE YOUR DATA
+
+You have full control over your locally stored data:
+
+Clear solve history only: Settings > Clear History. Deletes all solved problems but preserves streaks, badges, and preferences.
+
+Reset all progress: Settings > Reset All Progress. Deletes all locally stored data including streaks, badges, history, flashcards, and preferences. This action cannot be undone.
+
+Delete your account: Settings > Account > Delete Account. Removes your account and all server-side data.
+
+Uninstall the app: Uninstalling TutorSnap from your device removes all locally stored data automatically.
+
+Formal data deletion request: Settings > Legal and Privacy > Data Deletion Request, or email privacy@tutorsnapai.tech.
+
+7. CHILDREN'S PRIVACY
+
+TutorSnap does not require an account, and no personal information is collected from children under 13 without verifiable parental consent. All data stored for child users is stored locally on the device and is not transmitted to our servers.
+
+Parents can request deletion of their child's data by emailing privacy@tutorsnapai.tech.
+
+8. CHANGES TO THIS POLICY
+
+We may update this Cookie and Local Storage Policy from time to time. When we make material changes, we will notify you through the app and update the "Last updated" date at the top of this policy. Continued use of TutorSnap after changes are posted constitutes your acceptance of the updated policy.
+
+9. CONTACT US
+
+If you have questions about this policy or our data practices, contact us at:
+
+Etiendem Technologies
+Privacy Team: privacy@tutorsnapai.tech
+General: hello@tutorsnapai.tech
+Website: tutorsnapai.tech/privacy`;
 
 // ─── Open Source Licenses ──────────────────────────────────────────────────
 const LICENSES = [
@@ -74,33 +149,149 @@ const LICENSES = [
 ];
 
 // ─── Community Guidelines ──────────────────────────────────────────────────
-const COMMUNITY_GUIDELINES = `TutorSnap Community Guidelines
-Last updated: July 2025
+const COMMUNITY_GUIDELINES = `COMMUNITY GUIDELINES
+Last updated: July 2026
+Effective date: July 1, 2026
 
-TutorSnap is a learning platform for students of all ages. To keep it a safe and productive space, we ask all users to follow these guidelines.
+Welcome to TutorSnap AI, developed by Etiendem Technologies. TutorSnap is an academic learning platform designed to help students of all ages learn more effectively. These Community Guidelines exist to ensure that TutorSnap remains a safe, productive, and respectful environment for everyone.
+
+By using TutorSnap, you agree to follow these guidelines. Violations may result in restricted access to features or, in serious cases, account suspension.
 
 1. ACADEMIC INTEGRITY
-Use TutorSnap as a learning aid, not a shortcut. Understanding the solution is more valuable than copying it. We encourage you to review every step and ask follow-up questions.
 
-2. RESPECTFUL USE
-Do not submit content that is hateful, discriminatory, or harmful. TutorSnap is for academic questions only — off-topic or inappropriate queries may be filtered.
+TutorSnap is designed to be a learning aid, not a shortcut. We believe that understanding a concept is far more valuable than simply having an answer. We encourage all users to:
 
-3. PRIVACY
-Do not photograph or share content that contains personal information about others (names, faces, addresses, etc.). Only submit your own schoolwork.
+- Read and understand every step of a solution, not just the final answer
+- Ask follow-up questions to the AI Tutor when a step is unclear
+- Use solutions as a reference to check your own work, not to copy
+- Attempt problems yourself before using TutorSnap to verify your approach
 
-4. HONEST FEEDBACK
-When rating or reviewing TutorSnap, provide honest and constructive feedback. Fake reviews or spam are not permitted.
+Using TutorSnap to complete graded assignments, exams, or tests without your teacher's knowledge may violate your school's academic integrity policy. We are not responsible for disciplinary consequences arising from misuse of the app.
 
-5. REPORTING ISSUES
-If you encounter a bug, incorrect answer, or inappropriate AI response, please use the Report a Bug or Feedback features in Settings. Your reports help us improve.
+If your teacher has approved the use of TutorSnap as a study tool, we encourage you to be transparent about how you use it.
+
+2. APPROPRIATE USE
+
+TutorSnap is designed for academic and educational purposes. You may use TutorSnap to:
+- Solve and understand academic problems across all subjects
+- Practice with quizzes and flashcards
+- Get explanations of concepts from the AI Tutor
+- Collaborate with classmates in the Classroom feature
+- Plan your study schedule
+
+You may not use TutorSnap to:
+- Submit content that is hateful, discriminatory, violent, or sexually explicit
+- Harass, bully, or threaten other users
+- Attempt to circumvent content filters or safety measures
+- Submit content that violates the intellectual property rights of others
+- Use the app for commercial purposes without written permission from Etiendem Technologies
+- Attempt to reverse-engineer, decompile, or tamper with the app
+- Create multiple accounts to circumvent restrictions
+
+3. RESPECTFUL COMMUNICATION
+
+When using the Classroom feature, you are interacting with real teachers and students. We expect all users to:
+
+- Communicate respectfully and professionally
+- Avoid offensive, discriminatory, or inflammatory language
+- Keep discussions focused on academic topics
+- Respect the privacy of other users and not share their personal information
+- Report inappropriate behavior using the reporting tools in the Classroom feature
+
+Teachers using the Classroom feature are responsible for maintaining a respectful environment within their classrooms and for ensuring their use of TutorSnap complies with their institution's policies.
+
+4. PRIVACY AND PERSONAL INFORMATION
+
+When using TutorSnap, please protect your own privacy and the privacy of others:
+
+- Do not photograph or submit content that contains personal information about other people, including names, faces, addresses, phone numbers, or financial information
+- Only submit your own schoolwork for solving
+- Do not share your account credentials with others
+- Do not attempt to access another user's account or data
+- Be mindful of what you include in Classroom posts, as they are visible to all classroom members
+
+If you are under 18, we strongly recommend not including your full name, school name, or any other identifying information in your profile or classroom posts.
+
+5. CONTENT STANDARDS
+
+All content you submit to TutorSnap (problems, chat messages, classroom posts, feedback) must comply with the following standards.
+
+Prohibited content includes:
+- Hate speech targeting race, ethnicity, religion, gender, sexual orientation, disability, or national origin
+- Violent or threatening content
+- Sexually explicit or suggestive content
+- Content that promotes illegal activities
+- Spam, advertisements, or promotional content
+- Misinformation or deliberately false academic content
+- Content designed to manipulate or deceive the AI system
+
+Our AI systems automatically filter content that violates these standards. Attempts to circumvent content filters are a violation of these guidelines.
 
 6. CHILDREN'S SAFETY
-TutorSnap is designed to be safe for students of all ages. We do not collect personal information from children under 13 without parental consent. Parents can request data deletion at any time via Settings → Data Deletion Request.
 
-7. ENFORCEMENT
-Violation of these guidelines may result in restricted access to TutorSnap features. For serious violations, please contact safety@tutorsnapai.tech.
+TutorSnap is designed to be safe for students of all ages, including children under 13. We take children's safety very seriously:
 
-Thank you for being part of the TutorSnap community!`;
+- We do not collect personal information from children under 13 without verifiable parental consent
+- All AI responses are filtered to ensure age-appropriate content
+- The AI will not generate inappropriate, violent, or adult content in response to any query
+- Parents can request deletion of their child's data at any time by emailing privacy@tutorsnapai.tech
+- If you believe a child's safety is at risk, please contact us immediately at safety@tutorsnapai.tech
+
+If you are a parent and have concerns about your child's use of TutorSnap, please review our Privacy Policy and contact us at privacy@tutorsnapai.tech.
+
+7. INTELLECTUAL PROPERTY
+
+TutorSnap respects intellectual property rights and expects users to do the same:
+
+- Do not submit copyrighted textbook content in bulk for the purpose of reproducing it
+- Do not use TutorSnap-generated content for commercial purposes without permission
+- The solutions and explanations generated by TutorSnap are provided for personal educational use only
+- TutorSnap's brand, logo, and app design are the property of Etiendem Technologies and may not be used without permission
+
+8. REPORTING VIOLATIONS
+
+If you encounter content or behavior that violates these guidelines, please report it:
+
+In-app reporting:
+- For AI responses: Tap the flag icon on any AI response
+- For classroom content: Use the report button on any post or message
+- For bugs or errors: Settings > Report a Bug
+
+Direct contact:
+- Safety concerns: safety@tutorsnapai.tech
+- Privacy violations: privacy@tutorsnapai.tech
+- General concerns: hello@tutorsnapai.tech
+
+We review all reports and take appropriate action. We do not tolerate retaliation against users who report violations in good faith.
+
+9. ENFORCEMENT
+
+Violations of these guidelines may result in:
+
+- A warning and request to modify behavior
+- Temporary restriction of specific features (e.g., Classroom access)
+- Permanent restriction of access to TutorSnap
+- Reporting to appropriate authorities in cases involving illegal activity or imminent safety risks
+
+We will always attempt to notify users of enforcement actions and provide an opportunity to appeal, except in cases involving serious safety risks or illegal activity.
+
+To appeal an enforcement action, contact safety@tutorsnapai.tech with your account details and a description of the situation.
+
+10. CHANGES TO THESE GUIDELINES
+
+We may update these Community Guidelines from time to time to reflect changes in our platform, applicable laws, or community standards. We will notify users of material changes through the app. Continued use of TutorSnap after changes are posted constitutes acceptance of the updated guidelines.
+
+11. CONTACT US
+
+If you have questions about these guidelines or our enforcement practices, contact us at:
+
+Etiendem Technologies
+Safety Team: safety@tutorsnapai.tech
+Privacy Team: privacy@tutorsnapai.tech
+General: hello@tutorsnapai.tech
+Website: tutorsnapai.tech
+
+Thank you for being part of the TutorSnap community. Together, we can make learning better for everyone.`;
 
 export default function LegalScreen() {
   const colors = useColors();
