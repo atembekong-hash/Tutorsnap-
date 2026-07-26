@@ -1141,3 +1141,8 @@
 - [x] Feature 1: Sync retry test coverage — tests/sync-retry-queue.test.ts (13 tests, all passing)
 - [x] Feature 2: Chat session real-time push — already wired in lib/chat-sessions.ts saveSession() (cloudPushSession fire-and-forget on every save)
 - [x] Feature 3: Onboarding screen transition — useScreenTransition (320ms, translateY 20) wraps root Animated.View in onboarding.tsx
+
+## v1.8.4 — Three New Features (Jul 26 2026)
+- [x] Feature A: Paywall A/B test — lib/ab-test.ts + paywall.tsx + onboarding.tsx variant switching
+- [ ] Feature B: Streak at-risk notification — scheduleStreakAtRiskCheck in notifications.ts + _layout.tsx AppState hook
+- [ ] Feature C: Classroom share deep link — tutorsnap://classroom/join?code=XXXX handler in _layout.tsx + classroom.tsx pre-fill

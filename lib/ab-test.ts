@@ -1,0 +1,129 @@
+/**
+ * lib/ab-test.ts
+ * Lightweight A/B test framework for TutorSnap.
+ *
+ * Currently manages one experiment: the paywall trial variant.
+ *   - "14day"       → 14-day free trial (control)
+ *   - "7day_50off"  → 7-day free trial + 50% off first month (variant B)
+ *
+ * Assignment is deterministic: derived from a stable install-ID hash so the
+ * same device always lands in the same bucket, even after reinstall of the
+ * same build.  The variant can be overridden at any time (e.g. from a
+ * remote-config fetch or a debug menu).
+ */
+
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+export type TrialVariant = "14day" | "7day_50off";
+
+export interface TrialVariantConfig {
+  variant: TrialVariant;
+  /** Badge text shown in the paywall hero section */
+  badgeText: string;
+  /** Number of trial days */
+  trialDays: number;
+  /** CTA sub-label shown under the subscribe button */
+  ctaSubLabel: string;
+  /** Bullet text for the onboarding trial slide */
+  onboardingBullet: string;
+}
+
+// ── Storage keys ──────────────────────────────────────────────────────────────
+
+const TRIAL_VARIANT_KEY = "@tutorsnap/trialVariant";
+const INSTALL_ID_KEY = "@tutorsnap/installId";
+
+// ── Variant configs ───────────────────────────────────────────────────────────
+
+const VARIANT_CONFIGS: Record<TrialVariant, TrialVariantConfig> = {
+  "14day": {
+    variant: "14day",
+    badgeText: "14-Day Free Trial",
+    trialDays: 14,
+    ctaSubLabel: "14-day free trial, then cancel anytime",
+    onboardingBullet: "14-day free trial, cancel anytime",
+  },
+  "7day_50off": {
+    variant: "7day_50off",
+    badgeText: "7-Day Free Trial + 50% Off",
+    trialDays: 7,
+    ctaSubLabel: "7-day free trial, then 50% off your first month",
+    onboardingBullet: "7-day free trial + 50% off first month",
+  },
+};
+
+// ── Install ID ────────────────────────────────────────────────────────────────
+
+/** Returns a stable random install ID, creating one on first call. */
+async function getInstallId(): Promise<string> {
+  try {
+    const existing = await AsyncStorage.getItem(INSTALL_ID_KEY);
+    if (existing) return existing;
+    // Generate a simple random ID
+    const id = Math.random().toString(36).slice(2) + Date.now().toString(36);
+    await AsyncStorage.setItem(INSTALL_ID_KEY, id);
+    return id;
+  } catch {
+    return "fallback";
+  }
+}
+
+/** Simple djb2 hash → 0..99 bucket */
+function hashToBucket(str: string): number {
+  let hash = 5381;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) + hash) ^ str.charCodeAt(i);
+    hash = hash >>> 0; // keep unsigned 32-bit
+  }
+  return hash % 100;
+}
+
+// ── Public API ────────────────────────────────────────────────────────────────
+
+/**
+ * Returns the trial variant config for this install.
+ * - First checks for an explicit override stored in AsyncStorage.
+ * - Falls back to deterministic assignment from install ID hash.
+ * - 50% control (14day), 50% variant B (7day_50off).
+ */
+export async function getTrialVariantConfig(): Promise<TrialVariantConfig> {
+  try {
+    // Check for explicit override (set by remote config fetch or debug menu)
+    const override = await AsyncStorage.getItem(TRIAL_VARIANT_KEY);
+    if (override === "14day" || override === "7day_50off") {
+      return VARIANT_CONFIGS[override];
+    }
+    // Deterministic assignment from install ID
+    const installId = await getInstallId();
+    const bucket = hashToBucket(installId);
+    const variant: TrialVariant = bucket < 50 ? "14day" : "7day_50off";
+    // Persist so future calls are instant
+    await AsyncStorage.setItem(TRIAL_VARIANT_KEY, variant);
+    return VARIANT_CONFIGS[variant];
+  } catch {
+    return VARIANT_CONFIGS["14day"]; // safe fallback
+  }
+}
+
+/**
+ * Override the trial variant (e.g. from a remote config fetch or debug menu).
+ * Pass null to clear the override and revert to hash-based assignment.
+ */
+export async function setTrialVariant(variant: TrialVariant | null): Promise<void> {
+  try {
+    if (variant === null) {
+      await AsyncStorage.removeItem(TRIAL_VARIANT_KEY);
+    } else {
+      await AsyncStorage.setItem(TRIAL_VARIANT_KEY, variant);
+    }
+  } catch {
+    // non-critical
+  }
+}
+
+/** Synchronously returns the default config (for SSR / initial render). */
+export function getDefaultTrialVariantConfig(): TrialVariantConfig {
+  return VARIANT_CONFIGS["14day"];
+}

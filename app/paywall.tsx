@@ -48,6 +48,7 @@ import {
   restorePurchases,
 } from "@/lib/subscription";
 import { DotsLoader } from "@/components/skeleton";
+import { getTrialVariantConfig, getDefaultTrialVariantConfig, type TrialVariantConfig } from "@/lib/ab-test";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -84,20 +85,23 @@ export default function PaywallScreen() {
   const [offeringsLoaded, setOfferingsLoaded] = useState(false);
   const [isDevMode, setIsDevMode] = useState(false);
   const [trialDaysUsed, setTrialDaysUsed] = useState<number | null>(null);
+  const [trialVariant, setTrialVariant] = useState<TrialVariantConfig>(getDefaultTrialVariantConfig());
 
   // Load offerings on mount
   useEffect(() => {
     (async () => {
       try {
-        const [pkgs, status, trialStart] = await Promise.all([
+        const [pkgs, status, trialStart, variantConfig] = await Promise.all([
           getOfferings(),
           getSubscriptionStatus(),
           getTrialStartDate(),
+          getTrialVariantConfig(),
         ]);
+        setTrialVariant(variantConfig);
         setIsDevMode(status.isDevMode);
         if (trialStart !== null) {
           const remaining = getTrialDaysRemaining(trialStart);
-          setTrialDaysUsed(14 - remaining);
+          setTrialDaysUsed(variantConfig.trialDays - remaining);
         }
         const map: Record<string, OfferingInfo> = {};
         for (const pkg of pkgs) {
@@ -188,11 +192,11 @@ export default function PaywallScreen() {
         {/* ── Hero ─────────────────────────────────────────────────── */}
         <View style={s.hero}>
           <View style={s.trialBadge}>
-            <Text style={s.trialBadgeText}>14-Day Free Trial</Text>
+            <Text style={s.trialBadgeText}>{trialVariant.badgeText}</Text>
           </View>
           <Text style={s.heroTitle}>Unlock TutorSnap{"\n"}Premium</Text>
           <Text style={s.heroSubtitle}>
-            Solve unlimited problems, ace every quiz, and get personalised AI tutoring - free for 14 days.
+            {`Solve unlimited problems, ace every quiz, and get personalised AI tutoring — free for ${trialVariant.trialDays} days.`}
           </Text>
 
           {/* Trial progress bar — shown when trial has started */}
@@ -200,17 +204,17 @@ export default function PaywallScreen() {
             <View style={s.trialProgressWrap}>
               <View style={s.trialProgressRow}>
                 <Text style={s.trialProgressLabel}>
-                  {trialDaysUsed === 0 ? "Trial just started" : `Day ${trialDaysUsed} of 14`}
+                  {trialDaysUsed === 0 ? "Trial just started" : `Day ${trialDaysUsed} of ${trialVariant.trialDays}`}
                 </Text>
                 <Text style={s.trialProgressDaysLeft}>
-                  {Math.max(0, 14 - trialDaysUsed)} days left
+                  {Math.max(0, trialVariant.trialDays - trialDaysUsed)} days left
                 </Text>
               </View>
               <View style={s.trialProgressTrack}>
                 <View
                   style={[
                     s.trialProgressFill,
-                    { width: `${Math.min(100, (trialDaysUsed / 14) * 100)}%` as any },
+                    { width: `${Math.min(100, (trialDaysUsed / trialVariant.trialDays) * 100)}%` as any },
                   ]}
                 />
               </View>
@@ -310,7 +314,7 @@ export default function PaywallScreen() {
           onPress={handleStartTrial}
           disabled={loading || !offeringsLoaded}
           activeOpacity={0.85}
-          accessibilityLabel="Start 14-day free trial"
+          accessibilityLabel={`Start ${trialVariant.trialDays}-day free trial`}
           accessibilityRole="button"
         >
           {loading ? (
@@ -321,7 +325,7 @@ export default function PaywallScreen() {
         </TouchableOpacity>
 
         <Text style={s.ctaSubtext}>
-          No charge for 14 days · Cancel anytime
+          {trialVariant.ctaSubLabel}
         </Text>
         </ReAnimated.View>
 

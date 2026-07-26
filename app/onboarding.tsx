@@ -23,6 +23,7 @@ import { TUTOR_SETTINGS_KEY, DEFAULT_TUTOR_SETTINGS } from "@/components/tutor-s
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useScreenTransition } from "@/hooks/use-screen-transition";
+import { getTrialVariantConfig, getDefaultTrialVariantConfig, type TrialVariantConfig } from "@/lib/ab-test";
 
 const { width: SCREEN_WIDTH, height: SCREEN_H } = Dimensions.get("window");
 
@@ -154,6 +155,10 @@ export default function OnboardingScreen() {
   const colors = useColors();
   const router = useRouter();
   const { fadeStyle } = useScreenTransition({ duration: 320, translateY: 20 });
+  const [trialVariant, setTrialVariant] = React.useState<TrialVariantConfig>(getDefaultTrialVariantConfig());
+  React.useEffect(() => {
+    getTrialVariantConfig().then(setTrialVariant).catch(() => {});
+  }, []);
   const scrollRef = useRef<ScrollView>(null);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [selectedCategories, setSelectedCategories] = useState<Set<SubjectCategory>>(new Set());
@@ -655,7 +660,7 @@ export default function OnboardingScreen() {
                     { emoji: "📸", text: "Photo homework solver" },
                     { emoji: "🧠", text: "Step-by-step explanations" },
                     { emoji: "📈", text: "Progress tracking & streaks" },
-                    { emoji: "🎖️", text: "14-day free trial, cancel anytime" },
+                    { emoji: "🎖️", text: trialVariant.onboardingBullet },
                   ].map((item) => (
                     <View key={item.text} style={styles.trialFeatureRow}>
                       <Text style={styles.trialFeatureEmoji}>{item.emoji}</Text>
