@@ -3,6 +3,8 @@
  *
  * A focused study timer screen launched from the Study Planner.
  * Supports custom duration, pause/resume, and session completion tracking.
+ *
+ * Phase 10: Timer ring replaced with a proper animated SVG arc.
  */
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
@@ -14,6 +16,13 @@ import {
   Alert,
   Animated,
 } from "react-native";
+import Svg, { Circle } from "react-native-svg";
+import ReAnimated, {
+  useSharedValue,
+  useAnimatedProps,
+  withTiming,
+  Easing,
+} from "react-native-reanimated";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import * as H from "@/lib/haptics";
 import { useKeepAwake } from "expo-keep-awake";
@@ -27,6 +36,72 @@ import type { SubjectId } from "@/lib/subjects";
 type Phase = "focus" | "break" | "done";
 
 const BREAK_DURATION = 5 * 60; // 5-minute break after each session
+
+// SVG ring dimensions
+const RING_SIZE = 220;
+const RING_RADIUS = 96;
+const RING_STROKE = 12;
+const CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+
+// Animated Circle component (Reanimated animatedProps)
+const AnimatedCircle = ReAnimated.createAnimatedComponent(Circle);
+
+/** Animated SVG arc ring that smoothly tracks progress */
+function TimerRing({
+  progress,
+  color,
+  children,
+}: {
+  progress: number; // 0..1
+  color: string;
+  children: React.ReactNode;
+}) {
+  const animatedProgress = useSharedValue(progress);
+
+  // Animate whenever progress changes
+  useEffect(() => {
+    animatedProgress.value = withTiming(progress, {
+      duration: 800,
+      easing: Easing.out(Easing.quad),
+    });
+  }, [progress]);
+
+  const animatedProps = useAnimatedProps(() => ({
+    strokeDashoffset: CIRCUMFERENCE * (1 - animatedProgress.value),
+  }));
+
+  return (
+    <View style={styles.timerWrap}>
+      <Svg width={RING_SIZE} height={RING_SIZE} style={StyleSheet.absoluteFill}>
+        {/* Background track */}
+        <Circle
+          cx={RING_SIZE / 2}
+          cy={RING_SIZE / 2}
+          r={RING_RADIUS}
+          stroke={`${color}20`}
+          strokeWidth={RING_STROKE}
+          fill="none"
+        />
+        {/* Animated progress arc */}
+        <AnimatedCircle
+          cx={RING_SIZE / 2}
+          cy={RING_SIZE / 2}
+          r={RING_RADIUS}
+          stroke={color}
+          strokeWidth={RING_STROKE}
+          fill="none"
+          strokeDasharray={CIRCUMFERENCE}
+          animatedProps={animatedProps}
+          strokeLinecap="round"
+          rotation="-90"
+          origin={`${RING_SIZE / 2}, ${RING_SIZE / 2}`}
+        />
+      </Svg>
+      {/* Inner content */}
+      <View style={styles.timerInner}>{children}</View>
+    </View>
+  );
+}
 
 export default function PomodoroScreen() {
   const colors = useColors();
@@ -172,29 +247,13 @@ export default function PomodoroScreen() {
           <Text style={[styles.phaseLabel, { color: phaseColor }]}>{phaseLabel}</Text>
         </View>
 
-        {/* Timer ring */}
-        <View style={styles.timerWrap}>
-          {/* Background ring */}
-          <View style={[styles.ringBg, { borderColor: `${phaseColor}20` }]} />
-          {/* Progress indicator (simple arc via border trick) */}
-          <View
-            style={[
-              styles.ringProgress,
-              {
-                borderColor: phaseColor,
-                opacity: 0.9,
-                transform: [{ rotate: `${-90 + progressPct * 3.6}deg` }],
-              },
-            ]}
-          />
-          {/* Inner content */}
-          <View style={styles.timerInner}>
-            <Text style={[styles.timerText, { color: colors.foreground }]}>{timeStr}</Text>
-            <Text style={[styles.timerSub, { color: colors.muted }]}>
-              {phase === "done" ? "Well done!" : running ? "in progress" : "paused"}
-            </Text>
-          </View>
-        </View>
+        {/* Timer ring — animated SVG arc */}
+        <TimerRing progress={progress} color={phaseColor}>
+          <Text style={[styles.timerText, { color: colors.foreground }]}>{timeStr}</Text>
+          <Text style={[styles.timerSub, { color: colors.muted }]}>
+            {phase === "done" ? "Well done!" : running ? "in progress" : "paused"}
+          </Text>
+        </TimerRing>
 
         {/* Progress bar */}
         <View style={[styles.progressTrack, { backgroundColor: `${phaseColor}20` }]}>
@@ -318,28 +377,11 @@ const styles = StyleSheet.create({
   phaseEmoji: { fontSize: 18 },
   phaseLabel: { fontSize: 16, fontWeight: "700" },
   timerWrap: {
-    width: 220,
-    height: 220,
+    width: RING_SIZE,
+    height: RING_SIZE,
     alignItems: "center",
     justifyContent: "center",
     position: "relative",
-  },
-  ringBg: {
-    position: "absolute",
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    borderWidth: 12,
-  },
-  ringProgress: {
-    position: "absolute",
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    borderWidth: 12,
-    borderRightColor: "transparent",
-    borderBottomColor: "transparent",
-    borderLeftColor: "transparent",
   },
   timerInner: { alignItems: "center", gap: 4 },
   timerText: { fontSize: 52, fontWeight: "800", letterSpacing: -2 },

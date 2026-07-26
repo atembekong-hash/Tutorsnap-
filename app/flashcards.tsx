@@ -10,6 +10,16 @@ import {
   Animated,
   Modal,
 } from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import ReAnimated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  runOnJS,
+  interpolate,
+  Extrapolation,
+} from "react-native-reanimated";
 import { useRouter, useFocusEffect } from "expo-router";
 import * as H from "@/lib/haptics";
 import { ScreenContainer } from "@/components/screen-container";
@@ -34,9 +44,13 @@ const CARD_HEIGHT = 320;
 function FlipCard({
   item,
   colors,
+  onKnow,
+  onReview,
 }: {
   item: HistoryItem;
   colors: ReturnType<typeof useColors>;
+  onKnow: () => void;
+  onReview: () => void;
 }) {
   const [flipped, setFlipped] = useState(false);
   const flipAnim = useRef(new Animated.Value(0)).current;
@@ -54,7 +68,7 @@ function FlipCard({
   });
 
   const handleFlip = () => {
-    H.impactLight()
+    H.impactLight();
     const toValue = flipped ? 0 : 180;
     Animated.spring(flipAnim, {
       toValue,
@@ -65,8 +79,57 @@ function FlipCard({
     setFlipped(!flipped);
   };
 
+  // ── Swipe-to-dismiss gesture ────────────────────────────────────────────────
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
+  const SWIPE_THRESHOLD = CARD_WIDTH * 0.35;
+
+  const panGesture = Gesture.Pan()
+    .runOnJS(true)
+    .onUpdate((e) => {
+      translateX.value = e.translationX;
+      translateY.value = e.translationY * 0.25;
+    })
+    .onEnd((e) => {
+      if (e.translationX > SWIPE_THRESHOLD) {
+        translateX.value = withTiming(CARD_WIDTH * 1.5, { duration: 260 });
+        runOnJS(onKnow)();
+      } else if (e.translationX < -SWIPE_THRESHOLD) {
+        translateX.value = withTiming(-CARD_WIDTH * 1.5, { duration: 260 });
+        runOnJS(onReview)();
+      } else {
+        translateX.value = withSpring(0, { damping: 14, stiffness: 200 });
+        translateY.value = withSpring(0, { damping: 14, stiffness: 200 });
+      }
+    });
+
+  const swipeStyle = useAnimatedStyle(() => {
+    const rotate = interpolate(
+      translateX.value,
+      [-CARD_WIDTH, 0, CARD_WIDTH],
+      [-16, 0, 16],
+      Extrapolation.CLAMP,
+    );
+    const opacity = interpolate(
+      Math.abs(translateX.value),
+      [0, CARD_WIDTH * 0.6],
+      [1, 0.55],
+      Extrapolation.CLAMP,
+    );
+    return {
+      transform: [
+        { translateX: translateX.value },
+        { translateY: translateY.value },
+        { rotate: `${rotate}deg` },
+      ],
+      opacity,
+    };
+  });
+
   return (
-    <TouchableOpacity onPress={handleFlip} activeOpacity={0.95} style={styles.cardWrapper}>
+    <GestureDetector gesture={panGesture}>
+      <ReAnimated.View style={[styles.cardWrapper, swipeStyle]}>
+      <TouchableOpacity onPress={handleFlip} activeOpacity={0.95} style={{ flex: 1 }}>
       {/* Front: Question */}
       <Animated.View
         style={[
@@ -129,7 +192,9 @@ function FlipCard({
           <IconSymbol size={16} name="arrow.left.and.right" color={colors.muted} />
         </View>
       </Animated.View>
-    </TouchableOpacity>
+      </TouchableOpacity>
+      </ReAnimated.View>
+    </GestureDetector>
   );
 }
 
@@ -651,7 +716,7 @@ export default function FlashcardsScreen() {
 
           {/* Card */}
           <View style={styles.cardContainer}>
-            {current && <FlipCard key={current.id} item={current} colors={colors} />}
+            {current && <FlipCard key={current.id} item={current} colors={colors} onKnow={handleKnow} onReview={handleReview} />}
           </View>
 
           {/* Action buttons */}
@@ -681,7 +746,7 @@ export default function FlashcardsScreen() {
               <Text style={[styles.actionBtnText, { color: colors.success }]}>Got It!</Text>
             </TouchableOpacity>
           </View>
-          <Text style={[styles.flipHint, { color: colors.muted }]}>Tap the card to flip it</Text>
+          <Text style={[styles.flipHint, { color: colors.muted }]}>Tap to flip · Swipe right = Got It · Swipe left = Review</Text>
         </View>
       )}
 
