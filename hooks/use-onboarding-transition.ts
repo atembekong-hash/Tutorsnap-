@@ -20,6 +20,7 @@ import {
   runOnJS,
   Easing,
 } from "react-native-reanimated";
+import * as Haptics from "expo-haptics";
 
 const PORTAL_DURATION = 380;
 const BLOOM_PEAK      = 160;
@@ -52,12 +53,20 @@ export function useOnboardingExit() {
   /**
    * Fire the portal-burst exit animation.
    * `onDone` is called on the JS thread when the fade-out completes.
+   * A Success haptic fires at the bloom peak (~160ms) for tactile punctuation.
    */
+  const triggerSuccessHaptic = () => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+  };
+
   const startExit = (onDone: () => void) => {
     "worklet";
-    // White bloom flash
+    // Haptic at bloom peak (160ms) — fired on JS thread via runOnJS
     bloomOpacity.value = withSequence(
-      withTiming(1, { duration: BLOOM_PEAK, easing: Easing.out(Easing.quad) }),
+      withTiming(1, {
+        duration: BLOOM_PEAK,
+        easing: Easing.out(Easing.quad),
+      }, () => { runOnJS(triggerSuccessHaptic)(); }),
       withTiming(0, { duration: BLOOM_FADE, easing: Easing.in(Easing.quad) }),
     );
     // Screen scales up slightly as it fades out
