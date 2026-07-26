@@ -37,7 +37,7 @@ import { getProgress, getStreakEmoji, type ProgressData } from "@/lib/progress";
 import { cleanMathText } from "@/lib/clean-math-text";
 import { SubmissionReadyCard } from "@/components/submission-ready-card";
 import { StudyBlockCard, StudyBlockSkeleton } from "@/components/study-block-card";
-import { SolvingOverlay, DotsLoader } from "@/components/skeleton";
+import { SolvingOverlay, DotsLoader, SolutionSkeletonScreen } from "@/components/skeleton";
 import { useScreenTransition } from "@/hooks/use-screen-transition";
 import ReAnimated, { SlideInUp } from "react-native-reanimated";
 import { useAppearance } from "@/lib/appearance-context";
@@ -538,11 +538,11 @@ export default function SolutionScreen() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [solution?.problem]);
 
-  // Show auto-solving spinner
+  // Show auto-solving skeleton
   if (autoSolving) {
     return (
       <ScreenContainer>
-        <SolvingOverlay problem={parsedSolution?.problem} />
+        <SolutionSkeletonScreen problem={parsedSolution?.problem} />
       </ScreenContainer>
     );
   }

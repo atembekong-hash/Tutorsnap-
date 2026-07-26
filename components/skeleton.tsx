@@ -450,6 +450,95 @@ export function GlossarySkeletonScreen() {
   );
 }
 
+// ─── 17. SolutionSkeletonScreen ─────────────────────────────────────────────
+/**
+ * Content-shaped skeleton shown while the AI is solving a problem.
+ * Mirrors the real solution layout: header bar, answer card, 3 step cards.
+ * Replaces the opaque SolvingOverlay so the transition to real content is smooth.
+ */
+export function SolutionSkeletonScreen({ problem }: { problem?: string }) {
+  const colors = useColors();
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      {/* Header bar */}
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          paddingHorizontal: 16,
+          paddingVertical: 14,
+          borderBottomWidth: 1,
+          borderBottomColor: colors.border,
+          gap: 12,
+        }}
+      >
+        <PulseBox size={32} borderRadius={10} />
+        <View style={{ flex: 1, gap: 6 }}>
+          {problem ? (
+            <>
+              <SkeletonBar width="90%" height={14} />
+              <SkeletonBar width="65%" height={11} />
+            </>
+          ) : (
+            <>
+              <SkeletonBar width={160} height={14} />
+              <SkeletonBar width={100} height={11} />
+            </>
+          )}
+        </View>
+        <SkeletonBar width={28} height={28} borderRadius={8} />
+      </View>
+
+      <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
+        {/* Answer card */}
+        <View
+          style={{
+            backgroundColor: colors.surface,
+            borderRadius: 20,
+            borderWidth: 1,
+            borderColor: colors.border,
+            padding: 20,
+            marginBottom: 16,
+          }}
+        >
+          <SkeletonBar width={80} height={12} borderRadius={6} style={{ marginBottom: 10 }} />
+          <ShimmerBox width="70%" height={36} borderRadius={10} style={{ marginBottom: 8 }} />
+          <SkeletonBar width="50%" height={11} />
+        </View>
+
+        {/* Step cards */}
+        {[1, 2, 3].map((i) => (
+          <View
+            key={i}
+            style={{
+              backgroundColor: colors.surface,
+              borderRadius: 16,
+              borderWidth: 1,
+              borderColor: colors.border,
+              padding: 16,
+              marginBottom: 12,
+              gap: 8,
+            }}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+              <PulseBox size={28} borderRadius={8} />
+              <SkeletonBar width={`${55 + i * 8}%`} height={13} />
+            </View>
+            <SkeletonBar width="100%" height={11} />
+            <SkeletonBar width={`${70 - i * 5}%`} height={11} />
+          </View>
+        ))}
+
+        {/* Solving label */}
+        <View style={{ alignItems: "center", paddingTop: 8, gap: 8 }}>
+          <DotsLoader />
+          <Text style={{ color: colors.muted, fontSize: 13 }}>Solving problem...</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
 // ─── Shared styles ────────────────────────────────────────────────────────────
 const skStyles = StyleSheet.create({
   card: { marginHorizontal: 16, marginTop: 16, padding: 20, borderRadius: 20, borderWidth: 1 },

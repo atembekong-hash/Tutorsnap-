@@ -1122,3 +1122,12 @@
 - [x] 76/76 tests passing
 - [x] TypeScript: 0 errors
 - [x] Checkpoint saved
+
+## Deep Scan Phase B + Full Audit (v1.8.1)
+- [x] Deep scan audit: confirmed cloud sync fully wired (lib/cloud-sync.ts, server/routers.ts, auth-screen.tsx)
+- [x] Deep scan audit: confirmed bookmarks staggered animation already wired (useAnimatedList in bookmarks.tsx)
+- [x] Build SolutionSkeletonScreen in skeleton.tsx (content-shaped: header bar + answer card + 3 step cards + DotsLoader)
+- [x] Wire SolutionSkeletonScreen into solution.tsx autoSolving branch (replaces SolvingOverlay)
+- [x] 76/76 tests passing
+- [x] TypeScript: 0 errors
+- [x] Checkpoint saved
