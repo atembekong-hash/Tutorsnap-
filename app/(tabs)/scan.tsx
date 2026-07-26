@@ -34,7 +34,7 @@ import { type SubjectId } from "@/lib/subjects";
 import { useNetworkStatus } from "@/hooks/use-network-status";
 import { CameraView, useCameraPermissions } from "@/lib/camera-wrapper";
 import { GRADE_OPTIONS, GRADE_LABELS, loadGlobalGrade, saveGlobalGrade } from "@/lib/grade-levels";
-import { DotsLoader } from "@/components/skeleton";
+import { DotsLoader, ScanSkeletonScreen } from "@/components/skeleton";
 
 type ScanMode = "camera" | "preview" | "web-picker";
 
@@ -355,6 +355,16 @@ function ScanScreenContent() {
           <View style={styles.galleryCircleBtn} />
         </View>
       </View>
+    );
+  }
+
+  // ===== PROCESSING SKELETON =====
+  // Show content-shaped skeleton while the AI is analyzing the image
+  if ((isProcessing || solveMutation.isPending) && mode === "preview" && selectedImage) {
+    return (
+      <ScreenContainer>
+        <ScanSkeletonScreen />
+      </ScreenContainer>
     );
   }
 

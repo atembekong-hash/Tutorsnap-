@@ -539,6 +539,92 @@ export function SolutionSkeletonScreen({ problem }: { problem?: string }) {
   );
 }
 
+// ─── 18. ScanSkeletonScreen ─────────────────────────────────────────────
+/**
+ * Content-shaped skeleton shown while the scan screen is processing an image.
+ * Shows a camera viewfinder placeholder, a scanning progress bar, and
+ * subject/grade picker placeholders so the transition to real content is smooth.
+ */
+export function ScanSkeletonScreen() {
+  const colors = useColors();
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      {/* Header */}
+      <View
+        style={{
+          paddingHorizontal: 20,
+          paddingTop: 16,
+          paddingBottom: 16,
+          borderBottomWidth: 0.5,
+          borderBottomColor: colors.border,
+          gap: 6,
+        }}
+      >
+        <SkeletonBar width={160} height={22} borderRadius={8} />
+        <SkeletonBar width={220} height={13} borderRadius={6} />
+      </View>
+
+      <View style={{ padding: 16 }}>
+        {/* Image preview placeholder */}
+        <View
+          style={{
+            width: "100%",
+            height: 220,
+            borderRadius: 16,
+            borderWidth: 1,
+            borderColor: colors.border,
+            overflow: "hidden",
+            marginBottom: 16,
+            backgroundColor: colors.surface,
+          }}
+        >
+          <ShimmerBox width="100%" height={220} borderRadius={0} />
+          {/* Scanning line sweep */}
+          <View
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 10,
+            }}
+          >
+            <PulseBox size={48} borderRadius={14} />
+            <SkeletonBar width={120} height={13} borderRadius={6} />
+          </View>
+        </View>
+
+        {/* Processing progress bar */}
+        <View style={{ marginBottom: 20 }}>
+          <ShimmerBox width="100%" height={6} borderRadius={3} />
+          <View style={{ flexDirection: "row", justifyContent: "center", marginTop: 8, gap: 8 }}>
+            <DotsLoader />
+            <Text style={{ color: colors.muted, fontSize: 13, alignSelf: "center" }}>Analyzing image...</Text>
+          </View>
+        </View>
+
+        {/* Subject picker placeholder */}
+        <SkeletonBar width={140} height={12} borderRadius={5} style={{ marginBottom: 8 }} />
+        <View style={{ flexDirection: "row", gap: 8, marginBottom: 20 }}>
+          {[80, 90, 70, 85, 75].map((w, i) => (
+            <SkeletonBar key={i} width={w} height={34} borderRadius={17} />
+          ))}
+        </View>
+
+        {/* Grade level placeholder */}
+        <SkeletonBar width={120} height={12} borderRadius={5} style={{ marginBottom: 8 }} />
+        <ShimmerBox width="100%" height={44} borderRadius={14} style={{ marginBottom: 20 }} />
+
+        {/* Solve button placeholder */}
+        <ShimmerBox width="100%" height={54} borderRadius={16} />
+      </View>
+    </View>
+  );
+}
+
 // ─── Shared styles ────────────────────────────────────────────────────────────
 const skStyles = StyleSheet.create({
   card: { marginHorizontal: 16, marginTop: 16, padding: 20, borderRadius: 20, borderWidth: 1 },
