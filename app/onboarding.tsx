@@ -24,6 +24,8 @@ import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useScreenTransition } from "@/hooks/use-screen-transition";
 import { getTrialVariantConfig, getDefaultTrialVariantConfig, type TrialVariantConfig } from "@/lib/ab-test";
+import Reanimated from "react-native-reanimated";
+import { useOnboardingExit } from "@/hooks/use-onboarding-transition";
 
 const { width: SCREEN_WIDTH, height: SCREEN_H } = Dimensions.get("window");
 
@@ -155,6 +157,7 @@ export default function OnboardingScreen() {
   const colors = useColors();
   const router = useRouter();
   const { fadeStyle } = useScreenTransition({ duration: 320, translateY: 20 });
+  const { startExit, portalStyle, bloomStyle } = useOnboardingExit();
   const [trialVariant, setTrialVariant] = React.useState<TrialVariantConfig>(getDefaultTrialVariantConfig());
   React.useEffect(() => {
     getTrialVariantConfig().then(setTrialVariant).catch(() => {});
@@ -331,18 +334,19 @@ export default function OnboardingScreen() {
     H.impactMedium();
     await AsyncStorage.setItem(ONBOARDING_DONE_KEY, "true");
     await persistOnboardingChoices();
-    // Navigate to tabs first, then push paywall on top
-    router.replace("/(tabs)" as any);
-    setTimeout(() => {
-      router.push("/paywall" as any);
-    }, 300);
+    startExit(() => {
+      router.replace({ pathname: "/(tabs)", params: { fromOnboarding: "1" } } as any);
+      setTimeout(() => { router.push("/paywall" as any); }, 300);
+    });
   };
 
   const finishOnboarding = async () => {
     H.notificationSuccess();
     await AsyncStorage.setItem(ONBOARDING_DONE_KEY, "true");
     await persistOnboardingChoices();
-    router.replace("/(tabs)");
+    startExit(() => {
+      router.replace({ pathname: "/(tabs)", params: { fromOnboarding: "1" } } as any);
+    });
   };
 
   const toggleCategory = (cat: SubjectCategory) => {
@@ -366,7 +370,7 @@ export default function OnboardingScreen() {
   const currentGradient = SLIDE_GRADIENTS[SLIDES[currentSlide]?.id] ?? ["#0a7ea420", "#0a7ea405"];
 
   return (
-    <Animated.View style={[styles.gradientRoot, { backgroundColor: colors.background }, fadeStyle]}>
+    <Reanimated.View style={[styles.gradientRoot, { backgroundColor: colors.background }, fadeStyle, portalStyle]}>
     <LinearGradient
       colors={[currentGradient[0], currentGradient[1], "transparent"]}
       style={StyleSheet.absoluteFillObject}
@@ -740,7 +744,9 @@ export default function OnboardingScreen() {
       </SafeAreaView>
       </KeyboardAvoidingView>
         {/* Confetti removed — celebration fires only after a real purchase on /premium-welcome */}
-    </Animated.View>
+        {/* Portal bloom overlay — full-screen white flash on exit */}
+        <Reanimated.View style={bloomStyle} pointerEvents="none" />
+    </Reanimated.View>
   );
 }
 
