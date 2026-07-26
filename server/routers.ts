@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { router, publicProcedure, protectedProcedure } from "./_core/trpc";
 import { getDb } from "./db";
-import { aireFeedback, aireSubjectCalibration, solveHistory, chatSessions, userProgress, userBookmarks, userNotes } from "../drizzle/schema";
+import { aireFeedback, aireSubjectCalibration, solveHistory, chatSessions, userProgress, userBookmarks, userNotes, subscriptions } from "../drizzle/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { invokeLLM } from "./_core/llm";
 import { systemRouter } from "./_core/systemRouter";
@@ -1740,6 +1740,41 @@ const cloudSyncRouter = router({
 });
 
 // Auth router stub (required by tests)
+// ─── Subscription router ────────────────────────────────────────────────────
+const subscriptionRouter = router({
+  /**
+   * Returns the server-side subscription status for the signed-in user.
+   * Reads the `subscriptions` table populated by the RevenueCat webhook.
+   * Use this to verify premium status server-side (cannot be spoofed by client).
+   */
+  getStatus: protectedProcedure.query(async ({ ctx }) => {
+    try {
+      const db = await getDb();
+      if (!db) return { isPremium: false, status: null, productId: null, expiresAt: null };
+      const rows = await db
+        .select()
+        .from(subscriptions)
+        .where(eq(subscriptions.userId, ctx.user.id))
+        .orderBy(desc(subscriptions.updatedAt))
+        .limit(1);
+      if (rows.length === 0) {
+        return { isPremium: false, status: null, productId: null, expiresAt: null };
+      }
+      const row = rows[0];
+      const isPremium = row.status === "active";
+      return {
+        isPremium,
+        status: row.status,
+        productId: row.productId ?? null,
+        expiresAt: row.expiresAt ? row.expiresAt.getTime() : null,
+      };
+    } catch (err) {
+      console.error("[subscriptionRouter] getStatus error:", err);
+      return { isPremium: false, status: null, productId: null, expiresAt: null };
+    }
+  }),
+});
+
 const authRouter = router({
   logout: protectedProcedure.mutation(async ({ ctx }) => {
     ctx.res.clearCookie(COOKIE_NAME, {
@@ -1765,6 +1800,7 @@ export const appRouter = router({
   oauth: oauthRouter,
   emailAuth: emailAuthRouter,
   aire: aireRouter,
+  subscription: subscriptionRouter,
 });
 
 export type AppRouter = typeof appRouter;
