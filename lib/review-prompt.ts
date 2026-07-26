@@ -1,16 +1,12 @@
 /**
  * lib/review-prompt.ts
  *
- * Triggers the native App Store / Google Play review prompt at the right moment.
- *
- * Trigger conditions:
- *  - After the user's 5th solved problem (first milestone), then at 10, 25, 50, 100
+ * Triggers the native App Store / Google Play review prompt at the right moment:
+ *  - User scored ≥ 80% on a quiz
  *  - App has been installed for at least 3 days
  *  - Prompt has not been shown in the last 30 days (rate-limiting)
- *  - After a quiz score >= 80%
  *
  * Uses expo-store-review which is already in package.json.
- * The OS may silently suppress the dialog — this is expected behavior.
  */
 
 import * as StoreReview from "expo-store-review";
@@ -55,57 +51,53 @@ async function daysSinceLastPrompt(): Promise<number> {
   }
 }
 
-/** Shared guard: checks availability, install age, and cooldown. */
-async function canPrompt(): Promise<boolean> {
-  if (Platform.OS === "web") return false;
-  try {
-    const isAvailable = await StoreReview.isAvailableAsync();
-    if (!isAvailable) return false;
-    const daysInstalled = await daysSinceInstall();
-    if (daysInstalled < MIN_DAYS_SINCE_INSTALL) return false;
-    const daysSinceLast = await daysSinceLastPrompt();
-    if (daysSinceLast < MIN_DAYS_BETWEEN_PROMPTS) return false;
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 /**
- * Attempt to show the native review prompt after a quiz result.
+ * Attempt to show the native review prompt.
  *
- * @param quizScorePct - The quiz score percentage (0-100). Prompt only fires for >= 80.
+ * @param quizScorePct - The quiz score percentage (0–100). Prompt only fires for ≥ 80.
  *
  * Call this after a quiz result is shown. The function is a no-op on web
  * and silently skips if conditions are not met.
  */
 export async function maybeRequestReview(quizScorePct: number): Promise<void> {
+  if (Platform.OS === "web") return;
   if (quizScorePct < 80) return;
+
   try {
-    if (!(await canPrompt())) return;
+    const isAvailable = await StoreReview.isAvailableAsync();
+    if (!isAvailable) return;
+
+    const daysInstalled = await daysSinceInstall();
+    if (daysInstalled < MIN_DAYS_SINCE_INSTALL) return;
+
+    const daysSinceLast = await daysSinceLastPrompt();
+    if (daysSinceLast < MIN_DAYS_BETWEEN_PROMPTS) return;
+
     await StoreReview.requestReview();
     await AsyncStorage.setItem(LAST_REVIEW_KEY, Date.now().toString());
   } catch { /* ignore — review prompt errors should never crash the app */ }
 }
 
-/**
- * Solve-count milestones that trigger the review prompt.
- * First trigger: 5th solve (early engagement signal).
- * Subsequent triggers: 10, 25, 50, 100 (long-term engagement).
- */
-const SOLVE_MILESTONES = new Set([5, 10, 25, 50, 100]);
+/** Solve-count milestones that trigger the review prompt. */
+const SOLVE_MILESTONES = new Set([10, 25, 50, 100]);
 
 /**
  * Call after every successful problem solve.
- * Triggers the review prompt at the 5th, 10th, 25th, 50th, and 100th solve,
+ * Triggers the review prompt at the 10th, 25th, 50th, and 100th solve,
  * subject to the same install-age and rate-limit guards.
  *
  * @param totalSolves - The user's all-time solve count (after the latest solve).
  */
 export async function maybeRequestReviewOnSolve(totalSolves: number): Promise<void> {
+  if (Platform.OS === "web") return;
   if (!SOLVE_MILESTONES.has(totalSolves)) return;
   try {
-    if (!(await canPrompt())) return;
+    const isAvailable = await StoreReview.isAvailableAsync();
+    if (!isAvailable) return;
+    const daysInstalled = await daysSinceInstall();
+    if (daysInstalled < MIN_DAYS_SINCE_INSTALL) return;
+    const daysSinceLast = await daysSinceLastPrompt();
+    if (daysSinceLast < MIN_DAYS_BETWEEN_PROMPTS) return;
     await StoreReview.requestReview();
     await AsyncStorage.setItem(LAST_REVIEW_KEY, Date.now().toString());
   } catch { /* ignore — review prompt errors should never crash the app */ }

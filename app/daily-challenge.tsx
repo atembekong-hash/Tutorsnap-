@@ -111,11 +111,7 @@ export default function DailyChallengeScreen() {
     // Award bonus XP by recording a solve for the challenge subject
     if (isCorrect && !state.bonusXpAwarded) {
       try {
-        const updated = await recordSolve(question.subject as any);
-        // Maybe prompt for a store review (5th, 10th, 25th, 50th, 100th solve)
-        import("@/lib/review-prompt").then(({ maybeRequestReviewOnSolve }) => {
-          maybeRequestReviewOnSolve(updated.streak.totalSolved).catch(() => {});
-        }).catch(() => {});
+        await recordSolve(question.subject as any);
       } catch { /* non-critical */ }
     }
   }, [revealed, state, question]);

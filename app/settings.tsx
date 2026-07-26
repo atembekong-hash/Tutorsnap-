@@ -647,13 +647,7 @@ export default function SettingsScreen() {
   const handleRateApp = async () => {
     H.impactLight();
     try {
-      // Try in-app review dialog first (iOS/Android native)
-      const isAvailable = await StoreReview.isAvailableAsync();
-      if (isAvailable) {
-        await StoreReview.requestReview();
-        return;
-      }
-      // Fallback: open the store page directly
+      // Always open the store page directly so users can leave a public rating
       const url = Platform.OS === "ios"
         ? "https://apps.apple.com/app/tutorsnap/id6748052679"
         : "https://play.google.com/store/apps/details?id=com.tutorsnap.app";
