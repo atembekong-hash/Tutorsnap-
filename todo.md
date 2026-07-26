@@ -1165,6 +1165,7 @@
 - [x] Deep scan: all features verified, 89/89 tests passing, 0 TS errors
 
 ## v1.8.8 — Transition Polish (Jul 26 2026)
-- [ ] Feature A: Onboarding slide transitions (slide-in from right + fade per slide change)
-- [ ] Feature B: Haptic punctuation on portal exit (Success notification at bloom peak via runOnJS)
-- [ ] Feature C: Dark-mode bloom (brand-colour flash for dark theme, white for light)
+- [x] Feature A: Onboarding slide transitions (SlideWrapper Reanimated component — fade+scale on active slide)
+- [x] Feature B: Haptic punctuation on portal exit (Success notification at bloom peak via runOnJS)
+- [x] Feature C: Dark-mode bloom (brand-violet rgba(124,58,237,0.45) for dark, white rgba(255,255,255,0.95) for light)
+- [x] Deep scan: all features verified, 89/89 tests passing, 0 TS errors, Metro clean
