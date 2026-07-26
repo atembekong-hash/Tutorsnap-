@@ -15,6 +15,7 @@
  */
 
 import React, { useCallback, useEffect, useState } from "react";
+import ReAnimated, { FadeInDown, ZoomIn } from "react-native-reanimated";
 import {
   Alert,
   Platform,
@@ -293,7 +294,7 @@ export default function PaywallScreen() {
         )}
 
         {/* ── Feature list ─────────────────────────────────────────── */}
-        <View style={s.featuresCard}>
+        <ReAnimated.View entering={FadeInDown.delay(420).duration(400)} style={s.featuresCard}>
           <Text style={s.featuresTitle}>Everything included</Text>
           {FEATURES.map((f, i) => (
             <View key={i} style={s.featureRow}>
@@ -301,9 +302,9 @@ export default function PaywallScreen() {
               <Text style={s.featureLabel}>{f.label}</Text>
             </View>
           ))}
-        </View>
-
+                </ReAnimated.View>
         {/* ── CTA ──────────────────────────────────────────────────── */}
+        <ReAnimated.View entering={FadeInDown.delay(500).duration(400).springify()}>
         <TouchableOpacity
           style={[s.ctaBtn, loading && s.ctaBtnDisabled]}
           onPress={handleStartTrial}
@@ -322,6 +323,7 @@ export default function PaywallScreen() {
         <Text style={s.ctaSubtext}>
           No charge for 14 days · Cancel anytime
         </Text>
+        </ReAnimated.View>
 
         {/* ── Restore ──────────────────────────────────────────────── */}
         <TouchableOpacity

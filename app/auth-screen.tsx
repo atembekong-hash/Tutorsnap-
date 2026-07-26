@@ -4,6 +4,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
+import ReAnimated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import {
   View,
   Text,
@@ -239,12 +240,20 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
         <ScrollView keyboardDismissMode="on-drag" contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <View style={styles.container}>
             {/* Header */}
-            <View style={styles.header}>
-              <Text style={[styles.title, { color: colors.foreground }]}>TutorSnap</Text>
-              <Text style={[styles.subtitle, { color: colors.muted }]}>
+            <ReAnimated.View entering={FadeInDown.delay(80).duration(500).springify()} style={styles.header}>
+              <ReAnimated.Text
+                entering={FadeInDown.delay(120).duration(500).springify()}
+                style={[styles.title, { color: colors.foreground }]}
+              >
+                TutorSnap
+              </ReAnimated.Text>
+              <ReAnimated.Text
+                entering={FadeInDown.delay(200).duration(500).springify()}
+                style={[styles.subtitle, { color: colors.muted }]}
+              >
                 Your AI tutor for math, science, and more
-              </Text>
-            </View>
+              </ReAnimated.Text>
+            </ReAnimated.View>
 
             {/* Sign-In Section */}
             <View style={styles.signInSection}>
@@ -341,6 +350,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                   </Pressable>
                 </View>
               ) : (
+                <ReAnimated.View entering={FadeInUp.delay(280).duration(420).springify()}>
                 <>
                   {/* Google Sign-In Button */}
                   <Pressable
@@ -408,6 +418,7 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                     </Text>
                   </Pressable>
                 </>
+                </ReAnimated.View>
               )}
             </View>
 
