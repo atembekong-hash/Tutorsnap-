@@ -503,7 +503,7 @@ function TodayRow({
         {/* Row 2: Rankings */}
         {isWidgetVisible("rankings") && (
           <TouchableOpacity
-            onPress={() => router.push("/(tabs)/leaderboard" as any)}
+            onPress={() => router.push("/leaderboard" as any)}
             activeOpacity={0.82}
             style={[trStyles.tripleRow, { borderColor: `${colors.warning}35` }]}
             accessibilityLabel="View global rankings"
@@ -1713,7 +1713,7 @@ function SolveScreenContent() {
         }}
         onViewRank={() => {
           setSolveMilestoneCount(null);
-          router.push("/(tabs)/leaderboard" as any);
+          router.push("/leaderboard" as any);
         }}
       />
       {/* Cheat Sheet Bottom Sheet */}
