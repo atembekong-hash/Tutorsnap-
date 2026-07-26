@@ -196,6 +196,13 @@ export default function OnboardingScreen() {
   // Dark mode: brand-violet bloom; light mode: white bloom
   const bloomColor = colorScheme === "dark" ? "rgba(124,58,237,0.45)" : "rgba(255,255,255,0.95)";
   const { startExit, portalStyle, bloomStyle } = useOnboardingExit(bloomColor);
+  // Skip button micro-animation
+  const skipBtnScale   = useSharedValue(1);
+  const skipBtnOpacity = useSharedValue(1);
+  const skipBtnStyle   = useAnimatedStyle(() => ({
+    transform: [{ scale: skipBtnScale.value }],
+    opacity: skipBtnOpacity.value,
+  }));
   const [trialVariant, setTrialVariant] = React.useState<TrialVariantConfig>(getDefaultTrialVariantConfig());
   React.useEffect(() => {
     getTrialVariantConfig().then(setTrialVariant).catch(() => {});
@@ -387,6 +394,13 @@ export default function OnboardingScreen() {
     });
   };
 
+  // Animate skip button (scale down + fade) then trigger portal exit after 120ms
+  const handleSkipWithAnimation = () => {
+    skipBtnScale.value   = withTiming(0.82, { duration: 110, easing: Easing.in(Easing.quad) });
+    skipBtnOpacity.value = withTiming(0,    { duration: 110, easing: Easing.in(Easing.quad) });
+    setTimeout(finishOnboarding, 120);
+  };
+
   const toggleCategory = (cat: SubjectCategory) => {
     H.impactLight();
     setSelectedCategories((prev) => {
@@ -434,15 +448,16 @@ export default function OnboardingScreen() {
 
         {/* Skip button — hidden on first and last slide */}
         {!isFirstSlide && !isLastSlide && (
-          <TouchableOpacity
-            style={styles.skipBtn}
-            onPress={finishOnboarding}
-            activeOpacity={0.7}
-            accessibilityLabel="Skip onboarding"
-            accessibilityRole="button"
-          >
-            <Text style={[styles.skipText, { color: colors.muted }]}>Skip</Text>
-          </TouchableOpacity>
+          <Reanimated.View style={[styles.skipBtn, skipBtnStyle]}>
+            <TouchableOpacity
+              onPress={handleSkipWithAnimation}
+              activeOpacity={0.7}
+              accessibilityLabel="Skip onboarding"
+              accessibilityRole="button"
+            >
+              <Text style={[styles.skipText, { color: colors.muted }]}>Skip</Text>
+            </TouchableOpacity>
+          </Reanimated.View>
         )}
 
         {/* Progress bar */}

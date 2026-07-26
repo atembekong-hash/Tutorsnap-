@@ -1169,3 +1169,9 @@
 - [x] Feature B: Haptic punctuation on portal exit (Success notification at bloom peak via runOnJS)
 - [x] Feature C: Dark-mode bloom (brand-violet rgba(124,58,237,0.45) for dark, white rgba(255,255,255,0.95) for light)
 - [x] Deep scan: all features verified, 89/89 tests passing, 0 TS errors, Metro clean
+
+## v1.8.9 — Skip Animation + Tab Entry Animations (Jul 26 2026)
+- [ ] Feature 1: Skip button scale+fade animation before portal exit in onboarding.tsx
+- [ ] Feature 3a: Staggered entry animation on Scan and Practice tab screens
+- [ ] Feature 3b: Staggered entry animation on History and Chat tab screens
+- [ ] Deep scan: all features verified, tests passing, Metro clean
