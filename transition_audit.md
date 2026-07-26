@@ -1,28 +1,36 @@
-# Onboarding Transition Audit
+# Transition Audit — v1.8.8
 Date: 2026-07-26
-Restored checkpoint: a3d18f69
+Stable checkpoint: 997e7086
 
-## Goal
-Portal-burst exit on onboarding.tsx + staggered entry on index.tsx.
+## Feature A: Onboarding slide transitions
+Status: IN PROGRESS — JSX parse error at line 714
 
-## Files to touch
-- NEW: hooks/use-onboarding-transition.ts
-- EDIT: app/onboarding.tsx  (exit wiring)
-- EDIT: app/(tabs)/index.tsx  (entry wiring)
+### What was done:
+1. Added Reanimated named imports (useSharedValue, useAnimatedStyle, withTiming, withSequence, Easing) to onboarding.tsx
+2. Added SlideWrapper component before OnboardingScreen function
+3. Changed SLIDES.map((slide) to SLIDES.map((slide, idx)
+4. Added <SlideWrapper isActive={idx === currentSlide}> after outer slide View open (line 479)
+5. Added </SlideWrapper> before outer slide View close (line 714)
 
-## onboarding.tsx — key facts (read fresh)
-- Root tag: `<Animated.View style={[styles.gradientRoot, { backgroundColor: colors.background }, fadeStyle]}>`
-- Closing tag: `</Animated.View>` (just before final `);`)
-- finishOnboarding → router.replace("/(tabs)")
-- finishOnboardingAndShowPaywall → router.replace("/(tabs)") + setTimeout push /paywall
-- Imports: react-native-reanimated NOT yet imported as default
+### Current error:
+SyntaxError: Expected corresponding JSX closing tag for <SlideWrapper>. (714:12)
 
-## index.tsx — key facts
-- ReAnimated already imported as: `import ReAnimated, { ... } from "react-native-reanimated";`
-- useLocalSearchParams NOT yet imported
-- Header section starts at: `{/* Header — Row 1: app name + action icons */}`
-- Header View: `<View style={styles.header}>`
-- Header closes at line ~1109: `</View>` (the styles.header View)
+### Root cause:
+The prop name "isActive" collides with the local variable "isActive" declared inside
+the grade picker at line 611: `const isActive = selectedGrade === opt.id`
+Babel JSX parser gets confused when the prop name matches a local variable in scope.
+
+### Fix:
+Rename SlideWrapper prop from "isActive" to "active" in both the component definition
+and the usage site.
+
+## Feature B: Haptic punctuation
+Status: NOT STARTED
+Plan: hooks/use-onboarding-transition.ts — add runOnJS haptic at bloom peak (~200ms)
+
+## Feature C: Dark-mode bloom
+Status: NOT STARTED
+Plan: Pass bloomColor from onboarding.tsx based on colorScheme; white for light, brand violet for dark
 
 ## Mitigation rules
 1. One phase = one file touched

@@ -24,7 +24,13 @@ import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useScreenTransition } from "@/hooks/use-screen-transition";
 import { getTrialVariantConfig, getDefaultTrialVariantConfig, type TrialVariantConfig } from "@/lib/ab-test";
-import Reanimated from "react-native-reanimated";
+import Reanimated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withSequence,
+  Easing,
+} from "react-native-reanimated";
 import { useOnboardingExit } from "@/hooks/use-onboarding-transition";
 
 const { width: SCREEN_WIDTH, height: SCREEN_H } = Dimensions.get("window");
@@ -152,6 +158,34 @@ const SLIDES = [
 ];
 
 const CATEGORY_ORDER: SubjectCategory[] = ["math", "english", "science", "social"];
+
+// ─── Slide transition wrapper ─────────────────────────────────────────────────
+function SlideWrapper({ active, children }: { active: boolean; children: React.ReactNode }) {
+  const opacity = useSharedValue(active ? 1 : 0);
+  const scale = useSharedValue(active ? 1 : 0.94);
+
+  useEffect(() => {
+    if (active) {
+      // Entering: fade in + scale up
+      opacity.value = withTiming(1, { duration: 280, easing: Easing.out(Easing.cubic) });
+      scale.value = withSequence(
+        withTiming(0.94, { duration: 0 }),
+        withTiming(1, { duration: 280, easing: Easing.out(Easing.cubic) }),
+      );
+    } else {
+      // Leaving: subtle fade out
+      opacity.value = withTiming(0.6, { duration: 180, easing: Easing.in(Easing.quad) });
+      scale.value = withTiming(0.97, { duration: 180, easing: Easing.in(Easing.quad) });
+    }
+  }, [active]);
+
+  const style = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ scale: scale.value }],
+  }));
+
+  return <Reanimated.View style={[{ flex: 1, width: "100%" }, style]}>{children}</Reanimated.View>;
+}
 
 export default function OnboardingScreen() {
   const colors = useColors();
@@ -440,8 +474,9 @@ export default function OnboardingScreen() {
           style={{ flex: 1 }}
           contentContainerStyle={{ alignItems: "center" }}
         >
-          {SLIDES.map((slide) => (
+          {SLIDES.map((slide, idx) => (
             <View key={slide.id} style={[styles.slide, { width: SCREEN_WIDTH }]}>
+              <SlideWrapper active={idx === currentSlide}>
               {/* Emoji or avatar illustration */}
               {slide.id === "photo" && avatarUri ? (
                 <TouchableOpacity onPress={handlePickPhoto} activeOpacity={0.85} style={styles.avatarCircle}>
@@ -676,6 +711,7 @@ export default function OnboardingScreen() {
                   </Text>
                 </View>
               )}
+              </SlideWrapper>
             </View>
           ))}
         </ScrollView>
