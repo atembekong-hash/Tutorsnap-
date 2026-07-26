@@ -21,6 +21,8 @@ import superjson from "superjson";
 import type { AppRouter } from "@/server/routers";
 import { getApiBaseUrl } from "@/constants/oauth";
 import { getSessionToken } from "@/lib/_core/auth-enhanced";
+// Lazy import to avoid circular dependency — markSyncDirty is called in catch blocks
+const _markDirty = () => import("@/lib/sync-retry-queue").then((m) => m.markSyncDirty()).catch(() => {});
 
 // ─── tRPC client ──────────────────────────────────────────────────────────────
 
@@ -73,6 +75,7 @@ export async function pushSolve(item: {
     await client.cloudSync.pushSolveHistory.mutate({ items: [item] });
   } catch (err) {
     console.warn("[cloudSync] pushSolve failed (non-fatal):", err);
+    _markDirty();
   }
 }
 
@@ -137,6 +140,7 @@ export async function pushChatSession(session: {
     });
   } catch (err) {
     console.warn("[cloudSync] pushChatSession failed (non-fatal):", err);
+    _markDirty();
   }
 }
 
@@ -189,6 +193,7 @@ export async function pushProgress(progressJson: string): Promise<void> {
     await client.cloudSync.pushProgress.mutate({ progressJson });
   } catch (err) {
     console.warn("[cloudSync] pushProgress failed (non-fatal):", err);
+    _markDirty();
   }
 }
 
@@ -205,6 +210,7 @@ export async function pushBookmarks(bookmarks: Array<{
     await client.cloudSync.pushBookmarks.mutate({ bookmarks });
   } catch (err) {
     console.warn("[cloudSync] pushBookmarks failed (non-fatal):", err);
+    _markDirty();
   }
 }
 
@@ -220,6 +226,7 @@ export async function pushNotes(notes: Array<{
     await client.cloudSync.pushNotes.mutate({ notes });
   } catch (err) {
     console.warn("[cloudSync] pushNotes failed (non-fatal):", err);
+    _markDirty();
   }
 }
 

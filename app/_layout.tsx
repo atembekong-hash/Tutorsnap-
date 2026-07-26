@@ -44,6 +44,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { playTransitionSound } from "@/lib/sound-effects";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { useColors } from "@/hooks/use-colors";
+import { useNetworkStatus } from "@/hooks/use-network-status";
+import { flushSyncQueueIfDirty } from "@/lib/sync-retry-queue";
 
 // Show notifications as banners when app is in foreground
 if (Platform.OS !== "web") {
@@ -218,6 +220,15 @@ export default function RootLayout() {
     const unsubscribe = subscribeSafeAreaInsets(handleSafeAreaUpdate);
     return () => unsubscribe();
   }, [handleSafeAreaUpdate]);
+
+  const { wasJustReconnected } = useNetworkStatus();
+
+  // Flush any pending offline sync operations when the device reconnects
+  useEffect(() => {
+    if (wasJustReconnected) {
+      flushSyncQueueIfDirty().catch(() => {});
+    }
+  }, [wasJustReconnected]);
 
   const { updateAvailable, updateInfo, forceUpdate, dismiss } = useUpdateCheck();
   const [queryClient] = useState(
