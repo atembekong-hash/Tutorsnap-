@@ -45,7 +45,7 @@ import {
 } from "@/lib/notifications";
 import { SUBJECT_CATEGORIES, type SubjectCategory } from "@/lib/subjects";
 import { useFontSize } from "@/lib/font-size-provider";
-import { SUPPORT_EMAIL } from "@/constants/app";
+import { SUPPORT_EMAIL, COMPANY_NAME, APP_FULL_NAME, TAGLINE, COPYRIGHT } from "@/constants/app";
 import { GRADE_OPTIONS, GRADE_LABELS, loadGlobalGrade, saveGlobalGrade } from "@/lib/grade-levels";
 import { ONBOARDING_DONE_KEY } from "@/app/onboarding";
 import * as FileSystem from "expo-file-system/legacy";
@@ -1855,10 +1855,13 @@ export default function SettingsScreen() {
         >
           <View style={styles.versionFooter}>
             <Text style={[styles.versionText, { color: colors.muted }]}>
-              TutorSnap v{Constants.expoConfig?.version ?? "1.1.0"}
+              {APP_FULL_NAME} v{Constants.expoConfig?.version ?? "1.1.0"}
             </Text>
             <Text style={[styles.versionBuild, { color: colors.border }]}>
               Expo SDK {Constants.expoConfig?.sdkVersion ?? "54"} · {Platform.OS}
+            </Text>
+            <Text style={[styles.versionBuild, { color: colors.border }]}>
+              {COPYRIGHT}
             </Text>
           </View>
         </TouchableOpacity>
@@ -1987,16 +1990,21 @@ export default function SettingsScreen() {
             <View style={styles.aboutLogoRow}>
               <Text style={styles.aboutLogo}>🎓</Text>
               <View>
-                <Text style={[styles.aboutAppName, { color: colors.foreground }]}>TutorSnap</Text>
+                <Text style={[styles.aboutAppName, { color: colors.foreground }]}>{APP_FULL_NAME}</Text>
                 <Text style={[styles.aboutVersion, { color: colors.muted }]}>
                   Version {Constants.expoConfig?.version ?? "1.1.0"}
                 </Text>
+                <Text style={[styles.aboutVersion, { color: colors.primary, fontSize: 11, marginTop: 2 }]}>{TAGLINE}</Text>
               </View>
             </View>
             <Text style={[styles.aboutDesc, { color: colors.muted }]}>
-              TutorSnap is your AI-powered academic tutor for every subject, from Algebra and Calculus to World History and Creative Writing. Snap a photo of any problem, type a question, or speak your query to get instant step-by-step solutions.
+              TutorSnap AI is your AI-powered academic tutor for every subject, from Algebra and Calculus to World History and Creative Writing. Snap a photo of any problem, type a question, or speak your query to get instant step-by-step solutions.
             </Text>
             <View style={[styles.aboutDivider, { backgroundColor: colors.border }]} />
+            <View style={styles.aboutRow}>
+              <Text style={[styles.aboutRowLabel, { color: colors.muted }]}>Developer</Text>
+              <Text style={[styles.aboutRowValue, { color: colors.foreground }]}>{COMPANY_NAME}</Text>
+            </View>
             <View style={styles.aboutRow}>
               <Text style={[styles.aboutRowLabel, { color: colors.muted }]}>Platform</Text>
               <Text style={[styles.aboutRowValue, { color: colors.foreground }]}>{Platform.OS === "ios" ? "iOS" : Platform.OS === "android" ? "Android" : "Web"}</Text>
@@ -2010,6 +2018,7 @@ export default function SettingsScreen() {
               <Text style={[styles.aboutRowValue, { color: colors.foreground }]}>38 across 4 categories</Text>
             </View>
             <View style={[styles.aboutDivider, { backgroundColor: colors.border }]} />
+            <Text style={[styles.aboutVersion, { color: colors.muted, textAlign: "center", marginBottom: 12, fontSize: 11 }]}>{COPYRIGHT}</Text>
             <View style={styles.modalButtons}>
               <TouchableOpacity
                 accessibilityLabel="Rate app"

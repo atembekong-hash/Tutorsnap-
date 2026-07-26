@@ -2190,7 +2190,7 @@ function ChatScreenContent() {
     if (!session) return;
     const encoded = encodeURIComponent(session.title || "chat");
     const subject = selectedSubject ?? "general";
-    const link = `https://stutorsnapai.tech/chat?q=${encoded}&subject=${subject}`;
+    const link = `https://tutorsnapai.tech/chat?q=${encoded}&subject=${subject}`;
     try {
       const Clipboard = await import("expo-clipboard");
       await Clipboard.setStringAsync(link);
@@ -2294,7 +2294,7 @@ function ChatScreenContent() {
       const code = await getOrCreateReferralCode();
       const lastUser = [...messages].reverse().find((m) => m.role === "user");
       const question = lastUser?.content ?? "a tough question";
-      const msg = `TutorSnap just answered this for me in seconds 🤯\n\n"${question.length > 80 ? question.slice(0, 80) + "…" : question}"\n\nTry it free with my code: ${code}\nhttps://stutorsnapai.tech`;
+      const msg = `TutorSnap just answered this for me in seconds 🤯\n\n"${question.length > 80 ? question.slice(0, 80) + "…" : question}"\n\nTry it free with my code: ${code}\nhttps://tutorsnapai.tech`;
       if (Platform.OS !== "web") {
         const Share = await import("react-native");
         await Share.Share.share({ message: msg });
@@ -3321,7 +3321,7 @@ function ChatScreenContent() {
                 </View>
                 <View style={chatStyles.shareMenuInfo}>
                   <Text style={[chatStyles.shareMenuLabel, { color: colors.foreground, fontSize: fs(14) }]}>Copy Link</Text>
-                  <Text style={[chatStyles.shareMenuDesc, { color: colors.muted, fontSize: fs(12) }]}>Copy stutorsnapai.tech solve link to clipboard</Text>
+                  <Text style={[chatStyles.shareMenuDesc, { color: colors.muted, fontSize: fs(12) }]}>Copy tutorsnapai.tech solve link to clipboard</Text>
                 </View>
                 <IconSymbol size={14} name={copyLinkFeedback ? "checkmark.circle.fill" : "chevron.right"} color={copyLinkFeedback ? colors.success : colors.muted} />
               </TouchableOpacity>

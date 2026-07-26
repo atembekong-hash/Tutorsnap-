@@ -19,6 +19,7 @@ import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { useScreenTransition } from "@/hooks/use-screen-transition";
+import { COMPANY_NAME, APP_FULL_NAME, COPYRIGHT } from "@/constants/app";
 
 // ─── Cookie Policy Content ─────────────────────────────────────────────────
 const COOKIE_POLICY = `Last updated: July 2025
@@ -284,7 +285,10 @@ export default function LegalScreen() {
             <Text style={[styles.contactEmail, { color: colors.primary }]}>legal@tutorsnapai.tech</Text>
           </TouchableOpacity>
           <Text style={[styles.contactDesc, { color: colors.muted, marginTop: 8 }]}>
-            TutorSnap · tutorsnapai.tech
+            {APP_FULL_NAME} · {COMPANY_NAME}
+          </Text>
+          <Text style={[styles.contactDesc, { color: colors.border, marginTop: 4, fontSize: 11 }]}>
+            {COPYRIGHT}
           </Text>
         </View>
 

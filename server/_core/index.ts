@@ -110,7 +110,7 @@ async function startServer() {
         "Pomodoro focus timer for Study Planner sessions",
         "Streak freeze mechanic and badge unlock animations",
       ],
-      iosStoreUrl: "https://apps.apple.com/app/tutorsnap/id0000000000",
+      iosStoreUrl: "https://apps.apple.com/app/tutorsnap/id6748752791",
       androidStoreUrl: "https://play.google.com/store/apps/details?id=com.tutorsnap.app",
       forceUpdate: false,
     });
