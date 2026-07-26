@@ -109,6 +109,7 @@ export default function PaywallScreen() {
   const [loading, setLoading] = useState(false);
   const [restoring, setRestoring] = useState(false);
   const [offeringsLoaded, setOfferingsLoaded] = useState(false);
+  const [offeringsError, setOfferingsError] = useState(false);
   const [isDevMode, setIsDevMode] = useState(false);
   const [trialDaysUsed, setTrialDaysUsed] = useState<number | null>(null);
   const [trialVariant, setTrialVariant] = useState<TrialVariantConfig>(getDefaultTrialVariantConfig());
@@ -137,7 +138,7 @@ export default function PaywallScreen() {
         }
         setOfferings(map);
       } catch {
-        // Offerings load failure is non-critical; show empty state with fallback prices
+        setOfferingsError(true);
       } finally {
         setOfferingsLoaded(true);
       }
@@ -316,6 +317,30 @@ export default function PaywallScreen() {
               </Text>
             </Pressable>
           </View>
+        ) : offeringsError ? (
+          <View style={s.loadingPlans}>
+            <Text style={{ color: colors.muted, fontSize: 14, textAlign: "center", marginBottom: 12 }}>
+              Could not load plans. Check your connection.
+            </Text>
+            <TouchableOpacity
+              onPress={() => {
+                setOfferingsLoaded(false);
+                setOfferingsError(false);
+                // Re-run the load
+                (async () => {
+                  try {
+                    const pkgs = await getOfferings();
+                    const map: Record<string, OfferingInfo> = {};
+                    for (const pkg of pkgs) { map[pkg.productId] = pkg; }
+                    setOfferings(map);
+                  } catch { setOfferingsError(true); } finally { setOfferingsLoaded(true); }
+                })();
+              }}
+              style={{ paddingHorizontal: 24, paddingVertical: 10, borderRadius: 20, backgroundColor: colors.primary }}
+            >
+              <Text style={{ color: colors.background, fontSize: 14, fontWeight: "600" }}>Retry</Text>
+            </TouchableOpacity>
+          </View>
         ) : (
           <View style={s.loadingPlans}>
             <DotsLoader color={colors.primary} />
@@ -414,7 +439,7 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
     },
     closeBtn: {
       position: "absolute",
-      top: 52,
+      top: 8,
       right: 20,
       zIndex: 10,
       width: 32,
