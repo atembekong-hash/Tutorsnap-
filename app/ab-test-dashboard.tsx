@@ -8,6 +8,7 @@
  */
 
 import React, { useCallback, useEffect, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   ActivityIndicator,
   Alert,
@@ -86,14 +87,19 @@ export default function AbTestDashboardScreen() {
   const [loading, setLoading] = useState(true);
   const [events, setEvents] = useState<AbTestAnalyticsEvent[]>([]);
   const [summary, setSummary] = useState<VariantRow[]>([]);
+  const [isLocked, setIsLocked] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const data = await getAbTestAnalyticsEvents();
+    const [data, lockedVal] = await Promise.all([
+      getAbTestAnalyticsEvents(),
+      AsyncStorage.getItem("@tutorsnap/trialVariantLocked"),
+    ]);
     // Newest first in the raw log
     const sorted = [...data].sort((a, b) => b.timestamp - a.timestamp);
     setEvents(sorted);
     setSummary(buildSummary(data));
+    setIsLocked(lockedVal === "true");
     setLoading(false);
   }, []);
 
@@ -159,6 +165,11 @@ export default function AbTestDashboardScreen() {
         {/* Summary section */}
         <Text style={s.sectionTitle}>Variant Summary</Text>
         <Text style={s.totalLabel}>Total events: {events.length}</Text>
+        {isLocked && (
+          <View style={[s.lockedBadge, { backgroundColor: `${colors.warning}20`, borderColor: `${colors.warning}40` }]}>
+            <Text style={[s.lockedBadgeText, { color: colors.warning }]}>🔒 Variant Locked — will not re-randomise</Text>
+          </View>
+        )}
 
         {/* Summary table */}
         <View style={s.tableCard}>
@@ -444,6 +455,18 @@ function styles(colors: ReturnType<typeof useColors>) {
       color: colors.muted,
       textAlign: "center",
       marginTop: 12,
+    },
+    lockedBadge: {
+      borderRadius: 8,
+      borderWidth: 1,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      marginBottom: 12,
+    },
+    lockedBadgeText: {
+      fontSize: 13,
+      fontWeight: "600",
+      textAlign: "center",
     },
   });
 }
