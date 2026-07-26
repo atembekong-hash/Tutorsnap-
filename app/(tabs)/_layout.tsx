@@ -42,11 +42,11 @@ function ScanTabIcon({ color: _color, focused }: { color: string; focused: boole
     const loop = Animated.loop(
       Animated.parallel([
         Animated.sequence([
-          Animated.timing(ringScale, { toValue: 1.55, duration: 1200, useNativeDriver: true, easing: Easing.out(Easing.quad) }),
+          Animated.timing(ringScale, { toValue: 1.55, duration: 4000, useNativeDriver: true, easing: Easing.out(Easing.quad) }),
           Animated.timing(ringScale, { toValue: 1, duration: 0, useNativeDriver: true }),
         ]),
         Animated.sequence([
-          Animated.timing(ringOpacity, { toValue: 0, duration: 1200, useNativeDriver: true, easing: Easing.out(Easing.quad) }),
+          Animated.timing(ringOpacity, { toValue: 0, duration: 4000, useNativeDriver: true, easing: Easing.out(Easing.quad) }),
           Animated.timing(ringOpacity, { toValue: 0.5, duration: 0, useNativeDriver: true }),
         ]),
       ])
@@ -122,6 +122,7 @@ function SolveTabIcon({ color, focused }: { color: string; focused: boolean }) {
   const { settings } = useAppearance();
   const [goalMet, setGoalMet] = useState(true);
   const [badgeVisible, setBadgeVisible] = useState(false);
+  const [solveLoaded, setSolveLoaded] = useState(false);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const dismissAnim = useRef(new Animated.Value(1)).current;
   const prevGoalMet = useRef(true);
@@ -132,6 +133,7 @@ function SolveTabIcon({ color, focused }: { color: string; focused: boolean }) {
       getProgress().then((p) => {
         const met = p.streak.todaySolved >= p.streak.dailyGoal;
         setGoalMet(met);
+        setSolveLoaded(true);
         if (!met) {
           setBadgeVisible(true);
           dismissAnim.setValue(1);
@@ -169,7 +171,7 @@ function SolveTabIcon({ color, focused }: { color: string; focused: boolean }) {
   return (
     <Animated.View style={{ position: "relative", transform: [{ scale: iconScale }] }}>
       <IconSymbol size={30} name="sum" color={color} />
-      {badgeVisible && (
+      {solveLoaded && badgeVisible && (
         <Animated.View
           style={[
             styles.practiceBadge,
@@ -185,12 +187,16 @@ function SolveTabIcon({ color, focused }: { color: string; focused: boolean }) {
 function PracticeTabIcon({ color, focused }: { color: string; focused: boolean }) {
   const { settings } = useAppearance();
   const [dailyDone, setDailyDone] = useState(true);
+  const [practiceLoaded, setPracticeLoaded] = useState(false);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const iconScale = useTabFocusScale(focused, settings.reduceMotion);
 
   useFocusEffect(
     useCallback(() => {
-      getDailyChallengeState().then((s) => setDailyDone(s.completed));
+      getDailyChallengeState().then((s) => {
+        setDailyDone(s.completed);
+        setPracticeLoaded(true);
+      });
     }, [])
   );
 
@@ -209,7 +215,7 @@ function PracticeTabIcon({ color, focused }: { color: string; focused: boolean }
   return (
     <Animated.View style={{ position: "relative", transform: [{ scale: iconScale }] }}>
       <IconSymbol size={24} name="pencil.and.list.clipboard" color={color} />
-      {!dailyDone && (
+      {practiceLoaded && !dailyDone && (
         <Animated.View
           style={[
             styles.practiceBadge,
@@ -309,6 +315,7 @@ export default function TabLayout() {
         name="history"
         options={{
           href: null,
+          tabBarButton: () => null,
         }}
       />
       <Tabs.Screen
