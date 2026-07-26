@@ -191,6 +191,8 @@ const MAPPING = {
   "folder.fill": "folder",
   "folder.badge.plus": "create-new-folder",
   "info.circle.fill": "info",
+  // QR Code
+  "qrcode": "qr-code",
 } as unknown as IconMapping;
 
 export function IconSymbol({

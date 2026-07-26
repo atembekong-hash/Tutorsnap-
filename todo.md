@@ -1151,3 +1151,9 @@
 - [x] Feature A: A/B test analytics — logAbTestEvent in lib/ab-test.ts, fire on paywall view + conversion
 - [ ] Feature B: Classroom QR code — Show QR button in manage tab, Modal with react-native-qrcode-svg
 - [x] Feature C: Streak personalisation — ALREADY DONE (scheduleStreakAtRiskCheck body already includes streak count: "You're on a ${currentStreak}-day streak")
+
+## v1.8.5 — A/B Analytics, Classroom QR, Streak Personalisation
+- [x] Feature A: A/B test analytics — logAbTestEvent in lib/ab-test.ts, fire on paywall view + conversion
+- [x] Feature B: Classroom QR code — Show QR button + Modal with react-native-qrcode-svg, renders tutorsnap://classroom/join?code=XXXX
+- [x] Feature C: Streak at-risk personalisation — already wired in v1.8.4b (scheduleStreakAtRiskCheck reads currentStreak and includes it in notification body)
+- [x] Deep scan: all features verified, 89/89 tests passing, 0 TS errors

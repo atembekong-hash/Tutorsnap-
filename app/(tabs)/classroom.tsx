@@ -62,6 +62,7 @@ import {
   cancelAllHomeworkReminders,
 } from "@/lib/homework-notifications";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import QRCode from "react-native-qrcode-svg";
 import { ProblemCommentSheet } from "@/components/problem-comment-sheet";
 import { getCommentCount } from "@/lib/problem-comments";
 import { toggleBookmark, isBookmarked } from "@/lib/bookmarks";
@@ -251,6 +252,7 @@ export default function ClassroomTabScreen() {
 
   // Edit display-name modal
   const [showEditNameModal, setShowEditNameModal] = useState(false);
+  const [showQRModal, setShowQRModal] = useState(false);
   const [editNameValue, setEditNameValue] = useState("");
 
   // Feed search
@@ -1493,6 +1495,15 @@ export default function ClassroomTabScreen() {
                       <IconSymbol size={15} name="paperplane.fill" color={colors.primary} />
                       <Text style={[styles.codeActionText, { color: colors.primary }]}>Share Invite</Text>
                     </TouchableOpacity>
+                    <TouchableOpacity
+                      accessibilityLabel="Show QR Code" accessibilityHint="Shows a QR code students can scan to join"
+                      style={[styles.codeActionBtn, { backgroundColor: colors.primary + "15", borderColor: colors.primary }]}
+                      onPress={() => { H.impactLight(); setShowQRModal(true); }}
+                      activeOpacity={0.75}
+                    >
+                      <IconSymbol size={15} name="qrcode" color={colors.primary} />
+                      <Text style={[styles.codeActionText, { color: colors.primary }]}>Show QR</Text>
+                    </TouchableOpacity>
                   </View>
                 )}
               </View>
@@ -1863,11 +1874,45 @@ export default function ClassroomTabScreen() {
             </View>
           </View>
         </View>
+            </Modal>
+
+      {/* QR Code Modal */}
+      <Modal
+        visible={showQRModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowQRModal(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.55)", alignItems: "center", justifyContent: "center" }}>
+          <View style={[styles.modalSheet, { backgroundColor: colors.surface, borderColor: colors.border, alignItems: "center", padding: 28 }]}>
+            <Text style={[styles.modalTitle, { color: colors.foreground, marginBottom: 4 }]}>Scan to Join</Text>
+            <Text style={{ color: colors.muted, fontSize: 13, marginBottom: 20, textAlign: "center" }}>
+              Students scan this QR code to join{activeClassroom ? ` "${activeClassroom.name}"` : ""}
+            </Text>
+            {activeClassroom ? (
+              <QRCode
+                value={`tutorsnap://classroom/join?code=${activeClassroom.code}`}
+                size={200}
+                color={colors.foreground}
+                backgroundColor={colors.surface}
+              />
+            ) : null}
+            <Text style={{ color: colors.muted, fontSize: 12, marginTop: 16, letterSpacing: 2, fontWeight: "700" }}>
+              {activeClassroom?.code ?? ""}
+            </Text>
+            <TouchableOpacity
+              style={[styles.modalAssignBtn, { backgroundColor: colors.primary, marginTop: 24, width: "100%" }]}
+              onPress={() => { H.impactLight(); setShowQRModal(false); }}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.modalAssignText, { color: "#FFFFFF" }]}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </Modal>
     </ScreenContainer>
   );
 }
-
 const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
