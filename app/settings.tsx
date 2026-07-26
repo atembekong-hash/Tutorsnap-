@@ -1845,15 +1845,23 @@ export default function SettingsScreen() {
           </Text>
         </View>
 
-        {/* App version footer */}
-        <View style={styles.versionFooter}>
-          <Text style={[styles.versionText, { color: colors.muted }]}>
-            TutorSnap v{Constants.expoConfig?.version ?? "1.1.0"}
-          </Text>
-          <Text style={[styles.versionBuild, { color: colors.border }]}>
-            Expo SDK {Constants.expoConfig?.sdkVersion ?? "54"} · {Platform.OS}
-          </Text>
-        </View>
+        {/* App version footer — long-press opens A/B analytics dashboard (dev only) */}
+        <TouchableOpacity
+          onLongPress={() => router.push("/ab-test-dashboard")}
+          delayLongPress={800}
+          activeOpacity={1}
+          accessibilityLabel="App version footer"
+          accessibilityHint="Long press to open developer dashboard"
+        >
+          <View style={styles.versionFooter}>
+            <Text style={[styles.versionText, { color: colors.muted }]}>
+              TutorSnap v{Constants.expoConfig?.version ?? "1.1.0"}
+            </Text>
+            <Text style={[styles.versionBuild, { color: colors.border }]}>
+              Expo SDK {Constants.expoConfig?.sdkVersion ?? "54"} · {Platform.OS}
+            </Text>
+          </View>
+        </TouchableOpacity>
 
       </ScrollView>
 

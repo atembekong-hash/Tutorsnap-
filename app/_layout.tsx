@@ -589,6 +589,16 @@ export default function RootLayout() {
                 gestureDirection: "horizontal",
               }}
             />
+            <Stack.Screen
+              name="ab-test-dashboard"
+              options={{
+                presentation: "card",
+                animation: "slide_from_right",
+                headerShown: false,
+                gestureEnabled: true,
+                gestureDirection: "horizontal",
+              }}
+            />
           </Stack>
           <StatusBar style="auto" />
           </QueryClientProvider>
