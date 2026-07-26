@@ -22,14 +22,19 @@ import { useScreenTransition } from "@/hooks/use-screen-transition";
 import { SchemeColors } from "@/constants/theme";
 
 const BUG_CATEGORIES = [
-  { id: "crash", label: "App Crash", emoji: "💥" },
+  { id: "crash", label: "App Crash / Force Close", emoji: "💥" },
   { id: "ui", label: "Display / UI Issue", emoji: "🖼️" },
-  { id: "scan", label: "Camera / Scan", emoji: "📸" },
-  { id: "solve", label: "Wrong Answer", emoji: "❌" },
-  { id: "notification", label: "Notifications", emoji: "🔔" },
-  { id: "performance", label: "Slow / Freezing", emoji: "🐌" },
-  { id: "data", label: "Data / Sync", emoji: "💾" },
-  { id: "other", label: "Other", emoji: "🐛" },
+  { id: "scan", label: "Camera / Scan Problem", emoji: "📸" },
+  { id: "solve", label: "Wrong or Incomplete Answer", emoji: "❌" },
+  { id: "ai", label: "AI Tutor Not Responding", emoji: "🤖" },
+  { id: "notification", label: "Notifications Not Working", emoji: "🔔" },
+  { id: "performance", label: "Slow / Freezing / Lagging", emoji: "🐌" },
+  { id: "data", label: "Data Loss / Sync Issue", emoji: "💾" },
+  { id: "login", label: "Login / Account Issue", emoji: "🔐" },
+  { id: "payment", label: "Subscription / Payment Issue", emoji: "💳" },
+  { id: "classroom", label: "Classroom / Homework Bug", emoji: "🏫" },
+  { id: "quiz", label: "Quiz / Practice Bug", emoji: "🧩" },
+  { id: "other", label: "Other Bug", emoji: "🐛" },
 ];
 
 const SEVERITY_OPTIONS = [
@@ -194,7 +199,7 @@ export default function ReportBugScreen() {
             <TextInput
               value={description}
               onChangeText={setDescription}
-              placeholder="What happened? What did you expect to happen instead?"
+              placeholder="Describe what happened and what you expected to happen instead. Include any error messages you saw. The more detail you provide, the faster we can fix it."
               placeholderTextColor={colors.muted}
               multiline
               numberOfLines={5}

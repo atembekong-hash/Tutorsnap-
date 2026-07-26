@@ -1998,7 +1998,10 @@ export default function SettingsScreen() {
               </View>
             </View>
             <Text style={[styles.aboutDesc, { color: colors.muted }]}>
-              TutorSnap AI is your AI-powered academic tutor for every subject, from Algebra and Calculus to World History and Creative Writing. Snap a photo of any problem, type a question, or speak your query to get instant step-by-step solutions.
+              TutorSnap AI is your AI-powered academic tutor for every subject, from Algebra and Calculus to World History and Creative Writing. Snap a photo of any problem, type a question, or chat with the AI Tutor for instant step-by-step explanations tailored to your grade and learning style.
+            </Text>
+            <Text style={[styles.aboutDesc, { color: colors.muted, marginTop: 8 }]}>
+              Built by Etiendem Technologies, TutorSnap is designed to make quality academic support accessible to every student, anywhere in the world. We believe every learner deserves a patient, knowledgeable tutor available 24 hours a day, 7 days a week.
             </Text>
             <View style={[styles.aboutDivider, { backgroundColor: colors.border }]} />
             <View style={styles.aboutRow}>
@@ -2016,6 +2019,14 @@ export default function SettingsScreen() {
             <View style={styles.aboutRow}>
               <Text style={[styles.aboutRowLabel, { color: colors.muted }]}>Subjects</Text>
               <Text style={[styles.aboutRowValue, { color: colors.foreground }]}>38 across 4 categories</Text>
+            </View>
+            <View style={styles.aboutRow}>
+              <Text style={[styles.aboutRowLabel, { color: colors.muted }]}>Website</Text>
+              <Text style={[styles.aboutRowValue, { color: colors.primary }]}>tutorsnapai.tech</Text>
+            </View>
+            <View style={styles.aboutRow}>
+              <Text style={[styles.aboutRowLabel, { color: colors.muted }]}>Support</Text>
+              <Text style={[styles.aboutRowValue, { color: colors.primary }]}>support@tutorsnapai.tech</Text>
             </View>
             <View style={[styles.aboutDivider, { backgroundColor: colors.border }]} />
             <Text style={[styles.aboutVersion, { color: colors.muted, textAlign: "center", marginBottom: 12, fontSize: 11 }]}>{COPYRIGHT}</Text>

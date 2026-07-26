@@ -26,6 +26,12 @@ const CATEGORIES = [
   { id: "ui", label: "Design / UI", emoji: "🎨" },
   { id: "performance", label: "Performance", emoji: "⚡" },
   { id: "content", label: "Content / Accuracy", emoji: "📚" },
+  { id: "ai", label: "AI Tutor Quality", emoji: "🤖" },
+  { id: "scan", label: "Camera / Scan", emoji: "📷" },
+  { id: "classroom", label: "Classroom Features", emoji: "🏫" },
+  { id: "quiz", label: "Quiz / Practice", emoji: "🧩" },
+  { id: "rewards", label: "Rewards / Referrals", emoji: "🎁" },
+  { id: "accessibility", label: "Accessibility", emoji: "♿" },
   { id: "other", label: "Other", emoji: "📝" },
 ];
 
@@ -175,7 +181,7 @@ export default function FeedbackScreen() {
             <TextInput
               value={message}
               onChangeText={setMessage}
-              placeholder="Tell us what you think, what you'd like to see, or what could be better..."
+              placeholder="Tell us what you think, what you'd like to see, or what could be better. The more detail you share, the more it helps us improve TutorSnap for everyone. We read every single submission."
               placeholderTextColor={colors.muted}
               multiline
               numberOfLines={6}

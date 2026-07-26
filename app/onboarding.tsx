@@ -102,59 +102,59 @@ const SLIDES = [
     id: "name",
     emoji: "👋",
     title: "What's your name?",
-    subtitle: "We'll use it to personalise your experience.",
+    subtitle: "We'll personalise your TutorSnap experience with your name. Your AI Tutor will use it when chatting with you.",
   },
   {
     id: "photo",
     emoji: "🖼️",
     title: "Add a Profile Photo",
-    subtitle: "Optional — you can always add or change it later in Settings.",
+    subtitle: "A profile photo helps your classmates and teachers recognise you in Classroom. Completely optional and changeable anytime in Settings.",
   },
   {
     id: "welcome",
     emoji: "🎓",
     title: "Welcome to TutorSnap",
     subtitle:
-      "Your AI-powered academic tutor for every subject, from Algebra to World History.",
+      "Your AI-powered academic tutor for every subject, from Algebra and Calculus to World History and Literature. Get instant, step-by-step explanations tailored to your level.",
   },
   {
     id: "solve",
     emoji: "✨",
     title: "Snap, Type, or Ask",
     subtitle:
-      "Type a question, take a photo of your homework, or chat with the AI Tutor for step-by-step help.",
+      "Point your camera at any homework problem to solve it instantly. Or type a question. Or open the AI Tutor for a full back-and-forth conversation. TutorSnap works however you learn best.",
   },
   {
     id: "practice",
     emoji: "🔥",
     title: "Build Your Streak",
     subtitle:
-      "Practice daily, hit your goal, and watch your streak grow. Progress tracking keeps you motivated.",
+      "Practice daily, hit your goal, and watch your streak grow. Earn XP, unlock badges, and climb the leaderboard. Consistency is the secret to academic success.",
   },
   {
     id: "subjects",
     emoji: "📚",
     title: "Pick Your Subjects",
-    subtitle: "Choose the areas you study most. You can always change this later in Settings.",
+    subtitle: "Choose the subjects you study most so TutorSnap can show you the most relevant quizzes, tips, and resources. You can always update your subjects in Settings.",
   },
   {
     id: "grade",
     emoji: "🎯",
     title: "What's Your Level?",
-    subtitle: "We'll tailor explanations and questions to your grade. Change it anytime in Settings.",
+    subtitle: "We tailor every explanation, quiz question, and AI response to your grade level. Whether you are in middle school or university, TutorSnap adjusts to you. Change it anytime.",
   },
   {
     id: "tutor-preview",
     emoji: "🤖",
     title: "Meet Your AI Tutor",
-    subtitle: "TutorSnap adapts to you. Here's how your tutor will work based on your choices.",
+    subtitle: "Your AI Tutor remembers your subjects, grade, and learning style. Ask it anything, get it to explain concepts differently, or request extra practice problems. It never judges, never rushes.",
   },
   {
     id: "trial",
     emoji: "👑",
     title: "Start Free, Upgrade Anytime",
     subtitle:
-      "Enjoy 2 free solves a day. Unlock unlimited solves, quizzes, and AI chat with a 14-day free trial.",
+      "You get 2 free solves every day, forever. Start a 14-day free trial to unlock unlimited solves, unlimited quizzes, unlimited AI chat, classroom features, and much more. No charge during the trial.",
   },
 ];
 
