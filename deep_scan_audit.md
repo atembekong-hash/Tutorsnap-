@@ -1,42 +1,48 @@
-# TutorSnap Deep Scan Audit — v1.8.x
-Date: 2026-07-26
+# TutorSnap Deep Scan Audit — v1.8.6 (Jul 26 2026)
 
-## Feature Status
+## TypeScript
+- **0 errors** — `npx tsc --noEmit` passes clean.
 
-### 1. Cloud Sync
-- **Status: ALREADY IMPLEMENTED**
-- lib/cloud-sync.ts — 432 lines, full push/pull for history, bookmarks, progress, chat sessions, notes
-- DB tables: solve_history, chat_sessions, user_progress, user_bookmarks, user_notes (drizzle/schema.ts)
-- tRPC endpoints: cloudSyncRouter in server/routers.ts (pushSolveHistory, pullSolveHistory, pushChatSession, pullChatSessions, pushProgress, pullProgress, pushBookmarks, pullBookmarks, pushNotes, pullNotes)
-- Write-path hooks: pushSolve called from index.tsx + scan.tsx; pushChatSession from lib/chat-sessions.ts; pushProgress from lib/progress.ts; pushBookmarks from lib/bookmarks.ts
-- Auth-flow wiring: auth-screen.tsx calls resetSyncClient() + pullAllFromCloud() + pushAllLocalDataToCloud() on sign-in
-- **Gap found**: notes saveNote() in chat.tsx and solution.tsx does NOT call pushNotes. The _pushAllNotes helper in cloud-sync.ts reads from "@tutorsnap/savedNotes" key but individual note saves don't push. LOW PRIORITY — notes are pushed on next pullAllFromCloud (sign-in).
+## Routes
+- All `router.push` / `router.replace` targets are registered in `app/_layout.tsx`.
+- All screen files exist on disk.
+- No orphaned routes.
 
-### 2. Solution Skeleton Screen
-- **Status: NEEDS IMPLEMENTATION**
-- Current: SolvingOverlay (opaque modal with brain emoji + dots) shown during autoSolving state
-- Goal: Replace with SolutionSkeletonScreen — content-shaped skeleton that mirrors the actual solution layout (header bar, answer card, steps list) so the transition from loading → content feels smooth
-- Files to touch: components/skeleton.tsx (add SolutionSkeletonScreen), app/solution.tsx (swap SolvingOverlay for SolutionSkeletonScreen in autoSolving branch)
+## Icon Mapping
+- **BUG**: `name="waveform"` used in `app/aire-analytics.tsx:236` is NOT in the icon-symbol.tsx mapping.
+  - Fix: add `"waveform": "equalizer"` to the MAPPING in `components/ui/icon-symbol.tsx`.
+  - On iOS the native SF Symbol `waveform` is valid, so only the Android/web fallback is broken.
 
-### 3. Bookmarks Staggered Animation
-- **Status: ALREADY IMPLEMENTED**
-- app/bookmarks.tsx line 270: useAnimatedList({ staggerMs: 45, durationMs: 280 })
-- app/bookmarks.tsx line 282: ReAnimated.View entering={getListEntering(index)} wraps each card
-- FlatList at line 821 uses renderItem that applies the animation
+## Empty `onPress` Handlers (intentional stop-propagation pattern)
+- `app/(tabs)/chat.tsx:3274` — inner sheet wrapper, stops backdrop tap from closing. ✅ Intentional.
+- `app/bookmarks.tsx:688` — inner folder modal wrapper, stops backdrop tap from closing. ✅ Intentional.
+- `app/solution.tsx:848` — inner share menu wrapper, stops backdrop tap from closing. ✅ Intentional.
 
-## Additional Gaps Found During Scan
+## Dev Server
+- Only warning: `expo-notifications` push token listener not supported on web. ✅ Expected, non-blocking.
 
-### A. History screen — HistoryCard module-level fix (v1.8.0)
-- **Status: FIXED in v1.8.0 checkpoint**
+## Feature A — A/B Dashboard
+- Screen exists: `app/ab-test-dashboard.tsx` ✅
+- Route registered in `app/_layout.tsx` ✅
+- Long-press wired in `app/settings.tsx` with `delayLongPress={800}` ✅
+- All imports from `lib/ab-test.ts` resolve correctly ✅
+- **Enhancement opportunity**: Dashboard does not show lock status. Could show "🔒 Locked" badge.
 
-### B. Solution screen — SlideInUp entrance (v1.8.0)
-- **Status: FIXED in v1.8.0 checkpoint**
+## Feature B — QR Share
+- `captureRef`, `expo-sharing`, `expo-file-system/legacy` all imported ✅
+- `qrViewRef` declared as `useRef<View>(null)` ✅ (View is imported from react-native)
+- `collapsable={false}` set on QR wrapper View ✅
+- `handleShareQR` handles both native (PNG capture) and web (text share) ✅
+- ActivityIndicator shown while sharing ✅
 
-### C. Skeleton screens for Analytics/Rewards/Leaderboard/Glossary (v1.8.0)
-- **Status: FIXED in v1.8.0 checkpoint**
+## Feature C — Variant Lock
+- `TRIAL_VARIANT_LOCKED_KEY` defined ✅
+- `lockVariant()` and `unlockVariant()` exported ✅
+- `getTrialVariantConfig()` checks lock flag first ✅
+- `lockVariant()` called in `paywall.tsx` `handleStartTrial` after success ✅
 
-## Phase Plan
-- Phase 2: Build SolutionSkeletonScreen + wire into solution.tsx
-- Phase 3: Checkpoint + screenshot
-- Phase 4: Full real-user test pass
-- Phase 5: Final checkpoint + deliver
+## Fixes Required
+1. **icon-symbol.tsx**: Add `"waveform": "equalizer"` to MAPPING (aire-analytics.tsx crashes on Android/web without it)
+
+## Tests
+- 89/89 passing ✅

@@ -133,6 +133,7 @@ const MAPPING = {
   "shield.lefthalf.filled": "security",
   "lock.doc.fill": "lock",
   "text.badge.checkmark": "fact-check",
+  "waveform": "equalizer",
   "waveform.badge.exclamationmark": "report-problem",
   // Solution screen
   "text.bubble": "chat",
