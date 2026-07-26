@@ -20,7 +20,8 @@ import { Modal ,
   Easing,
   Image,
 } from "react-native";
-import { useRouter, useFocusEffect } from "expo-router";
+import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useOnboardingEntry } from "@/hooks/use-onboarding-transition";
 import * as H from "@/lib/haptics";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -659,6 +660,13 @@ function SolveScreenContent() {
   const solveBtnAnimStyle = useAnimatedStyle(() => ({
     transform: [{ scale: solveBtnScale.value }],
   }));
+  // Onboarding → dashboard entry animation
+  const { fromOnboarding } = useLocalSearchParams<{ fromOnboarding?: string }>();
+  const { startEntry, staggeredStyles } = useOnboardingEntry();
+  React.useEffect(() => {
+    if (fromOnboarding === "1") { startEntry(); }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [undoToast, setUndoToast] = useState(false);
   const undoToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showQuickAskSubjectPicker, setShowQuickAskSubjectPicker] = useState(false);
@@ -996,6 +1004,7 @@ function SolveScreenContent() {
           contentContainerStyle={{ paddingBottom: 40 }}
         >
           {/* Header — Row 1: app name + action icons */}
+          <ReAnimated.View style={fromOnboarding === "1" ? staggeredStyles[0] : undefined}>
           <View style={styles.header}>
             <View style={styles.headerRow1}>
               <View>
@@ -1098,6 +1107,7 @@ function SolveScreenContent() {
               </View>
             </View>
           </View>
+          </ReAnimated.View>
           {/* Daily Goal Progress */}
           {streak && streak.dailyGoal > 0 && (
             <TouchableOpacity
@@ -1133,6 +1143,7 @@ function SolveScreenContent() {
             </TouchableOpacity>
           )}
 
+          <ReAnimated.View style={fromOnboarding === "1" ? staggeredStyles[1] : undefined}>
           {/* Trial Countdown Banner — shown for free-trial users who have not yet purchased */}
           {isTrialActive && !isDevMode && !trialBannerDismissed && (
             <TouchableOpacity
@@ -1235,6 +1246,8 @@ function SolveScreenContent() {
             <StudyTipCard subject={selectedSubject} gradeLevel={homeGradeLevel} />
           )}
 
+          </ReAnimated.View>
+          <ReAnimated.View style={fromOnboarding === "1" ? staggeredStyles[2] : undefined}>
           {/* ─────────────────────────────────────────────────────────────────── */}
           {/* SECTION 1: SOLVE A PROBLEM                                         */}
           {/* ─────────────────────────────────────────────────────────────────── */}
@@ -1407,6 +1420,8 @@ function SolveScreenContent() {
             )}
           </View>
 
+          </ReAnimated.View>
+          <ReAnimated.View style={fromOnboarding === "1" ? staggeredStyles[3] : undefined}>
           {/* ─────────────────────────────────────────────────────────────────── */}
           {/* SECTION 3: EXPLORE FEATURES                                        */}
           {/* ─────────────────────────────────────────────────────────────────── */}
@@ -1565,6 +1580,8 @@ function SolveScreenContent() {
             isDevMode={isDevMode}
           />
 
+          </ReAnimated.View>
+          <ReAnimated.View style={fromOnboarding === "1" ? staggeredStyles[4] : undefined}>
           {/* ─────────────────────────────────────────────────────────────────── */}
           {/* SECTION 5: TRY AN EXAMPLE                                          */}
           {/* ─────────────────────────────────────────────────────────────────── */}
@@ -1647,6 +1664,7 @@ function SolveScreenContent() {
               })
             )}
           </View>
+          </ReAnimated.View>
         </ScrollView>
 
         {/* Math Keyboard */}
