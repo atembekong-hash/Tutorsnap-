@@ -71,6 +71,13 @@
       "when": 1753490000000,
       "tag": "0008_narrow_zaladane",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1785097616078,
+      "tag": "0010_white_zaran",
+      "breakpoints": true
     }
   ]
 }

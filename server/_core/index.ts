@@ -116,6 +116,164 @@ async function startServer() {
     });
   });
 
+  // ─── RevenueCat Webhook ─────────────────────────────────────────────────────
+  //
+  // RevenueCat sends real-time subscription events to this endpoint.
+  // The body must be read as raw bytes before JSON.parse so that a future
+  // HMAC/Authorization check can be added without re-reading the stream.
+  //
+  // Supported events:
+  //   INITIAL_PURCHASE / RENEWAL  → upsert subscription as "active"
+  //   CANCELLATION                → upsert subscription as "cancelled"
+  //   EXPIRATION                  → upsert subscription as "expired"
+  //   REFUND                      → upsert subscription as "refunded"
+  //
+  // Authorization:
+  //   When REVENUECAT_WEBHOOK_SECRET is set, the Authorization header must
+  //   match exactly. If the env var is absent the check is skipped (dev mode).
+  //
+  // Reference: https://www.revenuecat.com/docs/integrations/webhooks
+  app.post(
+    "/api/webhooks/revenuecat",
+    express.raw({ type: "application/json" }),
+    async (req, res) => {
+      try {
+        // ── 1. Optional Authorization check ──────────────────────────────────
+        const secret = process.env.REVENUECAT_WEBHOOK_SECRET;
+        if (secret) {
+          const authHeader = req.headers["authorization"];
+          if (authHeader !== secret) {
+            console.warn("[RC Webhook] Unauthorized request — Authorization header mismatch");
+            res.status(401).json({ ok: false, error: "Unauthorized" });
+            return;
+          }
+        }
+
+        // ── 2. Parse body ─────────────────────────────────────────────────────
+        let payload: any;
+        try {
+          const raw = Buffer.isBuffer(req.body) ? req.body.toString("utf8") : JSON.stringify(req.body);
+          payload = JSON.parse(raw);
+        } catch {
+          console.warn("[RC Webhook] Invalid JSON body");
+          res.status(400).json({ ok: false, error: "Invalid JSON" });
+          return;
+        }
+
+        const event = payload?.event;
+        if (!event) {
+          console.warn("[RC Webhook] Missing event object in payload");
+          res.status(400).json({ ok: false, error: "Missing event" });
+          return;
+        }
+
+        const eventType: string = event.type ?? "";
+        const rcUserId: string = event.app_user_id ?? "";
+        const productId: string = event.product_id ?? "";
+        const expiresAtMs: number | null = event.expiration_at_ms ?? null;
+
+        console.log(`[RC Webhook] event=${eventType} rcUser=${rcUserId} product=${productId}`);
+
+        // ── 3. Determine new status ───────────────────────────────────────────
+        type SubStatus = "active" | "cancelled" | "expired" | "refunded";
+        const STATUS_MAP: Record<string, SubStatus> = {
+          INITIAL_PURCHASE: "active",
+          RENEWAL: "active",
+          PRODUCT_CHANGE: "active",
+          CANCELLATION: "cancelled",
+          EXPIRATION: "expired",
+          REFUND: "refunded",
+          BILLING_ISSUE: "cancelled",
+        };
+
+        const newStatus = STATUS_MAP[eventType];
+        if (!newStatus) {
+          // Unhandled event type — acknowledge but do nothing
+          console.log(`[RC Webhook] Unhandled event type: ${eventType}`);
+          res.json({ ok: true, handled: false });
+          return;
+        }
+
+        // ── 4. Upsert subscription row ────────────────────────────────────────
+        const { getDb } = await import("../db.js");
+        const { subscriptions, users } = await import("../../drizzle/schema.js");
+        const { eq, and } = await import("drizzle-orm");
+
+        const db = await getDb();
+        if (!db) {
+          console.warn("[RC Webhook] DB unavailable — cannot persist subscription event");
+          // Still return 200 so RevenueCat does not keep retrying
+          res.json({ ok: true, persisted: false });
+          return;
+        }
+
+        // Try to resolve the RevenueCat user ID to a local user.
+        // The RC app_user_id is set to the local user's openId when Purchases.logIn
+        // is called from the client. If the app has not called logIn yet the
+        // rcUserId will be an anonymous RC-generated ID — we still store the row
+        // with userId=null so it can be reconciled later.
+        let localUserId: number | null = null;
+        if (rcUserId) {
+          const userRows = await db
+            .select({ id: users.id })
+            .from(users)
+            .where(eq(users.openId, rcUserId))
+            .limit(1);
+          if (userRows.length > 0) {
+            localUserId = userRows[0].id;
+          }
+        }
+
+        // MySQL TIMESTAMP max is 2038-01-19 03:14:07 UTC.
+        // RevenueCat may send far-future timestamps (e.g. lifetime subscriptions);
+        // clamp to the MySQL max to avoid ER_TRUNCATED_WRONG_VALUE errors.
+        const MYSQL_TIMESTAMP_MAX = new Date("2038-01-19T03:14:07.000Z");
+        const expiresAt = expiresAtMs
+          ? new Date(Math.min(expiresAtMs, MYSQL_TIMESTAMP_MAX.getTime()))
+          : null;
+
+        // Upsert: if a row for (revenueCatUserId, productId) already exists update it;
+        // otherwise insert a new row.
+        const existing = await db
+          .select({ id: subscriptions.id })
+          .from(subscriptions)
+          .where(
+            and(
+              eq(subscriptions.revenueCatUserId, rcUserId),
+              eq(subscriptions.productId, productId),
+            ),
+          )
+          .limit(1);
+
+        if (existing.length > 0) {
+          await db
+            .update(subscriptions)
+            .set({
+              status: newStatus,
+              ...(localUserId !== null ? { userId: localUserId } : {}),
+              ...(expiresAt !== null ? { expiresAt } : {}),
+            })
+            .where(eq(subscriptions.id, existing[0].id));
+        } else {
+          await db.insert(subscriptions).values({
+            revenueCatUserId: rcUserId,
+            productId,
+            status: newStatus,
+            ...(localUserId !== null ? { userId: localUserId } : {}),
+            ...(expiresAt !== null ? { expiresAt } : {}),
+          });
+        }
+
+        console.log(`[RC Webhook] Persisted: ${eventType} → ${newStatus} for rcUser=${rcUserId}`);
+        res.json({ ok: true, handled: true, status: newStatus });
+      } catch (err) {
+        console.error("[RC Webhook] Unexpected error:", err);
+        // Return 500 so RevenueCat retries the event
+        res.status(500).json({ ok: false, error: "Internal server error" });
+      }
+    },
+  );
+
   app.use(
     "/api/trpc",
     createExpressMiddleware({

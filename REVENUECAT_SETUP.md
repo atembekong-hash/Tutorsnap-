@@ -47,7 +47,7 @@ Complete these steps in order before releasing TutorSnap to the App Store or Goo
 
 1. In RevenueCat dashboard → Project → Integrations → Webhooks
 2. Add a new webhook:
-   - URL: `https://your-domain.com/api/webhooks/revenuecat`
+   - URL: `https://mathgenius-g8jxpbar.manus.space/api/webhooks/revenuecat`
    - Authorization header: set a strong random secret (32+ chars)
 3. Set `REVENUECAT_WEBHOOK_SECRET` environment variable on your server to the same secret.
 4. The server endpoint handles these events:

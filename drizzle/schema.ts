@@ -372,3 +372,44 @@ export const userNotes = mysqlTable(
 
 export type UserNoteRow = typeof userNotes.$inferSelect;
 export type InsertUserNote = typeof userNotes.$inferInsert;
+
+/**
+ * RevenueCat subscriptions — server-side record of each user's subscription state.
+ * Populated and updated by the RevenueCat webhook (POST /api/webhooks/revenuecat).
+ *
+ * One row per (userId, productId) pair; upserted on every relevant webhook event.
+ * The `status` field reflects the most recent event:
+ *   - "active"    → INITIAL_PURCHASE or RENEWAL
+ *   - "cancelled" → CANCELLATION (still active until expiresAt)
+ *   - "expired"   → EXPIRATION
+ *   - "refunded"  → REFUND
+ *
+ * Indexes:
+ *   - idx_subscriptions_userId: look up all subscriptions for a user
+ *   - idx_subscriptions_rcUserId: look up by RevenueCat app user ID
+ */
+export const subscriptions = mysqlTable(
+  "subscriptions",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    /** FK to users.id — null if the RevenueCat user cannot be resolved to a local user. */
+    userId: int("userId").references(() => users.id, { onDelete: "set null" }),
+    /** RevenueCat app user ID (the `app_user_id` field in webhook payloads). */
+    revenueCatUserId: varchar("revenueCatUserId", { length: 255 }).notNull(),
+    /** Product ID, e.g. "tutorsnap_monthly" or "tutorsnap_annual". */
+    productId: varchar("productId", { length: 255 }).notNull(),
+    /** Current subscription status. */
+    status: mysqlEnum("status", ["active", "cancelled", "expired", "refunded"]).notNull().default("active"),
+    /** Timestamp when the subscription expires (from RevenueCat expiration_at_ms). */
+    expiresAt: timestamp("expiresAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (t) => [
+    index("idx_subscriptions_userId").on(t.userId),
+    index("idx_subscriptions_rcUserId").on(t.revenueCatUserId),
+  ],
+);
+
+export type SubscriptionRow = typeof subscriptions.$inferSelect;
+export type InsertSubscription = typeof subscriptions.$inferInsert;
