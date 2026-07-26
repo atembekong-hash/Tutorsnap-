@@ -201,7 +201,6 @@ export default function RedeemCodeScreen() {
               </View>
             ))}
           </View>
-          </View>
         </View>
       </ScreenContainer>
     </KeyboardAvoidingView>

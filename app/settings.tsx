@@ -77,13 +77,67 @@ const WHATS_NEW: { title: string; desc: string }[] = [
   { title: "Subject Accuracy Chart", desc: "Progress screen now shows a colour-coded bar chart of your average accuracy per subject so you can see exactly where to focus." },
 ];
 
-const HOW_TO_STEPS = [
-  { emoji: "📸", title: "Snap a Photo", desc: "Tap the Scan tab and point your camera at any homework problem. TutorSnap will read and solve it instantly." },
-  { emoji: "⌨️", title: "Type a Question", desc: "On the Home tab, type any question in the input box and tap Solve. Works for any subject." },
-  { emoji: "🎙️", title: "Speak Your Question", desc: "Tap the mic icon to record your question. TutorSnap transcribes and answers it." },
-  { emoji: "💬", title: "Chat with AI Tutor", desc: "Open the Chat tab for a back-and-forth conversation. Ask follow-up questions, request examples, or explore topics." },
-  { emoji: "🔥", title: "Build Your Streak", desc: "Solve at least your daily goal every day to keep your streak alive. Earn badges as you master subjects." },
-  { emoji: "📚", title: "Practice Mode", desc: "Go to Practice to generate problems by subject and difficulty. Use Timed Quiz for a scored challenge." },
+const HOW_TO_SECTIONS = [
+  {
+    title: "Scanning Problems",
+    steps: [
+      { emoji: "📸", title: "Open the Scan Tab", desc: "Tap the camera icon in the tab bar to open the Scan screen. Make sure your camera has good lighting before pointing it at a problem." },
+      { emoji: "🎯", title: "Frame the Problem", desc: "Position your camera so the full question is visible in the frame. TutorSnap works best when the text is sharp and fills most of the screen." },
+      { emoji: "⚡", title: "Instant Recognition", desc: "Tap the shutter button. TutorSnap reads the problem using AI vision and sends it directly to the solver. Results appear in seconds." },
+      { emoji: "🔄", title: "Retake if Needed", desc: "If the scan misreads a symbol or number, tap Retake to capture a clearer photo. Handwritten problems may need extra lighting." },
+      { emoji: "📋", title: "Review the Solution", desc: "After scanning, the full step-by-step solution appears. Tap any step to expand it, or tap Copy to save the answer." },
+    ],
+  },
+  {
+    title: "Solving by Typing",
+    steps: [
+      { emoji: "⌨️", title: "Use the Home Tab", desc: "Tap the Home tab and type your question into the input box at the bottom of the screen. You can type equations, essay prompts, or any subject question." },
+      { emoji: "🎙️", title: "Speak Instead of Typing", desc: "Tap the microphone icon to record your question. TutorSnap transcribes your speech and solves it automatically." },
+      { emoji: "📐", title: "Use Math Notation", desc: "Type fractions as a/b, powers as x^2, and roots as sqrt(x). TutorSnap understands standard math notation and converts it automatically." },
+      { emoji: "🔁", title: "Follow-Up Questions", desc: "After getting an answer, tap a follow-up chip or type a new question to dig deeper. TutorSnap remembers the context of your current problem." },
+      { emoji: "📤", title: "Export Your Solution", desc: "Tap the share icon on any solution to copy the text, save it as a PDF, or send it via your device share sheet." },
+    ],
+  },
+  {
+    title: "AI Tutor Chat",
+    steps: [
+      { emoji: "💬", title: "Open the Chat Tab", desc: "Tap the Chat tab to open a full conversation with your AI Tutor. Unlike the Solve tab, Chat is designed for back-and-forth dialogue." },
+      { emoji: "🧑‍🏫", title: "Choose a Subject", desc: "Tap the subject selector in the chat header to switch between subjects. Your tutor adjusts its teaching style and vocabulary for each subject." },
+      { emoji: "🔍", title: "Ask for Explanations", desc: "Ask the tutor to explain a concept, walk through a proof, or give you a real-world example. The more specific your question, the better the answer." },
+      { emoji: "📊", title: "Detailed vs. Concise Mode", desc: "Tap the mode badge in the header to switch between Detailed (full explanations) and Concise (quick answers). The wand icon in the input bar is a shortcut." },
+      { emoji: "📁", title: "Chat History", desc: "All your conversations are saved automatically. Tap the history icon in the header to browse past sessions and continue any conversation at any time." },
+    ],
+  },
+  {
+    title: "Practice and Quizzes",
+    steps: [
+      { emoji: "📚", title: "Open the Practice Tab", desc: "Tap the Practice tab to access the problem generator. Choose a subject, topic, and difficulty level to get started." },
+      { emoji: "🎯", title: "Set Your Difficulty", desc: "Use the difficulty slider to choose Easy, Medium, Hard, or Challenge. TutorSnap generates problems matched to your selected level." },
+      { emoji: "⏱️", title: "Timed Quiz Mode", desc: "Tap Timed Quiz to start a scored challenge with a countdown timer. Your results are saved to your progress history." },
+      { emoji: "✅", title: "Check Your Answers", desc: "After submitting an answer, TutorSnap shows whether you were correct and provides a full explanation. Use this to understand your mistakes." },
+      { emoji: "📈", title: "Track Your Progress", desc: "Your Practice history shows accuracy per subject and topic over time. Use this to identify weak areas and focus your study sessions." },
+    ],
+  },
+  {
+    title: "Classroom",
+    steps: [
+      { emoji: "🏫", title: "Join a Classroom", desc: "Tap the Classroom tab and enter a class code from your teacher or study group leader to join. You will see all shared assignments and resources." },
+      { emoji: "➕", title: "Create a Classroom", desc: "Tap Create Class to set up your own study group. Share the generated class code with friends or classmates to invite them." },
+      { emoji: "📝", title: "View Assignments", desc: "Assignments posted by your teacher appear in the Classroom feed. Tap any assignment to open it and start working on the problems." },
+      { emoji: "🤝", title: "Collaborate with Peers", desc: "Use the class chat to discuss problems, share notes, and help each other. All messages are visible to everyone in the classroom." },
+      { emoji: "🏆", title: "Classroom Leaderboard", desc: "The leaderboard shows the top performers in your class based on problems solved and quiz scores. Compete with classmates to stay motivated." },
+    ],
+  },
+  {
+    title: "Referrals and Rewards",
+    steps: [
+      { emoji: "🎁", title: "Find Your Referral Code", desc: "Go to Settings and tap Refer a Friend. Your unique referral code is displayed at the top. Share it with anyone who might benefit from TutorSnap." },
+      { emoji: "📲", title: "Share Your Code", desc: "Tap Share Code to send your referral link via any app on your device. When a friend signs up using your code, both of you earn free Premium days." },
+      { emoji: "💎", title: "Earn Tier Rewards", desc: "The more friends you refer, the higher your tier (Bronze, Silver, Gold, Diamond, Legend). Each tier unlocks bonus rewards and exclusive perks." },
+      { emoji: "🔓", title: "Redeem a Code", desc: "If a friend gave you their referral code, go to Settings and tap Redeem Code. Enter the code to claim your free Premium days instantly." },
+      { emoji: "📊", title: "Track Your Earnings", desc: "The Refer a Friend screen shows your total referrals, current tier, pending rewards, and a history of all codes you have redeemed or shared." },
+    ],
+  },
 ];
 
 function SectionHeader({ title, colors }: { title: string; colors: any }) {
@@ -1956,13 +2010,19 @@ export default function SettingsScreen() {
               </TouchableOpacity>
             </View>
             <ScrollView keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false} style={{ marginTop: 8 }}>
-              {HOW_TO_STEPS.map((step, i) => (
-                <View key={i} style={[styles.howToRow, { borderBottomColor: colors.border, borderBottomWidth: i < HOW_TO_STEPS.length - 1 ? 0.5 : 0 }]}>
-                  <Text style={styles.howToEmoji}>{step.emoji}</Text>
-                  <View style={styles.howToContent}>
-                    <Text style={[styles.howToTitle, { color: colors.foreground }]}>{step.title}</Text>
-                    <Text style={[styles.howToDesc, { color: colors.muted }]}>{step.desc}</Text>
-                  </View>
+              {HOW_TO_SECTIONS.map((section, si) => (
+                <View key={si}>
+                  <Text style={[styles.howToSectionHeader, { color: colors.primary, borderBottomColor: colors.border }]}>{section.title}</Text>
+                  {section.steps.map((step, i) => (
+                    <View key={i} style={[styles.howToRow, { borderBottomColor: colors.border, borderBottomWidth: i < section.steps.length - 1 ? 0.5 : 0 }]}>
+                      <Text style={styles.howToEmoji}>{step.emoji}</Text>
+                      <View style={styles.howToContent}>
+                        <Text style={[styles.howToTitle, { color: colors.foreground }]}>{step.title}</Text>
+                        <Text style={[styles.howToDesc, { color: colors.muted }]}>{step.desc}</Text>
+                      </View>
+                    </View>
+                  ))}
+                  {si < HOW_TO_SECTIONS.length - 1 && <View style={{ height: 16 }} />}
                 </View>
               ))}
               <View style={{ height: 24 }} />
@@ -2703,6 +2763,15 @@ const styles = StyleSheet.create({
   modalBtn: { flex: 1, paddingVertical: 16, borderRadius: 14, alignItems: "center", borderWidth: 1 },
   modalBtnText: { fontSize: 16, fontWeight: "700" },
   // How To
+  howToSectionHeader: {
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+    marginBottom: 8,
+    paddingBottom: 6,
+    borderBottomWidth: 0.5,
+  },
   howToRow: {
     flexDirection: "row",
     gap: 14,
