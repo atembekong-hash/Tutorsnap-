@@ -62,6 +62,7 @@ import { TutorSettingsModal } from "@/components/tutor-settings-modal";
 import { useTutorSettings } from "@/components/tutor-settings-modal";
 import { isSoundEffectsEnabled, setSoundEffectsEnabled } from "@/lib/sound-effects";
 import { StreakFreezeCard } from "@/components/streak-freeze-card";
+import { trpc } from "@/lib/trpc";
 
 const GOAL_OPTIONS = [1, 2, 3, 5, 7, 10];
 const HOUR_OPTIONS = Array.from({ length: 18 }, (_, i) => i + 6);
@@ -229,6 +230,11 @@ export default function SettingsScreen() {
   // Subscription status
   const [subStatus, setSubStatus] = useState<SubscriptionStatus | null>(null);
   const [restoringPurchases, setRestoringPurchases] = useState(false);
+  // Server-verified subscription status (from DB via tRPC — cannot be spoofed by client)
+  const { data: serverSubStatus } = trpc.subscription.getStatus.useQuery(undefined, {
+    staleTime: 5 * 60 * 1000, // 5 min cache
+    retry: false,
+  });
 
   // Global grade level
   const [gradeLevel, setGradeLevelState] = useState<string | null>(null);
@@ -1607,11 +1613,18 @@ export default function SettingsScreen() {
                   : "Free tier - upgrade to unlock all features"}
               </Text>
             </View>
-            {(subStatus.isPremium || subStatus.isTrialActive) && (
-              <View style={[styles.goalBadge, { backgroundColor: `${colors.primary}20` }]}>
-                <Text style={[styles.goalBadgeText, { color: colors.primary }]}>✓</Text>
-              </View>
-            )}
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              {serverSubStatus?.isPremium && (
+                <View style={[styles.serverVerifiedChip, { backgroundColor: `${colors.success}18`, borderColor: `${colors.success}40` }]}>
+                  <Text style={[styles.serverVerifiedText, { color: colors.success }]}>Server ✓</Text>
+                </View>
+              )}
+              {(subStatus.isPremium || subStatus.isTrialActive) && (
+                <View style={[styles.goalBadge, { backgroundColor: `${colors.primary}20` }]}>
+                  <Text style={[styles.goalBadgeText, { color: colors.primary }]}>✓</Text>
+                </View>
+              )}
+            </View>
           </View>
         )}
         {ms("View Premium Plans", "Upgrade") && (
@@ -2702,6 +2715,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   goalBadgeText: { fontSize: 18, fontWeight: "800" },
+  serverVerifiedChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  serverVerifiedText: { fontSize: 11, fontWeight: "700", letterSpacing: 0.2 },
   goalOptions: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
   goalOption: {
     width: 44,
