@@ -1606,6 +1606,10 @@ export default function SettingsScreen() {
               <Text style={[styles.rowSubtitle, { color: colors.muted }]}>
                 {subStatus.isDevMode
                   ? "Dev mode - all features unlocked"
+                  : serverSubStatus?.cancelledButActive && serverSubStatus?.expiresAt
+                  ? `Premium until ${new Date(serverSubStatus.expiresAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}`
+                  : serverSubStatus?.isInGracePeriod
+                  ? "Payment issue — update your payment method"
                   : subStatus.activeProductId
                   ? `Active - ${subStatus.activeProductId === "tutorsnap_annual" ? "Annual plan" : "Monthly plan"}`
                   : subStatus.isTrialActive
@@ -1614,7 +1618,11 @@ export default function SettingsScreen() {
               </Text>
             </View>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-              {serverSubStatus?.isPremium && (
+              {serverSubStatus?.isInGracePeriod && (
+                <View style={[styles.serverVerifiedChip, { backgroundColor: "#F59E0B18", borderColor: "#F59E0B40" }]}>
+                  <Text style={[styles.serverVerifiedText, { color: "#F59E0B" }]}>Grace Period</Text>
+                </View>
+              )}
                 <View style={[styles.serverVerifiedChip, { backgroundColor: `${colors.success}18`, borderColor: `${colors.success}40` }]}>
                   <Text style={[styles.serverVerifiedText, { color: colors.success }]}>Server ✓</Text>
                 </View>
