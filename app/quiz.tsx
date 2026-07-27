@@ -707,11 +707,23 @@ export default function QuizScreen() {
         <Text style={[styles.navTitle, { color: colors.foreground }]}>
           {finished ? "Results" : `${subjectLabel} Quiz`}
         </Text>
-        <View style={[styles.questionCounter, { backgroundColor: `${subjectColor}20` }]}>
-          <Text style={[styles.questionCounterText, { color: subjectColor }]}>
-            {finished ? "Done" : `${currentIdx + 1}/${questions.length}`}
-          </Text>
-        </View>
+        {finished ? (
+          <TouchableOpacity
+            onPress={() => router.push("/(tabs)/practice" as any)}
+            style={[styles.questionCounter, { backgroundColor: `${subjectColor}20` }]}
+            activeOpacity={0.7}
+            accessibilityLabel="Done, return to Practice"
+            accessibilityRole="button"
+          >
+            <Text style={[styles.questionCounterText, { color: subjectColor }]}>Done</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={[styles.questionCounter, { backgroundColor: `${subjectColor}20` }]}>
+            <Text style={[styles.questionCounterText, { color: subjectColor }]}>
+              {currentIdx + 1}/{questions.length}
+            </Text>
+          </View>
+        )}
       </View>
 
       {finished ? (
