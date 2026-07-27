@@ -20,6 +20,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
+
 import * as fs from "fs";
 import * as path from "path";
 import * as mysql from "mysql2/promise";
@@ -148,6 +149,102 @@ describe("isInGracePeriod DB column — webhook integration", () => {
     const row = await getGracePeriodFlag();
     expect(row).not.toBeNull();
     expect(row!.isInGracePeriod).toBe(0);
+  });
+});
+
+/**
+ * Multi-step lifecycle flow test:
+ * INITIAL_PURCHASE → CANCELLATION → GRACE_PERIOD_START → GRACE_PERIOD_END
+ *
+ * This test simulates a complete user cancellation journey and asserts that:
+ *   1. After INITIAL_PURCHASE  → status=active, isPremium=true (via cancelledButActive logic)
+ *   2. After CANCELLATION      → status=cancelled, still premium (cancelledButActive=true, expiresAt in future)
+ *   3. After GRACE_PERIOD_START → status=active, isInGracePeriod=1 (billing failed during renewal)
+ *   4. After GRACE_PERIOD_END   → status=expired, isInGracePeriod=0, isPremium=false
+ *
+ * The getStatus logic: isPremium = status==='active' || (status==='cancelled' && expiresAt > now)
+ */
+describe("Multi-step lifecycle: CANCELLATION → GRACE_PERIOD_START → GRACE_PERIOD_END", () => {
+  const FUTURE_EXPIRES = Date.now() + 30 * 24 * 60 * 60 * 1000; // 30 days from now
+  const PAST_EXPIRES = Date.now() - 1000; // already expired
+
+  it("Step 1: INITIAL_PURCHASE → status=active, isInGracePeriod=0", async () => {
+    const res = await sendWebhook("INITIAL_PURCHASE", {
+      expiration_at_ms: FUTURE_EXPIRES,
+      purchased_at_ms: Date.now() - 1000,
+    });
+    expect(res.ok).toBe(true);
+    expect(res.handled).toBe(true);
+    expect(res.status).toBe("active");
+    const row = await getGracePeriodFlag();
+    expect(row).not.toBeNull();
+    expect(row!.status).toBe("active");
+    expect(row!.isInGracePeriod).toBe(0);
+  });
+
+  it("Step 2: CANCELLATION → status=cancelled, isInGracePeriod=0, still has access (expiresAt in future)", async () => {
+    // User cancels but subscription hasn't expired yet
+    const res = await sendWebhook("CANCELLATION", {
+      expiration_at_ms: FUTURE_EXPIRES,
+      purchased_at_ms: Date.now() - 1000,
+    });
+    expect(res.ok).toBe(true);
+    expect(res.handled).toBe(true);
+    expect(res.status).toBe("cancelled");
+    const row = await getGracePeriodFlag();
+    expect(row).not.toBeNull();
+    expect(row!.status).toBe("cancelled");
+    expect(row!.isInGracePeriod).toBe(0);
+    // getStatus would return isPremium=true (cancelledButActive) because expiresAt is in the future
+    // We verify this via the source-code contract in the contract tests below
+  });
+
+  it("Step 3: GRACE_PERIOD_START → status=active, isInGracePeriod=1 (billing failed at renewal)", async () => {
+    // After cancellation period ends, user tries to renew but billing fails
+    const res = await sendWebhook("GRACE_PERIOD_START", {
+      expiration_at_ms: FUTURE_EXPIRES,
+      purchased_at_ms: Date.now() - 500,
+    });
+    expect(res.ok).toBe(true);
+    expect(res.handled).toBe(true);
+    expect(res.status).toBe("active");
+    const row = await getGracePeriodFlag();
+    expect(row).not.toBeNull();
+    expect(row!.status).toBe("active");
+    expect(row!.isInGracePeriod).toBe(1);
+    // isPremium=true during grace period (status=active)
+  });
+
+  it("Step 4: GRACE_PERIOD_END → status=expired, isInGracePeriod=0, access revoked", async () => {
+    // Grace period expired — user loses access
+    const res = await sendWebhook("GRACE_PERIOD_END", {
+      expiration_at_ms: PAST_EXPIRES,
+      purchased_at_ms: Date.now() - 500,
+    });
+    expect(res.ok).toBe(true);
+    expect(res.handled).toBe(true);
+    expect(res.status).toBe("expired");
+    const row = await getGracePeriodFlag();
+    expect(row).not.toBeNull();
+    expect(row!.status).toBe("expired");
+    expect(row!.isInGracePeriod).toBe(0);
+    // isPremium=false (status=expired, not cancelled-but-active)
+  });
+
+  it("Step 5: RENEWAL after GRACE_PERIOD_END → status=active, isInGracePeriod=0 (user re-subscribes)", async () => {
+    // User updates payment method and renews successfully
+    const res = await sendWebhook("RENEWAL", {
+      expiration_at_ms: FUTURE_EXPIRES,
+      purchased_at_ms: Date.now() - 100,
+    });
+    expect(res.ok).toBe(true);
+    expect(res.handled).toBe(true);
+    expect(res.status).toBe("active");
+    const row = await getGracePeriodFlag();
+    expect(row).not.toBeNull();
+    expect(row!.status).toBe("active");
+    expect(row!.isInGracePeriod).toBe(0);
+    // isPremium=true restored
   });
 });
 

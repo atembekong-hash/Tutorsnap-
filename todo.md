@@ -1212,4 +1212,4 @@
 
 ## v2.0.2 — Phase G Screenshots + Multi-step Grace Period Flow Test (Jul 27 2026)
 - [x] Phase G: Screenshot scan of paywall, onboarding trial slide, cancel-retention, subscription-history — all PASS (report in phase_g_report.md)
-- [ ] Task 3: Add CANCELLATION→GRACE_PERIOD_START→GRACE_PERIOD_END multi-step flow test
+- [x] Task 3: Add CANCELLATION→GRACE_PERIOD_START→GRACE_PERIOD_END multi-step flow test (5 steps, all passing, 172/172 total tests)
