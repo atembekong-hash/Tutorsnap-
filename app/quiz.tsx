@@ -8,6 +8,7 @@ import { Share, Modal,
   Platform,
   Animated,
   Easing,
+  Linking,
 } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -217,13 +218,13 @@ function ScoreSummary({
 
   const [copied, setCopied] = React.useState(false);
   const copiedTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [showShareSheet, setShowShareSheet] = React.useState(false);
 
-  const handleShareResults = async () => {
-    H.impactLight()
+  const buildShareMessage = () => {
     const timeStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
     const emoji = pct >= 80 ? "🎉" : pct >= 60 ? "👍" : "📚";
     const gradeLabel = gradeLevel ? GRADE_LABELS[gradeLevel] ?? gradeLevel : null;
-    const message = [
+    return [
       userName
         ? `${emoji} ${userName}'s TutorSnap Quiz Results`
         : `${emoji} TutorSnap Quiz Results`,
@@ -236,20 +237,66 @@ function ScoreSummary({
     ]
       .filter(Boolean)
       .join("\n");
+  };
 
+  const handleCopyText = async () => {
+    H.impactLight();
+    const message = buildShareMessage();
+    try {
+      await Clipboard.setStringAsync(message);
+      setCopied(true);
+      if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+      copiedTimerRef.current = setTimeout(() => setCopied(false), 2500);
+    } catch {
+      // clipboard unavailable
+    }
+    setShowShareSheet(false);
+  };
+
+  const handleShareWhatsApp = async () => {
+    H.impactLight();
+    const message = buildShareMessage();
+    const url = `whatsapp://send?text=${encodeURIComponent(message)}`;
+    setShowShareSheet(false);
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        // WhatsApp not installed — fall back to native share
+        await Share.share({ message });
+      }
+    } catch {
+      // User cancelled or error
+    }
+  };
+
+  const handleShareTwitter = async () => {
+    H.impactLight();
+    const message = buildShareMessage();
+    const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(message)}`;
+    setShowShareSheet(false);
+    try {
+      await Linking.openURL(tweetUrl);
+    } catch {
+      // fallback to native share
+      try { await Share.share({ message }); } catch { /* cancelled */ }
+    }
+  };
+
+  const handleNativeShare = async () => {
+    H.impactLight();
+    const message = buildShareMessage();
+    setShowShareSheet(false);
     if (Platform.OS === "web") {
-      // Share.share is not available on web — copy to clipboard instead
       try {
         await Clipboard.setStringAsync(message);
         setCopied(true);
         if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
         copiedTimerRef.current = setTimeout(() => setCopied(false), 2500);
-      } catch {
-        // clipboard unavailable — ignore
-      }
+      } catch { /* ignore */ }
       return;
     }
-
     try {
       await Share.share({ message });
     } catch {
@@ -342,23 +389,115 @@ function ScoreSummary({
         <Text style={[styles.sharePromptSubtext, { color: colors.muted }]}>
           Challenge a friend or show off your score
         </Text>
-        {/* Share Results / Copy Results (web) */}
+        {/* Share Results button — opens share sheet */}
         <TouchableOpacity
-          onPress={handleShareResults}
-          accessibilityLabel={Platform.OS === "web" ? (copied ? "Results copied to clipboard" : "Copy quiz results to clipboard") : "Share quiz results"}
-          style={[styles.shareResultsBtn, { borderColor: copied ? colors.success : colors.primary, backgroundColor: copied ? `${colors.success}10` : `${colors.primary}10` }]}
+          onPress={() => { H.impactLight(); setShowShareSheet(true); }}
+          accessibilityLabel="Share quiz results"
+          style={[styles.shareResultsBtn, { borderColor: colors.primary, backgroundColor: `${colors.primary}10` }]}
           activeOpacity={0.75}
         >
-          <IconSymbol
-            size={16}
-            name={copied ? "checkmark.circle.fill" : "square.and.arrow.up.fill"}
-            color={copied ? colors.success : colors.primary}
-          />
-          <Text style={[styles.shareResultsBtnText, { color: copied ? colors.success : colors.primary }]}>
-            {Platform.OS === "web" ? (copied ? "Copied!" : "Copy Results") : "Share Results"}
-          </Text>
+          <IconSymbol size={16} name="square.and.arrow.up.fill" color={colors.primary} />
+          <Text style={[styles.shareResultsBtnText, { color: colors.primary }]}>Share Results</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Share Options Bottom Sheet */}
+      <Modal
+        visible={showShareSheet}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowShareSheet(false)}
+      >
+        <View style={styles.shareSheetOverlay}>
+          <TouchableOpacity
+            style={styles.shareSheetBackdrop}
+            activeOpacity={1}
+            onPress={() => setShowShareSheet(false)}
+          />
+          <View style={[styles.shareSheet, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            {/* Handle */}
+            <View style={[styles.shareSheetHandle, { backgroundColor: colors.border }]} />
+            <Text style={[styles.shareSheetTitle, { color: colors.foreground }]}>Share Results</Text>
+
+            {/* Copy Text */}
+            <TouchableOpacity
+              style={[styles.shareOption, { borderColor: colors.border }]}
+              activeOpacity={0.7}
+              onPress={handleCopyText}
+              accessibilityLabel="Copy results text to clipboard"
+            >
+              <View style={[styles.shareOptionIcon, { backgroundColor: `${colors.primary}15` }]}>
+                <Text style={styles.shareOptionEmoji}>📋</Text>
+              </View>
+              <View style={styles.shareOptionTextBlock}>
+                <Text style={[styles.shareOptionLabel, { color: colors.foreground }]}>
+                  {copied ? "Copied!" : "Copy Text"}
+                </Text>
+                <Text style={[styles.shareOptionSub, { color: colors.muted }]}>Copy score to clipboard</Text>
+              </View>
+              {copied && <IconSymbol size={16} name="checkmark.circle.fill" color={colors.success} />}
+            </TouchableOpacity>
+
+            {/* WhatsApp */}
+            <TouchableOpacity
+              style={[styles.shareOption, { borderColor: colors.border }]}
+              activeOpacity={0.7}
+              onPress={handleShareWhatsApp}
+              accessibilityLabel="Share via WhatsApp"
+            >
+              <View style={[styles.shareOptionIcon, { backgroundColor: "#25D36615" }]}>
+                <Text style={styles.shareOptionEmoji}>💬</Text>
+              </View>
+              <View style={styles.shareOptionTextBlock}>
+                <Text style={[styles.shareOptionLabel, { color: colors.foreground }]}>WhatsApp</Text>
+                <Text style={[styles.shareOptionSub, { color: colors.muted }]}>Send to a contact or group</Text>
+              </View>
+            </TouchableOpacity>
+
+            {/* Twitter / X */}
+            <TouchableOpacity
+              style={[styles.shareOption, { borderColor: colors.border }]}
+              activeOpacity={0.7}
+              onPress={handleShareTwitter}
+              accessibilityLabel="Share to Twitter/X"
+            >
+              <View style={[styles.shareOptionIcon, { backgroundColor: "#1DA1F215" }]}>
+                <Text style={styles.shareOptionEmoji}>𝕏</Text>
+              </View>
+              <View style={styles.shareOptionTextBlock}>
+                <Text style={[styles.shareOptionLabel, { color: colors.foreground }]}>Twitter / X</Text>
+                <Text style={[styles.shareOptionSub, { color: colors.muted }]}>Post your score to X</Text>
+              </View>
+            </TouchableOpacity>
+
+            {/* More Options (Native Share) */}
+            <TouchableOpacity
+              style={[styles.shareOption, { borderColor: colors.border }]}
+              activeOpacity={0.7}
+              onPress={handleNativeShare}
+              accessibilityLabel="More share options"
+            >
+              <View style={[styles.shareOptionIcon, { backgroundColor: `${colors.muted}18` }]}>
+                <Text style={styles.shareOptionEmoji}>⋯</Text>
+              </View>
+              <View style={styles.shareOptionTextBlock}>
+                <Text style={[styles.shareOptionLabel, { color: colors.foreground }]}>More Options</Text>
+                <Text style={[styles.shareOptionSub, { color: colors.muted }]}>System share sheet</Text>
+              </View>
+            </TouchableOpacity>
+
+            {/* Cancel */}
+            <TouchableOpacity
+              style={[styles.shareSheetCancel, { backgroundColor: `${colors.muted}15`, borderColor: colors.border }]}
+              activeOpacity={0.7}
+              onPress={() => { H.impactLight(); setShowShareSheet(false); }}
+              accessibilityLabel="Cancel share"
+            >
+              <Text style={[styles.shareSheetCancelText, { color: colors.muted }]}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -1027,4 +1166,60 @@ const styles = StyleSheet.create({
   },
   reviewMissedTitle: { fontSize: 14, fontWeight: "700" as const },
   reviewMissedSubtitle: { fontSize: 12, marginTop: 2 },
+  // Share sheet
+  shareSheetOverlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  shareSheetBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.45)",
+  } as any,
+  shareSheet: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderWidth: 1,
+    padding: 20,
+    paddingBottom: 36,
+    gap: 4,
+  },
+  shareSheetHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    alignSelf: "center",
+    marginBottom: 16,
+  },
+  shareSheetTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  shareOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    paddingVertical: 13,
+    borderBottomWidth: 0.5,
+  },
+  shareOptionIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  shareOptionEmoji: { fontSize: 22 },
+  shareOptionTextBlock: { flex: 1 },
+  shareOptionLabel: { fontSize: 15, fontWeight: "600" },
+  shareOptionSub: { fontSize: 12, marginTop: 1 },
+  shareSheetCancel: {
+    marginTop: 12,
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    alignItems: "center",
+  },
+  shareSheetCancelText: { fontSize: 15, fontWeight: "700" },
 });

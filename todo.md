@@ -1230,3 +1230,13 @@
 ## Onboarding Keyboard Fix (Jul 27 2026)
 - [ ] Fix name input hidden behind keyboard on mobile (KeyboardAvoidingView)
 - [ ] Save checkpoint
+
+## Share Options Bottom Sheet (Jul 27 2026)
+- [x] Replace single "Share Results" button in quiz Results screen with a bottom sheet
+- [x] Add Copy Text option (copies score text to clipboard, shows Copied! feedback)
+- [x] Add WhatsApp option (Linking.openURL whatsapp://send, falls back to native share if not installed)
+- [x] Add Twitter/X option (opens twitter.com/intent/tweet in browser)
+- [x] Add More Options (native system share sheet via Share.share)
+- [x] Add Cancel button to close sheet
+- [x] TypeScript: 0 errors, 172/172 tests passing
+- [ ] Save checkpoint
