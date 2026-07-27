@@ -1185,3 +1185,12 @@
 - [x] Phase F: Chat layout — pin composer to bottom, fix auto-scroll, remove scroll resistance (chat.tsx)
 - [ ] Phase G: Deep scan — TS check, all tests, screenshots of every changed screen
 - [ ] Phase H: Final checkpoint + EAS APK build
+
+## v2.0.0 — Webhook Auth, Server Badge, Subscription History (Jul 27 2026)
+- [x] Phase 1: Webhook auth tests — vitest tests for correct/wrong/absent secret + REVENUECAT_SETUP.md update
+- [ ] Phase 2: Server-verified premium badge — trpc.subscription.getStatus.useQuery() in settings.tsx
+- [ ] Phase 3: subscription.history tRPC query — server/routers.ts subscriptionRouter
+- [ ] Phase 4: Subscription history screen — app/subscription-history.tsx + settings nav row
+- [ ] Phase 5: Fix pending todo items D & E — verify __DEV__ guard and paywall timer cleanup in code, mark [x]
+- [ ] Phase 6: Deep scan — TS check, all tests, screenshots of every changed screen
+- [ ] Phase 7: Final checkpoint + EAS APK build v2.0.0

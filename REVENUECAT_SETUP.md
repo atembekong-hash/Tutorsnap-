@@ -48,14 +48,28 @@ Complete these steps in order before releasing TutorSnap to the App Store or Goo
 1. In RevenueCat dashboard → Project → Integrations → Webhooks
 2. Add a new webhook:
    - URL: `https://mathgenius-g8jxpbar.manus.space/api/webhooks/revenuecat`
-   - Authorization header: set a strong random secret (32+ chars)
-3. Set `REVENUECAT_WEBHOOK_SECRET` environment variable on your server to the same secret.
+   - Authorization header: set a strong random secret (32+ chars, generate with `openssl rand -hex 32`)
+3. Set `REVENUECAT_WEBHOOK_SECRET` environment variable on your server to the **exact same secret**.
+   - **Dev mode** (env var absent): all webhook requests are accepted without auth.
+   - **Production** (env var set): requests with wrong or missing Authorization header return `401 Unauthorized`.
 4. The server endpoint handles these events:
-   - `INITIAL_PURCHASE` → mark user premium
-   - `RENEWAL` → extend premium
-   - `CANCELLATION` → schedule expiry
-   - `EXPIRATION` → revoke premium
-   - `REFUND` → revoke premium immediately
+   - `INITIAL_PURCHASE` / `RENEWAL` / `PRODUCT_CHANGE` → mark user `active`
+   - `CANCELLATION` / `BILLING_ISSUE` → mark user `cancelled`
+   - `EXPIRATION` → mark user `expired`
+   - `REFUND` → mark user `refunded`
+5. **Verify webhook is active after deployment:**
+   ```bash
+   # Without secret → should return 401
+   curl -X POST https://mathgenius-g8jxpbar.manus.space/api/webhooks/revenuecat \
+     -H 'Content-Type: application/json' \
+     -d '{"event":{"type":"TEST","app_user_id":"verify","product_id":"test"}}'
+
+   # With correct secret → should return 200 {"ok":true}
+   curl -X POST https://mathgenius-g8jxpbar.manus.space/api/webhooks/revenuecat \
+     -H 'Content-Type: application/json' \
+     -H 'Authorization: YOUR_SECRET_HERE' \
+     -d '{"event":{"type":"TEST","app_user_id":"verify","product_id":"test"}}'
+   ```
 
 ---
 
