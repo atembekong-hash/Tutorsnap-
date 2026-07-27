@@ -130,13 +130,18 @@ export default function RootLayout() {
         const authed = await isAuthenticated();
         if (!authed) return; // Not signed in — paywall will be shown after sign-in/onboarding
         const status = await getSubscriptionStatus();
-        // If trial has expired and user is not premium, show paywall exactly once
+        // If trial has expired and user is not premium, show paywall exactly once per session.
+        // The session flag uses a date-keyed AsyncStorage entry so it resets each calendar day.
         if (!status.isPremium && !status.isTrialActive && !status.isDevMode) {
-          // Small delay so the app UI settles before presenting paywall
+          const sessionKey = `@tutorsnap/paywallShownSession_${new Date().toDateString()}`;
+          const alreadyShown = await AsyncStorage.getItem(sessionKey).catch(() => null);
+          if (alreadyShown) return; // Already shown this session — do not interrupt again
+          await AsyncStorage.setItem(sessionKey, "1").catch(() => {});
+          // Longer delay (3 s) so the app UI fully settles before presenting paywall
           paywallTimer = setTimeout(() => {
             paywallTimer = null;
             router.push("/paywall" as any);
-          }, 1500);
+          }, 3000);
         }
       } catch { /* ignore — paywall check failure is non-critical */ }
     }).catch(() => {});

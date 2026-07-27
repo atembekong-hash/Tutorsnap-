@@ -1202,3 +1202,10 @@
 - [x] Fix 3: Fix onboarding plan card layout — vertical stack on web, horizontal on mobile
 - [x] Fix 4: Tighten duplicate-webhook idempotency guard to skip events with same purchased_at_ms
 - [x] Fix 5: Add web-compatible Alert fallback to cancel-retention screen
+
+## v2.0.1 — Remaining v2.0.0 Phases + isInGracePeriod Test + Publish (Jul 27 2026)
+- [x] Phase D: Hide paywall dev-mode banner in production (__DEV__ guard in paywall.tsx) — already implemented (line 358: {isDevMode && __DEV__ && ...})
+- [x] Phase E: Fix paywall timer — 3000ms delay + skip if already shown this session (_layout.tsx)
+- [x] isInGracePeriod test: Vitest integration test — BILLING_ISSUE sets column to true, RENEWAL clears to false (10/10 tests passing)
+- [x] Phase G: Deep scan — TS check, all tests, screenshots of every changed screen
+- [ ] Final checkpoint + Publish (EAS APK build)
