@@ -42,12 +42,14 @@ function ScanTabIcon({ color: _color, focused }: { color: string; focused: boole
     const loop = Animated.loop(
       Animated.parallel([
         Animated.sequence([
-          Animated.timing(ringScale, { toValue: 1.55, duration: 1200, useNativeDriver: true, easing: Easing.out(Easing.quad) }),
+          Animated.timing(ringScale, { toValue: 1.55, duration: 3500, useNativeDriver: true, easing: Easing.out(Easing.quad) }),
           Animated.timing(ringScale, { toValue: 1, duration: 0, useNativeDriver: true }),
+          Animated.delay(1500),
         ]),
         Animated.sequence([
-          Animated.timing(ringOpacity, { toValue: 0, duration: 1200, useNativeDriver: true, easing: Easing.out(Easing.quad) }),
-          Animated.timing(ringOpacity, { toValue: 0.5, duration: 0, useNativeDriver: true }),
+          Animated.timing(ringOpacity, { toValue: 0, duration: 3500, useNativeDriver: true, easing: Easing.out(Easing.quad) }),
+          Animated.timing(ringOpacity, { toValue: 0.4, duration: 0, useNativeDriver: true }),
+          Animated.delay(1500),
         ]),
       ])
     );
