@@ -84,13 +84,14 @@ CRITICAL RULES:
   * Multiple Choice: State the correct option letter and answer, then include only the essential supporting calculation or one-line justification if needed.
   This field must be completely self-contained. A student must be able to skip the entire explanation above, read ONLY this field, and have everything needed to submit a correct, complete, polished answer.
 
-FORMATTING RULES (CRITICAL - FOLLOW EXACTLY):
-- ALL mathematical expressions MUST be wrapped in LaTeX delimiters: $...$ for inline math, $$...$$ for block math.
-- NEVER use raw LaTeX commands outside $...$ or $$...$$ delimiters. Never write \\text{}, \\frac{}, \\sqrt{}, \\rightarrow outside math delimiters.
-- Use proper Markdown: **bold**, *italic*, backticks for code, dashes for lists, hashes for headings.
-- NEVER use stray backslashes, asterisks, or underscores outside their proper context.
-- The "expression" field should contain ONLY the mathematical expression wrapped in $...$ or $$...$$ delimiters.
-- All text fields should use clean Markdown with proper math delimiters.
+PLAIN TEXT FORMATTING RULES (CRITICAL - FOLLOW EXACTLY):
+- NEVER use dollar signs ($) for any purpose. Write math in plain text: x^2 + 3x = 0, not $x^2 + 3x = 0$.
+- NEVER use LaTeX commands: no \\frac, \\sqrt, \\int, \\sum, no backslashes at all.
+- NEVER use Markdown formatting: no **bold**, no *italic*, no ## headings, no --- rules, no backticks.
+- NEVER use em dashes or en dashes. Use a plain comma or hyphen instead.
+- Write all math in plain readable text: use ^ for powers (x^2), / for fractions (a/b), sqrt() for roots.
+- The "expression" field: write the formula in plain text only, e.g. 'x = (-b + sqrt(b^2 - 4ac)) / (2a)'.
+- All text fields must be clean plain text with no special formatting characters.
 
 Always respond with valid JSON in this exact format:
 {
@@ -138,13 +139,14 @@ CRITICAL RULES:
 - Tips must be detailed, actionable, and specific (6-8 sentences each). Include at least 6 tips.
 - The workedExample.solution must be a LONG narrative (at least 450 words) walking through every single step.
 
-FORMATTING RULES (CRITICAL - FOLLOW EXACTLY):
-- ALL mathematical expressions MUST be wrapped in LaTeX delimiters: $...$ for inline math, $$...$$ for block math.
-- NEVER use raw LaTeX commands outside $...$ or $$...$$ delimiters. Never write \\text{}, \\frac{}, \\sqrt{}, \\rightarrow outside math delimiters.
-- Use proper Markdown: **bold**, *italic*, backticks for code, dashes for lists, hashes for headings.
-- NEVER use stray backslashes, asterisks, or underscores outside their proper context.
-- The "expression" field should contain ONLY the mathematical expression wrapped in $...$ or $$...$$ delimiters.
-- All text fields should use clean Markdown with proper math delimiters.
+PLAIN TEXT FORMATTING RULES (CRITICAL - FOLLOW EXACTLY):
+- NEVER use dollar signs ($) for any purpose. Write math in plain text: x^2 + 3x = 0, not $x^2 + 3x = 0$.
+- NEVER use LaTeX commands: no \\frac, \\sqrt, \\int, \\sum, no backslashes at all.
+- NEVER use Markdown formatting: no **bold**, no *italic*, no ## headings, no --- rules, no backticks.
+- NEVER use em dashes or en dashes. Use a plain comma or hyphen instead.
+- Write all math in plain readable text: use ^ for powers (x^2), / for fractions (a/b), sqrt() for roots.
+- The "expression" field: write the formula in plain text only, e.g. 'x = (-b + sqrt(b^2 - 4ac)) / (2a)'.
+- All text fields must be clean plain text with no special formatting characters.
 
 Always respond with valid JSON in this exact format:
 {
@@ -236,11 +238,13 @@ function buildSolveSystemPromptScaled(subject: string, problem: string): string 
   };
   const guide = subjectGuides[subject] ?? "Provide a thorough, accurate, and educational answer. Never refuse a hard question; always attempt a complete solution.";
 
-  const FORMATTING = `FORMATTING RULES (CRITICAL - FOLLOW EXACTLY):
-- ALL mathematical expressions MUST be wrapped in LaTeX delimiters: $...$ for inline math, $$...$$ for block math.
-- NEVER use raw LaTeX commands outside $...$ or $$...$$ delimiters.
-- Use proper Markdown: **bold**, *italic*, backticks for code, dashes for lists, hashes for headings.
-- The "expression" field should contain ONLY the mathematical expression wrapped in $...$ or $$...$$ delimiters.`;
+  const FORMATTING = `PLAIN TEXT FORMATTING RULES (CRITICAL - FOLLOW EXACTLY):
+- NEVER use dollar signs ($) for any purpose. Write math in plain text: x^2 + 3x = 0, not $x^2 + 3x = 0$.
+- NEVER use LaTeX commands: no \\frac, \\sqrt, \\int, \\sum, no backslashes at all.
+- NEVER use Markdown formatting: no **bold**, no *italic*, no ## headings, no --- rules, no backticks.
+- NEVER use em dashes or en dashes. Use a plain comma or hyphen instead.
+- Write all math in plain readable text: use ^ for powers (x^2), / for fractions (a/b), sqrt() for roots.
+- The "expression" field: write the formula in plain text only, e.g. 'x = (-b + sqrt(b^2 - 4ac)) / (2a)'.`;
 
   const SUBMISSION_READY_RULES = `The submissionReady field is a COMPLETELY INDEPENDENT second output. Generate it fresh from scratch as if writing only the answer a student would hand in:
   * Mathematics/Physics/Chemistry/Statistics: Complete worked solution. Every calculation on its own numbered line. All formula substitutions shown. Final answer on last line. No prose.
@@ -391,11 +395,14 @@ Be encouraging, clear, and pedagogical. Use examples when helpful.
 Format mathematical expressions clearly. Keep responses concise but complete.
 Adapt your tone and vocabulary to the subject: precise for math/science, analytical for literature/history.
 
-FORMATTING RULES (CRITICAL):
-- ALL mathematical expressions MUST be wrapped in LaTeX delimiters: $...$ for inline math, $$...$$ for block math.
-- NEVER use raw LaTeX commands outside $...$ or $$...$$ delimiters. Never write \\text{}, \\frac{}, \\sqrt{}, \\rightarrow outside math delimiters.
-- Use proper Markdown: **bold**, *italic*, backticks for code, dashes for lists, hashes for headings.
-- NEVER use stray backslashes, asterisks, or underscores outside their proper context.
+PLAIN TEXT FORMATTING RULES (CRITICAL):
+- NEVER use dollar signs ($) for any purpose. Write math in plain text: x^2 + 3x = 0, not $x^2 + 3x = 0$.
+- NEVER use LaTeX commands: no \\frac, \\sqrt, \\int, \\sum, no backslashes at all.
+- NEVER use Markdown formatting: no **bold**, no *italic*, no ## headings, no --- rules, no backticks.
+- NEVER use em dashes or en dashes. Use a plain comma or hyphen instead.
+- Write all math in plain readable text: use ^ for powers (x^2), / for fractions (a/b), sqrt() for roots.
+- Use plain numbered lists (1. 2. 3.) only when listing steps. No bullet symbols.
+- Write in clean, plain prose. No special formatting characters of any kind.
 
 INTERACTIVE COMPONENTS - AUTO-INSERT RULES:
 You MUST automatically decide when to insert the following components. Do NOT wait for the student to ask.
@@ -671,6 +678,7 @@ const academicRouter = router({
               { role: "user", content: input.problem },
             ],
             max_tokens: 120,
+            temperature: 0.3,
           });
           const fastText = extractLLMContent(fastResult).trim();
           // Shape into the standard solve response object
@@ -700,6 +708,7 @@ const academicRouter = router({
             { role: "user" as const, content: input.problem },
           ],
           max_tokens: tokenBudget,
+          temperature: 0.3,
           response_format: { type: "json_object" as const },
         };
         const jsonStr = await invokeLLMWithFallback("gemini-3-flash-preview", "claude-haiku-4-5", params);
@@ -755,6 +764,7 @@ Respond ONLY with this JSON (no extra text):
           { role: "user", content: "Explain the answer fully." },
         ],
         max_tokens: 900,
+        temperature: 0.3,
         response_format: { type: "json_object" },
       });
       const text = extractLLMContent(result);
@@ -793,6 +803,7 @@ Respond ONLY with this JSON (no extra text):
           model: "gemini-3-flash-preview" as const,
           messages,
           max_tokens: 2500,
+          temperature: 0.3,
           response_format: { type: "json_object" as const },
         };
         const jsonStr = await invokeLLMWithFallback("gemini-3-flash-preview", "claude-haiku-4-5", params);
@@ -820,6 +831,7 @@ Respond ONLY with this JSON (no extra text):
           { role: "user", content: `Generate a ${input.difficulty} ${input.subject} practice question.` },
         ],
         max_tokens: practiceTokens,
+        temperature: 0.3,
         response_format: { type: "json_object" },
       });
       const text = extractLLMContent(result);
@@ -883,6 +895,7 @@ Respond ONLY with this JSON:
         ],
         // Scale per-question token budget by difficulty
         max_tokens: Math.min(input.count * (input.difficulty === 'easy' ? 150 : input.difficulty === 'medium' ? 250 : 350), 2500),
+        temperature: 0.3,
         response_format: { type: "json_object" },
       });
       const rawContent = extractLLMContent(result);
@@ -908,6 +921,7 @@ Respond ONLY with this JSON:
           { role: "user", content: `Give me a study tip for ${input.subject}.` },
         ],
         max_tokens: 120,
+        temperature: 0.3,
       });
       const rawTip = (result as any)?.error ? "" : (result.choices?.[0]?.message?.content ?? "");
       const tip = typeof rawTip === "string" ? rawTip.trim() : "";
@@ -954,6 +968,7 @@ Respond ONLY with this JSON:
           })),
         ],
         max_tokens: chatMaxTokens,
+        temperature: 0.3,
       });
       const rawContent = (result as any)?.error ? "" : (result.choices?.[0]?.message?.content ?? "");
       const text = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
@@ -973,6 +988,7 @@ Respond ONLY with this JSON:
           { role: "user", content: "Generate the 3 follow-up chips now." },
         ],
         max_tokens: 120,
+        temperature: 0.3,
         response_format: { type: "json_object" },
       });
       const text = (result as any)?.error ? "" : extractLLMContent(result);
@@ -1007,7 +1023,9 @@ Rules:
 - Be concise: 4-6 sentences total.
 - Use plain, student-friendly language.
 - Do NOT repeat the original solution method verbatim.
-- Format math with LaTeX: $...$ for inline, $$...$$ for block.
+- NEVER use dollar signs or LaTeX. Write math in plain text: x^2 + 3x = 0, use ^ for powers, / for fractions.
+- NEVER use Markdown: no **bold**, no *italic*, no ## headings, no backticks.
+- NEVER use em dashes or en dashes. Use a plain comma or hyphen instead.
 - Output plain text only, no JSON.`;
       const userMsg = `Problem: ${input.problem.slice(0, 400)}
 Original answer: ${input.answer.slice(0, 300)}
@@ -1020,6 +1038,7 @@ Now re-explain this using the ${input.style} style.`;
           { role: "user", content: userMsg },
         ],
         max_tokens: 450,
+        temperature: 0.3,
       });
       const text = (result as any)?.error ? "" : (result.choices?.[0]?.message?.content ?? "");
       const explanation = typeof text === "string" ? text.trim() : JSON.stringify(text);
@@ -1049,6 +1068,7 @@ Respond ONLY with this JSON:
         ],
         // Scale per-problem token budget by difficulty
         max_tokens: Math.min(input.count * (input.difficulty === 'easy' ? 120 : input.difficulty === 'medium' ? 180 : 250), 1000),
+        temperature: 0.3,
         response_format: { type: "json_object" },
       });
       const text = extractLLMContent(result);
@@ -1100,6 +1120,7 @@ Respond ONLY with this JSON:
           { role: 'user', content: 'Generate the study blocks now.' },
         ],
         max_tokens: 1200,
+        temperature: 0.3,
         response_format: { type: 'json_object' },
       });
       const text = extractLLMContent(result);

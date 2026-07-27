@@ -651,7 +651,7 @@ export function AIResponseRenderer({
   const textColor = color ?? colors.foreground;
 
   const cleanMarkdown = useMemo(
-    () => processAIResponse(markdown, { stripPreamble, normalizeLaTeX: true }),
+    () => processAIResponse(markdown, { stripPreamble }),
     [markdown, stripPreamble],
   );
 

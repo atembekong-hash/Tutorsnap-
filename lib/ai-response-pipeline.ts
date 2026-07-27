@@ -1,18 +1,11 @@
 /**
  * AI Response Processing Pipeline
- *
- * Every AI-generated response must pass through this pipeline before rendering.
- * It sanitizes artifacts, normalizes formatting, and repairs malformed content
- * so that AIResponseRenderer always receives clean, well-formed Markdown.
+ * Strips LaTeX, Markdown, special chars, em/en dashes, dollar signs.
  */
-
-// ─── Phase 1: Normalize line endings ────────────────────────────────────────
 
 function normalizeLineEndings(text: string): string {
   return text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
 }
-
-// ─── Phase 2: Remove invisible / zero-width Unicode characters ───────────────
 
 function removeInvisibleCharacters(text: string): string {
   return text
@@ -25,230 +18,162 @@ function removeInvisibleCharacters(text: string): string {
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
 }
 
-// ─── Phase 3: Remove AI generation artifacts ─────────────────────────────────
-
 function removeAIArtifacts(text: string): string {
   return text
-    .replace(/^(Sure[,!]?\s+|Of course[,!]?\s+|Certainly[,!]?\s+|Absolutely[,!]?\s+|Great[,!]?\s+|Here(?:'s| is) (?:the |a )?(?:solution|answer|explanation|response)[:\s]*\n*)/i, '')
+    .replace(/^(Sure[,!]?\s+|Of course[,!]?\s+|Certainly[,!]?\s+|Absolutely[,!]?\s+|Great[,!]?\s+|Here(?:\'s| is) (?:the |a )?(?:solution|answer|explanation|response)[:\s]*\n*)/i, '')
     .replace(/\{\{[^}]*\}\}/g, '')
     .replace(/\[PLACEHOLDER[^\]]*\]/g, '')
     .replace(/\[AI_RESPONSE_START\]|\[AI_RESPONSE_END\]/g, '')
-    .replace(/<!--\s*AI[^>]*-->/g, '')
+    .replace(/<!--[\s\S]*?-->/g, '')
     .replace(/\n+(?:Is there anything else|Would you like me to|Feel free to ask|Let me know if)[^.]*\.\s*$/i, '');
 }
 
-// ─── Phase 4: Normalize LaTeX delimiters ─────────────────────────────────────
-// AIResponseRenderer expects $...$ for inline and $$...$$ for block math.
-
-function normalizeLaTeXDelimiters(text: string): string {
-  // Protect escaped dollar signs first
-  let result = text.replace(/\\\$/g, '\x01DOLLAR\x01');
-  // \[...\] → $$...$$  (block math)
-  result = result.replace(/\\\[\s*([\s\S]*?)\s*\\\]/g, (_, inner) => `\n\n$$${inner.trim()}$$\n\n`);
-  // \(...\) → $...$  (inline math)
-  result = result.replace(/\\\(\s*([\s\S]*?)\s*\\\)/g, (_, inner) => `$${inner.trim()}$`);
-  return result;
+function stripLaTeX(text: string): string {
+  let r = text;
+  r = r.replace(/\$\$((?:.|\n)*?)\$\$/g, (_: string, i: string) => i.trim());
+  r = r.replace(/\\\[\s*((?:.|\n)*?)\s*\\\]/g, (_: string, i: string) => i.trim());
+  r = r.replace(/\$([^$\n]{1,200}?)\$/g, (_: string, i: string) => i.trim());
+  r = r.replace(/\\\(\s*((?:.|\n)*?)\s*\\\)/g, (_: string, i: string) => i.trim());
+  r = r.replace(/\\begin\{[^}]*\}((?:.|\n)*?)\\end\{[^}]*\}/g, (_: string, i: string) => i.trim());
+  const cmds: [RegExp, string][] = [
+    [/\\frac\{([^}]*)\}\{([^}]*)\}/g, '$1 / $2'],
+    [/\\sqrt\{([^}]*)\}/g, 'sqrt($1)'],
+    [/\\sqrt/g, 'sqrt'],
+    [/\\cdot/g, 'times'], [/\\times/g, 'times'], [/\\div/g, 'divided by'],
+    [/\\pm/g, 'plus or minus'], [/\\mp/g, 'minus or plus'],
+    [/\\neq/g, 'not equal to'], [/\\approx/g, 'approximately'],
+    [/\\leq|\\le/g, 'less than or equal to'], [/\\geq|\\ge/g, 'greater than or equal to'],
+    [/\\lt/g, 'less than'], [/\\gt/g, 'greater than'],
+    [/\\infty/g, 'infinity'], [/\\alpha/g, 'alpha'], [/\\beta/g, 'beta'],
+    [/\\gamma/g, 'gamma'], [/\\delta/g, 'delta'], [/\\theta/g, 'theta'],
+    [/\\lambda/g, 'lambda'], [/\\mu/g, 'mu'], [/\\pi/g, 'pi'],
+    [/\\sigma/g, 'sigma'], [/\\omega/g, 'omega'],
+    [/\\sum/g, 'sum of'], [/\\prod/g, 'product of'], [/\\int/g, 'integral of'],
+    [/\\lim/g, 'limit of'], [/\\log/g, 'log'], [/\\ln/g, 'ln'],
+    [/\\sin/g, 'sin'], [/\\cos/g, 'cos'], [/\\tan/g, 'tan'],
+    [/\\rightarrow|\\to/g, 'to'], [/\\leftarrow/g, 'from'],
+    [/\\Rightarrow/g, 'implies'], [/\\Leftrightarrow/g, 'if and only if'],
+    [/\\forall/g, 'for all'], [/\\exists/g, 'there exists'],
+    [/\\in\b/g, 'in'], [/\\notin/g, 'not in'],
+    [/\\subset/g, 'subset of'], [/\\cup/g, 'union'], [/\\cap/g, 'intersection'],
+    [/\\emptyset/g, 'empty set'],
+    [/\\mathbb\{([^}]*)\}/g, '$1'], [/\\mathbf\{([^}]*)\}/g, '$1'],
+    [/\\mathrm\{([^}]*)\}/g, '$1'], [/\\mathit\{([^}]*)\}/g, '$1'],
+    [/\\text\{([^}]*)\}/g, '$1'], [/\\textbf\{([^}]*)\}/g, '$1'],
+    [/\\textit\{([^}]*)\}/g, '$1'],
+    [/\\left[\(\[\{|]/g, ''], [/\\right[\)\]\}|]/g, ''],
+    [/\\left\./g, ''], [/\\right\./g, ''],
+    [/\^\{([^}]*)\}/g, '^$1'], [/_\{([^}]*)\}/g, '_$1'],
+    [/\\[a-zA-Z]+\{([^}]*)\}/g, '$1'],
+    [/\\[a-zA-Z]+/g, ''],
+    [/\\\\/g, '\n'], [/\\/g, ''],
+  ];
+  for (const [pat, rep] of cmds) r = r.replace(pat, rep as any);
+  return r;
 }
 
-function restoreEscapedDollars(text: string): string {
-  return text.replace(/\x01DOLLAR\x01/g, '\\$');
+function stripMarkdown(text: string): string {
+  let r = text;
+  r = r.replace(/```[\w]*\n?((?:.|\n)*?)```/g, (_: string, i: string) => i.trim());
+  r = r.replace(/~~~[\w]*\n?((?:.|\n)*?)~~~/g, (_: string, i: string) => i.trim());
+  r = r.replace(/`([^`\n]+)`/g, '$1');
+  r = r.replace(/^#{1,6}\s+/gm, '');
+  r = r.replace(/^[-*_]{3,}\s*$/gm, '');
+  r = r.replace(/\*{3}([^*\n]+)\*{3}/g, '$1');
+  r = r.replace(/_{3}([^_\n]+)_{3}/g, '$1');
+  r = r.replace(/\*{2}([^*\n]+)\*{2}/g, '$1');
+  r = r.replace(/_{2}([^_\n]+)_{2}/g, '$1');
+  r = r.replace(/\*([^*\n]+)\*/g, '$1');
+  r = r.replace(/(?<=\s|^)_([^_\n]+)_(?=\s|$)/gm, '$1');
+  r = r.replace(/~~([^~\n]+)~~/g, '$1');
+  r = r.replace(/^>\s*/gm, '');
+  r = r.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+  r = r.replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1');
+  r = r.replace(/\[([^\]]+)\]\[[^\]]*\]/g, '$1');
+  r = r.replace(/^\[[^\]]+\]:\s*\S+.*$/gm, '');
+  r = r.replace(/^(\s*)[-*+]\s+/gm, '$1');
+  r = r.replace(/^(\s*)(\d+)\.\s+/gm, '$1$2. ');
+  r = r.replace(/^\|.*\|$/gm, (line: string) =>
+    line.replace(/\|/g, ' ').replace(/[-:]+/g, '').trim());
+  r = r.replace(/^\|?[-:| ]+\|$/gm, '');
+  return r;
 }
 
-// ─── Phase 5: Repair malformed LaTeX ─────────────────────────────────────────
-
-function repairLaTeX(text: string): string {
-  const lines = text.split('\n');
-  const repaired = lines.map(line => {
-    const hasMath = /\$/.test(line);
-    if (!hasMath) {
-      line = line.replace(/\\begin\{[^}]*\}/g, '');
-      line = line.replace(/\\end\{[^}]*\}/g, '');
-    }
-    return line;
-  });
-  return repaired.join('\n');
+function replaceSpecialCharacters(text: string): string {
+  return text
+    .replace(/\u2014/g, ',').replace(/\u2013/g, '-')
+    .replace(/\u2026/g, '...').replace(/[\u2018\u2019]/g, "\'")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/[\u2022\u2023\u2024\u2025\u2043\u204C\u204D\u2219]/g, '')
+    .replace(/\u2192/g, 'to').replace(/\u2190/g, 'from')
+    .replace(/\u2194/g, 'to and from').replace(/\u21D2/g, 'implies')
+    .replace(/\u21D4/g, 'if and only if').replace(/\u00D7/g, 'times')
+    .replace(/\u00F7/g, 'divided by').replace(/\u00B1/g, 'plus or minus')
+    .replace(/\u2260/g, 'not equal to').replace(/\u2264/g, 'less than or equal to')
+    .replace(/\u2265/g, 'greater than or equal to').replace(/\u221E/g, 'infinity')
+    .replace(/\u221A/g, 'sqrt').replace(/\u03C0/g, 'pi')
+    .replace(/\u03B1/g, 'alpha').replace(/\u03B2/g, 'beta')
+    .replace(/\u03B3/g, 'gamma').replace(/\u03B8/g, 'theta')
+    .replace(/\u03BB/g, 'lambda').replace(/\u03BC/g, 'mu')
+    .replace(/\u03C3/g, 'sigma').replace(/\u03A3/g, 'Sigma')
+    .replace(/\$/g, '').replace(/(?<!^)#/gm, '')
+    .replace(/~/g, '').replace(/\|/g, '');
 }
 
-// ─── Phase 6: Repair malformed Markdown ──────────────────────────────────────
-
-function repairMarkdown(text: string): string {
-  const lines = text.split('\n');
-  const repaired: string[] = [];
-
-  for (let i = 0; i < lines.length; i++) {
-    let line = lines[i];
-
-    // Fix headings missing space after #: "#Title" → "# Title"
-    line = line.replace(/^(#{1,6})([^#\s])/, '$1 $2');
-
-    // Fix list items missing space after marker: "-item" → "- item", "1.item" → "1. item"
-    line = line.replace(/^(\s*[-*+])([^\s])/, '$1 $2');
-    line = line.replace(/^(\s*\d+\.)([^\s])/, '$1 $2');
-
-    repaired.push(line);
-  }
-
-  return repaired.join('\n');
+function stripHTML(text: string): string {
+  return text
+    .replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ')
+    .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&').replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "\'").replace(/&#\d+;/g, '')
+    .replace(/&[a-z]+;/g, '');
 }
-
-// ─── Phase 7: Normalize spacing (CONSERVATIVE — preserve punctuation) ────────
 
 function normalizeSpacing(text: string): string {
   return text
-    // Collapse 4+ consecutive blank lines to 2 (keep double-newlines for paragraphs)
-    .replace(/\n{4,}/g, '\n\n\n')
-    // Remove trailing spaces on each line
-    .replace(/[ \t]+$/gm, '')
-    // Collapse 3+ spaces to 1 (but not inside code blocks — handled by renderer)
-    .replace(/[ \t]{3,}(?![\t])/g, ' ')
-    // Remove duplicate punctuation (!! → !, ?? → ?)
-    .replace(/([!?])\1+/g, '$1')
-    // Per user preference: replace em dashes (\u2014) and en dashes (\u2013) with plain hyphens.
-    .replace(/\u2014/g, '-')
-    .replace(/\u2013/g, '-')
-    .trim();
+    .replace(/\n{4,}/g, '\n\n\n').replace(/[ \t]+$/gm, '')
+    .replace(/[ \t]{3,}/g, ' ').replace(/([!?])\1+/g, '$1')
+    .replace(/\n{3,}/g, '\n\n').trim();
 }
 
-// ─── Phase 8: Final output sanitization — eliminate ALL formatting artifacts ───
-// This is the last line of defense before rendering. It removes any remaining
-// raw Markdown, LaTeX, HTML, or escape sequences that slipped through earlier phases.
-// IMPORTANT: We ONLY remove artifacts that are clearly NOT part of valid math/code.
+export interface PipelineOptions { stripPreamble?: boolean; }
 
-function finalOutputSanitization(text: string): string {
-  // Strategy: Only remove OBVIOUS artifacts that have no valid purpose
-  // We are VERY conservative to avoid breaking valid math or Markdown
-  
-  let result = text;
-  
-  // Remove HTML tags (but preserve < and > in math)
-  result = result.replace(/<[a-z][^>]*>/gi, '');
-  result = result.replace(/<\/[a-z][^>]*>/gi, '');
-  
-  // Remove HTML entities that aren't part of math
-  result = result.replace(/&nbsp;/g, ' ');
-  result = result.replace(/&lt;/g, '<');
-  result = result.replace(/&gt;/g, '>');
-  result = result.replace(/&amp;/g, '&');
-  
-  // Remove stray backslashes that precede non-math characters
-  // Only remove if followed by a letter that's not part of LaTeX math
-  result = result.replace(/\\([a-z])\s+(?![a-z{$])/gi, '$1 ');
-  
-  // Remove duplicate asterisks/underscores (but preserve valid Markdown emphasis)
-  result = result.replace(/\*{4,}/g, '**');
-  result = result.replace(/_{4,}/g, '__');
-  
-  return result;
-}
-
-export interface PipelineValidationResult {
-  passed: boolean;
-  issues: string[];
-}
-
-export function validateRenderedContent(text: string): PipelineValidationResult {
-  const issues: string[] = [];
-
-  const bareLatex = /(?<!\$)\\(frac|sqrt|pm|neq|left|right|begin|end|text|cdot|sum|prod|int|alpha|beta|gamma|theta|pi|lambda|rightarrow|Rightarrow|times|ge|le)\b/;
-  if (bareLatex.test(text)) {
-    issues.push('Raw LaTeX commands detected outside math delimiters');
-  }
-
-  if (/\{\{[^}]+\}\}/.test(text)) {
-    issues.push('Template placeholders detected');
-  }
-
-  if (/\x00/.test(text)) {
-    issues.push('Null bytes detected');
-  }
-
-  return { passed: issues.length === 0, issues };
-}
-
-// ─── Main pipeline export ─────────────────────────────────────────────────────
-
-export function processAIResponse(
-  raw: string,
-  options: {
-    stripPreamble?: boolean;
-    normalizeLaTeX?: boolean;
-  } = {}
-): string {
+export function processAIResponse(raw: string, options: PipelineOptions = {}): string {
   if (!raw || typeof raw !== 'string') return '';
-
-  const { stripPreamble = true, normalizeLaTeX = true } = options;
-
+  const { stripPreamble = true } = options;
   let text = raw;
-
   text = normalizeLineEndings(text);
   text = removeInvisibleCharacters(text);
-
-  if (stripPreamble) {
-    text = removeAIArtifacts(text);
-  }
-
-  if (normalizeLaTeX) {
-    text = normalizeLaTeXDelimiters(text);
-  }
-
-  text = repairLaTeX(text);
-  text = repairMarkdown(text);
+  if (stripPreamble) text = removeAIArtifacts(text);
+  text = stripLaTeX(text);
+  text = stripMarkdown(text);
+  text = replaceSpecialCharacters(text);
+  text = stripHTML(text);
   text = normalizeSpacing(text);
-
-  if (normalizeLaTeX) {
-    text = restoreEscapedDollars(text);
-  }
-
-  // Final output sanitization: last line of defense (very conservative)
-  text = finalOutputSanitization(text);
-
   return text;
 }
 
-/**
- * Detect incomplete math expressions during streaming.
- * Returns the text with incomplete math expressions removed (they'll complete in the next chunk).
- * This prevents rendering errors from partial LaTeX like "$x^" without closing "$".
- */
-function handleIncompleteStreamingMath(text: string): string {
-  // Count unmatched $ delimiters
-  const inlineMathCount = (text.match(/(?<!\\)\$/g) || []).length;
-  
-  // If odd number of $, the last one is incomplete — remove it and everything after
-  if (inlineMathCount % 2 === 1) {
-    const lastDollarIndex = text.lastIndexOf('$');
-    // Check if this is an escaped dollar
-    if (lastDollarIndex > 0 && text[lastDollarIndex - 1] !== '\\') {
-      text = text.substring(0, lastDollarIndex);
-    }
-  }
-  
-  // Similarly for block math ($$...$$)
-  const blockMathCount = (text.match(/(?<!\\)\$\$/g) || []).length;
-  if (blockMathCount % 2 === 1) {
-    const lastBlockIndex = text.lastIndexOf('$$');
-    if (lastBlockIndex > 0 && text[lastBlockIndex - 1] !== '\\') {
-      text = text.substring(0, lastBlockIndex);
-    }
-  }
-  
-  return text;
-}
-
-/**
- * Process a streaming chunk — lighter pipeline for incremental updates.
- */
 export function processStreamingChunk(chunk: string): string {
   if (!chunk || typeof chunk !== 'string') return '';
-
   let text = chunk;
   text = normalizeLineEndings(text);
   text = removeInvisibleCharacters(text);
-  text = normalizeLaTeXDelimiters(text);
-  text = restoreEscapedDollars(text);
-  // Handle incomplete math expressions during streaming
-  text = handleIncompleteStreamingMath(text);
-  // Apply final sanitization to streaming chunks too
-  text = finalOutputSanitization(text);
+  text = stripLaTeX(text);
+  text = stripMarkdown(text);
+  text = replaceSpecialCharacters(text);
+  text = stripHTML(text);
   return text;
+}
+
+export interface PipelineValidationResult { passed: boolean; issues: string[]; }
+
+export function validateRenderedContent(text: string): PipelineValidationResult {
+  const issues: string[] = [];
+  if (/\$/.test(text)) issues.push('Dollar sign detected');
+  if (/\*\*|\*[^*]/.test(text)) issues.push('Markdown bold/italic detected');
+  if (/^#{1,6}\s/m.test(text)) issues.push('Markdown heading detected');
+  if (/\u2014|\u2013/.test(text)) issues.push('Em/en dash detected');
+  if (/\\[a-zA-Z]/.test(text)) issues.push('LaTeX command detected');
+  if (/`/.test(text)) issues.push('Backtick detected');
+  return { passed: issues.length === 0, issues };
 }
