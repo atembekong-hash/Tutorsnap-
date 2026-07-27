@@ -18,6 +18,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import ReAnimated, { FadeInDown, ZoomIn } from "react-native-reanimated";
 import {
   Alert,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -28,6 +29,7 @@ import {
   Animated,
 } from "react-native";
 import { router } from "expo-router";
+import { PRIVACY_URL, TERMS_URL } from "@/constants/app";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as H from "@/lib/haptics";
 
@@ -204,6 +206,11 @@ export default function PaywallScreen() {
   const annualPrice =
     offerings[PRODUCT_ANNUAL]?.priceString ?? `$${PRICE_ANNUAL.toFixed(2)}/yr`;
   const annualMonthlyEquiv = `$${PRICE_ANNUAL_MONTHLY_EQUIV}/mo`;
+
+  // Post-trial price label — shown under the CTA button
+  const postTrialPriceLabel = selectedPlan === PRODUCT_ANNUAL
+    ? `Free for ${trialVariant.trialDays} days, then ${annualPrice} (${annualMonthlyEquiv}). Cancel anytime.`
+    : `Free for ${trialVariant.trialDays} days, then ${monthlyPrice}. Cancel anytime.`;
 
   const s = makeStyles(colors);
 
@@ -399,7 +406,7 @@ export default function PaywallScreen() {
         </TouchableOpacity>
 
         <Text style={s.ctaSubtext}>
-          {trialVariant.ctaSubLabel}
+          {postTrialPriceLabel}
         </Text>
         </ReAnimated.View>
 
@@ -422,6 +429,27 @@ export default function PaywallScreen() {
         <Text style={s.legal}>
           Subscription auto-renews unless cancelled at least 24 hours before the end of the current period. Manage or cancel in your device's subscription settings.
         </Text>
+
+        {/* ── ToS / Privacy links — required by Apple App Store Review ── */}
+        <View style={s.legalLinks}>
+          <TouchableOpacity
+            onPress={() => Linking.openURL(TERMS_URL).catch(() => {})}
+            accessibilityLabel="Terms of Service"
+            accessibilityRole="link"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Text style={s.legalLink}>Terms of Service</Text>
+          </TouchableOpacity>
+          <Text style={s.legalLinkSep}>·</Text>
+          <TouchableOpacity
+            onPress={() => Linking.openURL(PRIVACY_URL).catch(() => {})}
+            accessibilityLabel="Privacy Policy"
+            accessibilityRole="link"
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Text style={s.legalLink}>Privacy Policy</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </View>
   );
@@ -457,6 +485,25 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
     scroll: {
       paddingHorizontal: 20,
       paddingTop: 24,
+    },
+
+    // Legal links row
+    legalLinks: {
+      flexDirection: "row",
+      justifyContent: "center",
+      alignItems: "center",
+      marginTop: 12,
+      marginBottom: 8,
+      gap: 8,
+    },
+    legalLink: {
+      fontSize: 12,
+      color: ACCENT,
+      textDecorationLine: "underline",
+    },
+    legalLinkSep: {
+      fontSize: 12,
+      color: colors.muted,
     },
 
     // Hero
