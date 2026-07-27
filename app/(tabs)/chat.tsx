@@ -593,6 +593,8 @@ function MessageBubble({
   compactBlocks = false,
   sessionId,
   onRegenerateDiagram,
+  onExplainAtLevel,
+  currentGradeLevel,
 }: {
   message: ChatMessage;
   isFirstInRun: boolean;
@@ -608,6 +610,8 @@ function MessageBubble({
   compactBlocks?: boolean;
   sessionId?: string;
   onRegenerateDiagram?: (diagramCode: string) => void;
+  onExplainAtLevel?: () => void;
+  currentGradeLevel?: string | null;
 }) {
   const isUser = message.role === "user";
   const { settings } = useAppearance();
@@ -780,6 +784,27 @@ function MessageBubble({
           {hasSubmissionReady && submissionReadyContent.length > 0 && (
             <SubmissionReadyCard content={submissionReadyContent} fs={fs} />
           )}
+          {!streaming && teachingContent.length > 0 && onExplainAtLevel && (
+            <TouchableOpacity
+              onPress={onExplainAtLevel}
+              activeOpacity={0.75}
+              style={[bubbleStyles.explainChip, {
+                backgroundColor: currentGradeLevel ? `${colors.primary}15` : `${colors.muted}12`,
+                borderColor: currentGradeLevel ? `${colors.primary}40` : `${colors.border}`,
+              }]}
+              accessibilityLabel="Explain at my level"
+            >
+              <IconSymbol name="graduationcap.fill" size={fs(11)} color={currentGradeLevel ? colors.primary : colors.muted} />
+              <Text style={[bubbleStyles.explainChipText, {
+                color: currentGradeLevel ? colors.primary : colors.muted,
+                fontSize: fs(11),
+              }]}>
+                {currentGradeLevel
+                  ? `At ${currentGradeLevel.replace('grade', 'Grade ').replace('gcse', 'GCSE').replace('alevel', 'A-Level').replace('university', 'University')}`
+                  : 'Explain at my level'}
+              </Text>
+            </TouchableOpacity>
+          )}
           </View>
         </View>
       </View>
@@ -848,6 +873,23 @@ const bubbleStyles = StyleSheet.create({
   quoteText: {
     fontStyle: "italic",
     lineHeight: 17,
+  },
+  explainChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    marginLeft: 52,
+    marginTop: 4,
+    marginBottom: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 5,
+  },
+  explainChipText: {
+    fontWeight: "500",
+    lineHeight: 15,
   },
 });
 
@@ -2638,6 +2680,8 @@ function ChatScreenContent() {
                     blocksStartCollapsed={tutorSettings.blocksStartCollapsed}
                     compactBlocks={tutorSettings.compactBlocks}
                     sessionId={session?.id}
+                    onExplainAtLevel={item.role === 'assistant' ? () => setShowGradePicker(true) : undefined}
+                    currentGradeLevel={item.role === 'assistant' ? gradeLevel : null}
                   />
                 {/* Error bubble — shown when stream fails */}
                 {item.role === "assistant" && item.error && !isStreaming && (
