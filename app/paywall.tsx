@@ -29,6 +29,8 @@ import {
   Animated,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { USER_NAME_KEY } from "@/app/onboarding";
 import { PRIVACY_URL, TERMS_URL } from "@/constants/app";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as H from "@/lib/haptics";
@@ -106,6 +108,7 @@ export default function PaywallScreen() {
   const { fadeStyle: animatedStyle } = useScreenTransition();
   const params = useLocalSearchParams<{ fromOnboarding?: string }>();
   const fromOnboarding = params.fromOnboarding === "1";
+  const [userName, setUserName] = React.useState<string | null>(null);
   const insets = useSafeAreaInsets();
 
   const [selectedPlan, setSelectedPlan] = useState<string>(PRODUCT_ANNUAL);
@@ -122,15 +125,21 @@ export default function PaywallScreen() {
   useEffect(() => {
     (async () => {
       try {
-        const [pkgs, status, trialStart, variantConfig] = await Promise.all([
+        const [pkgs, status, trialStart, variantConfig, savedName] = await Promise.all([
           getOfferings(),
           getSubscriptionStatus(),
           getTrialStartDate(),
           getTrialVariantConfig(),
+          AsyncStorage.getItem(USER_NAME_KEY),
         ]);
+        if (savedName) setUserName(savedName);
         setTrialVariant(variantConfig);
         // Log paywall view for A/B test analytics
         logAbTestEvent("paywall_view", variantConfig.variant).catch(() => {});
+        // Log onboarding-to-paywall funnel event
+        if (fromOnboarding) {
+          logAbTestEvent("onboarding_paywall_view", variantConfig.variant).catch(() => {});
+        }
         setIsDevMode(status.isDevMode);
         if (trialStart !== null) {
           const remaining = getTrialDaysRemaining(trialStart);
@@ -217,7 +226,7 @@ export default function PaywallScreen() {
   const s = makeStyles(colors);
 
   return (
-    <View style={[s.root, { paddingTop: insets.top }]}>
+    <ReAnimated.View entering={FadeInDown.delay(0).duration(350)} style={[s.root, { paddingTop: insets.top }]}>
       {/* Close / skip button */}
       <TouchableOpacity
         style={s.closeBtn}
@@ -244,7 +253,11 @@ export default function PaywallScreen() {
           <View style={s.trialBadge}>
             <Text style={s.trialBadgeText}>{trialVariant.badgeText}</Text>
           </View>
-          <Text style={s.heroTitle}>Unlock TutorSnap{"\n"}Premium</Text>
+          {fromOnboarding && userName ? (
+            <Text style={s.heroTitle}>You're all set, {userName}!{"\n"}Unlock the full experience</Text>
+          ) : (
+            <Text style={s.heroTitle}>Unlock TutorSnap{"\n"}Premium</Text>
+          )}
           <Text style={s.heroSubtitle}>
             {`Solve unlimited problems, ace every quiz, and get personalised AI tutoring — free for ${trialVariant.trialDays} days.`}
           </Text>
@@ -371,6 +384,24 @@ export default function PaywallScreen() {
           </View>
         )}
 
+        {/* ── Early CTA — visible without scrolling ──────────────── */}
+        <ReAnimated.View entering={FadeInDown.delay(300).duration(400).springify()} style={{ marginHorizontal: 0, marginBottom: 8 }}>
+          <TouchableOpacity
+            style={[s.ctaBtn, (!offeringsLoaded || loading) && s.ctaBtnDisabled]}
+            onPress={handleStartTrial}
+            disabled={loading || !offeringsLoaded}
+            activeOpacity={0.85}
+            accessibilityLabel="Start free trial"
+            accessibilityRole="button"
+          >
+            {loading ? (
+              <DotsLoader color="#fff" />
+            ) : (
+              <Text style={s.ctaBtnText}>Start Free Trial</Text>
+            )}
+          </TouchableOpacity>
+          <Text style={s.ctaSubtext}>{postTrialPriceLabel}</Text>
+        </ReAnimated.View>
         {/* ── Testimonials ─────────────────────────────────────────── */}
         <ReAnimated.View entering={FadeInDown.delay(360).duration(400)} style={[s.featuresCard, { marginBottom: 12 }]}>
           <Text style={s.featuresTitle}>What students are saying</Text>
