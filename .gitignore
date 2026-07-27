@@ -5,7 +5,7 @@ node_modules/
 
 # Expo
 .expo/
-dist/
+# dist/ — committed for Manus deployment (esbuild not available in prod container)
 web-build/
 expo-env.d.ts
 
