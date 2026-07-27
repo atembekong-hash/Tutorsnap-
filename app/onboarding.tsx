@@ -568,6 +568,27 @@ export default function OnboardingScreen() {
               <Text style={[styles.slideTitle, { color: colors.foreground }]}>{slide.title}</Text>
               <Text style={[styles.slideSubtitle, { color: colors.muted }]}>{slide.subtitle}</Text>
 
+              {/* Skip All — only on welcome slide, jumps to trial */}
+              {slide.id === "welcome" && (
+                <TouchableOpacity
+                  onPress={() => {
+                    H.impactLight();
+                    const trialIdx = SLIDES.findIndex((s) => s.id === "trial");
+                    if (trialIdx >= 0) {
+                      setCurrentSlide(trialIdx);
+                      animateDot(trialIdx);
+                      scrollRef.current?.scrollTo({ x: trialIdx * SCREEN_WIDTH, animated: true });
+                    }
+                  }}
+                  activeOpacity={0.7}
+                  accessibilityLabel="Skip to trial"
+                  accessibilityRole="button"
+                  style={styles.skipAllBtn}
+                >
+                  <Text style={[styles.skipAllText, { color: colors.muted }]}>Skip setup</Text>
+                </TouchableOpacity>
+              )}
+
               {/* Name input */}
               {slide.id === "name" && (
                 <View style={{ width: "100%", marginTop: 12 }}>
@@ -1240,5 +1261,17 @@ const styles = StyleSheet.create({
   },
   trialPlanNote: {
     fontSize: 11,
+  },
+  skipAllBtn: {
+    marginTop: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    alignSelf: "center",
+  },
+  skipAllText: {
+    fontSize: 13,
+    fontWeight: "500",
+    letterSpacing: 0.1,
   },
 });
