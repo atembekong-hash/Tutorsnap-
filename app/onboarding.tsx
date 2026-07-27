@@ -12,6 +12,7 @@ import {
   Platform,
   Animated,
   KeyboardAvoidingView,
+  Keyboard,
 } from "react-native";
 import { useRouter } from "expo-router";
 import * as H from "@/lib/haptics";
@@ -199,6 +200,20 @@ export default function OnboardingScreen() {
   const colorScheme = useColorScheme();
   const insets = useSafeAreaInsets();
   const safeTop = insets.top;
+  const safeBottom = insets.bottom;
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  useEffect(() => {
+    const showSub = Keyboard.addListener("keyboardDidShow", (e) => {
+      setKeyboardVisible(true);
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const hideSub = Keyboard.addListener("keyboardDidHide", () => {
+      setKeyboardVisible(false);
+      setKeyboardHeight(0);
+    });
+    return () => { showSub.remove(); hideSub.remove(); };
+  }, []);
   const router = useRouter();
   const { fadeStyle } = useScreenTransition({ duration: 320, translateY: 20 });
   // Dark mode: brand-violet bloom; light mode: white bloom
@@ -473,7 +488,7 @@ export default function OnboardingScreen() {
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={0}
+        keyboardVerticalOffset={safeBottom + 8}
       >
       <SafeAreaView style={[styles.root, { backgroundColor: "transparent" }]} edges={["top", "bottom", "left", "right"]}>
         {/* Back button */}
@@ -830,8 +845,8 @@ export default function OnboardingScreen() {
           ))}
         </ScrollView>
 
-        {/* Animated dot indicators */}
-        <View style={styles.dotsRow}>
+        {/* Animated dot indicators — hidden while keyboard is open to give input full space */}
+        {!keyboardVisible && <View style={styles.dotsRow}>
           {SLIDES.map((_, idx) => {
             const isActive = idx === currentSlide;
             return (
@@ -861,10 +876,10 @@ export default function OnboardingScreen() {
               </TouchableOpacity>
             );
           })}
-        </View>
+        </View>}
 
-        {/* CTA button — hide on photo slide when no photo (Skip for now is the CTA) */}
-        {!(SLIDES[currentSlide]?.id === "photo" && !avatarUri) && (
+        {/* CTA button — hide on photo slide when no photo, and hide while keyboard is open on name slide */}
+        {!(SLIDES[currentSlide]?.id === "photo" && !avatarUri) && !(keyboardVisible && SLIDES[currentSlide]?.id === "name") && (
           <TouchableOpacity
             onPress={goNext}
             activeOpacity={0.85}
@@ -880,8 +895,8 @@ export default function OnboardingScreen() {
             </Text>
           </TouchableOpacity>
         )}
-        {/* Maybe Later link — only on the last (trial) slide */}
-        {isLastSlide && (
+        {/* Maybe Later link — only on the last (trial) slide, hidden while keyboard is open */}
+        {isLastSlide && !keyboardVisible && (
           <TouchableOpacity
             onPress={finishOnboarding}
             activeOpacity={0.7}
