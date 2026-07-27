@@ -15,7 +15,7 @@
  */
 
 import React, { useCallback, useEffect, useState } from "react";
-import ReAnimated, { FadeInDown, ZoomIn } from "react-native-reanimated";
+import ReAnimated, { FadeInDown, ZoomIn, useSharedValue, useAnimatedStyle, withTiming } from "react-native-reanimated";
 import {
   Alert,
   Linking,
@@ -101,6 +101,8 @@ const FEATURES = [
   { icon: "⭐", label: "Priority support from the TutorSnap team" },
 ];
 
+const SOCIAL_PROOF_COUNT = "12,400+";
+
 // ─── Main screen ──────────────────────────────────────────────────────────────
 
 export default function PaywallScreen() {
@@ -120,6 +122,13 @@ export default function PaywallScreen() {
   const [isDevMode, setIsDevMode] = useState(false);
   const [trialDaysUsed, setTrialDaysUsed] = useState<number | null>(null);
   const [trialVariant, setTrialVariant] = useState<TrialVariantConfig>(getDefaultTrialVariantConfig());
+  const [stickyVisible, setStickyVisible] = useState(false);
+
+  // Animated scale for plan card selection
+  const monthlyScale = useSharedValue(1);
+  const annualScale = useSharedValue(1.02);
+  const monthlyAnimStyle = useAnimatedStyle(() => ({ transform: [{ scale: withTiming(monthlyScale.value, { duration: 180 }) }] }));
+  const annualAnimStyle = useAnimatedStyle(() => ({ transform: [{ scale: withTiming(annualScale.value, { duration: 180 }) }] }));
 
   // Load offerings on mount
   useEffect(() => {
@@ -245,8 +254,10 @@ export default function PaywallScreen() {
       </TouchableOpacity>
 
       <ScrollView
-        contentContainerStyle={[s.scroll, { paddingBottom: insets.bottom + 32 }]}
+        contentContainerStyle={[s.scroll, { paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
+        onScroll={(e) => setStickyVisible(e.nativeEvent.contentOffset.y > 220)}
+        scrollEventThrottle={16}
       >
         {/* ── Hero ─────────────────────────────────────────────────── */}
         <View style={s.hero}>
@@ -384,6 +395,12 @@ export default function PaywallScreen() {
           </View>
         )}
 
+        {/* ── Social proof counter ─────────────────────────────────── */}
+        <ReAnimated.View entering={FadeInDown.delay(280).duration(350)} style={{ alignItems: "center", marginBottom: 6, marginTop: 4 }}>
+          <Text style={{ color: "#9BA1A6", fontSize: 13, fontWeight: "500", letterSpacing: 0.2 }}>
+            Join {SOCIAL_PROOF_COUNT} students already on Premium
+          </Text>
+        </ReAnimated.View>
         {/* ── Early CTA — visible without scrolling ──────────────── */}
         <ReAnimated.View entering={FadeInDown.delay(300).duration(400).springify()} style={{ marginHorizontal: 0, marginBottom: 8 }}>
           <TouchableOpacity
@@ -490,7 +507,34 @@ export default function PaywallScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
-    </View>
+      {/* ── Sticky bottom CTA ──────────────────────────────────── */}
+      {stickyVisible && (
+        <ReAnimated.View
+          entering={FadeInDown.duration(200)}
+          style={[{
+            position: "absolute",
+            bottom: 0, left: 0, right: 0,
+            paddingHorizontal: 20,
+            paddingTop: 12,
+            paddingBottom: insets.bottom + 12,
+            backgroundColor: "rgba(21,23,24,0.97)",
+            borderTopWidth: 0.5,
+            borderTopColor: "#334155",
+          }]}
+        >
+          <TouchableOpacity
+            style={[s.ctaBtn, loading && s.ctaBtnDisabled]}
+            onPress={handleStartTrial}
+            disabled={loading || !offeringsLoaded}
+            activeOpacity={0.85}
+            accessibilityLabel="Start free trial"
+            accessibilityRole="button"
+          >
+            {loading ? <DotsLoader color="#fff" /> : <Text style={s.ctaBtnText}>Start Free Trial</Text>}
+          </TouchableOpacity>
+        </ReAnimated.View>
+      )}
+    </ReAnimated.View>
   );
 }
 

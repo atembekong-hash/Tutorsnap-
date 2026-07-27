@@ -280,9 +280,9 @@ export default function OnboardingScreen() {
     if (isLastSlide) {
       finishOnboardingAndShowPaywall();
     } else {
-      // Skip the photo slide if the user already has a profile photo set
+      // Always skip the photo slide when navigating forward — it is optional.
       let next = currentSlide + 1;
-      if (SLIDES[next]?.id === "photo" && avatarUri) {
+      if (SLIDES[next]?.id === "photo") {
         next = next + 1;
       }
       setCurrentSlide(next);
