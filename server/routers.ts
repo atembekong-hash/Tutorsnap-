@@ -1773,6 +1773,41 @@ const subscriptionRouter = router({
       return { isPremium: false, status: null, productId: null, expiresAt: null };
     }
   }),
+
+  /**
+   * Returns the full subscription history for the signed-in user.
+   * All rows from the `subscriptions` table ordered by updatedAt DESC, limit 50.
+   */
+  history: protectedProcedure.query(async ({ ctx }) => {
+    try {
+      const db = await getDb();
+      if (!db) return [];
+      const rows = await db
+        .select({
+          id: subscriptions.id,
+          productId: subscriptions.productId,
+          status: subscriptions.status,
+          expiresAt: subscriptions.expiresAt,
+          createdAt: subscriptions.createdAt,
+          updatedAt: subscriptions.updatedAt,
+        })
+        .from(subscriptions)
+        .where(eq(subscriptions.userId, ctx.user.id))
+        .orderBy(desc(subscriptions.updatedAt))
+        .limit(50);
+      return rows.map((r) => ({
+        id: r.id,
+        productId: r.productId,
+        status: r.status,
+        expiresAt: r.expiresAt ? r.expiresAt.getTime() : null,
+        createdAt: r.createdAt.getTime(),
+        updatedAt: r.updatedAt.getTime(),
+      }));
+    } catch (err) {
+      console.error("[subscriptionRouter] history error:", err);
+      return [];
+    }
+  }),
 });
 
 const authRouter = router({
