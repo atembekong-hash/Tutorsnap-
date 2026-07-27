@@ -265,6 +265,20 @@ async function startServer() {
         }
 
         console.log(`[RC Webhook] Persisted: ${eventType} → ${newStatus} for rcUser=${rcUserId}`);
+
+        // ── 5. Owner notification for revenue events (fire-and-forget) ──────────
+        // Sends an owner alert when a new subscription is purchased or renewed.
+        // If the notification service is unavailable the webhook still returns 200.
+        if (eventType === "INITIAL_PURCHASE" || eventType === "RENEWAL") {
+          const { notifyOwner } = await import("./notification.js");
+          notifyOwner({
+            title: eventType === "INITIAL_PURCHASE" ? "🎉 New Subscription!" : "🔄 Subscription Renewed",
+            content: `Product: ${productId || "unknown"}\nRC User: ${rcUserId || "anonymous"}\nStatus: ${newStatus}`,
+          }).catch((err: unknown) => {
+            console.warn("[RC Webhook] Owner notification failed (non-fatal):", err);
+          });
+        }
+
         res.json({ ok: true, handled: true, status: newStatus });
       } catch (err) {
         console.error("[RC Webhook] Unexpected error:", err);
