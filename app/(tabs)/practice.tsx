@@ -298,6 +298,7 @@ function PracticeScreenContent() {
   return (
     <ScreenContainer>
       <ReAnimated.View style={[{ flex: 1 }, tabTransitionStyle]}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
       <ReAnimated.View style={staggeredStyles[0]}>
         {/* Header */}
         <View style={styles.header}>
@@ -395,8 +396,7 @@ function PracticeScreenContent() {
           </View>
         </View>
       </ReAnimated.View>
-      <ReAnimated.View style={[{ flex: 1 }, staggeredStyles[1]]}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+      <ReAnimated.View style={staggeredStyles[1]}>
 
         {/* Progress nudge strip above generate button */}
         {progressData && (
@@ -966,8 +966,8 @@ function PracticeScreenContent() {
             </View>
           </View>
         )}
-      </ScrollView>
       </ReAnimated.View>
+      </ScrollView>
       </ReAnimated.View>{/* end tabTransitionStyle */}
 
       {showGradePicker && (
