@@ -28,7 +28,7 @@ import {
   View,
   Animated,
 } from "react-native";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { PRIVACY_URL, TERMS_URL } from "@/constants/app";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as H from "@/lib/haptics";
@@ -104,6 +104,8 @@ const FEATURES = [
 export default function PaywallScreen() {
   const colors = useColors();
   const { fadeStyle: animatedStyle } = useScreenTransition();
+  const params = useLocalSearchParams<{ fromOnboarding?: string }>();
+  const fromOnboarding = params.fromOnboarding === "1";
   const insets = useSafeAreaInsets();
 
   const [selectedPlan, setSelectedPlan] = useState<string>(PRODUCT_ANNUAL);
@@ -219,12 +221,18 @@ export default function PaywallScreen() {
       {/* Close / skip button */}
       <TouchableOpacity
         style={s.closeBtn}
-        onPress={() => router.back()}
+        onPress={() => {
+          if (fromOnboarding) {
+            router.replace({ pathname: "/(tabs)", params: { fromOnboarding: "1" } } as any);
+          } else {
+            router.back();
+          }
+        }}
         hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-        accessibilityLabel="Close paywall"
+        accessibilityLabel={fromOnboarding ? "Continue with free tier" : "Close paywall"}
         accessibilityRole="button"
       >
-        <Text style={s.closeBtnText}>✕</Text>
+        <Text style={s.closeBtnText}>{fromOnboarding ? "Maybe Later" : "✕"}</Text>
       </TouchableOpacity>
 
       <ScrollView

@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
 import {
-  Alert,
   View,
   Text,
   TextInput,
@@ -26,12 +25,7 @@ import { TUTOR_SETTINGS_KEY, DEFAULT_TUTOR_SETTINGS } from "@/components/tutor-s
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useScreenTransition } from "@/hooks/use-screen-transition";
-import { getTrialVariantConfig, getDefaultTrialVariantConfig, type TrialVariantConfig } from "@/lib/ab-test";
-import {
-  PRICE_MONTHLY, PRICE_ANNUAL, PRICE_ANNUAL_MONTHLY_EQUIV, DISCOUNT_PCT,
-  PRODUCT_MONTHLY, PRODUCT_ANNUAL,
-  getOfferings, purchaseProduct,
-} from "@/lib/subscription";
+// Trial slide removed — paywall is now a full-screen push
 import Reanimated, {
   useSharedValue,
   useAnimatedStyle,
@@ -101,7 +95,6 @@ const SLIDE_GRADIENTS: Record<string, [string, string]> = {
   subjects:      ["#3B82F620", "#3B82F605"],
   grade:         ["#8B5CF620", "#8B5CF605"],
   "tutor-preview": ["#0a7ea420", "#0a7ea405"],
-  trial:         ["#F59E0B20", "#F59E0B05"],
 };
 
 const SLIDES = [
@@ -152,12 +145,6 @@ const SLIDES = [
     emoji: "🤖",
     title: "Meet Your AI Tutor",
     subtitle: "Your AI Tutor is personalised to your subjects, grade, and learning style. It never judges, never rushes.",
-  },
-  {
-    id: "trial",
-    emoji: "👑",
-    title: "Start Free, Upgrade Anytime",
-    subtitle: "Start a 14-day free trial. Unlimited solves, quizzes, and AI chat. No charge during the trial.",
   },
 ];
 
@@ -222,45 +209,6 @@ export default function OnboardingScreen() {
     transform: [{ scale: skipBtnScale.value }],
     opacity: skipBtnOpacity.value,
   }));
-  const [trialVariant, setTrialVariant] = React.useState<TrialVariantConfig>(getDefaultTrialVariantConfig());
-  const [selectedPlan, setSelectedPlan] = React.useState<string>(PRODUCT_ANNUAL);
-  const [purchaseLoading, setPurchaseLoading] = React.useState(false);
-  const [monthlyPriceStr, setMonthlyPriceStr] = React.useState(`$${PRICE_MONTHLY.toFixed(2)}/mo`);
-  const [annualPriceStr, setAnnualPriceStr] = React.useState(`$${PRICE_ANNUAL.toFixed(2)}/yr`);
-
-  React.useEffect(() => {
-    getTrialVariantConfig().then(setTrialVariant).catch(() => {});
-    // Pre-load offerings so prices are ready when user reaches trial slide
-    getOfferings().then((pkgs) => {
-      for (const pkg of pkgs) {
-        if (pkg.productId === PRODUCT_MONTHLY) setMonthlyPriceStr(pkg.priceString);
-        if (pkg.productId === PRODUCT_ANNUAL) setAnnualPriceStr(pkg.priceString);
-      }
-    }).catch(() => {});
-  }, []);
-
-  /** Called when user taps "Start Free Trial" on the last (trial) slide. */
-  const handleOnboardingPurchase = async () => {
-    H.impactMedium();
-    setPurchaseLoading(true);
-    try {
-      const result = await purchaseProduct(selectedPlan);
-      if (result.success) {
-        H.notificationSuccess();
-        // Navigate straight to home — no paywall modal needed
-        await finishOnboarding();
-      } else if (!result.cancelled) {
-        Alert.alert(
-          "Purchase Failed",
-          result.error ?? "Something went wrong. Please try again.",
-          [{ text: "OK" }]
-        );
-      }
-      // If cancelled, just stay on the slide
-    } finally {
-      setPurchaseLoading(false);
-    }
-  };
   const scrollRef = useRef<ScrollView>(null);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [selectedCategories, setSelectedCategories] = useState<Set<SubjectCategory>>(new Set());
@@ -330,7 +278,7 @@ export default function OnboardingScreen() {
   const goNext = () => {
     H.impactLight();
     if (isLastSlide) {
-      handleOnboardingPurchase();
+      finishOnboardingAndShowPaywall();
     } else {
       // Skip the photo slide if the user already has a profile photo set
       let next = currentSlide + 1;
@@ -435,7 +383,7 @@ export default function OnboardingScreen() {
     await persistOnboardingChoices();
     startExit(() => {
       router.replace({ pathname: "/(tabs)", params: { fromOnboarding: "1" } } as any);
-      setTimeout(() => { router.push("/paywall" as any); }, 300);
+      setTimeout(() => { router.push({ pathname: "/paywall", params: { fromOnboarding: "1" } } as any); }, 300);
     });
   };
 
@@ -567,28 +515,6 @@ export default function OnboardingScreen() {
 
               <Text style={[styles.slideTitle, { color: colors.foreground }]}>{slide.title}</Text>
               <Text style={[styles.slideSubtitle, { color: colors.muted }]}>{slide.subtitle}</Text>
-
-              {/* Skip All — only on welcome slide, jumps to trial */}
-              {slide.id === "welcome" && (
-                <TouchableOpacity
-                  onPress={() => {
-                    H.impactLight();
-                    const trialIdx = SLIDES.findIndex((s) => s.id === "trial");
-                    if (trialIdx >= 0) {
-                      setCurrentSlide(trialIdx);
-                      animateDot(trialIdx);
-                      scrollRef.current?.scrollTo({ x: trialIdx * SCREEN_WIDTH, animated: true });
-                    }
-                  }}
-                  activeOpacity={0.7}
-                  accessibilityLabel="Skip to trial"
-                  accessibilityRole="button"
-                  style={styles.skipAllBtn}
-                >
-                  <Text style={[styles.skipAllText, { color: colors.muted }]}>Skip setup</Text>
-                </TouchableOpacity>
-              )}
-
               {/* Name input */}
               {slide.id === "name" && (
                 <View style={{ width: "100%", marginTop: 12 }}>
@@ -791,64 +717,6 @@ export default function OnboardingScreen() {
                   </Text>
                 </ScrollView>
               )}
-
-              {/* Trial slide — inline plan selector */}
-              {slide.id === "trial" && (
-                <View style={styles.trialFeatureList}>
-                  {/* Plan cards */}
-                  <View style={[styles.trialPlanRow, Platform.OS === "web" && { flexDirection: "column" }]}>
-                    {/* Monthly */}
-                    <TouchableOpacity
-                      activeOpacity={0.85}
-                      onPress={() => { H.impactLight(); setSelectedPlan(PRODUCT_MONTHLY); }}
-                      style={[
-                        styles.trialPlanCard,
-                        selectedPlan === PRODUCT_MONTHLY && styles.trialPlanCardSelected,
-                      ]}
-                      accessibilityLabel={`Monthly plan ${monthlyPriceStr}`}
-                      accessibilityRole="radio"
-                      accessibilityState={{ selected: selectedPlan === PRODUCT_MONTHLY }}
-                    >
-                      <Text style={[styles.trialPlanLabel, { color: colors.muted }]}>Monthly</Text>
-                      <Text style={[styles.trialPlanPrice, selectedPlan === PRODUCT_MONTHLY && { color: colors.primary }]}>
-                        {monthlyPriceStr}
-                      </Text>
-                    </TouchableOpacity>
-
-                    {/* Annual — recommended */}
-                    <TouchableOpacity
-                      activeOpacity={0.85}
-                      onPress={() => { H.impactLight(); setSelectedPlan(PRODUCT_ANNUAL); }}
-                      style={[
-                        styles.trialPlanCard,
-                        styles.trialPlanCardAnnual,
-                        selectedPlan === PRODUCT_ANNUAL && styles.trialPlanCardSelected,
-                      ]}
-                      accessibilityLabel={`Annual plan ${annualPriceStr} save ${DISCOUNT_PCT}%`}
-                      accessibilityRole="radio"
-                      accessibilityState={{ selected: selectedPlan === PRODUCT_ANNUAL }}
-                    >
-                      <View style={styles.trialPlanBadge}>
-                        <Text style={styles.trialPlanBadgeText}>Save {DISCOUNT_PCT}%</Text>
-                      </View>
-                      <Text style={[styles.trialPlanLabel, { color: colors.muted }]}>Annual</Text>
-                      <Text style={[styles.trialPlanPrice, selectedPlan === PRODUCT_ANNUAL && { color: "#7C3AED" }]}>
-                        {annualPriceStr}
-                      </Text>
-                      <Text style={[styles.trialPlanNote, { color: colors.muted }]}>
-                        ${PRICE_ANNUAL_MONTHLY_EQUIV}/mo
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  {/* Post-trial price note */}
-                  <Text style={[styles.trialPriceNote, { color: colors.muted }]}>
-                    {selectedPlan === PRODUCT_ANNUAL
-                      ? `Free for ${trialVariant.trialDays} days, then ${annualPriceStr}. Cancel anytime.`
-                      : `Free for ${trialVariant.trialDays} days, then ${monthlyPriceStr}. Cancel anytime.`}
-                  </Text>
-                </View>
-              )}
               </SlideWrapper>
             </View>
           ))}
@@ -892,30 +760,11 @@ export default function OnboardingScreen() {
           <TouchableOpacity
             onPress={goNext}
             activeOpacity={0.85}
-            disabled={purchaseLoading}
-            style={[styles.ctaButton, { backgroundColor: colors.primary, opacity: purchaseLoading ? 0.7 : 1 }]}
-            accessibilityLabel={isLastSlide ? "Start free trial" : "Next slide"}
+            style={[styles.ctaButton, { backgroundColor: colors.primary }]}
+            accessibilityLabel={isLastSlide ? "Continue to upgrade" : "Next slide"}
             accessibilityRole="button"
           >
-            <Text style={styles.ctaText}>
-              {isLastSlide
-                ? (purchaseLoading ? "Starting Trial…" : "Start Free Trial")
-                : "Next"}
-            </Text>
-          </TouchableOpacity>
-        )}
-        {/* Maybe Later link — only on the last (trial) slide, hidden while keyboard is open */}
-        {isLastSlide && !keyboardVisible && (
-          <TouchableOpacity
-            onPress={finishOnboarding}
-            activeOpacity={0.7}
-            style={styles.maybeLaterBtn}
-            accessibilityLabel="Maybe later, continue with free tier"
-            accessibilityRole="button"
-          >
-            <Text style={[styles.maybeLaterText, { color: colors.muted }]}>
-              Maybe Later — Start with Free Tier
-            </Text>
+            <Text style={styles.ctaText}>Next</Text>
           </TouchableOpacity>
         )}
       </SafeAreaView>
@@ -1140,45 +989,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     letterSpacing: 0.3,
   },
-  trialFeatureList: {
-    marginTop: 8,
-    gap: 6,
-    width: "100%",
-  },
-  trialFeatureRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    paddingHorizontal: 8,
-  },
-  trialFeatureEmoji: {
-    fontSize: 16,
-    width: 24,
-    textAlign: "center",
-  },
-  trialFeatureText: {
-    fontSize: 13,
-    fontWeight: "500",
-    lineHeight: 18,
-    flex: 1,
-  },
-  trialPriceNote: {
-    fontSize: 11,
-    textAlign: "center",
-    marginTop: 8,
-    lineHeight: 16,
-  },
-  maybeLaterBtn: {
-    alignItems: "center",
-    paddingVertical: 6,
-    marginBottom: 2,
-  },
-  maybeLaterText: {
-    fontSize: 12,
-    fontWeight: "500",
-    letterSpacing: 0.1,
-    // textDecorationLine removed — underline looks like a web hyperlink on iOS
-  },
   nameInput: {
     fontSize: 16,
     fontWeight: "600",
@@ -1207,71 +1017,4 @@ const styles = StyleSheet.create({
   previewValue: { fontSize: 11, fontWeight: "500", lineHeight: 15 },
   previewHint: { fontSize: 10, textAlign: "center", lineHeight: 14, marginTop: 4, marginBottom: 4 },
 
-  // ── Inline trial plan selector ──────────────────────────────────────────────
-  trialPlanRow: {
-    flexDirection: "row",
-    gap: 8,
-    marginBottom: 8,
-    marginTop: 4,
-  },
-  trialPlanCard: {
-    flex: 1,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: "#334155",
-    backgroundColor: "#1e2022",
-    padding: 10,
-    alignItems: "center",
-    position: "relative",
-  },
-  trialPlanCardAnnual: {
-    borderColor: "#7C3AED40",
-  },
-  trialPlanCardSelected: {
-    borderColor: "#7C3AED",
-    backgroundColor: "#7C3AED15",
-  },
-  trialPlanBadge: {
-    position: "absolute",
-    top: -10,
-    backgroundColor: "#7C3AED",
-    borderRadius: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  trialPlanBadgeText: {
-    color: "#fff",
-    fontSize: 10,
-    fontWeight: "700",
-    letterSpacing: 0.3,
-  },
-  trialPlanLabel: {
-    fontSize: 10,
-    fontWeight: "600",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-    marginBottom: 2,
-    marginTop: 6,
-  },
-  trialPlanPrice: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: "#ECEDEE",
-    marginBottom: 2,
-  },
-  trialPlanNote: {
-    fontSize: 11,
-  },
-  skipAllBtn: {
-    marginTop: 16,
-    paddingVertical: 8,
-    paddingHorizontal: 20,
-    borderRadius: 20,
-    alignSelf: "center",
-  },
-  skipAllText: {
-    fontSize: 13,
-    fontWeight: "500",
-    letterSpacing: 0.1,
-  },
 });
