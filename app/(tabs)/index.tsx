@@ -799,6 +799,12 @@ function SolveScreenContent() {
   // signed in. Running this unconditionally on mount caused a race where
   // onboarding appeared before the auth-screen on fresh installs.
   const { isSignedIn, isLoading: authLoading } = useAuth();
+  // Server-side subscription verification — only runs when signed in, stale for 5 min
+  const { data: serverSubStatus } = trpc.subscription.getStatus.useQuery(undefined, {
+    enabled: !!isSignedIn,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
   useEffect(() => {
     if (authLoading || !isSignedIn) return; // wait until auth is resolved and user is in
     (async () => {
@@ -1060,9 +1066,24 @@ function SolveScreenContent() {
                   activeOpacity={0.7}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Text style={{ fontSize: 20, lineHeight: 24 }}>
-                    {isPremium || isDevMode ? "👑" : "⭐"}
-                  </Text>
+                  <View style={{ position: "relative" }}>
+                    <Text style={{ fontSize: 20, lineHeight: 24 }}>
+                      {isPremium || isDevMode ? "👑" : "⭐"}
+                    </Text>
+                    {serverSubStatus?.isPremium && (
+                      <View style={{
+                        position: "absolute",
+                        bottom: -2,
+                        right: -4,
+                        width: 10,
+                        height: 10,
+                        borderRadius: 5,
+                        backgroundColor: "#22C55E",
+                        borderWidth: 1.5,
+                        borderColor: "#fff",
+                      }} />
+                    )}
+                  </View>
                 </TouchableOpacity>
                 <TouchableOpacity
                   accessibilityLabel="Open settings"
