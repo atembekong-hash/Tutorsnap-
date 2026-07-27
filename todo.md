@@ -1226,3 +1226,7 @@
 - [x] Fix font sizes, padding, image/icon sizes, and spacing on all 9 slides (35 style changes applied)
 - [x] Verify changes applied correctly (TypeScript: 0 errors)
 - [ ] Save checkpoint
+
+## Onboarding Keyboard Fix (Jul 27 2026)
+- [ ] Fix name input hidden behind keyboard on mobile (KeyboardAvoidingView)
+- [ ] Save checkpoint

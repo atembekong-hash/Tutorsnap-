@@ -535,6 +535,7 @@ export default function OnboardingScreen() {
           onMomentumScrollEnd={handleScroll}
           style={{ flex: 1 }}
           contentContainerStyle={{ alignItems: "center" }}
+          keyboardShouldPersistTaps="handled"
         >
           {SLIDES.map((slide, idx) => (
             <View key={slide.id} style={[styles.slide, { width: SCREEN_WIDTH }]}>
@@ -567,6 +568,7 @@ export default function OnboardingScreen() {
                     returnKeyType="done"
                     maxLength={40}
                     autoFocus
+                    onSubmitEditing={goNext}
                     accessibilityLabel="Enter your first name"
                     style={[styles.nameInput, { color: colors.foreground, backgroundColor: colors.surface, borderColor: userName.trim() ? colors.primary : colors.border }]}
                   />
