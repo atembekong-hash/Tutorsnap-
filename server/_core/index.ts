@@ -192,6 +192,8 @@ async function startServer() {
         //
         type SubStatus = "active" | "cancelled" | "expired" | "refunded";
         const NO_OP_EVENTS = new Set(["SUBSCRIBER_ALIAS"]);
+        // Grace-period events: set isInGracePeriod=true in DB; all other events clear it.
+        const GRACE_PERIOD_EVENTS = new Set(["BILLING_ISSUE", "GRACE_PERIOD_START"]);
         const STATUS_MAP: Record<string, SubStatus> = {
           // Purchase / renewal events → active
           INITIAL_PURCHASE:      "active",
@@ -273,6 +275,7 @@ async function startServer() {
           .select({
             id: subscriptions.id,
             status: subscriptions.status,
+            expiresAt: subscriptions.expiresAt,
             updatedAt: subscriptions.updatedAt,
           })
           .from(subscriptions)
@@ -297,10 +300,24 @@ async function startServer() {
             res.json({ ok: true, handled: false, reason: "out-of-order event skipped" });
             return;
           }
+          // Exact-duplicate guard: skip if same status, same expiresAt, and event timestamp
+          // matches the stored updatedAt (within 5 s). This prevents duplicate deliveries
+          // from bumping updatedAt and polluting audit logs.
+          const existingExpiresMs = existingRow.expiresAt ? existingRow.expiresAt.getTime() : null;
+          const incomingExpiresMs = expiresAt ? expiresAt.getTime() : null;
+          const sameStatus = existingRow.status === newStatus;
+          const sameExpiry = existingExpiresMs === incomingExpiresMs;
+          const sameTimestamp = Math.abs(existingUpdatedMs - eventTimestampMs) <= 5_000;
+          if (sameStatus && sameExpiry && sameTimestamp) {
+            console.log(`[RC Webhook] Exact duplicate skipped: ${eventType} for rcUser=${rcUserId}`);
+            res.json({ ok: true, handled: false, reason: "exact duplicate skipped" });
+            return;
+          }
           await db
             .update(subscriptions)
             .set({
               status: newStatus,
+              isInGracePeriod: GRACE_PERIOD_EVENTS.has(eventType),
               ...(localUserId !== null ? { userId: localUserId } : {}),
               ...(expiresAt !== null ? { expiresAt } : {}),
             })
@@ -310,6 +327,7 @@ async function startServer() {
             revenueCatUserId: rcUserId,
             productId,
             status: newStatus,
+            isInGracePeriod: GRACE_PERIOD_EVENTS.has(eventType),
             ...(localUserId !== null ? { userId: localUserId } : {}),
             ...(expiresAt !== null ? { expiresAt } : {}),
           });

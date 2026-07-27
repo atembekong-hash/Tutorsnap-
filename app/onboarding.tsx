@@ -770,7 +770,7 @@ export default function OnboardingScreen() {
               {slide.id === "trial" && (
                 <View style={styles.trialFeatureList}>
                   {/* Plan cards */}
-                  <View style={styles.trialPlanRow}>
+                  <View style={[styles.trialPlanRow, Platform.OS === "web" && { flexDirection: "column" }]}>
                     {/* Monthly */}
                     <TouchableOpacity
                       activeOpacity={0.85}

@@ -13,9 +13,17 @@ export type User = {
 
 export async function getSessionToken(): Promise<string | null> {
   try {
-    // Web platform uses cookie-based auth, no manual token management needed
+    // On web, read the session cookie from document.cookie and return it as a Bearer token.
+    // Chrome's third-party cookie restrictions prevent the httpOnly cookie from being forwarded
+    // in cross-origin fetch requests (8081-xxx → 3000-xxx), so we extract it manually and
+    // send it via Authorization header instead. The server accepts both paths.
     if (Platform.OS === "web") {
-      // console.log("[Auth] Web platform uses cookie-based auth, skipping token retrieval");
+      if (typeof document !== "undefined" && document.cookie) {
+        const match = document.cookie.match(/(?:^|;\s*)app_session_id=([^;]+)/);
+        if (match?.[1]) {
+          return decodeURIComponent(match[1]);
+        }
+      }
       return null;
     }
 

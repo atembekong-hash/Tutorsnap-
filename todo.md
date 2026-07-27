@@ -1194,3 +1194,11 @@
 - [ ] Phase 5: Fix pending todo items D & E — verify __DEV__ guard and paywall timer cleanup in code, mark [x]
 - [ ] Phase 6: Deep scan — TS check, all tests, screenshots of every changed screen
 - [ ] Phase 7: Final checkpoint + EAS APK build v2.0.0
+
+## Bug Fixes (discovered in end-to-end walkthrough — Jul 2026)
+
+- [x] Fix 1: Add /api proxy to Metro dev server so subscription history screen works in browser preview
+- [x] Fix 2: Add isInGracePeriod boolean column + migration, update webhook handler and getStatus
+- [x] Fix 3: Fix onboarding plan card layout — vertical stack on web, horizontal on mobile
+- [x] Fix 4: Tighten duplicate-webhook idempotency guard to skip events with same purchased_at_ms
+- [x] Fix 5: Add web-compatible Alert fallback to cancel-retention screen

@@ -1769,11 +1769,9 @@ const subscriptionRouter = router({
       //   "expired"   → not premium
       //   "refunded"  → not premium
       const cancelledButActive = row.status === "cancelled" && expiresAtMs !== null && expiresAtMs > now;
-      // isInGracePeriod: billing failed (BILLING_ISSUE/GRACE_PERIOD_START) but still active
-      // We detect this by checking if status=active but the last event was a billing issue.
-      // Since we don't store the event type, we approximate: status=active with expiresAt in the past
-      // is a grace-period indicator (RC keeps the row active during grace).
-      const isInGracePeriod = row.status === "active" && expiresAtMs !== null && expiresAtMs < now;
+      // isInGracePeriod: read directly from the DB column set by the webhook handler.
+      // Set to true on BILLING_ISSUE / GRACE_PERIOD_START; cleared to false on all other events.
+      const isInGracePeriod = row.isInGracePeriod ?? false;
       const isPremium = row.status === "active" || cancelledButActive;
       return {
         isPremium,

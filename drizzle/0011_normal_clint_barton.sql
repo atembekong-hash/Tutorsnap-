@@ -1,0 +1,1 @@
+ALTER TABLE `subscriptions` ADD `isInGracePeriod` boolean DEFAULT false NOT NULL;

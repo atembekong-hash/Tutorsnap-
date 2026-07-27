@@ -4,6 +4,9 @@
  * Shown when the user taps "Manage Subscription" from Settings.
  * Presents an exit survey and a personalised offer before forwarding
  * to the App Store subscription management page.
+ *
+ * Uses inline error messages instead of Alert.alert() so the screen
+ * works correctly on web (where Alert.alert() is a no-op).
  */
 import React, { useState } from "react";
 import {
@@ -12,7 +15,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  Alert,
+  Platform,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -61,6 +64,10 @@ const OFFER_COPY: Record<ReasonId, { headline: string; body: string; cta: string
   },
 };
 
+// ─── Platform-aware alert helper ─────────────────────────────────────────────
+// On native, we use inline state (same as web) for consistency.
+// This helper is kept for any future native-only dialogs.
+
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function CancelRetentionScreen() {
   const colors = useColors();
@@ -68,6 +75,9 @@ export default function CancelRetentionScreen() {
   const router = useRouter();
   const [selectedReason, setSelectedReason] = useState<ReasonId | null>(null);
   const [step, setStep] = useState<"survey" | "offer">("survey");
+  // Inline error messages (replaces Alert.alert — works on both web and native)
+  const [surveyError, setSurveyError] = useState<string | null>(null);
+  const [manageError, setManageError] = useState<string | null>(null);
 
   const { data: serverSubStatus } = trpc.subscription.getStatus.useQuery(undefined, {
     staleTime: 60_000,
@@ -78,13 +88,16 @@ export default function CancelRetentionScreen() {
   const handleSelectReason = (id: ReasonId) => {
     H.impactLight();
     setSelectedReason(id);
+    // Clear error when user makes a selection
+    if (surveyError) setSurveyError(null);
   };
 
   const handleContinueToOffer = () => {
     if (!selectedReason) {
-      Alert.alert("Please select a reason", "Let us know why you're leaving so we can improve.");
+      setSurveyError("Please select a reason so we can improve TutorSnap.");
       return;
     }
+    setSurveyError(null);
     H.impactMedium();
     setStep("offer");
   };
@@ -96,26 +109,29 @@ export default function CancelRetentionScreen() {
 
   const handleProceedToManage = async () => {
     H.impactLight();
+    setManageError(null);
     try {
       await openManageSubscriptions();
+      router.back();
     } catch {
-      Alert.alert(
-        "Manage Subscription",
-        "To manage your subscription, open the App Store (iOS) or Google Play Store (Android), go to your account, and select Subscriptions."
+      // openManageSubscriptions failed (e.g. no store link available on web)
+      setManageError(
+        Platform.OS === "web"
+          ? "To manage your subscription, open the App Store (iOS) or Google Play Store (Android) on your device, go to your account, and select Subscriptions."
+          : "Could not open the subscription management page. Please try again or visit your device's app store settings."
       );
     }
-    router.back();
   };
 
   const handleOfferCta = () => {
     if (!selectedReason) return;
     H.impactLight();
-    // For price/features/better/other: open support email
     // For usage: just go back (user acknowledged they'll return)
     if (selectedReason === "usage") {
       router.back();
       return;
     }
+    // For all other reasons: open support email
     const subject = encodeURIComponent("TutorSnap Feedback");
     const body = encodeURIComponent(
       `Reason for considering cancellation: ${REASONS.find((r) => r.id === selectedReason)?.label ?? selectedReason}\n\n`
@@ -194,6 +210,15 @@ export default function CancelRetentionScreen() {
               })}
             </View>
 
+            {/* Inline survey error — shown instead of Alert.alert */}
+            {surveyError && (
+              <View style={[styles.inlineError, { backgroundColor: `${colors.error}15`, borderColor: colors.error }]}>
+                <Text style={[styles.inlineErrorText, { color: colors.error }]}>
+                  {surveyError}
+                </Text>
+              </View>
+            )}
+
             {/* Continue button */}
             <TouchableOpacity
               onPress={handleContinueToOffer}
@@ -217,6 +242,15 @@ export default function CancelRetentionScreen() {
                 Skip — take me to manage subscription
               </Text>
             </TouchableOpacity>
+
+            {/* Inline manage error */}
+            {manageError && (
+              <View style={[styles.inlineError, { backgroundColor: `${colors.warning}15`, borderColor: colors.warning }]}>
+                <Text style={[styles.inlineErrorText, { color: colors.foreground }]}>
+                  {manageError}
+                </Text>
+              </View>
+            )}
           </>
         ) : (
           <>
@@ -266,6 +300,15 @@ export default function CancelRetentionScreen() {
                 I still want to cancel — manage subscription
               </Text>
             </TouchableOpacity>
+
+            {/* Inline manage error */}
+            {manageError && (
+              <View style={[styles.inlineError, { backgroundColor: `${colors.warning}15`, borderColor: colors.warning }]}>
+                <Text style={[styles.inlineErrorText, { color: colors.foreground }]}>
+                  {manageError}
+                </Text>
+              </View>
+            )}
           </>
         )}
       </ScrollView>
@@ -303,7 +346,7 @@ const styles = StyleSheet.create({
   },
   reasonList: {
     gap: 10,
-    marginBottom: 28,
+    marginBottom: 16,
   },
   reasonCard: {
     flexDirection: "row",
@@ -336,6 +379,17 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
+  },
+  inlineError: {
+    borderRadius: 10,
+    borderWidth: 1,
+    padding: 12,
+    marginBottom: 12,
+  },
+  inlineErrorText: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "500",
   },
   primaryBtn: {
     borderRadius: 14,

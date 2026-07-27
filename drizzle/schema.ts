@@ -400,6 +400,12 @@ export const subscriptions = mysqlTable(
     productId: varchar("productId", { length: 255 }).notNull(),
     /** Current subscription status. */
     status: mysqlEnum("status", ["active", "cancelled", "expired", "refunded"]).notNull().default("active"),
+    /**
+     * True when the subscription is in a billing grace period.
+     * Set to true on BILLING_ISSUE / GRACE_PERIOD_START; cleared to false on all other events.
+     * Replaces the fragile expiresAt-in-past heuristic used previously.
+     */
+    isInGracePeriod: boolean("isInGracePeriod").notNull().default(false),
     /** Timestamp when the subscription expires (from RevenueCat expiration_at_ms). */
     expiresAt: timestamp("expiresAt"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
