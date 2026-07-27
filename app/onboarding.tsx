@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Alert,
   View,
@@ -40,25 +40,68 @@ import Reanimated, {
   Easing,
 } from "react-native-reanimated";
 import { useOnboardingExit } from "@/hooks/use-onboarding-transition";
-import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 
 const { width: SCREEN_WIDTH, height: SCREEN_H } = Dimensions.get("window");
+
+// ─── Confetti particle ────────────────────────────────────────────────────────
+const CONFETTI_COLORS = [
+  "#F59E0B", "#6366F1", "#10B981", "#EF4444",
+  "#3B82F6", "#EC4899", "#14B8A6", "#F97316",
+  "#8B5CF6", "#22D3EE", "#A3E635", "#FB7185",
+];
+const CONFETTI_SHAPES = ["square", "rect", "circle"] as const;
+function ConfettiParticle({ index }: { index: number }) {
+  const x = useRef(new Animated.Value((Math.random() * SCREEN_WIDTH * 1.2) - SCREEN_WIDTH * 0.1)).current;
+  const y = useRef(new Animated.Value(-30 - Math.random() * 60)).current;
+  const rotate = useRef(new Animated.Value(0)).current;
+  const opacity = useRef(new Animated.Value(1)).current;
+  const scale = useRef(new Animated.Value(0.4 + Math.random() * 0.8)).current;
+  const color = CONFETTI_COLORS[index % CONFETTI_COLORS.length];
+  const size = 7 + Math.random() * 10;
+  const shape = CONFETTI_SHAPES[index % CONFETTI_SHAPES.length];
+  const duration = 1600 + Math.random() * 1400;
+  const delay = Math.random() * 600;
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(y, { toValue: SCREEN_H + 40, duration, delay, useNativeDriver: true }),
+      Animated.timing(rotate, { toValue: 720 * (Math.random() > 0.5 ? 1 : -1), duration, delay, useNativeDriver: true }),
+      Animated.timing(scale, { toValue: 0.3 + Math.random() * 0.5, duration: duration * 0.6, delay, useNativeDriver: true }),
+      Animated.sequence([
+        Animated.delay(delay + duration * 0.65),
+        Animated.timing(opacity, { toValue: 0, duration: duration * 0.35, useNativeDriver: true }),
+      ]),
+    ]).start();
+  }, []);
+  const spin = rotate.interpolate({ inputRange: [0, 720], outputRange: ["0deg", "720deg"] });
+  return (
+    <Animated.View
+      style={{
+        position: "absolute",
+        width: shape === "rect" ? size * 2 : size,
+        height: shape === "rect" ? size * 0.45 : size,
+        borderRadius: shape === "circle" ? size / 2 : 2,
+        backgroundColor: color,
+        transform: [{ translateX: x }, { translateY: y }, { rotate: spin }, { scale }],
+        opacity,
+      }}
+    />
+  );
+}
 
 export const ONBOARDING_DONE_KEY = "@tutorsnap/onboardingDone";
 export const USER_NAME_KEY = "@tutorsnap/userName";
 
-// ─── Per-slide gradient definitions ──────────────────────────────────────────
-// Each entry: [gradientTop, gradientBottom, accentColor]
-const SLIDE_THEMES: Record<string, { colors: [string, string, string]; accent: string }> = {
-  name:            { colors: ["#4F46E5", "#7C3AED", "#312E81"], accent: "#7C3AED" },
-  photo:           { colors: ["#0891B2", "#06B6D4", "#164E63"], accent: "#06B6D4" },
-  welcome:         { colors: ["#1D4ED8", "#3B82F6", "#1E3A8A"], accent: "#3B82F6" },
-  solve:           { colors: ["#047857", "#10B981", "#064E3B"], accent: "#10B981" },
-  practice:        { colors: ["#B45309", "#F59E0B", "#78350F"], accent: "#F59E0B" },
-  subjects:        { colors: ["#6D28D9", "#A855F7", "#4C1D95"], accent: "#A855F7" },
-  grade:           { colors: ["#BE123C", "#F43F5E", "#881337"], accent: "#F43F5E" },
-  "tutor-preview": { colors: ["#3730A3", "#6366F1", "#1E1B4B"], accent: "#6366F1" },
-  trial:           { colors: ["#92400E", "#F59E0B", "#451A03"], accent: "#F59E0B" },
+// Per-slide gradient colours [top, bottom]
+const SLIDE_GRADIENTS: Record<string, [string, string]> = {
+  name:          ["#0a7ea420", "#0a7ea405"],
+  photo:         ["#7C3AED20", "#7C3AED05"],
+  welcome:       ["#0a7ea420", "#0a7ea405"],
+  solve:         ["#059669" + "20", "#059669" + "05"],
+  practice:      ["#F59E0B20", "#F59E0B05"],
+  subjects:      ["#3B82F620", "#3B82F605"],
+  grade:         ["#8B5CF620", "#8B5CF605"],
+  "tutor-preview": ["#0a7ea420", "#0a7ea405"],
+  trial:         ["#F59E0B20", "#F59E0B05"],
 };
 
 const SLIDES = [
@@ -66,106 +109,86 @@ const SLIDES = [
     id: "name",
     emoji: "👋",
     title: "What's your name?",
-    subtitle: "Your AI Tutor will greet you personally.",
+    subtitle: "We'll personalise your TutorSnap experience. Your AI Tutor will use your name when chatting with you.",
   },
   {
     id: "photo",
     emoji: "🖼️",
     title: "Add a Profile Photo",
-    subtitle: "Optional. Helps classmates recognise you.",
+    subtitle: "Helps classmates and teachers recognise you in Classroom. Optional and changeable anytime in Settings.",
   },
   {
     id: "welcome",
     emoji: "🎓",
     title: "Welcome to TutorSnap",
-    subtitle: "AI tutoring for every subject, tailored to you.",
+    subtitle: "AI-powered tutoring for every subject. Instant, step-by-step explanations tailored to your level.",
   },
   {
     id: "solve",
     emoji: "✨",
     title: "Snap, Type, or Ask",
-    subtitle: "Point your camera at any problem for instant step-by-step help.",
+    subtitle: "Snap a photo, type a question, or chat with your AI Tutor. TutorSnap works however you learn best.",
   },
   {
     id: "practice",
     emoji: "🔥",
     title: "Build Your Streak",
-    subtitle: "Daily practice builds mastery. Earn XP and climb the leaderboard.",
+    subtitle: "Practice daily, grow your streak, earn XP, and climb the leaderboard. Consistency is the secret to success.",
   },
   {
     id: "subjects",
     emoji: "📚",
     title: "Pick Your Subjects",
-    subtitle: "We'll show you the most relevant content.",
+    subtitle: "Choose the subjects you study most. TutorSnap will show you the most relevant quizzes and resources.",
   },
   {
     id: "grade",
     emoji: "🎯",
     title: "What's Your Level?",
-    subtitle: "Explanations tuned to your grade. Change anytime.",
+    subtitle: "We tailor every explanation and quiz to your grade level. Change it anytime in Settings.",
   },
   {
     id: "tutor-preview",
     emoji: "🤖",
     title: "Meet Your AI Tutor",
-    subtitle: "Personalised to your subjects, grade, and learning style.",
+    subtitle: "Your AI Tutor is personalised to your subjects, grade, and learning style. It never judges, never rushes.",
   },
   {
     id: "trial",
     emoji: "👑",
     title: "Start Free, Upgrade Anytime",
-    subtitle: "14-day free trial. No charge today.",
+    subtitle: "Start a 14-day free trial. Unlimited solves, quizzes, and AI chat. No charge during the trial.",
   },
 ];
 
 const CATEGORY_ORDER: SubjectCategory[] = ["math", "english", "science", "social"];
 
-// ─── Slide entrance animation wrapper ────────────────────────────────────────
+// ─── Slide transition wrapper ─────────────────────────────────────────────────
 function SlideWrapper({ active, children }: { active: boolean; children: React.ReactNode }) {
   const opacity = useSharedValue(active ? 1 : 0);
-  const translateY = useSharedValue(active ? 0 : 18);
+  const scale = useSharedValue(active ? 1 : 0.94);
 
   useEffect(() => {
     if (active) {
-      opacity.value = withTiming(1, { duration: 320, easing: Easing.out(Easing.cubic) });
-      translateY.value = withSequence(
-        withTiming(18, { duration: 0 }),
-        withTiming(0, { duration: 320, easing: Easing.out(Easing.cubic) }),
+      // Entering: fade in + scale up
+      opacity.value = withTiming(1, { duration: 280, easing: Easing.out(Easing.cubic) });
+      scale.value = withSequence(
+        withTiming(0.94, { duration: 0 }),
+        withTiming(1, { duration: 280, easing: Easing.out(Easing.cubic) }),
       );
     } else {
-      opacity.value = withTiming(0, { duration: 200, easing: Easing.in(Easing.quad) });
-      translateY.value = withTiming(-10, { duration: 200, easing: Easing.in(Easing.quad) });
+      // Leaving: subtle fade out
+      opacity.value = withTiming(0.6, { duration: 180, easing: Easing.in(Easing.quad) });
+      scale.value = withTiming(0.97, { duration: 180, easing: Easing.in(Easing.quad) });
     }
   }, [active]);
 
   const style = useAnimatedStyle(() => ({
     opacity: opacity.value,
-    transform: [{ translateY: translateY.value }],
+    transform: [{ scale: scale.value }],
   }));
 
-  return (
-    <Reanimated.View style={[{ flex: 1, width: "100%" }, style]}>
-      {children}
-    </Reanimated.View>
-  );
-}
-
-// ─── Glass card component ─────────────────────────────────────────────────────
-function GlassCard({ children, style }: { children: React.ReactNode; style?: object }) {
-  return (
-    <View style={[styles.glassCard, style]}>
-      {children}
-    </View>
-  );
-}
-
-// ─── Hero emoji container ─────────────────────────────────────────────────────
-function HeroEmoji({ emoji }: { emoji: string }) {
-  return (
-    <View style={styles.heroContainer}>
-      <Text style={styles.heroEmoji}>{emoji}</Text>
-    </View>
-  );
+  return <Reanimated.View style={[{ flex: 1, width: "100%" }, style]}>{children}</Reanimated.View>;
 }
 
 export default function OnboardingScreen() {
@@ -176,7 +199,6 @@ export default function OnboardingScreen() {
   const safeBottom = insets.bottom;
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
-
   useEffect(() => {
     const showSub = Keyboard.addListener("keyboardDidShow", (e) => {
       setKeyboardVisible(true);
@@ -188,19 +210,18 @@ export default function OnboardingScreen() {
     });
     return () => { showSub.remove(); hideSub.remove(); };
   }, []);
-
   const router = useRouter();
   const { fadeStyle } = useScreenTransition({ duration: 320, translateY: 20 });
+  // Dark mode: brand-violet bloom; light mode: white bloom
   const bloomColor = colorScheme === "dark" ? "rgba(124,58,237,0.45)" : "rgba(255,255,255,0.95)";
   const { startExit, portalStyle, bloomStyle } = useOnboardingExit(bloomColor);
-
+  // Skip button micro-animation
   const skipBtnScale   = useSharedValue(1);
   const skipBtnOpacity = useSharedValue(1);
   const skipBtnStyle   = useAnimatedStyle(() => ({
     transform: [{ scale: skipBtnScale.value }],
     opacity: skipBtnOpacity.value,
   }));
-
   const [trialVariant, setTrialVariant] = React.useState<TrialVariantConfig>(getDefaultTrialVariantConfig());
   const [selectedPlan, setSelectedPlan] = React.useState<string>(PRODUCT_ANNUAL);
   const [purchaseLoading, setPurchaseLoading] = React.useState(false);
@@ -209,6 +230,7 @@ export default function OnboardingScreen() {
 
   React.useEffect(() => {
     getTrialVariantConfig().then(setTrialVariant).catch(() => {});
+    // Pre-load offerings so prices are ready when user reaches trial slide
     getOfferings().then((pkgs) => {
       for (const pkg of pkgs) {
         if (pkg.productId === PRODUCT_MONTHLY) setMonthlyPriceStr(pkg.priceString);
@@ -217,6 +239,7 @@ export default function OnboardingScreen() {
     }).catch(() => {});
   }, []);
 
+  /** Called when user taps "Start Free Trial" on the last (trial) slide. */
   const handleOnboardingPurchase = async () => {
     H.impactMedium();
     setPurchaseLoading(true);
@@ -224,6 +247,7 @@ export default function OnboardingScreen() {
       const result = await purchaseProduct(selectedPlan);
       if (result.success) {
         H.notificationSuccess();
+        // Navigate straight to home — no paywall modal needed
         await finishOnboarding();
       } else if (!result.cancelled) {
         Alert.alert(
@@ -232,27 +256,33 @@ export default function OnboardingScreen() {
           [{ text: "OK" }]
         );
       }
+      // If cancelled, just stay on the slide
     } finally {
       setPurchaseLoading(false);
     }
   };
-
   const scrollRef = useRef<ScrollView>(null);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [selectedCategories, setSelectedCategories] = useState<Set<SubjectCategory>>(new Set());
   const [selectedGrade, setSelectedGrade] = useState<string | null>(null);
   const [userName, setUserName] = useState("");
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
+  // Animated value for dot indicator
+  const dotAnim = useRef(new Animated.Value(0)).current;
+  // Animated value for progress bar
   const progressBarAnim = useRef(new Animated.Value(0)).current;
 
+  // Animate progress bar whenever slide changes
   useEffect(() => {
     Animated.timing(progressBarAnim, {
       toValue: (currentSlide + 1) / SLIDES.length,
-      duration: 350,
+      duration: 300,
       useNativeDriver: false,
     }).start();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentSlide]);
 
+  // Pre-fill saved values when re-running the wizard
   useEffect(() => {
     (async () => {
       try {
@@ -284,7 +314,17 @@ export default function OnboardingScreen() {
     H.impactLight();
     const prev = currentSlide - 1;
     setCurrentSlide(prev);
+    animateDot(prev);
     scrollRef.current?.scrollTo({ x: prev * SCREEN_WIDTH, animated: true });
+  };
+
+  const animateDot = (toIndex: number) => {
+    Animated.spring(dotAnim, {
+      toValue: toIndex,
+      useNativeDriver: false,
+      tension: 80,
+      friction: 10,
+    }).start();
   };
 
   const goNext = () => {
@@ -292,11 +332,13 @@ export default function OnboardingScreen() {
     if (isLastSlide) {
       handleOnboardingPurchase();
     } else {
+      // Skip the photo slide if the user already has a profile photo set
       let next = currentSlide + 1;
       if (SLIDES[next]?.id === "photo" && avatarUri) {
         next = next + 1;
       }
       setCurrentSlide(next);
+      animateDot(next);
       scrollRef.current?.scrollTo({ x: next * SCREEN_WIDTH, animated: true });
     }
   };
@@ -305,6 +347,7 @@ export default function OnboardingScreen() {
     H.impactLight();
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
+      // Try camera as fallback
       const camStatus = await ImagePicker.requestCameraPermissionsAsync();
       if (camStatus.status !== "granted") return;
       const result = await ImagePicker.launchCameraAsync({
@@ -344,6 +387,7 @@ export default function OnboardingScreen() {
     }
   };
 
+  /** Persist onboarding choices and pre-fill TutorSettings so the AI is personalised immediately. */
   const persistOnboardingChoices = async () => {
     const name = userName.trim();
     try {
@@ -356,14 +400,18 @@ export default function OnboardingScreen() {
       if (selectedGrade) await saveGlobalGrade(selectedGrade);
       if (name) await AsyncStorage.setItem(USER_NAME_KEY, name);
       if (avatarUri) await AsyncStorage.setItem("@tutorsnap/avatarUri", avatarUri);
-    } catch { /* non-critical */ }
+    } catch { /* non-critical: preferences may not persist, but onboarding continues */ }
 
+    // Pre-fill TutorSettings with onboarding values so the AI tutor is personalised
+    // from the very first message, without requiring the user to re-enter them.
     try {
       const raw = await AsyncStorage.getItem(TUTOR_SETTINGS_KEY);
       const existing = raw ? { ...DEFAULT_TUTOR_SETTINGS, ...JSON.parse(raw) } : { ...DEFAULT_TUTOR_SETTINGS };
+
       const patch: Partial<typeof existing> = {};
       if (name && !existing.nickname) patch.nickname = name;
       if (selectedGrade && !existing.gradeLevel) patch.gradeLevel = selectedGrade;
+
       if (selectedCategories.size > 0 && !existing.defaultSubject) {
         const categoryToSubject: Record<SubjectCategory, string> = {
           math:    "algebra",
@@ -374,10 +422,21 @@ export default function OnboardingScreen() {
         const firstCat = Array.from(selectedCategories)[0] as SubjectCategory;
         patch.defaultSubject = categoryToSubject[firstCat] ?? "";
       }
+
       if (Object.keys(patch).length > 0) {
         await AsyncStorage.setItem(TUTOR_SETTINGS_KEY, JSON.stringify({ ...existing, ...patch }));
       }
     } catch { /* non-critical */ }
+  };
+
+  const finishOnboardingAndShowPaywall = async () => {
+    H.impactMedium();
+    await AsyncStorage.setItem(ONBOARDING_DONE_KEY, "true");
+    await persistOnboardingChoices();
+    startExit(() => {
+      router.replace({ pathname: "/(tabs)", params: { fromOnboarding: "1" } } as any);
+      setTimeout(() => { router.push("/paywall" as any); }, 300);
+    });
   };
 
   const finishOnboarding = async () => {
@@ -389,6 +448,7 @@ export default function OnboardingScreen() {
     });
   };
 
+  // Animate skip button (scale down + fade) then trigger portal exit after 120ms
   const handleSkipWithAnimation = () => {
     skipBtnScale.value   = withTiming(0.82, { duration: 110, easing: Easing.in(Easing.quad) });
     skipBtnOpacity.value = withTiming(0,    { duration: 110, easing: Easing.in(Easing.quad) });
@@ -409,1071 +469,808 @@ export default function OnboardingScreen() {
     const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
     if (idx !== currentSlide) {
       setCurrentSlide(idx);
+      animateDot(idx);
     }
   };
 
-  const currentTheme = SLIDE_THEMES[SLIDES[currentSlide]?.id] ?? SLIDE_THEMES.welcome;
-
-  // CTA label
-  const ctaLabel = isLastSlide
-    ? (purchaseLoading ? "Starting Trial..." : "Start Free Trial")
-    : "Continue";
-
-  // Hide CTA on photo slide when no photo yet (handled inline)
-  const showCta = !(SLIDES[currentSlide]?.id === "photo" && !avatarUri)
-    && !(keyboardVisible && SLIDES[currentSlide]?.id === "name");
+  const currentGradient = SLIDE_GRADIENTS[SLIDES[currentSlide]?.id] ?? ["#0a7ea420", "#0a7ea405"];
 
   return (
-    <Reanimated.View style={[{ flex: 1 }, fadeStyle, portalStyle]}>
-      <LinearGradient
-        colors={currentTheme.colors}
-        style={StyleSheet.absoluteFillObject}
-        start={{ x: 0.2, y: 0 }}
-        end={{ x: 0.8, y: 1 }}
-      />
-
+    <Reanimated.View style={[styles.gradientRoot, { backgroundColor: colors.background }, fadeStyle, portalStyle]}>
+    <LinearGradient
+      colors={[currentGradient[0], currentGradient[1], "transparent"]}
+      style={StyleSheet.absoluteFillObject}
+    />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={safeBottom + 8}
       >
-        <SafeAreaView
-          style={{ flex: 1 }}
-          edges={["top", "bottom", "left", "right"]}
-        >
-          {/* ── Top chrome ─────────────────────────────────────────────────── */}
-          <View style={[styles.topChrome, { paddingTop: 4 }]}>
-            {/* Back button */}
-            {!isFirstSlide ? (
-              <TouchableOpacity
-                onPress={goBack}
-                activeOpacity={0.7}
-                style={styles.backBtn}
-                accessibilityLabel="Go back"
-                accessibilityRole="button"
-              >
-                <MaterialIcons name="chevron-left" size={28} color="rgba(255,255,255,0.9)" />
-              </TouchableOpacity>
-            ) : (
-              <View style={styles.backBtn} />
-            )}
-
-            {/* Progress bar */}
-            <View style={styles.progressBarTrack}>
-              <Animated.View
-                style={[
-                  styles.progressBarFill,
-                  {
-                    width: progressBarAnim.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: ["0%", "100%"],
-                    }),
-                  },
-                ]}
-              />
-            </View>
-
-            {/* Skip button */}
-            {!isFirstSlide && !isLastSlide ? (
-              <Reanimated.View style={[styles.skipBtn, skipBtnStyle]}>
-                <TouchableOpacity
-                  onPress={handleSkipWithAnimation}
-                  activeOpacity={0.7}
-                  accessibilityLabel="Skip onboarding"
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.skipText}>Skip</Text>
-                </TouchableOpacity>
-              </Reanimated.View>
-            ) : (
-              <View style={styles.skipBtn} />
-            )}
-          </View>
-
-          {/* ── Slides ─────────────────────────────────────────────────────── */}
-          <ScrollView
-            ref={scrollRef}
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            scrollEventThrottle={16}
-            onMomentumScrollEnd={handleScroll}
-            style={{ flex: 1 }}
-            contentContainerStyle={{ alignItems: "flex-start" }}
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="on-drag"
-            scrollEnabled={false}
+      <SafeAreaView style={[styles.root, { backgroundColor: "transparent" }]} edges={["top", "bottom", "left", "right"]}>
+        {/* Back button */}
+        {!isFirstSlide && (
+          <TouchableOpacity
+            style={[styles.backBtn, { top: safeTop + 8 }]}
+            onPress={goBack}
+            activeOpacity={0.7}
+            accessibilityLabel="Go back" accessibilityHint="Returns to the previous screen"
+            accessibilityRole="button"
           >
-            {SLIDES.map((slide, idx) => {
-              const theme = SLIDE_THEMES[slide.id] ?? SLIDE_THEMES.welcome;
-              return (
-                <View key={slide.id} style={[styles.slide, { width: SCREEN_WIDTH }]}>
-                  <SlideWrapper active={idx === currentSlide}>
-                    {/* Hero illustration */}
-                    {slide.id === "photo" && avatarUri ? (
-                      <TouchableOpacity onPress={handlePickPhoto} activeOpacity={0.85} style={styles.avatarHero}>
-                        <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
-                        <View style={[styles.avatarEditBadge, { backgroundColor: theme.accent }]}>
-                          <MaterialIcons name="edit" size={14} color="#fff" />
-                        </View>
-                      </TouchableOpacity>
-                    ) : (
-                      <HeroEmoji emoji={slide.emoji} />
-                    )}
+            <Text style={[styles.backArrow, { color: colors.foreground }]}>‹</Text>
+          </TouchableOpacity>
+        )}
 
-                    {/* Title */}
-                    <Text style={styles.slideTitle}>{slide.title}</Text>
-                    {/* Subtitle */}
-                    <Text style={styles.slideSubtitle}>{slide.subtitle}</Text>
-
-                    {/* ── Skip setup link on welcome slide ── */}
-                    {slide.id === "welcome" && (
-                      <TouchableOpacity
-                        onPress={() => {
-                          H.impactLight();
-                          const trialIdx = SLIDES.findIndex((s) => s.id === "trial");
-                          if (trialIdx >= 0) {
-                            setCurrentSlide(trialIdx);
-                            scrollRef.current?.scrollTo({ x: trialIdx * SCREEN_WIDTH, animated: true });
-                          }
-                        }}
-                        activeOpacity={0.7}
-                        style={styles.skipSetupBtn}
-                        accessibilityLabel="Skip to trial"
-                        accessibilityRole="button"
-                      >
-                        <Text style={styles.skipSetupText}>Skip setup</Text>
-                      </TouchableOpacity>
-                    )}
-
-                    {/* ── Welcome feature pills ── */}
-                    {slide.id === "welcome" && (
-                      <View style={styles.featurePillsRow}>
-                        {[
-                          { icon: "photo-camera", label: "Snap" },
-                          { icon: "chat", label: "Chat" },
-                          { icon: "fitness-center", label: "Practice" },
-                        ].map((f) => (
-                          <View key={f.label} style={styles.featurePill}>
-                            <MaterialIcons name={f.icon as any} size={14} color="rgba(255,255,255,0.9)" />
-                            <Text style={styles.featurePillText}>{f.label}</Text>
-                          </View>
-                        ))}
-                      </View>
-                    )}
-
-                    {/* ── Solve feature mini-cards ── */}
-                    {slide.id === "solve" && (
-                      <View style={styles.solveCardsRow}>
-                        {[
-                          { icon: "photo-camera", label: "Camera", desc: "Snap a problem" },
-                          { icon: "keyboard", label: "Type", desc: "Type it out" },
-                          { icon: "chat-bubble", label: "Chat", desc: "Ask anything" },
-                        ].map((c) => (
-                          <GlassCard key={c.label} style={styles.solveMiniCard}>
-                            <MaterialIcons name={c.icon as any} size={22} color="rgba(255,255,255,0.9)" />
-                            <Text style={styles.solveMiniLabel}>{c.label}</Text>
-                            <Text style={styles.solveMiniDesc}>{c.desc}</Text>
-                          </GlassCard>
-                        ))}
-                      </View>
-                    )}
-
-                    {/* ── Practice streak row ── */}
-                    {slide.id === "practice" && (
-                      <View style={styles.streakSection}>
-                        <View style={styles.streakRow}>
-                          {["M", "T", "W", "T", "F", "S", "S"].map((day, i) => (
-                            <View key={i} style={[styles.streakDay, i < 5 && styles.streakDayActive]}>
-                              <Text style={[styles.streakDayLabel, i < 5 && styles.streakDayLabelActive]}>{day}</Text>
-                              {i < 5 && <Text style={styles.streakFlame}>🔥</Text>}
-                            </View>
-                          ))}
-                        </View>
-                        <View style={styles.streakStats}>
-                          <GlassCard style={styles.streakStatCard}>
-                            <Text style={styles.streakStatNum}>5</Text>
-                            <Text style={styles.streakStatLabel}>Day Streak</Text>
-                          </GlassCard>
-                          <GlassCard style={styles.streakStatCard}>
-                            <Text style={styles.streakStatNum}>240</Text>
-                            <Text style={styles.streakStatLabel}>XP Earned</Text>
-                          </GlassCard>
-                          <GlassCard style={styles.streakStatCard}>
-                            <Text style={styles.streakStatNum}>#12</Text>
-                            <Text style={styles.streakStatLabel}>Rank</Text>
-                          </GlassCard>
-                        </View>
-                      </View>
-                    )}
-
-                    {/* ── Name input ── */}
-                    {slide.id === "name" && (
-                      <View style={styles.nameInputArea}>
-                        <TextInput
-                          value={userName}
-                          onChangeText={setUserName}
-                          placeholder="Your first name"
-                          placeholderTextColor="rgba(255,255,255,0.45)"
-                          returnKeyType="done"
-                          maxLength={40}
-                          autoFocus
-                          onSubmitEditing={goNext}
-                          accessibilityLabel="Enter your first name"
-                          style={[
-                            styles.nameInput,
-                            { borderColor: userName.trim() ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.25)" },
-                          ]}
-                        />
-                        {userName.trim().length > 0 && (
-                          <Text style={styles.nameHint}>Hi, {userName.trim()}! 👋</Text>
-                        )}
-                      </View>
-                    )}
-
-                    {/* ── Photo upload ── */}
-                    {slide.id === "photo" && !avatarUri && (
-                      <View style={styles.photoArea}>
-                        <TouchableOpacity
-                          onPress={handlePickPhoto}
-                          activeOpacity={0.85}
-                          style={styles.photoBtnPrimary}
-                          accessibilityLabel="Choose from library"
-                        >
-                          <MaterialIcons name="photo-library" size={18} color={currentTheme.accent} />
-                          <Text style={[styles.photoBtnPrimaryText, { color: currentTheme.accent }]}>Choose from Library</Text>
-                        </TouchableOpacity>
-                        {Platform.OS !== "web" && (
-                          <TouchableOpacity
-                            onPress={handleTakePhoto}
-                            activeOpacity={0.85}
-                            style={styles.photoBtnSecondary}
-                            accessibilityLabel="Take a photo"
-                          >
-                            <MaterialIcons name="camera-alt" size={18} color="rgba(255,255,255,0.85)" />
-                            <Text style={styles.photoBtnSecondaryText}>Take a Photo</Text>
-                          </TouchableOpacity>
-                        )}
-                        <TouchableOpacity
-                          onPress={goNext}
-                          activeOpacity={0.7}
-                          style={styles.skipPhotoBtn}
-                          accessibilityLabel="Skip photo"
-                        >
-                          <Text style={styles.skipPhotoText}>Skip for now</Text>
-                        </TouchableOpacity>
-                      </View>
-                    )}
-
-                    {/* ── Subjects picker ── */}
-                    {slide.id === "subjects" && (
-                      <View style={styles.subjectsGrid}>
-                        {CATEGORY_ORDER.map((cat) => {
-                          const def = SUBJECT_CATEGORIES[cat];
-                          const selected = selectedCategories.has(cat);
-                          return (
-                            <TouchableOpacity
-                              key={cat}
-                              onPress={() => toggleCategory(cat)}
-                              activeOpacity={0.8}
-                              accessibilityLabel={`${selected ? "Deselect" : "Select"} ${def.label}`}
-                              accessibilityRole="checkbox"
-                              accessibilityState={{ checked: selected }}
-                              style={[
-                                styles.subjectCard,
-                                selected && styles.subjectCardSelected,
-                              ]}
-                            >
-                              {selected && (
-                                <View style={styles.subjectCheckBadge}>
-                                  <MaterialIcons name="check" size={12} color="#fff" />
-                                </View>
-                              )}
-                              <Text style={styles.subjectEmoji}>{def.emoji}</Text>
-                              <Text style={[styles.subjectLabel, selected && styles.subjectLabelSelected]}>
-                                {def.label}
-                              </Text>
-                            </TouchableOpacity>
-                          );
-                        })}
-                      </View>
-                    )}
-
-                    {/* ── Grade picker ── */}
-                    {slide.id === "grade" && (
-                      <View style={styles.gradeGrid}>
-                        {GRADE_OPTIONS.map((opt) => {
-                          const isActive = selectedGrade === opt.id;
-                          return (
-                            <TouchableOpacity
-                              key={opt.id}
-                              onPress={() => { H.impactLight(); setSelectedGrade(opt.id); }}
-                              activeOpacity={0.8}
-                              accessibilityLabel={opt.label}
-                              accessibilityRole="radio"
-                              accessibilityState={{ checked: isActive }}
-                              style={[
-                                styles.gradeCard,
-                                isActive && styles.gradeCardActive,
-                              ]}
-                            >
-                              {isActive && (
-                                <View style={styles.gradeCheckDot}>
-                                  <MaterialIcons name="check" size={9} color="#fff" />
-                                </View>
-                              )}
-                              <Text style={[styles.gradeCardLabel, isActive && styles.gradeCardLabelActive]}>
-                                {opt.label}
-                              </Text>
-                              <Text style={styles.gradeCardSub}>{opt.sub}</Text>
-                            </TouchableOpacity>
-                          );
-                        })}
-                      </View>
-                    )}
-
-                    {/* ── Tutor preview ── */}
-                    {slide.id === "tutor-preview" && (
-                      <View style={styles.tutorPreviewList}>
-                        {[
-                          {
-                            icon: "school",
-                            label: "Grade",
-                            value: selectedGrade
-                              ? GRADE_OPTIONS.find((g) => g.id === selectedGrade)?.label ?? selectedGrade
-                              : "Not set",
-                          },
-                          {
-                            icon: "menu-book",
-                            label: "Subjects",
-                            value: selectedCategories.size > 0
-                              ? Array.from(selectedCategories).map((c) => SUBJECT_CATEGORIES[c]?.label).join(", ")
-                              : "All subjects",
-                          },
-                          {
-                            icon: "sentiment-satisfied",
-                            label: "Tone",
-                            value: "Friendly and encouraging",
-                          },
-                          {
-                            icon: "format-list-numbered",
-                            label: "Style",
-                            value: "Step-by-step with full working",
-                          },
-                          {
-                            icon: "language",
-                            label: "Language",
-                            value: "English (change in Tutor Settings)",
-                          },
-                        ].map((row) => (
-                          <GlassCard key={row.label} style={styles.tutorPreviewRow}>
-                            <MaterialIcons name={row.icon as any} size={18} color="rgba(255,255,255,0.8)" />
-                            <View style={{ flex: 1 }}>
-                              <Text style={styles.tutorPreviewLabel}>{row.label}</Text>
-                              <Text style={styles.tutorPreviewValue}>{row.value}</Text>
-                            </View>
-                          </GlassCard>
-                        ))}
-                        <Text style={styles.tutorPreviewHint}>
-                          Fine-tune all of this in Tutor Settings inside the chat.
-                        </Text>
-                      </View>
-                    )}
-
-                    {/* ── Trial plan selector ── */}
-                    {slide.id === "trial" && (
-                      <View style={styles.trialSection}>
-                        <View style={styles.trialPlanRow}>
-                          {/* Monthly */}
-                          <TouchableOpacity
-                            activeOpacity={0.85}
-                            onPress={() => { H.impactLight(); setSelectedPlan(PRODUCT_MONTHLY); }}
-                            style={[
-                              styles.trialPlanCard,
-                              selectedPlan === PRODUCT_MONTHLY && styles.trialPlanCardSelected,
-                            ]}
-                            accessibilityLabel={`Monthly plan ${monthlyPriceStr}`}
-                            accessibilityRole="radio"
-                            accessibilityState={{ selected: selectedPlan === PRODUCT_MONTHLY }}
-                          >
-                            <Text style={styles.trialPlanCardTitle}>Monthly</Text>
-                            <Text style={[styles.trialPlanCardPrice, selectedPlan === PRODUCT_MONTHLY && styles.trialPlanCardPriceSelected]}>
-                              {monthlyPriceStr}
-                            </Text>
-                          </TouchableOpacity>
-
-                          {/* Annual */}
-                          <TouchableOpacity
-                            activeOpacity={0.85}
-                            onPress={() => { H.impactLight(); setSelectedPlan(PRODUCT_ANNUAL); }}
-                            style={[
-                              styles.trialPlanCard,
-                              selectedPlan === PRODUCT_ANNUAL && styles.trialPlanCardSelected,
-                            ]}
-                            accessibilityLabel={`Annual plan ${annualPriceStr} save ${DISCOUNT_PCT}%`}
-                            accessibilityRole="radio"
-                            accessibilityState={{ selected: selectedPlan === PRODUCT_ANNUAL }}
-                          >
-                            <View style={styles.trialSaveBadge}>
-                              <Text style={styles.trialSaveBadgeText}>Save {DISCOUNT_PCT}%</Text>
-                            </View>
-                            <Text style={styles.trialPlanCardTitle}>Annual</Text>
-                            <Text style={[styles.trialPlanCardPrice, selectedPlan === PRODUCT_ANNUAL && styles.trialPlanCardPriceSelected]}>
-                              {annualPriceStr}
-                            </Text>
-                            <Text style={styles.trialPlanCardNote}>${PRICE_ANNUAL_MONTHLY_EQUIV}/mo</Text>
-                          </TouchableOpacity>
-                        </View>
-
-                        <Text style={styles.trialPriceNote}>
-                          {selectedPlan === PRODUCT_ANNUAL
-                            ? `Free for ${trialVariant.trialDays} days, then ${annualPriceStr}. Cancel anytime.`
-                            : `Free for ${trialVariant.trialDays} days, then ${monthlyPriceStr}. Cancel anytime.`}
-                        </Text>
-                      </View>
-                    )}
-                  </SlideWrapper>
-                </View>
-              );
-            })}
-          </ScrollView>
-
-          {/* ── Bottom chrome ───────────────────────────────────────────────── */}
-          {!keyboardVisible && (
-            <View style={styles.dotsRow}>
-              {SLIDES.map((_, idx) => {
-                const isActive = idx === currentSlide;
-                return (
-                  <TouchableOpacity
-                    key={idx}
-                    onPress={() => {
-                      H.impactLight();
-                      setCurrentSlide(idx);
-                      scrollRef.current?.scrollTo({ x: idx * SCREEN_WIDTH, animated: true });
-                    }}
-                    activeOpacity={0.7}
-                    accessibilityLabel={`Go to slide ${idx + 1}`}
-                    style={[styles.dot, isActive && styles.dotActive]}
-                  />
-                );
-              })}
-            </View>
-          )}
-
-          {showCta && (
+        {/* Skip button — hidden on first and last slide */}
+        {!isFirstSlide && !isLastSlide && (
+          <Reanimated.View style={[styles.skipBtn, skipBtnStyle, { top: safeTop + 10 }]}>
             <TouchableOpacity
-              onPress={goNext}
-              activeOpacity={0.92}
-              disabled={purchaseLoading}
-              style={[styles.ctaButton, { opacity: purchaseLoading ? 0.75 : 1 }]}
-              accessibilityLabel={isLastSlide ? "Start free trial" : "Continue"}
-              accessibilityRole="button"
-            >
-              <Text style={[styles.ctaText, { color: currentTheme.accent }]}>
-                {ctaLabel}
-              </Text>
-              {!isLastSlide && (
-                <MaterialIcons name="arrow-forward" size={20} color={currentTheme.accent} style={{ marginLeft: 6 }} />
-              )}
-            </TouchableOpacity>
-          )}
-
-          {isLastSlide && !keyboardVisible && (
-            <TouchableOpacity
-              onPress={finishOnboarding}
+              onPress={handleSkipWithAnimation}
               activeOpacity={0.7}
-              style={styles.maybeLaterBtn}
-              accessibilityLabel="Maybe later, continue with free tier"
+              accessibilityLabel="Skip onboarding"
               accessibilityRole="button"
             >
-              <Text style={styles.maybeLaterText}>
-                Maybe Later - Start with Free Tier
-              </Text>
+              <Text style={[styles.skipText, { color: colors.muted }]}>Skip</Text>
             </TouchableOpacity>
-          )}
-        </SafeAreaView>
-      </KeyboardAvoidingView>
+          </Reanimated.View>
+        )}
 
-      {/* Portal bloom overlay */}
-      <Reanimated.View style={bloomStyle} pointerEvents="none" />
+        {/* Progress bar */}
+        <View style={[styles.progressBarContainer, { top: safeTop + 10 }]}>
+          <Animated.View
+            style={[
+              styles.progressBarFill,
+              {
+                width: progressBarAnim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: ["0%", "100%"],
+                }),
+              },
+            ]}
+          >
+            <LinearGradient
+              colors={["#7C3AED", "#06B6D4"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={{ flex: 1, borderRadius: 2 }}
+            />
+          </Animated.View>
+        </View>
+
+        {/* Slides */}
+        <ScrollView keyboardDismissMode="on-drag"
+          ref={scrollRef}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          scrollEventThrottle={16}
+          onMomentumScrollEnd={handleScroll}
+          style={{ flex: 1 }}
+          contentContainerStyle={{ alignItems: "center" }}
+          keyboardShouldPersistTaps="handled"
+        >
+          {SLIDES.map((slide, idx) => (
+            <View key={slide.id} style={[styles.slide, { width: SCREEN_WIDTH }]}>
+              <SlideWrapper active={idx === currentSlide}>
+              {/* Emoji or avatar illustration */}
+              {slide.id === "photo" && avatarUri ? (
+                <TouchableOpacity onPress={handlePickPhoto} activeOpacity={0.85} style={styles.avatarCircle}>
+                  <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
+                  <View style={[styles.avatarEditBadge, { backgroundColor: colors.primary }]}>
+                    <Text style={styles.avatarEditIcon}>✎</Text>
+                  </View>
+                </TouchableOpacity>
+              ) : (
+                <View style={[styles.emojiCircle, { backgroundColor: (SLIDE_GRADIENTS[slide.id]?.[0] ?? `${colors.primary}15`) }]}>
+                  <Text style={styles.emojiText}>{slide.emoji}</Text>
+                </View>
+              )}
+
+              <Text style={[styles.slideTitle, { color: colors.foreground }]}>{slide.title}</Text>
+              <Text style={[styles.slideSubtitle, { color: colors.muted }]}>{slide.subtitle}</Text>
+
+              {/* Skip All — only on welcome slide, jumps to trial */}
+              {slide.id === "welcome" && (
+                <TouchableOpacity
+                  onPress={() => {
+                    H.impactLight();
+                    const trialIdx = SLIDES.findIndex((s) => s.id === "trial");
+                    if (trialIdx >= 0) {
+                      setCurrentSlide(trialIdx);
+                      animateDot(trialIdx);
+                      scrollRef.current?.scrollTo({ x: trialIdx * SCREEN_WIDTH, animated: true });
+                    }
+                  }}
+                  activeOpacity={0.7}
+                  accessibilityLabel="Skip to trial"
+                  accessibilityRole="button"
+                  style={styles.skipAllBtn}
+                >
+                  <Text style={[styles.skipAllText, { color: colors.muted }]}>Skip setup</Text>
+                </TouchableOpacity>
+              )}
+
+              {/* Name input */}
+              {slide.id === "name" && (
+                <View style={{ width: "100%", marginTop: 12 }}>
+                  <TextInput
+                    value={userName}
+                    onChangeText={setUserName}
+                    placeholder="Your first name"
+                    placeholderTextColor={colors.muted}
+                    returnKeyType="done"
+                    maxLength={40}
+                    autoFocus
+                    onSubmitEditing={goNext}
+                    accessibilityLabel="Enter your first name"
+                    style={[styles.nameInput, { color: colors.foreground, backgroundColor: colors.surface, borderColor: userName.trim() ? colors.primary : colors.border }]}
+                  />
+                  {userName.trim().length > 0 && (
+                    <Text style={[styles.nameHint, { color: colors.muted }]}>Hi, {userName.trim()}! 👋</Text>
+                  )}
+                </View>
+              )}
+
+              {/* Photo upload step */}
+              {slide.id === "photo" && (
+                <View style={styles.photoPickerArea}>
+                  {!avatarUri ? (
+                    <>
+                      <TouchableOpacity
+                        onPress={handlePickPhoto}
+                        activeOpacity={0.85}
+                        style={[styles.photoBtn, { backgroundColor: colors.primary }]}
+                        accessibilityLabel="Choose from library"
+                      >
+                        <Text style={styles.photoBtnText}>📷  Choose from Library</Text>
+                      </TouchableOpacity>
+                      {Platform.OS !== "web" && (
+                        <TouchableOpacity
+                          onPress={handleTakePhoto}
+                          activeOpacity={0.85}
+                          style={[styles.photoBtn, { backgroundColor: colors.surface, borderWidth: 1.5, borderColor: colors.border }]}
+                          accessibilityLabel="Take a photo"
+                        >
+                          <Text style={[styles.photoBtnText, { color: colors.foreground }]}>📸  Take a Photo</Text>
+                        </TouchableOpacity>
+                      )}
+                      <TouchableOpacity
+                        onPress={goNext}
+                        activeOpacity={0.7}
+                        style={styles.skipPhotoBtn}
+                        accessibilityLabel="Skip photo"
+                      >
+                        <Text style={[styles.skipPhotoText, { color: colors.muted }]}>Skip for now</Text>
+                      </TouchableOpacity>
+                    </>
+                  ) : (
+                    <View style={styles.photoConfirmArea}>
+                      <Text style={[styles.photoConfirmText, { color: colors.success }]}>
+                        ✓ Photo added!
+                      </Text>
+                      <TouchableOpacity
+                        onPress={handlePickPhoto}
+                        activeOpacity={0.7}
+                        style={styles.skipPhotoBtn}
+                      >
+                        <Text style={[styles.skipPhotoText, { color: colors.muted }]}>Change photo</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+              )}
+
+              {/* Subject category picker */}
+              {slide.id === "subjects" && (
+                <ScrollView
+                  style={{ width: "100%", maxHeight: 220 }}
+                  contentContainerStyle={styles.categoryGrid}
+                  showsVerticalScrollIndicator={false}
+                  nestedScrollEnabled={true}
+                  scrollEnabled={true}
+                >
+                  {CATEGORY_ORDER.map((cat) => {
+                    const def = SUBJECT_CATEGORIES[cat];
+                    const selected = selectedCategories.has(cat);
+                    return (
+                      <TouchableOpacity
+                        key={cat}
+                        onPress={() => toggleCategory(cat)}
+                        activeOpacity={0.8}
+                        accessibilityLabel={`${selected ? "Deselect" : "Select"} ${def.label} category`}
+                        accessibilityRole="checkbox"
+                        accessibilityState={{ checked: selected }}
+                        style={[
+                          styles.categoryCard,
+                          {
+                            backgroundColor: selected ? `${def.color}20` : colors.surface,
+                            borderColor: selected ? def.color : colors.border,
+                          },
+                        ]}
+                      >
+                        <Text style={styles.categoryEmoji}>{def.emoji}</Text>
+                        <Text style={[styles.categoryLabel, { color: selected ? def.color : colors.foreground }]}>
+                          {def.label}
+                        </Text>
+                        {selected && (
+                          <View style={[styles.checkBadge, { backgroundColor: def.color }]}>
+                            <Text style={styles.checkText}>✓</Text>
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                    );
+                                    })}
+                </ScrollView>
+              )}
+              {/* Grade level picker — 2-column grid for compact fit */}
+              {slide.id === "grade" && (
+                <View style={styles.gradeGrid}>
+                  {GRADE_OPTIONS.map((opt) => {
+                    const isActive = selectedGrade === opt.id;
+                    return (
+                      <TouchableOpacity
+                        key={opt.id}
+                        onPress={() => { H.impactLight(); setSelectedGrade(opt.id); }}
+                        activeOpacity={0.8}
+                        accessibilityLabel={opt.label}
+                        accessibilityRole="radio"
+                        accessibilityState={{ checked: isActive }}
+                        style={[
+                          styles.gradeGridCard,
+                          {
+                            backgroundColor: isActive ? `${colors.primary}15` : colors.surface,
+                            borderColor: isActive ? colors.primary : colors.border,
+                          },
+                        ]}
+                      >
+                        <Text style={[styles.gradeCardLabel, { color: isActive ? colors.primary : colors.foreground }]}>{opt.label}</Text>
+                        <Text style={[styles.gradeCardSub, { color: colors.muted }]}>{opt.sub}</Text>
+                        {isActive && (
+                          <View style={[styles.gradeCheck, { backgroundColor: colors.primary, position: "absolute", top: 4, right: 4, width: 16, height: 16, borderRadius: 8 }]}>
+                            <Text style={[styles.gradeCheckText, { fontSize: 9 }]}>✓</Text>
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              )}
+
+              {/* Tutor personality preview */}
+              {slide.id === "tutor-preview" && (
+                <ScrollView
+                  style={{ width: "100%", marginTop: 8 }}
+                  contentContainerStyle={{ gap: 8, paddingBottom: 8 }}
+                  showsVerticalScrollIndicator={false}
+                  nestedScrollEnabled={true}
+                  scrollEnabled={true}
+                >
+                  {[
+                    {
+                      emoji: "🎓",
+                      label: "Grade",
+                      value: selectedGrade
+                        ? GRADE_OPTIONS.find((g) => g.id === selectedGrade)?.label ?? selectedGrade
+                        : "Not set",
+                    },
+                    {
+                      emoji: "📚",
+                      label: "Subjects",
+                      value: selectedCategories.size > 0
+                        ? Array.from(selectedCategories).map((c) => SUBJECT_CATEGORIES[c]?.label).join(", ")
+                        : "All subjects",
+                    },
+                    {
+                      emoji: "💬",
+                      label: "Tone",
+                      value: "Friendly & encouraging",
+                    },
+                    {
+                      emoji: "🔢",
+                      label: "Style",
+                      value: "Step-by-step with full working shown",
+                    },
+                    {
+                      emoji: "🌍",
+                      label: "Language",
+                      value: "English (change in Tutor Settings)",
+                    },
+                  ].map((row) => (
+                    <View
+                      key={row.label}
+                      style={[styles.previewRow, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                    >
+                      <Text style={styles.previewEmoji}>{row.emoji}</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.previewLabel, { color: colors.muted }]}>{row.label}</Text>
+                        <Text style={[styles.previewValue, { color: colors.foreground }]}>{row.value}</Text>
+                      </View>
+                    </View>
+                  ))}
+                  <Text style={[styles.previewHint, { color: colors.muted }]}>
+                    You can fine-tune all of this in Tutor Settings inside the chat.
+                  </Text>
+                </ScrollView>
+              )}
+
+              {/* Trial slide — inline plan selector */}
+              {slide.id === "trial" && (
+                <View style={styles.trialFeatureList}>
+                  {/* Plan cards */}
+                  <View style={[styles.trialPlanRow, Platform.OS === "web" && { flexDirection: "column" }]}>
+                    {/* Monthly */}
+                    <TouchableOpacity
+                      activeOpacity={0.85}
+                      onPress={() => { H.impactLight(); setSelectedPlan(PRODUCT_MONTHLY); }}
+                      style={[
+                        styles.trialPlanCard,
+                        selectedPlan === PRODUCT_MONTHLY && styles.trialPlanCardSelected,
+                      ]}
+                      accessibilityLabel={`Monthly plan ${monthlyPriceStr}`}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected: selectedPlan === PRODUCT_MONTHLY }}
+                    >
+                      <Text style={[styles.trialPlanLabel, { color: colors.muted }]}>Monthly</Text>
+                      <Text style={[styles.trialPlanPrice, selectedPlan === PRODUCT_MONTHLY && { color: colors.primary }]}>
+                        {monthlyPriceStr}
+                      </Text>
+                    </TouchableOpacity>
+
+                    {/* Annual — recommended */}
+                    <TouchableOpacity
+                      activeOpacity={0.85}
+                      onPress={() => { H.impactLight(); setSelectedPlan(PRODUCT_ANNUAL); }}
+                      style={[
+                        styles.trialPlanCard,
+                        styles.trialPlanCardAnnual,
+                        selectedPlan === PRODUCT_ANNUAL && styles.trialPlanCardSelected,
+                      ]}
+                      accessibilityLabel={`Annual plan ${annualPriceStr} save ${DISCOUNT_PCT}%`}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected: selectedPlan === PRODUCT_ANNUAL }}
+                    >
+                      <View style={styles.trialPlanBadge}>
+                        <Text style={styles.trialPlanBadgeText}>Save {DISCOUNT_PCT}%</Text>
+                      </View>
+                      <Text style={[styles.trialPlanLabel, { color: colors.muted }]}>Annual</Text>
+                      <Text style={[styles.trialPlanPrice, selectedPlan === PRODUCT_ANNUAL && { color: "#7C3AED" }]}>
+                        {annualPriceStr}
+                      </Text>
+                      <Text style={[styles.trialPlanNote, { color: colors.muted }]}>
+                        ${PRICE_ANNUAL_MONTHLY_EQUIV}/mo
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Post-trial price note */}
+                  <Text style={[styles.trialPriceNote, { color: colors.muted }]}>
+                    {selectedPlan === PRODUCT_ANNUAL
+                      ? `Free for ${trialVariant.trialDays} days, then ${annualPriceStr}. Cancel anytime.`
+                      : `Free for ${trialVariant.trialDays} days, then ${monthlyPriceStr}. Cancel anytime.`}
+                  </Text>
+                </View>
+              )}
+              </SlideWrapper>
+            </View>
+          ))}
+        </ScrollView>
+
+        {/* Animated dot indicators — hidden while keyboard is open to give input full space */}
+        {!keyboardVisible && <View style={styles.dotsRow}>
+          {SLIDES.map((_, idx) => {
+            const isActive = idx === currentSlide;
+            return (
+              <TouchableOpacity
+                key={idx}
+                onPress={() => {
+                  H.impactLight();
+                  setCurrentSlide(idx);
+                  animateDot(idx);
+                  scrollRef.current?.scrollTo({ x: idx * SCREEN_WIDTH, animated: true });
+                }}
+                activeOpacity={0.7}
+                accessibilityLabel={`Go to slide ${idx + 1}`}
+              >
+                {isActive ? (
+                  <LinearGradient
+                    colors={["#7C3AED", "#06B6D4"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={[styles.dot, { width: 24 }]}
+                  />
+                ) : (
+                  <View
+                    style={[styles.dot, { backgroundColor: `${colors.primary}30`, width: 8 }]}
+                  />
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </View>}
+
+        {/* CTA button — hide on photo slide when no photo, and hide while keyboard is open on name slide */}
+        {!(SLIDES[currentSlide]?.id === "photo" && !avatarUri) && !(keyboardVisible && SLIDES[currentSlide]?.id === "name") && (
+          <TouchableOpacity
+            onPress={goNext}
+            activeOpacity={0.85}
+            disabled={purchaseLoading}
+            style={[styles.ctaButton, { backgroundColor: colors.primary, opacity: purchaseLoading ? 0.7 : 1 }]}
+            accessibilityLabel={isLastSlide ? "Start free trial" : "Next slide"}
+            accessibilityRole="button"
+          >
+            <Text style={styles.ctaText}>
+              {isLastSlide
+                ? (purchaseLoading ? "Starting Trial…" : "Start Free Trial")
+                : "Next"}
+            </Text>
+          </TouchableOpacity>
+        )}
+        {/* Maybe Later link — only on the last (trial) slide, hidden while keyboard is open */}
+        {isLastSlide && !keyboardVisible && (
+          <TouchableOpacity
+            onPress={finishOnboarding}
+            activeOpacity={0.7}
+            style={styles.maybeLaterBtn}
+            accessibilityLabel="Maybe later, continue with free tier"
+            accessibilityRole="button"
+          >
+            <Text style={[styles.maybeLaterText, { color: colors.muted }]}>
+              Maybe Later — Start with Free Tier
+            </Text>
+          </TouchableOpacity>
+        )}
+      </SafeAreaView>
+      </KeyboardAvoidingView>
+        {/* Confetti removed — celebration fires only after a real purchase on /premium-welcome */}
+        {/* Portal bloom overlay — full-screen white flash on exit */}
+        <Reanimated.View style={bloomStyle} pointerEvents="none" />
     </Reanimated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  // ── Top chrome ──────────────────────────────────────────────────────────────
-  topChrome: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-    gap: 12,
-  },
+  gradientRoot: { flex: 1 },
+  root: { flex: 1 },
   backBtn: {
+    position: "absolute",
+    top: 54,
+    left: 20,
+    zIndex: 10,
+    padding: 8,
     width: 40,
     height: 40,
     alignItems: "center",
     justifyContent: "center",
   },
-  progressBarTrack: {
-    flex: 1,
+  backArrow: {
+    fontSize: 34,
+    fontWeight: "300",
+    lineHeight: 38,
+    marginTop: -4,
+  },
+  skipBtn: {
+    position: "absolute",
+    top: 56,
+    right: 24,
+    zIndex: 10,
+    padding: 8,
+  },
+  skipText: { fontSize: 15, fontWeight: "600" },
+  progressBarContainer: {
+    position: "absolute",
+    top: 56,
+    left: 24,
+    right: 24,
     height: 4,
     borderRadius: 2,
-    backgroundColor: "rgba(255,255,255,0.25)",
+    backgroundColor: "rgba(128,128,128,0.18)",
+    zIndex: 10,
     overflow: "hidden",
   },
   progressBarFill: {
     height: 4,
     borderRadius: 2,
-    backgroundColor: "rgba(255,255,255,0.95)",
   },
-  skipBtn: {
-    width: 44,
-    height: 40,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  skipText: {
-    color: "rgba(255,255,255,0.75)",
-    fontSize: 15,
-    fontWeight: "600",
-  },
-
-  // ── Slide container ──────────────────────────────────────────────────────────
   slide: {
-    flex: 1,
     alignItems: "center",
+    justifyContent: "flex-start",
     paddingHorizontal: 24,
-    paddingTop: 8,
-    paddingBottom: 8,
+    paddingTop: 24,
+    paddingBottom: 12,
   },
-
-  // ── Hero ─────────────────────────────────────────────────────────────────────
-  heroContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 28,
-    backgroundColor: "rgba(255,255,255,0.15)",
-    borderWidth: 1.5,
-    borderColor: "rgba(255,255,255,0.28)",
+  emojiCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 20,
-    shadowColor: "#fff",
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.12,
-    shadowRadius: 20,
-    elevation: 0,
+    marginBottom: 10,
   },
-  heroEmoji: {
-    fontSize: 52,
-  },
-
-  // ── Avatar hero ───────────────────────────────────────────────────────────────
-  avatarHero: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    marginBottom: 20,
+  emojiText: { fontSize: 28 },
+  avatarCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    marginBottom: 10,
     position: "relative",
     overflow: "visible",
   },
   avatarImage: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    borderWidth: 3,
-    borderColor: "rgba(255,255,255,0.5)",
+    width: 64,
+    height: 64,
+    borderRadius: 32,
   },
   avatarEditBadge: {
     position: "absolute",
-    bottom: 4,
-    right: 4,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    bottom: 2,
+    right: 2,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
     borderColor: "#fff",
   },
-
-  // ── Typography ────────────────────────────────────────────────────────────────
+  avatarEditIcon: { color: "#fff", fontSize: 14, fontWeight: "700" },
   slideTitle: {
-    fontSize: 26,
-    fontWeight: "800",
-    color: "#fff",
+    fontSize: 20,
+    fontWeight: "700",
     textAlign: "center",
-    letterSpacing: -0.4,
-    lineHeight: 32,
-    marginBottom: 8,
+    letterSpacing: -0.2,
+    marginBottom: 6,
   },
   slideSubtitle: {
-    fontSize: 15,
-    color: "rgba(255,255,255,0.78)",
+    fontSize: 12,
     textAlign: "center",
-    lineHeight: 22,
-    fontWeight: "400",
-    paddingHorizontal: 8,
+    lineHeight: 17,
   },
-
-  // ── Skip setup (welcome) ──────────────────────────────────────────────────────
-  skipSetupBtn: {
-    marginTop: 14,
-    paddingVertical: 8,
-    paddingHorizontal: 20,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.3)",
-    alignSelf: "center",
-  },
-  skipSetupText: {
-    color: "rgba(255,255,255,0.7)",
-    fontSize: 13,
-    fontWeight: "500",
-  },
-
-  // ── Welcome feature pills ─────────────────────────────────────────────────────
-  featurePillsRow: {
-    flexDirection: "row",
-    gap: 8,
-    marginTop: 18,
-    justifyContent: "center",
-  },
-  featurePill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    backgroundColor: "rgba(255,255,255,0.15)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.25)",
-    borderRadius: 20,
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-  },
-  featurePillText: {
-    color: "rgba(255,255,255,0.9)",
-    fontSize: 12,
-    fontWeight: "600",
-  },
-
-  // ── Solve mini-cards ──────────────────────────────────────────────────────────
-  solveCardsRow: {
-    flexDirection: "row",
-    gap: 8,
-    marginTop: 18,
+  photoPickerArea: {
     width: "100%",
-  },
-  solveMiniCard: {
-    flex: 1,
-    alignItems: "center",
-    paddingVertical: 12,
-    gap: 4,
-  },
-  solveMiniLabel: {
-    color: "#fff",
-    fontSize: 12,
-    fontWeight: "700",
-    marginTop: 2,
-  },
-  solveMiniDesc: {
-    color: "rgba(255,255,255,0.6)",
-    fontSize: 10,
-    textAlign: "center",
-    lineHeight: 14,
-  },
-
-  // ── Practice streak ───────────────────────────────────────────────────────────
-  streakSection: {
-    width: "100%",
-    marginTop: 18,
-    gap: 10,
-  },
-  streakRow: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 6,
-  },
-  streakDay: {
-    width: 36,
-    height: 44,
-    borderRadius: 10,
-    backgroundColor: "rgba(255,255,255,0.12)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 2,
-  },
-  streakDayActive: {
-    backgroundColor: "rgba(255,255,255,0.22)",
-    borderColor: "rgba(255,255,255,0.45)",
-  },
-  streakDayLabel: {
-    color: "rgba(255,255,255,0.5)",
-    fontSize: 10,
-    fontWeight: "700",
-  },
-  streakDayLabelActive: {
-    color: "rgba(255,255,255,0.9)",
-  },
-  streakFlame: {
-    fontSize: 12,
-  },
-  streakStats: {
-    flexDirection: "row",
+    marginTop: 12,
     gap: 8,
-  },
-  streakStatCard: {
-    flex: 1,
     alignItems: "center",
+  },
+  photoBtn: {
+    width: "100%",
     paddingVertical: 10,
+    borderRadius: 12,
+    alignItems: "center",
   },
-  streakStatNum: {
+  photoBtnText: {
     color: "#fff",
-    fontSize: 20,
-    fontWeight: "800",
-    lineHeight: 24,
-  },
-  streakStatLabel: {
-    color: "rgba(255,255,255,0.6)",
-    fontSize: 10,
-    fontWeight: "500",
-    marginTop: 2,
-  },
-
-  // ── Glass card ────────────────────────────────────────────────────────────────
-  glassCard: {
-    backgroundColor: "rgba(255,255,255,0.12)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.22)",
-    borderRadius: 14,
-    padding: 12,
-  },
-
-  // ── Name input ────────────────────────────────────────────────────────────────
-  nameInputArea: {
-    width: "100%",
-    marginTop: 16,
-    gap: 10,
-  },
-  nameInput: {
-    fontSize: 17,
-    fontWeight: "600",
-    paddingHorizontal: 18,
-    paddingVertical: 14,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    backgroundColor: "rgba(255,255,255,0.14)",
-    color: "#fff",
-    textAlign: "center",
-  },
-  nameHint: {
-    color: "rgba(255,255,255,0.8)",
     fontSize: 14,
-    textAlign: "center",
-    fontWeight: "500",
-  },
-
-  // ── Photo area ────────────────────────────────────────────────────────────────
-  photoArea: {
-    width: "100%",
-    marginTop: 16,
-    gap: 10,
-    alignItems: "center",
-  },
-  photoBtnPrimary: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: "#fff",
-    width: "100%",
-    paddingVertical: 14,
-    borderRadius: 16,
-    justifyContent: "center",
-  },
-  photoBtnPrimaryText: {
-    fontSize: 15,
     fontWeight: "700",
-  },
-  photoBtnSecondary: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: "rgba(255,255,255,0.14)",
-    borderWidth: 1.5,
-    borderColor: "rgba(255,255,255,0.35)",
-    width: "100%",
-    paddingVertical: 14,
-    borderRadius: 16,
-    justifyContent: "center",
-  },
-  photoBtnSecondaryText: {
-    color: "rgba(255,255,255,0.9)",
-    fontSize: 15,
-    fontWeight: "600",
   },
   skipPhotoBtn: {
     paddingVertical: 10,
     paddingHorizontal: 16,
+    marginTop: 4,
   },
   skipPhotoText: {
-    color: "rgba(255,255,255,0.55)",
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "500",
     textAlign: "center",
   },
-
-  // ── Subjects ──────────────────────────────────────────────────────────────────
-  subjectsGrid: {
+  photoConfirmArea: {
+    alignItems: "center",
+    gap: 8,
+    marginTop: 8,
+  },
+  photoConfirmText: {
+    fontSize: 17,
+    fontWeight: "700",
+  },
+  categoryGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 10,
-    marginTop: 18,
-    width: "100%",
+    gap: 8,
+    marginTop: 12,
     justifyContent: "center",
   },
-  subjectCard: {
-    width: (SCREEN_WIDTH - 24 * 2 - 10) / 2,
-    backgroundColor: "rgba(255,255,255,0.12)",
+  categoryCard: {
+    width: (SCREEN_WIDTH - 24 * 2 - 8) / 2,
+    padding: 8,
+    borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: "rgba(255,255,255,0.22)",
-    borderRadius: 16,
-    paddingVertical: 16,
-    paddingHorizontal: 12,
     alignItems: "center",
-    gap: 6,
+    gap: 4,
     position: "relative",
   },
-  subjectCardSelected: {
-    backgroundColor: "rgba(255,255,255,0.25)",
-    borderColor: "rgba(255,255,255,0.6)",
-  },
-  subjectCheckBadge: {
+  categoryEmoji: { fontSize: 20 },
+  categoryLabel: { fontSize: 12, fontWeight: "700", textAlign: "center" },
+  checkBadge: {
     position: "absolute",
     top: 10,
     right: 10,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: "rgba(255,255,255,0.9)",
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     alignItems: "center",
     justifyContent: "center",
   },
-  subjectEmoji: {
-    fontSize: 28,
-  },
-  subjectLabel: {
-    color: "rgba(255,255,255,0.8)",
-    fontSize: 13,
-    fontWeight: "700",
-    textAlign: "center",
-  },
-  subjectLabelSelected: {
-    color: "#fff",
-  },
-
-  // ── Grade grid ────────────────────────────────────────────────────────────────
+  checkText: { color: "#fff", fontSize: 12, fontWeight: "800" },
   gradeGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 6,
-    marginTop: 14,
+    marginTop: 10,
     width: "100%",
     justifyContent: "center",
   },
-  gradeCard: {
+  gradeGridCard: {
     width: (SCREEN_WIDTH - 24 * 2 - 6 * 3) / 4,
-    paddingVertical: 8,
+    paddingVertical: 7,
     paddingHorizontal: 4,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: "rgba(255,255,255,0.22)",
-    backgroundColor: "rgba(255,255,255,0.1)",
-    alignItems: "center",
-    position: "relative",
-  },
-  gradeCardActive: {
-    backgroundColor: "rgba(255,255,255,0.28)",
-    borderColor: "rgba(255,255,255,0.65)",
-  },
-  gradeCheckDot: {
-    position: "absolute",
-    top: 4,
-    right: 4,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: "rgba(255,255,255,0.9)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  gradeCardLabel: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "rgba(255,255,255,0.75)",
-    textAlign: "center",
-    marginBottom: 1,
-  },
-  gradeCardLabelActive: {
-    color: "#fff",
-  },
-  gradeCardSub: {
-    fontSize: 9,
-    color: "rgba(255,255,255,0.5)",
-    textAlign: "center",
-  },
-
-  // ── Tutor preview ─────────────────────────────────────────────────────────────
-  tutorPreviewList: {
-    width: "100%",
-    marginTop: 14,
-    gap: 7,
-  },
-  tutorPreviewRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingVertical: 9,
-    paddingHorizontal: 12,
-  },
-  tutorPreviewLabel: {
-    fontSize: 9,
-    fontWeight: "700",
-    color: "rgba(255,255,255,0.55)",
-    textTransform: "uppercase",
-    letterSpacing: 0.6,
-    marginBottom: 1,
-  },
-  tutorPreviewValue: {
-    fontSize: 12,
-    fontWeight: "500",
-    color: "#fff",
-    lineHeight: 16,
-  },
-  tutorPreviewHint: {
-    fontSize: 11,
-    color: "rgba(255,255,255,0.5)",
-    textAlign: "center",
-    lineHeight: 15,
-    marginTop: 2,
-  },
-
-  // ── Trial ─────────────────────────────────────────────────────────────────────
-  trialSection: {
-    width: "100%",
-    marginTop: 14,
-    gap: 10,
-  },
-  trialPlanRow: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  trialPlanCard: {
-    flex: 1,
-    backgroundColor: "rgba(255,255,255,0.1)",
-    borderWidth: 1.5,
-    borderColor: "rgba(255,255,255,0.22)",
-    borderRadius: 16,
-    paddingVertical: 14,
-    paddingHorizontal: 10,
-    alignItems: "center",
-    position: "relative",
-    marginTop: 8,
-  },
-  trialPlanCardSelected: {
-    backgroundColor: "rgba(255,255,255,0.22)",
-    borderColor: "rgba(255,255,255,0.65)",
-  },
-  trialSaveBadge: {
-    position: "absolute",
-    top: -10,
-    backgroundColor: "#fff",
     borderRadius: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+    borderWidth: 1.5,
+    alignItems: "center",
+    position: "relative",
   },
-  trialSaveBadgeText: {
-    fontSize: 10,
-    fontWeight: "800",
-    color: "#92400E",
-    letterSpacing: 0.3,
-  },
-  trialPlanCardTitle: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: "rgba(255,255,255,0.65)",
-    textTransform: "uppercase",
-    letterSpacing: 0.6,
-    marginBottom: 4,
-    marginTop: 4,
-  },
-  trialPlanCardPrice: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: "rgba(255,255,255,0.75)",
-  },
-  trialPlanCardPriceSelected: {
-    color: "#fff",
-  },
-  trialPlanCardNote: {
-    fontSize: 11,
-    color: "rgba(255,255,255,0.5)",
-    marginTop: 2,
-  },
-  trialPriceNote: {
-    fontSize: 11,
-    color: "rgba(255,255,255,0.55)",
-    textAlign: "center",
-    lineHeight: 16,
-  },
-
-  // ── Bottom chrome ─────────────────────────────────────────────────────────────
+  gradeCard: { flexDirection: "row", alignItems: "center", padding: 8, borderRadius: 10, borderWidth: 1.5, gap: 8 },
+  gradeCardLabel: { fontSize: 11, fontWeight: "700", marginBottom: 1, textAlign: "center" },
+  gradeCardSub: { fontSize: 9, textAlign: "center" },
+  gradeCheck: { width: 22, height: 22, borderRadius: 11, alignItems: "center", justifyContent: "center" },
+  gradeCheckText: { color: "#fff", fontSize: 12, fontWeight: "800" },
   dotsRow: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
     gap: 6,
-    paddingVertical: 10,
+    marginBottom: 12,
   },
   dot: {
-    width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "rgba(255,255,255,0.3)",
-  },
-  dotActive: {
-    width: 24,
-    backgroundColor: "rgba(255,255,255,0.95)",
   },
   ctaButton: {
-    flexDirection: "row",
     marginHorizontal: 20,
     marginBottom: 6,
-    paddingVertical: 16,
-    borderRadius: 18,
+    paddingVertical: 12,
+    borderRadius: 14,
     alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#fff",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.18,
-    shadowRadius: 16,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 3,
   },
   ctaText: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "700",
+    letterSpacing: 0.3,
+  },
+  trialFeatureList: {
+    marginTop: 8,
+    gap: 6,
+    width: "100%",
+  },
+  trialFeatureRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingHorizontal: 8,
+  },
+  trialFeatureEmoji: {
     fontSize: 16,
-    fontWeight: "800",
-    letterSpacing: 0.2,
+    width: 24,
+    textAlign: "center",
+  },
+  trialFeatureText: {
+    fontSize: 13,
+    fontWeight: "500",
+    lineHeight: 18,
+    flex: 1,
+  },
+  trialPriceNote: {
+    fontSize: 11,
+    textAlign: "center",
+    marginTop: 8,
+    lineHeight: 16,
   },
   maybeLaterBtn: {
     alignItems: "center",
-    paddingVertical: 8,
+    paddingVertical: 6,
     marginBottom: 2,
   },
   maybeLaterText: {
-    color: "rgba(255,255,255,0.55)",
     fontSize: 12,
+    fontWeight: "500",
+    letterSpacing: 0.1,
+    // textDecorationLine removed — underline looks like a web hyperlink on iOS
+  },
+  nameInput: {
+    fontSize: 16,
+    fontWeight: "600",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 2,
+    textAlign: "center",
+  },
+  nameHint: {
+    fontSize: 13,
+    textAlign: "center",
+    marginTop: 8,
+    fontWeight: "500",
+  },
+  previewRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    padding: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  previewEmoji: { fontSize: 14, width: 20, textAlign: "center" },
+  previewLabel: { fontSize: 9, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 1 },
+  previewValue: { fontSize: 11, fontWeight: "500", lineHeight: 15 },
+  previewHint: { fontSize: 10, textAlign: "center", lineHeight: 14, marginTop: 4, marginBottom: 4 },
+
+  // ── Inline trial plan selector ──────────────────────────────────────────────
+  trialPlanRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 8,
+    marginTop: 4,
+  },
+  trialPlanCard: {
+    flex: 1,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: "#334155",
+    backgroundColor: "#1e2022",
+    padding: 10,
+    alignItems: "center",
+    position: "relative",
+  },
+  trialPlanCardAnnual: {
+    borderColor: "#7C3AED40",
+  },
+  trialPlanCardSelected: {
+    borderColor: "#7C3AED",
+    backgroundColor: "#7C3AED15",
+  },
+  trialPlanBadge: {
+    position: "absolute",
+    top: -10,
+    backgroundColor: "#7C3AED",
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  trialPlanBadgeText: {
+    color: "#fff",
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 0.3,
+  },
+  trialPlanLabel: {
+    fontSize: 10,
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 2,
+    marginTop: 6,
+  },
+  trialPlanPrice: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#ECEDEE",
+    marginBottom: 2,
+  },
+  trialPlanNote: {
+    fontSize: 11,
+  },
+  skipAllBtn: {
+    marginTop: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    alignSelf: "center",
+  },
+  skipAllText: {
+    fontSize: 13,
     fontWeight: "500",
     letterSpacing: 0.1,
   },
