@@ -1128,17 +1128,11 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleManageSubscription = async () => {
+  const handleManageSubscription = () => {
     H.impactLight();
-    try {
-      await openManageSubscriptions();
-    } catch {
-      // openManageSubscriptions is a no-op on web/dev — show a helpful fallback
-      Alert.alert(
-        "Manage Subscription",
-        "To manage your subscription, open the App Store (iOS) or Google Play Store (Android), go to your account, and select Subscriptions."
-      );
-    }
+    // Navigate to the pre-cancellation retention screen.
+    // That screen handles the exit survey, offer, and the final openManageSubscriptions() call.
+    router.push("/cancel-retention" as any);
   };
 
   const handleContactSupport = () => {
