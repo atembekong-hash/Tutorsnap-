@@ -610,6 +610,26 @@ export default function RootLayout() {
                 gestureDirection: "horizontal",
               }}
             />
+            <Stack.Screen
+              name="subscription-history"
+              options={{
+                presentation: "card",
+                animation: "slide_from_right",
+                headerShown: false,
+                gestureEnabled: true,
+                gestureDirection: "horizontal",
+              }}
+            />
+            <Stack.Screen
+              name="cancel-retention"
+              options={{
+                presentation: "card",
+                animation: "slide_from_right",
+                headerShown: false,
+                gestureEnabled: true,
+                gestureDirection: "horizontal",
+              }}
+            />
           </Stack>
           <StatusBar style="auto" />
           </QueryClientProvider>

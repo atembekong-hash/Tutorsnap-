@@ -3283,8 +3283,7 @@ function ChatScreenContent() {
           onPress={() => setShowShareMenu(false)}
         >
           <View style={{ flex: 1 }} />
-          <TouchableOpacity accessibilityLabel="Share" accessibilityHint="Opens the share sheet" accessibilityRole="button" activeOpacity={1} onPress={() => {}}>
-            <View style={[chatStyles.sheet, { backgroundColor: colors.surface, borderColor: colors.border, maxHeight: "75%" }]}>
+          <View style={[chatStyles.sheet, { backgroundColor: colors.surface, borderColor: colors.border, maxHeight: "75%" }]}>
               <View style={[chatStyles.sheetHandle, { backgroundColor: colors.border }]} />
               <Text style={[chatStyles.sheetTitle, { color: colors.foreground, fontSize: fs(16) }]}>Share Chat</Text>
 
@@ -3378,8 +3377,7 @@ function ChatScreenContent() {
               <TouchableOpacity style={[chatStyles.sheetCancel, { borderColor: colors.border, marginTop: 8 }]} onPress={() => setShowShareMenu(false)} activeOpacity={0.7}>
                 <Text style={[chatStyles.sheetCancelText, { color: colors.muted, fontSize: fs(15) }]}>Cancel</Text>
               </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
+          </View>
         </TouchableOpacity>
       </Modal>
 
