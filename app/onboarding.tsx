@@ -109,59 +109,55 @@ const SLIDES = [
     id: "name",
     emoji: "👋",
     title: "What's your name?",
-    subtitle: "We'll personalise your TutorSnap experience with your name. Your AI Tutor will use it when chatting with you.",
+    subtitle: "We'll personalise your TutorSnap experience. Your AI Tutor will use your name when chatting with you.",
   },
   {
     id: "photo",
     emoji: "🖼️",
     title: "Add a Profile Photo",
-    subtitle: "A profile photo helps your classmates and teachers recognise you in Classroom. Completely optional and changeable anytime in Settings.",
+    subtitle: "Helps classmates and teachers recognise you in Classroom. Optional and changeable anytime in Settings.",
   },
   {
     id: "welcome",
     emoji: "🎓",
     title: "Welcome to TutorSnap",
-    subtitle:
-      "Your AI-powered academic tutor for every subject, from Algebra and Calculus to World History and Literature. Get instant, step-by-step explanations tailored to your level.",
+    subtitle: "AI-powered tutoring for every subject. Instant, step-by-step explanations tailored to your level.",
   },
   {
     id: "solve",
     emoji: "✨",
     title: "Snap, Type, or Ask",
-    subtitle:
-      "Point your camera at any homework problem to solve it instantly. Or type a question. Or open the AI Tutor for a full back-and-forth conversation. TutorSnap works however you learn best.",
+    subtitle: "Snap a photo, type a question, or chat with your AI Tutor. TutorSnap works however you learn best.",
   },
   {
     id: "practice",
     emoji: "🔥",
     title: "Build Your Streak",
-    subtitle:
-      "Practice daily, hit your goal, and watch your streak grow. Earn XP, unlock badges, and climb the leaderboard. Consistency is the secret to academic success.",
+    subtitle: "Practice daily, grow your streak, earn XP, and climb the leaderboard. Consistency is the secret to success.",
   },
   {
     id: "subjects",
     emoji: "📚",
     title: "Pick Your Subjects",
-    subtitle: "Choose the subjects you study most so TutorSnap can show you the most relevant quizzes, tips, and resources. You can always update your subjects in Settings.",
+    subtitle: "Choose the subjects you study most. TutorSnap will show you the most relevant quizzes and resources.",
   },
   {
     id: "grade",
     emoji: "🎯",
     title: "What's Your Level?",
-    subtitle: "We tailor every explanation, quiz question, and AI response to your grade level. Whether you are in middle school or university, TutorSnap adjusts to you. Change it anytime.",
+    subtitle: "We tailor every explanation and quiz to your grade level. Change it anytime in Settings.",
   },
   {
     id: "tutor-preview",
     emoji: "🤖",
     title: "Meet Your AI Tutor",
-    subtitle: "Your AI Tutor remembers your subjects, grade, and learning style. Ask it anything, get it to explain concepts differently, or request extra practice problems. It never judges, never rushes.",
+    subtitle: "Your AI Tutor is personalised to your subjects, grade, and learning style. It never judges, never rushes.",
   },
   {
     id: "trial",
     emoji: "👑",
     title: "Start Free, Upgrade Anytime",
-    subtitle:
-      "You get 2 free solves every day, forever. Start a 14-day free trial to unlock unlimited solves, unlimited quizzes, unlimited AI chat, classroom features, and much more. No charge during the trial.",
+    subtitle: "Start a 14-day free trial. Unlimited solves, quizzes, and AI chat. No charge during the trial.",
   },
 ];
 
@@ -574,7 +570,7 @@ export default function OnboardingScreen() {
 
               {/* Name input */}
               {slide.id === "name" && (
-                <View style={{ width: "100%", marginTop: 16 }}>
+                <View style={{ width: "100%", marginTop: 12 }}>
                   <TextInput
                     value={userName}
                     onChangeText={setUserName}
@@ -645,7 +641,7 @@ export default function OnboardingScreen() {
               {/* Subject category picker */}
               {slide.id === "subjects" && (
                 <ScrollView
-                  style={{ width: "100%", maxHeight: 260 }}
+                  style={{ width: "100%", maxHeight: 220 }}
                   contentContainerStyle={styles.categoryGrid}
                   showsVerticalScrollIndicator={false}
                   nestedScrollEnabled={true}
@@ -684,15 +680,9 @@ export default function OnboardingScreen() {
                                     })}
                 </ScrollView>
               )}
-              {/* Grade level picker */}
+              {/* Grade level picker — 2-column grid for compact fit */}
               {slide.id === "grade" && (
-                <ScrollView keyboardDismissMode="on-drag"
-                  style={{ width: "100%", marginTop: 10 }}
-                  showsVerticalScrollIndicator={false}
-                  nestedScrollEnabled={true}
-                  scrollEnabled={true}
-                  contentContainerStyle={{ gap: 8, paddingBottom: 8 }}
-                >
+                <View style={styles.gradeGrid}>
                   {GRADE_OPTIONS.map((opt) => {
                     const isActive = selectedGrade === opt.id;
                     return (
@@ -704,33 +694,31 @@ export default function OnboardingScreen() {
                         accessibilityRole="radio"
                         accessibilityState={{ checked: isActive }}
                         style={[
-                          styles.gradeCard,
+                          styles.gradeGridCard,
                           {
                             backgroundColor: isActive ? `${colors.primary}15` : colors.surface,
                             borderColor: isActive ? colors.primary : colors.border,
                           },
                         ]}
                       >
-                        <View style={{ flex: 1 }}>
-                          <Text style={[styles.gradeCardLabel, { color: isActive ? colors.primary : colors.foreground }]}>{opt.label}</Text>
-                          <Text style={[styles.gradeCardSub, { color: colors.muted }]}>{opt.sub}</Text>
-                        </View>
+                        <Text style={[styles.gradeCardLabel, { color: isActive ? colors.primary : colors.foreground }]}>{opt.label}</Text>
+                        <Text style={[styles.gradeCardSub, { color: colors.muted }]}>{opt.sub}</Text>
                         {isActive && (
-                          <View style={[styles.gradeCheck, { backgroundColor: colors.primary }]}>
-                            <Text style={styles.gradeCheckText}>✓</Text>
+                          <View style={[styles.gradeCheck, { backgroundColor: colors.primary, position: "absolute", top: 4, right: 4, width: 16, height: 16, borderRadius: 8 }]}>
+                            <Text style={[styles.gradeCheckText, { fontSize: 9 }]}>✓</Text>
                           </View>
                         )}
                       </TouchableOpacity>
                     );
                   })}
-                </ScrollView>
+                </View>
               )}
 
               {/* Tutor personality preview */}
               {slide.id === "tutor-preview" && (
                 <ScrollView
-                  style={{ width: "100%", marginTop: 12 }}
-                  contentContainerStyle={{ gap: 12, paddingBottom: 8 }}
+                  style={{ width: "100%", marginTop: 8 }}
+                  contentContainerStyle={{ gap: 8, paddingBottom: 8 }}
                   showsVerticalScrollIndicator={false}
                   nestedScrollEnabled={true}
                   scrollEnabled={true}
@@ -963,32 +951,32 @@ const styles = StyleSheet.create({
   },
   slide: {
     alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 20,
-    paddingTop: 56,
-    paddingBottom: 16,
+    justifyContent: "flex-start",
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 12,
   },
   emojiCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 22,
+    width: 56,
+    height: 56,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 16,
+    marginBottom: 10,
   },
-  emojiText: { fontSize: 34 },
+  emojiText: { fontSize: 28 },
   avatarCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    marginBottom: 16,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    marginBottom: 10,
     position: "relative",
     overflow: "visible",
   },
   avatarImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
   },
   avatarEditBadge: {
     position: "absolute",
@@ -1004,26 +992,26 @@ const styles = StyleSheet.create({
   },
   avatarEditIcon: { color: "#fff", fontSize: 14, fontWeight: "700" },
   slideTitle: {
-    fontSize: 22,
-    fontWeight: "800",
+    fontSize: 20,
+    fontWeight: "700",
     textAlign: "center",
-    letterSpacing: -0.3,
-    marginBottom: 8,
+    letterSpacing: -0.2,
+    marginBottom: 6,
   },
   slideSubtitle: {
-    fontSize: 13,
+    fontSize: 12,
     textAlign: "center",
-    lineHeight: 19,
+    lineHeight: 17,
   },
   photoPickerArea: {
     width: "100%",
-    marginTop: 16,
+    marginTop: 12,
     gap: 8,
     alignItems: "center",
   },
   photoBtn: {
     width: "100%",
-    paddingVertical: 12,
+    paddingVertical: 10,
     borderRadius: 12,
     alignItems: "center",
   },
@@ -1059,16 +1047,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   categoryCard: {
-    width: (SCREEN_WIDTH - 20 * 2 - 8) / 2,
-    padding: 12,
-    borderRadius: 14,
-    borderWidth: 2,
+    width: (SCREEN_WIDTH - 24 * 2 - 8) / 2,
+    padding: 8,
+    borderRadius: 12,
+    borderWidth: 1.5,
     alignItems: "center",
-    gap: 6,
+    gap: 4,
     position: "relative",
   },
-  categoryEmoji: { fontSize: 24 },
-  categoryLabel: { fontSize: 13, fontWeight: "700", textAlign: "center" },
+  categoryEmoji: { fontSize: 20 },
+  categoryLabel: { fontSize: 12, fontWeight: "700", textAlign: "center" },
   checkBadge: {
     position: "absolute",
     top: 10,
@@ -1080,9 +1068,26 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   checkText: { color: "#fff", fontSize: 12, fontWeight: "800" },
-  gradeCard: { flexDirection: "row", alignItems: "center", padding: 10, borderRadius: 12, borderWidth: 1.5, gap: 10 },
-  gradeCardLabel: { fontSize: 13, fontWeight: "700", marginBottom: 1 },
-  gradeCardSub: { fontSize: 11 },
+  gradeGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginTop: 10,
+    width: "100%",
+    justifyContent: "center",
+  },
+  gradeGridCard: {
+    width: (SCREEN_WIDTH - 24 * 2 - 6 * 3) / 4,
+    paddingVertical: 7,
+    paddingHorizontal: 4,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    alignItems: "center",
+    position: "relative",
+  },
+  gradeCard: { flexDirection: "row", alignItems: "center", padding: 8, borderRadius: 10, borderWidth: 1.5, gap: 8 },
+  gradeCardLabel: { fontSize: 11, fontWeight: "700", marginBottom: 1, textAlign: "center" },
+  gradeCardSub: { fontSize: 9, textAlign: "center" },
   gradeCheck: { width: 22, height: 22, borderRadius: 11, alignItems: "center", justifyContent: "center" },
   gradeCheckText: { color: "#fff", fontSize: 12, fontWeight: "800" },
   dotsRow: {
@@ -1099,7 +1104,7 @@ const styles = StyleSheet.create({
   ctaButton: {
     marginHorizontal: 20,
     marginBottom: 6,
-    paddingVertical: 14,
+    paddingVertical: 12,
     borderRadius: 14,
     alignItems: "center",
     shadowColor: "#000",
@@ -1115,8 +1120,8 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   trialFeatureList: {
-    marginTop: 12,
-    gap: 8,
+    marginTop: 8,
+    gap: 6,
     width: "100%",
   },
   trialFeatureRow: {
@@ -1171,15 +1176,15 @@ const styles = StyleSheet.create({
   previewRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    padding: 10,
-    borderRadius: 12,
+    gap: 8,
+    padding: 8,
+    borderRadius: 10,
     borderWidth: 1,
   },
-  previewEmoji: { fontSize: 16, width: 22, textAlign: "center" },
-  previewLabel: { fontSize: 10, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 1 },
-  previewValue: { fontSize: 12, fontWeight: "500", lineHeight: 17 },
-  previewHint: { fontSize: 11, textAlign: "center", lineHeight: 16, marginTop: 4, marginBottom: 8 },
+  previewEmoji: { fontSize: 14, width: 20, textAlign: "center" },
+  previewLabel: { fontSize: 9, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 1 },
+  previewValue: { fontSize: 11, fontWeight: "500", lineHeight: 15 },
+  previewHint: { fontSize: 10, textAlign: "center", lineHeight: 14, marginTop: 4, marginBottom: 4 },
 
   // ── Inline trial plan selector ──────────────────────────────────────────────
   trialPlanRow: {
@@ -1194,7 +1199,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: "#334155",
     backgroundColor: "#1e2022",
-    padding: 12,
+    padding: 10,
     alignItems: "center",
     position: "relative",
   },
@@ -1228,7 +1233,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   trialPlanPrice: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "800",
     color: "#ECEDEE",
     marginBottom: 2,
