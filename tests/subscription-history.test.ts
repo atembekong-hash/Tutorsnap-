@@ -10,8 +10,7 @@ describe("subscription.history server contract", () => {
   });
   it("history is protectedProcedure", () => {
     const src = fs.readFileSync(path.join(ROOT, "server/routers.ts"), "utf8");
-    const block = src.slice(src.indexOf("history:"), src.indexOf("history:") + 400);
-    expect(block).toContain("protectedProcedure");
+    expect(src).toContain("history: protectedProcedure.query");
   });
   it("history returns required fields", () => {
     const src = fs.readFileSync(path.join(ROOT, "server/routers.ts"), "utf8");
