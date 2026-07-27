@@ -1220,3 +1220,9 @@
 - [x] Verified: server starts cleanly (0 warnings), /api/health returns {ok:true}
 - [x] 172/172 tests passing after fix
 - [ ] Save checkpoint after build fix
+
+## Onboarding UI Resize (Jul 27 2026)
+- [x] Audit all onboarding slides for overflow
+- [x] Fix font sizes, padding, image/icon sizes, and spacing on all 9 slides (35 style changes applied)
+- [x] Verify changes applied correctly (TypeScript: 0 errors)
+- [ ] Save checkpoint

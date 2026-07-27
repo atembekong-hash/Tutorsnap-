@@ -558,7 +558,7 @@ export default function OnboardingScreen() {
 
               {/* Name input */}
               {slide.id === "name" && (
-                <View style={{ width: "100%", marginTop: 32 }}>
+                <View style={{ width: "100%", marginTop: 16 }}>
                   <TextInput
                     value={userName}
                     onChangeText={setUserName}
@@ -628,7 +628,7 @@ export default function OnboardingScreen() {
               {/* Subject category picker */}
               {slide.id === "subjects" && (
                 <ScrollView
-                  style={{ width: "100%", maxHeight: 340 }}
+                  style={{ width: "100%", maxHeight: 260 }}
                   contentContainerStyle={styles.categoryGrid}
                   showsVerticalScrollIndicator={false}
                   nestedScrollEnabled={true}
@@ -670,7 +670,7 @@ export default function OnboardingScreen() {
               {/* Grade level picker */}
               {slide.id === "grade" && (
                 <ScrollView keyboardDismissMode="on-drag"
-                  style={{ width: "100%", marginTop: 20 }}
+                  style={{ width: "100%", marginTop: 10 }}
                   showsVerticalScrollIndicator={false}
                   nestedScrollEnabled={true}
                   scrollEnabled={true}
@@ -712,7 +712,7 @@ export default function OnboardingScreen() {
               {/* Tutor personality preview */}
               {slide.id === "tutor-preview" && (
                 <ScrollView
-                  style={{ width: "100%", marginTop: 24 }}
+                  style={{ width: "100%", marginTop: 12 }}
                   contentContainerStyle={{ gap: 12, paddingBottom: 8 }}
                   showsVerticalScrollIndicator={false}
                   nestedScrollEnabled={true}
@@ -947,31 +947,31 @@ const styles = StyleSheet.create({
   slide: {
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 32,
-    paddingTop: 80,
-    paddingBottom: 40,
+    paddingHorizontal: 20,
+    paddingTop: 56,
+    paddingBottom: 16,
   },
   emojiCircle: {
-    width: 120,
-    height: 120,
-    borderRadius: 40,
+    width: 72,
+    height: 72,
+    borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 32,
+    marginBottom: 16,
   },
-  emojiText: { fontSize: 56 },
+  emojiText: { fontSize: 34 },
   avatarCircle: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    marginBottom: 32,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    marginBottom: 16,
     position: "relative",
     overflow: "visible",
   },
   avatarImage: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
   },
   avatarEditBadge: {
     position: "absolute",
@@ -987,32 +987,32 @@ const styles = StyleSheet.create({
   },
   avatarEditIcon: { color: "#fff", fontSize: 14, fontWeight: "700" },
   slideTitle: {
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: "800",
     textAlign: "center",
-    letterSpacing: -0.5,
-    marginBottom: 14,
+    letterSpacing: -0.3,
+    marginBottom: 8,
   },
   slideSubtitle: {
-    fontSize: 16,
+    fontSize: 13,
     textAlign: "center",
-    lineHeight: 24,
+    lineHeight: 19,
   },
   photoPickerArea: {
     width: "100%",
-    marginTop: 32,
-    gap: 12,
+    marginTop: 16,
+    gap: 8,
     alignItems: "center",
   },
   photoBtn: {
     width: "100%",
-    paddingVertical: 16,
-    borderRadius: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
     alignItems: "center",
   },
   photoBtnText: {
     color: "#fff",
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "700",
   },
   skipPhotoBtn: {
@@ -1037,21 +1037,21 @@ const styles = StyleSheet.create({
   categoryGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 12,
-    marginTop: 28,
+    gap: 8,
+    marginTop: 12,
     justifyContent: "center",
   },
   categoryCard: {
-    width: (SCREEN_WIDTH - 32 * 2 - 12) / 2,
-    padding: 18,
-    borderRadius: 18,
+    width: (SCREEN_WIDTH - 20 * 2 - 8) / 2,
+    padding: 12,
+    borderRadius: 14,
     borderWidth: 2,
     alignItems: "center",
-    gap: 8,
+    gap: 6,
     position: "relative",
   },
-  categoryEmoji: { fontSize: 30 },
-  categoryLabel: { fontSize: 14, fontWeight: "700", textAlign: "center" },
+  categoryEmoji: { fontSize: 24 },
+  categoryLabel: { fontSize: 13, fontWeight: "700", textAlign: "center" },
   checkBadge: {
     position: "absolute",
     top: 10,
@@ -1063,9 +1063,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   checkText: { color: "#fff", fontSize: 12, fontWeight: "800" },
-  gradeCard: { flexDirection: "row", alignItems: "center", padding: 14, borderRadius: 14, borderWidth: 1.5, gap: 12 },
-  gradeCardLabel: { fontSize: 15, fontWeight: "700", marginBottom: 2 },
-  gradeCardSub: { fontSize: 12 },
+  gradeCard: { flexDirection: "row", alignItems: "center", padding: 10, borderRadius: 12, borderWidth: 1.5, gap: 10 },
+  gradeCardLabel: { fontSize: 13, fontWeight: "700", marginBottom: 1 },
+  gradeCardSub: { fontSize: 11 },
   gradeCheck: { width: 22, height: 22, borderRadius: 11, alignItems: "center", justifyContent: "center" },
   gradeCheckText: { color: "#fff", fontSize: 12, fontWeight: "800" },
   dotsRow: {
@@ -1073,33 +1073,33 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     gap: 6,
-    marginBottom: 24,
+    marginBottom: 12,
   },
   dot: {
     height: 8,
     borderRadius: 4,
   },
   ctaButton: {
-    marginHorizontal: 24,
-    marginBottom: 8,
-    paddingVertical: 18,
-    borderRadius: 18,
+    marginHorizontal: 20,
+    marginBottom: 6,
+    paddingVertical: 14,
+    borderRadius: 14,
     alignItems: "center",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 3,
   },
   ctaText: {
     color: "#fff",
-    fontSize: 17,
+    fontSize: 15,
     fontWeight: "700",
     letterSpacing: 0.3,
   },
   trialFeatureList: {
-    marginTop: 28,
-    gap: 12,
+    marginTop: 12,
+    gap: 8,
     width: "100%",
   },
   trialFeatureRow: {
@@ -1109,71 +1109,71 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   trialFeatureEmoji: {
-    fontSize: 20,
-    width: 28,
+    fontSize: 16,
+    width: 24,
     textAlign: "center",
   },
   trialFeatureText: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: "500",
-    lineHeight: 22,
+    lineHeight: 18,
     flex: 1,
   },
   trialPriceNote: {
-    fontSize: 12,
+    fontSize: 11,
     textAlign: "center",
-    marginTop: 16,
-    lineHeight: 18,
+    marginTop: 8,
+    lineHeight: 16,
   },
   maybeLaterBtn: {
     alignItems: "center",
-    paddingVertical: 10,
-    marginBottom: 4,
+    paddingVertical: 6,
+    marginBottom: 2,
   },
   maybeLaterText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "500",
     letterSpacing: 0.1,
     // textDecorationLine removed — underline looks like a web hyperlink on iOS
   },
   nameInput: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "600",
-    paddingHorizontal: 18,
-    paddingVertical: 14,
-    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 14,
     borderWidth: 2,
     textAlign: "center",
   },
   nameHint: {
-    fontSize: 15,
+    fontSize: 13,
     textAlign: "center",
-    marginTop: 14,
+    marginTop: 8,
     fontWeight: "500",
   },
   previewRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    padding: 14,
-    borderRadius: 14,
+    gap: 10,
+    padding: 10,
+    borderRadius: 12,
     borderWidth: 1,
   },
-  previewEmoji: { fontSize: 20, width: 28, textAlign: "center" },
-  previewLabel: { fontSize: 11, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 },
-  previewValue: { fontSize: 14, fontWeight: "500", lineHeight: 20 },
-  previewHint: { fontSize: 12, textAlign: "center", lineHeight: 18, marginTop: 4, marginBottom: 16 },
+  previewEmoji: { fontSize: 16, width: 22, textAlign: "center" },
+  previewLabel: { fontSize: 10, fontWeight: "600", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 1 },
+  previewValue: { fontSize: 12, fontWeight: "500", lineHeight: 17 },
+  previewHint: { fontSize: 11, textAlign: "center", lineHeight: 16, marginTop: 4, marginBottom: 8 },
 
   // ── Inline trial plan selector ──────────────────────────────────────────────
   trialPlanRow: {
     flexDirection: "row",
-    gap: 10,
-    marginBottom: 12,
+    gap: 8,
+    marginBottom: 8,
     marginTop: 4,
   },
   trialPlanCard: {
     flex: 1,
-    borderRadius: 14,
+    borderRadius: 12,
     borderWidth: 1.5,
     borderColor: "#334155",
     backgroundColor: "#1e2022",
@@ -1203,15 +1203,15 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   trialPlanLabel: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: "600",
     textTransform: "uppercase",
     letterSpacing: 0.5,
-    marginBottom: 4,
-    marginTop: 8,
+    marginBottom: 2,
+    marginTop: 6,
   },
   trialPlanPrice: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: "800",
     color: "#ECEDEE",
     marginBottom: 2,
