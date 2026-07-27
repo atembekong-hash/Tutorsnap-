@@ -1213,3 +1213,10 @@
 ## v2.0.2 — Phase G Screenshots + Multi-step Grace Period Flow Test (Jul 27 2026)
 - [x] Phase G: Screenshot scan of paywall, onboarding trial slide, cancel-retention, subscription-history — all PASS (report in phase_g_report.md)
 - [x] Task 3: Add CANCELLATION→GRACE_PERIOD_START→GRACE_PERIOD_END multi-step flow test (5 steps, all passing, 172/172 total tests)
+
+## Build Fix (Jul 27 2026)
+- [x] Diagnose Manus publish build failure — root cause: ESM/CJS mismatch (esbuild --format=esm output to .js, Node treated as CJS)
+- [x] Fix: changed build output to dist/index.mjs and start script to node dist/index.mjs
+- [x] Verified: server starts cleanly (0 warnings), /api/health returns {ok:true}
+- [x] 172/172 tests passing after fix
+- [ ] Save checkpoint after build fix
