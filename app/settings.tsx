@@ -1636,6 +1636,9 @@ export default function SettingsScreen() {
         {ms("Manage Subscription", "cancel your plan") && (
           <SettingsRow icon="creditcard.fill" label="Manage Subscription" subtitle="Change or cancel your plan in the App Store" colors={colors} onPress={handleManageSubscription} />
         )}
+        {ms("Subscription History", "billing events") && (
+          <SettingsRow icon="clock.fill" label="Subscription History" subtitle="View your billing events and plan changes" colors={colors} onPress={() => router.push("/subscription-history" as any)} />
+        )}
         {ms("Affiliate & Referrals", "Earn free days") && (
           <SettingsRow icon="paperplane.fill" label="Affiliate & Referrals" subtitle="Earn free days - 5 ways to earn, tier rewards" colors={colors} onPress={() => router.push("/refer" as any)} />
         )}
