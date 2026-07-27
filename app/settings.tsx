@@ -1623,6 +1623,7 @@ export default function SettingsScreen() {
                   <Text style={[styles.serverVerifiedText, { color: "#F59E0B" }]}>Grace Period</Text>
                 </View>
               )}
+              {serverSubStatus?.isPremium && !serverSubStatus?.isInGracePeriod && (
                 <View style={[styles.serverVerifiedChip, { backgroundColor: `${colors.success}18`, borderColor: `${colors.success}40` }]}>
                   <Text style={[styles.serverVerifiedText, { color: colors.success }]}>Server ✓</Text>
                 </View>
