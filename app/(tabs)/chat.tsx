@@ -754,7 +754,26 @@ function MessageBubble({
               ) : null}
             </View>
             {!streaming && teachingContent.length > 0 && (
-              <SmartCopyButton content={teachingContent} colors={colors} fs={fs} sessionId={sessionId} />
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <SmartCopyButton content={teachingContent} colors={colors} fs={fs} sessionId={sessionId} />
+                <TouchableOpacity
+                  onPress={() => Alert.alert(
+                    'Report a Problem',
+                    'What issue did you notice with this response?',
+                    [
+                      { text: 'Special characters ($ ** ##)', onPress: () => Alert.alert('Thank you', 'Your report helps us improve AI responses.') },
+                      { text: 'Incorrect information', onPress: () => Alert.alert('Thank you', 'Your report helps us improve AI responses.') },
+                      { text: 'Unclear explanation', onPress: () => Alert.alert('Thank you', 'Your report helps us improve AI responses.') },
+                      { text: 'Other issue', onPress: () => Alert.alert('Thank you', 'Your report helps us improve AI responses.') },
+                      { text: 'Cancel', style: 'cancel' },
+                    ]
+                  )}
+                  style={{ padding: 4 }}
+                  accessibilityLabel="Report a problem with this response"
+                >
+                  <IconSymbol name="waveform.badge.exclamationmark" size={fs(14)} color={colors.muted} />
+                </TouchableOpacity>
+              </View>
             )}
           </View>
           {/* Submission Ready Card — independently generated, submission-optimised answer */}

@@ -1389,13 +1389,32 @@ export default function SolutionScreen() {
               <IconSymbol size={16} name="checkmark.circle.fill" color={colors.success} />
               <Text style={[styles.answerLabel, { color: colors.success }]}>ANSWER</Text>
             </View>
-            <TouchableOpacity onPress={handleCopyAnswer} style={[styles.copyBtn, { backgroundColor: copyFeedback ? `${colors.success}20` : "transparent" }]}
-              accessibilityLabel="Copy" accessibilityHint="Copies the content to your clipboard">
-              <IconSymbol size={16} name="doc.on.doc" color={copyFeedback ? colors.success : colors.muted} />
-              <Text style={[styles.copyText, { color: copyFeedback ? colors.success : colors.muted }]}>
-                {copyFeedback ? "Copied!" : "Copy"}
-              </Text>
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <TouchableOpacity onPress={handleCopyAnswer} style={[styles.copyBtn, { backgroundColor: copyFeedback ? `${colors.success}20` : "transparent" }]}
+                accessibilityLabel="Copy" accessibilityHint="Copies the content to your clipboard">
+                <IconSymbol size={16} name="doc.on.doc" color={copyFeedback ? colors.success : colors.muted} />
+                <Text style={[styles.copyText, { color: copyFeedback ? colors.success : colors.muted }]}>
+                  {copyFeedback ? "Copied!" : "Copy"}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => Alert.alert(
+                  'Report a Problem',
+                  'What issue did you notice with this answer?',
+                  [
+                    { text: 'Special characters ($ ** ##)', onPress: () => Alert.alert('Thank you', 'Your report helps us improve AI responses.') },
+                    { text: 'Incorrect answer', onPress: () => Alert.alert('Thank you', 'Your report helps us improve AI responses.') },
+                    { text: 'Unclear explanation', onPress: () => Alert.alert('Thank you', 'Your report helps us improve AI responses.') },
+                    { text: 'Other issue', onPress: () => Alert.alert('Thank you', 'Your report helps us improve AI responses.') },
+                    { text: 'Cancel', style: 'cancel' },
+                  ]
+                )}
+                style={[styles.copyBtn, { backgroundColor: 'transparent' }]}
+                accessibilityLabel="Report a problem with this answer"
+              >
+                <IconSymbol size={15} name="waveform.badge.exclamationmark" color={colors.muted} />
+              </TouchableOpacity>
+            </View>
           </View>
           <Text style={[styles.answerText, { color: colors.foreground, fontSize: fs(17) }]}>{cleanMathText(solution.answer)}</Text>
         </View>

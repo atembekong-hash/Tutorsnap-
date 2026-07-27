@@ -1361,6 +1361,12 @@ function SolveScreenContent() {
               </View>
             </View>
 
+            {/* Math notation hint - shown when a math subject is selected and input is focused */}
+            {isMathSubject(selectedSubject) && inputFocused && (
+              <Text style={[styles.mathNotationHint, { color: colors.muted }]}>
+                Write equations in plain text, e.g. x^2 + 3x = 0 or sqrt(16)
+              </Text>
+            )}
             {/* Unified action row: Any level | All Subjects | Solve with AI */}
             <View style={styles.unifiedActionRow}>
 
@@ -2006,6 +2012,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 0.5,
   },
   charCount: { fontSize: 12 },
+  mathNotationHint: { fontSize: 11, marginTop: 4, marginBottom: 2, paddingHorizontal: 4, fontStyle: 'italic' },
   inputActionBtns: { flexDirection: "row", alignItems: "center", gap: 8 },
   keyboardToggleBtn: {
     paddingHorizontal: 10,
