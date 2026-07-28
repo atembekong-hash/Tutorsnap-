@@ -169,7 +169,7 @@ export function getDefaultTrialVariantConfig(): TrialVariantConfig {
 
 // ── Analytics ─────────────────────────────────────────────────────────────────
 
-export type AbTestEvent = "paywall_view" | "trial_started" | "purchase_completed" | "restore_completed";
+export type AbTestEvent = "paywall_view" | "trial_started" | "purchase_completed" | "restore_completed" | "onboarding_paywall_view";
 
 export interface AbTestAnalyticsEvent {
   event: AbTestEvent;
