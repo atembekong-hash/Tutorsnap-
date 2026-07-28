@@ -95,9 +95,24 @@ export async function incrementUsage(type: "solves" | "quiz" | "chat"): Promise<
 
 // ─── RevenueCat SDK (lazy import to avoid web/dev crashes) ───────────────────
 
-let _initialised = false;
 let _devMode = false;
 let _rcAvailable = false; // true when SDK was successfully configured
+
+/**
+ * FIX-1: Promise-mutex singleton for initRevenueCat.
+ *
+ * WHY: The previous boolean `_initialised` flag had a race condition — if two
+ * callers invoked initRevenueCat() concurrently before the flag was set (e.g.
+ * usePremium and the paywall both mount simultaneously on app launch), both
+ * callers passed the guard and both called Purchases.configure() which corrupts
+ * the RevenueCat session.
+ *
+ * FIX: Store the in-flight Promise itself. All concurrent callers await the
+ * same promise, so _doInit() — and therefore Purchases.configure() — is called
+ * exactly once per app session regardless of how many concurrent callers there
+ * are. The pattern is equivalent to a one-shot mutex.
+ */
+let _initPromise: Promise<void> | null = null;
 
 async function getPurchases() {
   // Dynamic import so web bundle doesn't crash on missing native module
@@ -105,15 +120,11 @@ async function getPurchases() {
   return mod.default;
 }
 
-// ─── Subscription initialisation ────────────────────────────────────────────
-
-export async function initRevenueCat(): Promise<void> {
-  if (_initialised) return;
-
+/** Internal one-shot init — only ever called once via _initPromise. */
+async function _doInit(): Promise<void> {
   // In development or web, unlock all features without SDK
   if (__DEV__ || Platform.OS === "web") {
     _devMode = true;
-    _initialised = true;
     return;
   }
 
@@ -127,7 +138,6 @@ export async function initRevenueCat(): Promise<void> {
       "[RevenueCat] No API key configured. Set EXPO_PUBLIC_REVENUECAT_APPLE_KEY (iOS) " +
       "or EXPO_PUBLIC_REVENUECAT_GOOGLE_KEY (Android) in your environment."
     );
-    _initialised = true;
     return;
   }
 
@@ -145,11 +155,33 @@ export async function initRevenueCat(): Promise<void> {
     const Purchases = await getPurchases();
     Purchases.configure({ apiKey });
     _rcAvailable = true;
-    _initialised = true;
   } catch (err) {
     console.warn("[RevenueCat] configure failed:", err);
-    _initialised = true;
+    // _rcAvailable stays false — fallback path will be used
   }
+}
+
+// ─── Subscription initialisation ─────────────────────────────────────────────
+
+/**
+ * Initialise the RevenueCat SDK exactly once, even under concurrent callers.
+ *
+ * All callers await the same promise — configure() is guaranteed to run at most
+ * once per app session regardless of how many concurrent invocations occur.
+ */
+export async function initRevenueCat(): Promise<void> {
+  if (!_initPromise) _initPromise = _doInit();
+  return _initPromise;
+}
+
+/**
+ * Reset init state — FOR TESTING ONLY. Never call in production code.
+ * Allows tests to simulate a fresh app session.
+ */
+export function _resetInitForTesting(): void {
+  _initPromise = null;
+  _devMode = false;
+  _rcAvailable = false;
 }
 
 // ─── Entitlement check ────────────────────────────────────────────────────────
@@ -196,12 +228,21 @@ export async function getSubscriptionStatus(): Promise<SubscriptionStatus> {
           isDevMode: false,
         };
       }
+      // FIX-3 (partial): RC is available and confirmed no active entitlement.
+      // Clear any stale local premium cache so expired users lose access
+      // immediately rather than retaining it indefinitely on this device.
+      try {
+        await AsyncStorage.removeItem(PREMIUM_KEY);
+        await AsyncStorage.removeItem(PREMIUM_PRODUCT_KEY);
+      } catch { /* ignore storage errors */ }
     } catch (err) {
       console.warn("[RevenueCat] getCustomerInfo failed:", err);
+      // On network error, fall through to local cache (offline access preserved)
     }
   }
 
-  // Fall back to local premium state (e.g. after offline purchase)
+  // Fall back to local premium state (e.g. after offline purchase, or when
+  // RC is unavailable due to missing keys or network error)
   try {
     const premiumActive = await AsyncStorage.getItem(PREMIUM_KEY);
     const productId = await AsyncStorage.getItem(PREMIUM_PRODUCT_KEY);
@@ -269,7 +310,16 @@ export async function purchaseProduct(productId: string): Promise<PurchaseResult
       }
       return { success: false, cancelled: false, error: "Entitlement not activated" };
     } catch (err: any) {
-      if (err?.userCancelled) {
+      // FIX-5: RC v10 uses PurchasesErrorCode enum, not a boolean userCancelled property.
+      // In react-native-purchases v10.x, user cancellation throws a PurchasesError
+      // with code === PurchasesErrorCode.PurchaseCancelledError (value 1).
+      // The old v7/v8 check (err?.userCancelled) is undefined in v10 and would
+      // incorrectly show a "Purchase Failed" alert on every user cancellation.
+      const isCancelled =
+        err?.userCancelled === true || // v7/v8 legacy (kept for safety)
+        err?.code === 1 ||             // PurchasesErrorCode.PurchaseCancelledError = 1
+        err?.code === "PurchaseCancelledError"; // string form used in some RC versions
+      if (isCancelled) {
         return { success: false, cancelled: true };
       }
       return { success: false, cancelled: false, error: err?.message ?? "Purchase failed" };
@@ -297,13 +347,20 @@ export async function restorePurchases(): Promise<boolean> {
         await AsyncStorage.setItem(PREMIUM_PRODUCT_KEY, entitlement.productIdentifier);
         return true;
       }
+      // FIX-3: RC confirmed no active entitlement — clear stale local cache.
+      // Without this, a user whose subscription expired retains premium access
+      // indefinitely on this device because PREMIUM_KEY = "true" persists from
+      // their previous purchase and is never cleared.
+      await AsyncStorage.removeItem(PREMIUM_KEY);
+      await AsyncStorage.removeItem(PREMIUM_PRODUCT_KEY);
       return false;
     } catch (err) {
       console.warn("[RevenueCat] restorePurchases failed:", err);
+      // On error, do NOT clear local cache — preserve offline access
     }
   }
 
-  // Fallback: check local state
+  // Fallback: check local state (RC unavailable — no keys configured)
   try {
     const premiumActive = await AsyncStorage.getItem(PREMIUM_KEY);
     return premiumActive === "true";
@@ -324,7 +381,7 @@ export async function openManageSubscriptions(): Promise<void> {
   throw new Error("manage_subscriptions_unavailable");
 }
 
-// ─── User identity (link RC app_user_id to our openId) ─────────────────────────
+// ─── User identity (link RC app_user_id to our openId) ───────────────────────
 
 /**
  * Call this immediately after a successful sign-in so that RevenueCat's

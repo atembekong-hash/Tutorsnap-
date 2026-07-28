@@ -7,8 +7,8 @@ Baseline tests: 179/179 passing
 ## Phase Status
 
 - [x] Phase 1 — Setup: baseline confirmed (179/179 tests, git state clean)
-- [ ] Phase 2 — FIX-1: initRevenueCat race condition (promise-mutex)
-- [ ] Phase 3 — Checkpoint A
+- [x] Phase 2 — FIX-1: initRevenueCat race condition (promise-mutex) ✓
+- [x] Phase 3 — Checkpoint A ✓
 - [ ] Phase 4 — FIX-2: Webhook secret hardening
 - [ ] Phase 5 — Checkpoint B
 - [ ] Phase 6 — FIX-3: restorePurchases stale cache
