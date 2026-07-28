@@ -59,6 +59,7 @@ import { listSessionSummaries, type ChatSessionSummary } from "@/lib/chat-sessio
 import { Swipeable } from "react-native-gesture-handler";
 import { cleanMathText } from "@/lib/clean-math-text";
 import { useAuth } from "@/lib/auth-context";
+import Svg, { Circle } from "react-native-svg";
 import { StreakMilestoneModal } from "@/components/streak-milestone-modal";
 import { checkStreakMilestone, type MilestoneInfo } from "@/lib/streak-milestones";
 import { HomeSkeletonScreen, DotsLoader } from "@/components/skeleton";
@@ -1171,15 +1172,56 @@ function SolveScreenContent() {
 
           <ReAnimated.View style={fromOnboarding === "1" ? staggeredStyles[1] : undefined}>
           {/* Trial Countdown Banner — shown for free-trial users who have not yet purchased */}
-          {isTrialActive && !isDevMode && !trialBannerDismissed && (
+          {isTrialActive && !isDevMode && !trialBannerDismissed && (() => {
+            const TRIAL_TOTAL = 14;
+            const trialPct = Math.max(0, Math.min(1, trialDaysRemaining / TRIAL_TOTAL));
+            const ringSize = 44;
+            const strokeWidth = 4;
+            const radius = (ringSize - strokeWidth) / 2;
+            const circumference = 2 * Math.PI * radius;
+            const strokeDashoffset = circumference * (1 - trialPct);
+            const urgentColor = trialDaysRemaining <= 3 ? colors.error : trialDaysRemaining <= 7 ? colors.warning : colors.primary;
+            return (
             <TouchableOpacity
               accessibilityLabel={`${trialDaysRemaining} day${trialDaysRemaining === 1 ? '' : 's'} left in your free trial. Tap to upgrade.`}
-              style={[styles.trialBanner, { backgroundColor: `${colors.primary}12`, borderColor: `${colors.primary}30` }]}
+              style={[styles.trialBanner, { backgroundColor: `${urgentColor}20`, borderColor: `${urgentColor}40`, borderLeftWidth: 3, borderLeftColor: urgentColor }]}
               onPress={() => { router.push("/paywall" as any); }}
               activeOpacity={0.8}
             >
               <View style={styles.trialBannerLeft}>
-                <Text style={styles.trialBannerEmoji}>⏳</Text>
+                {/* Days-remaining circular progress ring */}
+                <View style={styles.trialRingContainer}>
+                  <Svg width={ringSize} height={ringSize}>
+                    {/* Track circle */}
+                    <Circle
+                      cx={ringSize / 2}
+                      cy={ringSize / 2}
+                      r={radius}
+                      stroke={`${urgentColor}30`}
+                      strokeWidth={strokeWidth}
+                      fill="none"
+                    />
+                    {/* Progress arc — starts at top (rotate -90deg) */}
+                    <Circle
+                      cx={ringSize / 2}
+                      cy={ringSize / 2}
+                      r={radius}
+                      stroke={urgentColor}
+                      strokeWidth={strokeWidth}
+                      fill="none"
+                      strokeDasharray={`${circumference} ${circumference}`}
+                      strokeDashoffset={strokeDashoffset}
+                      strokeLinecap="round"
+                      rotation="-90"
+                      origin={`${ringSize / 2}, ${ringSize / 2}`}
+                    />
+                  </Svg>
+                  {/* Day count label inside ring */}
+                  <View style={styles.trialRingLabel}>
+                    <Text style={[styles.trialRingDays, { color: urgentColor }]}>{trialDaysRemaining}</Text>
+                    <Text style={[styles.trialRingUnit, { color: urgentColor }]}>d</Text>
+                  </View>
+                </View>
                 <View>
                   <Text style={[styles.trialBannerTitle, { color: colors.foreground }]}>
                     {trialDaysRemaining} day{trialDaysRemaining === 1 ? '' : 's'} left in your free trial
@@ -1190,7 +1232,7 @@ function SolveScreenContent() {
                 </View>
               </View>
               <View style={styles.trialBannerRight}>
-                <View style={[styles.trialBannerChip, { backgroundColor: colors.primary }]}>
+                <View style={[styles.trialBannerChip, { backgroundColor: urgentColor }]}>
                   <Text style={styles.trialBannerChipText}>Upgrade</Text>
                 </View>
                 <TouchableOpacity
@@ -1203,7 +1245,8 @@ function SolveScreenContent() {
                 </TouchableOpacity>
               </View>
             </TouchableOpacity>
-          )}
+            );
+          })()}
 
           {/* Shield Used Toast */}
           {shieldUsedToast && (
@@ -2323,6 +2366,10 @@ const styles = StyleSheet.create({
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
   },
   trialBannerLeft: { flexDirection: "row", alignItems: "center", gap: 10, flex: 1 },
+  trialRingContainer: { width: 44, height: 44, alignItems: "center", justifyContent: "center", position: "relative" },
+  trialRingLabel: { position: "absolute", alignItems: "center", justifyContent: "center", flexDirection: "row" },
+  trialRingDays: { fontSize: 13, fontWeight: "800", lineHeight: 15 },
+  trialRingUnit: { fontSize: 9, fontWeight: "700", lineHeight: 15, marginTop: 2 },
   trialBannerEmoji: { fontSize: 22 },
   trialBannerTitle: { fontSize: 13, fontWeight: "700" },
   trialBannerSub: { fontSize: 12, marginTop: 1 },
