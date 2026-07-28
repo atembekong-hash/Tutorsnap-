@@ -138,9 +138,24 @@ async function startServer() {
     express.raw({ type: "application/json" }),
     async (req, res) => {
       try {
-        // ── 1. Optional Authorization check ──────────────────────────────────
+        // ── 1. Authorization check (FIX-2) ───────────────────────────────
+        // In production, REVENUECAT_WEBHOOK_SECRET MUST be configured.
+        // Accepting unauthenticated webhook requests in production would allow
+        // any party to forge subscription events (grant/revoke premium).
         const secret = process.env.REVENUECAT_WEBHOOK_SECRET;
-        if (secret) {
+        const isProduction = process.env.NODE_ENV === "production";
+        if (!secret) {
+          if (isProduction) {
+            console.error(
+              "[RC Webhook] CRITICAL: REVENUECAT_WEBHOOK_SECRET is not set in production. "
+              + "All webhook requests are rejected to prevent unauthorized subscription grants."
+            );
+            res.status(500).json({ ok: false, error: "Webhook secret not configured" });
+            return;
+          }
+          // Development/test: allow unauthenticated requests (no real purchases)
+          console.warn("[RC Webhook] REVENUECAT_WEBHOOK_SECRET not set — skipping auth check (dev mode)");
+        } else {
           const authHeader = req.headers["authorization"];
           if (authHeader !== secret) {
             console.warn("[RC Webhook] Unauthorized request — Authorization header mismatch");

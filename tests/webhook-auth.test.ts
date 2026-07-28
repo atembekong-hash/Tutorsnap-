@@ -11,17 +11,22 @@
  * These tests validate the auth logic in isolation without spinning up
  * the full Express server or touching the database.
  */
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect } from "vitest";
 
 // ── Extracted auth logic (mirrors server/_core/index.ts) ──────────────────────
 // This function replicates the exact auth check from the webhook handler so we
 // can test it without importing the full server (which has Sentry/DB side effects).
 function checkWebhookAuth(
   secret: string | undefined,
-  authHeader: string | undefined
+  authHeader: string | undefined,
+  isProduction: boolean = false
 ): { allowed: boolean; statusCode: number; error?: string } {
   if (!secret) {
-    // No secret configured — dev/staging passthrough
+    if (isProduction) {
+      // FIX-2: Reject in production when secret is not configured
+      return { allowed: false, statusCode: 500, error: "Webhook secret not configured" };
+    }
+    // Development/test: allow unauthenticated requests
     return { allowed: true, statusCode: 200 };
   }
   if (authHeader !== secret) {
@@ -64,7 +69,28 @@ describe("RevenueCat webhook Authorization check", () => {
     });
   });
 
-  describe("when REVENUECAT_WEBHOOK_SECRET is absent (dev/staging mode)", () => {
+  describe("FIX-2: when REVENUECAT_WEBHOOK_SECRET is absent in PRODUCTION", () => {
+    it("rejects all requests with 500 (misconfiguration)", () => {
+      const result = checkWebhookAuth(undefined, undefined, true);
+      expect(result.allowed).toBe(false);
+      expect(result.statusCode).toBe(500);
+      expect(result.error).toBe("Webhook secret not configured");
+    });
+
+    it("rejects even requests with an Authorization header when secret is not configured", () => {
+      const result = checkWebhookAuth(undefined, "some_value", true);
+      expect(result.allowed).toBe(false);
+      expect(result.statusCode).toBe(500);
+    });
+
+    it("rejects empty string secret in production (treated as absent)", () => {
+      const result = checkWebhookAuth("", undefined, true);
+      expect(result.allowed).toBe(false);
+      expect(result.statusCode).toBe(500);
+    });
+  });
+
+  describe("when REVENUECAT_WEBHOOK_SECRET is absent in DEVELOPMENT", () => {
     it("allows requests with no Authorization header", () => {
       const result = checkWebhookAuth(undefined, undefined);
       expect(result.allowed).toBe(true);
@@ -93,12 +119,22 @@ describe("RevenueCat webhook Authorization check", () => {
         join(__dirname, "..", "server", "_core", "index.ts"),
         "utf8"
       );
-      // Verify the secret env var name is referenced
       expect(source).toContain("REVENUECAT_WEBHOOK_SECRET");
-      // Verify the 401 response is present
       expect(source).toContain("401");
-      // Verify the Authorization header is checked
       expect(source).toContain("authorization");
+    });
+
+    it("server/_core/index.ts rejects in production when secret is missing (FIX-2)", () => {
+      const { readFileSync } = require("fs");
+      const { join } = require("path");
+      const source = readFileSync(
+        join(__dirname, "..", "server", "_core", "index.ts"),
+        "utf8"
+      );
+      expect(source).toContain("NODE_ENV");
+      expect(source).toContain("production");
+      expect(source).toContain("500");
+      expect(source).toContain("Webhook secret not configured");
     });
 
     it("server/_core/index.ts webhook endpoint is registered at correct path", () => {
