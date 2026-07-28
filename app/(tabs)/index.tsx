@@ -821,6 +821,7 @@ function SolveScreenContent() {
 
   const solveMutation = trpc.academic.solve.useMutation({
     onSuccess: async (data) => {
+      await incUsage("solves").catch(() => {}); // FIX-6
       H.notificationSuccess();
       const historyItem = {
         id: `history-${Date.now()}`,
@@ -926,7 +927,7 @@ function SolveScreenContent() {
     Keyboard.dismiss();
     setShowMathKeyboard(false);
     H.impactMedium();
-    await incUsage("solves");
+    // FIX-6: moved to onSuccess
     const fullProblem = problem.trim();
     solveMutation.mutate({ problem: fullProblem, subject: selectedSubject ?? "other", gradeLevel: homeGradeLevel ?? undefined });
   };

@@ -284,7 +284,8 @@ async function startServer() {
         //   a late-arriving duplicate or out-of-order delivery from overwriting
         //   a newer state. We use event.purchased_at_ms as the event timestamp
         //   (falls back to Date.now() if absent, which always allows the update).
-        const eventTimestampMs: number = (event.purchased_at_ms as number | null) ?? Date.now();
+        // FIX-7: purchased_at_ms is null for CANCELLATION/EXPIRATION events
+        const eventTimestampMs: number | null = (event.purchased_at_ms as number | null) ?? (event.event_timestamp_ms as number | null) ?? (expiresAtMs ?? null);
 
         const existing = await db
           .select({
@@ -307,7 +308,7 @@ async function startServer() {
           const existingUpdatedMs = existingRow.updatedAt.getTime();
           // Out-of-order guard: skip if existing row is newer than this event
           // (5 s tolerance to absorb clock skew between RC and our server)
-          if (existingUpdatedMs > eventTimestampMs + 5_000) {
+          if (eventTimestampMs !== null && existingUpdatedMs > eventTimestampMs + 5_000) {
             console.log(
               `[RC Webhook] Skipping out-of-order event: ${eventType} ` +
               `(existing updatedAt=${existingUpdatedMs} > event ts=${eventTimestampMs})`

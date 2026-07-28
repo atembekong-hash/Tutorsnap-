@@ -2,6 +2,7 @@ import { NOT_ADMIN_ERR_MSG, UNAUTHED_ERR_MSG } from "../../shared/const.js";
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import type { TrpcContext } from "./context";
+import { getDb } from "../db.js";
 
 const t = initTRPC.context<TrpcContext>().create({
   transformer: superjson,
@@ -73,3 +74,18 @@ export const adminProcedure = t.procedure.use(loggingMiddleware).use(
     });
   }),
 );
+
+// ─── FIX-4 ───────────────────────────────────────────────────────────────────
+export async function checkServerSidePremium(userId: number, db: Awaited<ReturnType<typeof getDb>> | null): Promise<boolean> {
+  if (!db) return false;
+  try {
+    const { subscriptions } = await import("../../drizzle/schema.js");
+    const { eq, desc } = await import("drizzle-orm");
+    const rows = await (db as any).select({ status: subscriptions.status, expiresAt: subscriptions.expiresAt }).from(subscriptions).where(eq(subscriptions.userId, userId)).orderBy(desc(subscriptions.updatedAt)).limit(1);
+    if (!rows || rows.length === 0) return false;
+    const { status, expiresAt } = rows[0];
+    if (status === "active") return true;
+    if (status === "cancelled" && expiresAt && new Date(expiresAt) > new Date()) return true;
+    return false;
+  } catch { return false; }
+}

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { router, publicProcedure, protectedProcedure } from "./_core/trpc";
+import { router, publicProcedure, protectedProcedure, checkServerSidePremium } from "./_core/trpc";
 import { getDb } from "./db";
 import { aireFeedback, aireSubjectCalibration, solveHistory, chatSessions, userProgress, userBookmarks, userNotes, subscriptions } from "../drizzle/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
@@ -626,6 +626,9 @@ const academicRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       try {
+        // ── FIX-4 ──
+        if (ctx.user) { const db = await getDb(); const ok = await checkServerSidePremium(ctx.user.id, db); if (!ok) throw new TRPCError({ code: "PAYMENT_REQUIRED", message: "Premium subscription required (10003)" }); }
+        // ── END FIX-4 ──
         let tokenBudget = estimateSolveTokens(input.problem, input.subject);
 
         // ── AIRE per-user multiplier ────────────────────────────────────────────
@@ -785,6 +788,9 @@ Respond ONLY with this JSON (no extra text):
     }))
     .mutation(async ({ input }) => {
       try {
+        // ── FIX-4 ──
+        if (ctx.user) { const db = await getDb(); const ok = await checkServerSidePremium(ctx.user.id, db); if (!ok) throw new TRPCError({ code: "PAYMENT_REQUIRED", message: "Premium subscription required (10003)" }); }
+        // ── END FIX-4 ──
         // Use gemini for vision (best multimodal) with gpt-5-mini fallback
         const messages = [
           { role: "system" as const, content: IMAGE_SOLVE_SYSTEM_PROMPT + gradeContext(input.gradeLevel) },
@@ -820,7 +826,10 @@ Respond ONLY with this JSON (no extra text):
       difficulty: z.enum(["easy", "medium", "hard"]),
       gradeLevel: z.string().optional(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      // ── FIX-4 ──
+      if (ctx.user) { const db = await getDb(); const ok = await checkServerSidePremium(ctx.user.id, db); if (!ok) throw new TRPCError({ code: "PAYMENT_REQUIRED", message: "Premium subscription required (10003)" }); }
+      // ── END FIX-4 ──
       // Scale token budget by difficulty: easy=700, medium=1100, hard=1800
       const practiceTokens = input.difficulty === 'easy' ? 700 : input.difficulty === 'medium' ? 1100 : 1800;
       const practicePrompt = buildPracticePrompt(input.subject, input.difficulty) + gradeContext(input.gradeLevel);
@@ -880,7 +889,10 @@ Respond ONLY with this JSON (no extra text):
       count: z.number().min(3).max(10).default(5),
       gradeLevel: z.string().optional(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      // ── FIX-4 ──
+      if (ctx.user) { const db = await getDb(); const ok = await checkServerSidePremium(ctx.user.id, db); if (!ok) throw new TRPCError({ code: "PAYMENT_REQUIRED", message: "Premium subscription required (10003)" }); }
+      // ── END FIX-4 ──
       const quizPrompt = `You are TutorSnap, an expert academic tutor.${gradeContext(input.gradeLevel)}
 Generate exactly ${input.count} ${input.difficulty} multiple-choice questions for: ${input.subject}.
 Each question has 4 options (A-D), one correct answer, and a brief 1-sentence explanation.
