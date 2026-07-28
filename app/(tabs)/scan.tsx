@@ -30,7 +30,9 @@ import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { trpc } from "@/lib/trpc";
+import { TRPCClientError } from "@trpc/client";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { FREE_LIMITS, checkLimit as checkUsageLimit, incrementUsage } from "@/lib/subscription";
 import type { HistoryItem, MathSubject } from "@/shared/types";
 import { SubjectPicker } from "@/components/subject-picker";
 import { type SubjectId } from "@/lib/subjects";
@@ -128,6 +130,7 @@ function ScanScreenContent() {
 
   const solveMutation = trpc.academic.solveFromImage.useMutation({
     onSuccess: async (data) => {
+      await incrementUsage("solves").catch(()=>{}); // GAP-B
       H.notificationSuccess();
       const historyItem: HistoryItem = {
         id: `history-${Date.now()}`,
@@ -160,8 +163,9 @@ function ScanScreenContent() {
       setIsProcessing(false);
       router.push({ pathname: "/solution", params: { data: JSON.stringify(data) } });
     },
-    onError: () => {
-      H.notificationError();
+    onError: (err) => {
+      // GAP-C
+      if (err instanceof TRPCClientError && err.data?.httpStatus===402) { Alert.alert("Subscription Required","Your subscription has expired.",[{text:"OK"}]); } else { H.notificationError(); }
       setIsProcessing(false);
     },
   });
@@ -210,6 +214,9 @@ function ScanScreenContent() {
   // --- Solve the image ---
   const handleSolve = async () => {
     if (!selectedImage) return;
+    // GAP-B
+    const canSolve = await checkUsageLimit("solves");
+    if (!canSolve) { Alert.alert("Daily Limit Reached",`You've used your ${FREE_LIMITS.solvesPerDay} free solve${FREE_LIMITS.solvesPerDay===1?"":"s"} today. Upgrade to TutorSnap Premium.`,[{text:"OK"}]); return; }
     setIsProcessing(true);
     H.impactMedium();
     try {

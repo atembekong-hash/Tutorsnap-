@@ -739,7 +739,9 @@ const academicRouter = router({
       subject: z.string().default("other"),
       gradeLevel: z.string().optional(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      // GAP-A: FIX-4 server-side premium check
+      if (ctx.user) { const db = await getDb(); const ok = await checkServerSidePremium(ctx.user.id, db); if (!ok) throw new TRPCError({ code: "PAYMENT_REQUIRED", message: "Premium subscription required (10003)" }); }
 
       // Build the options block for the prompt - uses structured data, never OCR or screen content
       const optionsBlock = input.options
@@ -786,7 +788,7 @@ Respond ONLY with this JSON (no extra text):
       subject: z.string().default("other"),
       gradeLevel: z.string().optional(),
     }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       try {
         // ── FIX-4 ──
         if (ctx.user) { const db = await getDb(); const ok = await checkServerSidePremium(ctx.user.id, db); if (!ok) throw new TRPCError({ code: "PAYMENT_REQUIRED", message: "Premium subscription required (10003)" }); }

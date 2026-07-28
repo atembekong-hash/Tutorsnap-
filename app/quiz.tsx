@@ -18,6 +18,7 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { useScreenTransition } from "@/hooks/use-screen-transition";
 import { trpc } from "@/lib/trpc";
+import { TRPCClientError } from "@trpc/client"; // GAP-C
 import { getSubjectDef, getSubjectLabel } from "@/lib/subjects";
 import { useAppearance } from "@/lib/appearance-context";
 import { useColorScheme } from "@/hooks/use-color-scheme";

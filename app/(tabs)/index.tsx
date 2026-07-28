@@ -29,6 +29,7 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { MathKeyboard } from "@/components/math-keyboard";
 import { useColors } from "@/hooks/use-colors";
 import { trpc } from "@/lib/trpc";
+import { TRPCClientError } from "@trpc/client";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getProgress, getStreakEmoji, getDailyGoalPercent, getShieldCount, applyStreakShieldIfNeeded, type ProgressData } from "@/lib/progress";
 import { useThemeContext } from "@/lib/theme-provider";
@@ -911,8 +912,9 @@ function SolveScreenContent() {
         params: { data: JSON.stringify(data) },
       });
     },
-    onError: () => {
-      H.notificationError();
+    onError: (err) => {
+      // GAP-C
+      if (err instanceof TRPCClientError && err.data?.httpStatus===402) { setPaywallContext("Your subscription has expired. Upgrade to continue."); setShowPaywall(true); } else { H.notificationError(); }
     },
   });
 
