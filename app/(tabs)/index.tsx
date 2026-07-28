@@ -914,7 +914,7 @@ function SolveScreenContent() {
     },
     onError: (err) => {
       // GAP-C
-      if (err instanceof TRPCClientError && err.data?.httpStatus===402) { setPaywallContext("Your subscription has expired. Upgrade to continue."); setShowPaywall(true); } else { H.notificationError(); }
+      if (err instanceof TRPCClientError && err.data?.httpStatus===402) { setPaywallContext("Your subscription has expired. Upgrade to continue."); setShowPaywallModal(true); } else { H.notificationError(); }
     },
   });
 

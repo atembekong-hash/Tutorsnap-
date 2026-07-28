@@ -323,7 +323,7 @@ async function startServer() {
           const incomingExpiresMs = expiresAt ? expiresAt.getTime() : null;
           const sameStatus = existingRow.status === newStatus;
           const sameExpiry = existingExpiresMs === incomingExpiresMs;
-          const sameTimestamp = Math.abs(existingUpdatedMs - eventTimestampMs) <= 5_000;
+          const sameTimestamp = eventTimestampMs !== null && Math.abs(existingUpdatedMs - eventTimestampMs) <= 5_000;
           if (sameStatus && sameExpiry && sameTimestamp) {
             console.log(`[RC Webhook] Exact duplicate skipped: ${eventType} for rcUser=${rcUserId}`);
             res.json({ ok: true, handled: false, reason: "exact duplicate skipped" });

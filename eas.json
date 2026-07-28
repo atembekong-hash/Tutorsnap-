@@ -10,7 +10,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://mathgenius-g8jxpbar.manus.space"
+        "EXPO_PUBLIC_API_BASE_URL": "https://api.tutorsnapai.tech"
       }
     },
     "preview-ios": {
@@ -18,7 +18,7 @@
         "simulator": false
       },
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://mathgenius-g8jxpbar.manus.space"
+        "EXPO_PUBLIC_API_BASE_URL": "https://api.tutorsnapai.tech"
       }
     },
     "preview2": {
@@ -26,7 +26,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://mathgenius-g8jxpbar.manus.space"
+        "EXPO_PUBLIC_API_BASE_URL": "https://api.tutorsnapai.tech"
       }
     },
     "preview3": {
@@ -34,7 +34,15 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://mathgenius-g8jxpbar.manus.space"
+        "EXPO_PUBLIC_API_BASE_URL": "https://api.tutorsnapai.tech"
+      }
+    },
+    "play-store-testing": {
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://api.tutorsnapai.tech"
       }
     },
     "production": {
@@ -45,7 +53,7 @@
         "simulator": false
       },
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://mathgenius-g8jxpbar.manus.space"
+        "EXPO_PUBLIC_API_BASE_URL": "https://api.tutorsnapai.tech"
       }
     }
   },

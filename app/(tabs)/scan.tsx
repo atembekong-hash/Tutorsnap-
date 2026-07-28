@@ -29,10 +29,11 @@ import * as FileSystem from "expo-file-system/legacy";
 import { ScreenContainer } from "@/components/screen-container";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
+import { usePremium } from "@/hooks/use-premium";
 import { trpc } from "@/lib/trpc";
 import { TRPCClientError } from "@trpc/client";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { FREE_LIMITS, checkLimit as checkUsageLimit, incrementUsage } from "@/lib/subscription";
+import { FREE_LIMITS } from "@/lib/subscription";
 import type { HistoryItem, MathSubject } from "@/shared/types";
 import { SubjectPicker } from "@/components/subject-picker";
 import { type SubjectId } from "@/lib/subjects";
@@ -45,6 +46,7 @@ type ScanMode = "camera" | "preview" | "web-picker";
 
 function ScanScreenContent() {
   const colors = useColors();
+  const { checkLimit, incrementUsage: incUsage } = usePremium();
   const router = useRouter();
   const { fromOnboarding } = useLocalSearchParams<{ fromOnboarding?: string }>();
   const { staggeredStyles } = useOnboardingEntry(fromOnboarding === "1");
@@ -130,7 +132,7 @@ function ScanScreenContent() {
 
   const solveMutation = trpc.academic.solveFromImage.useMutation({
     onSuccess: async (data) => {
-      await incrementUsage("solves").catch(()=>{}); // GAP-B
+      incUsage("solves"); // GAP-B
       H.notificationSuccess();
       const historyItem: HistoryItem = {
         id: `history-${Date.now()}`,
@@ -215,8 +217,7 @@ function ScanScreenContent() {
   const handleSolve = async () => {
     if (!selectedImage) return;
     // GAP-B
-    const canSolve = await checkUsageLimit("solves");
-    if (!canSolve) { Alert.alert("Daily Limit Reached",`You've used your ${FREE_LIMITS.solvesPerDay} free solve${FREE_LIMITS.solvesPerDay===1?"":"s"} today. Upgrade to TutorSnap Premium.`,[{text:"OK"}]); return; }
+    if (!checkLimit("solves")) { Alert.alert("Daily Limit Reached",`You've used your ${FREE_LIMITS.solvesPerDay} free solve${(FREE_LIMITS.solvesPerDay as number)===1?"":"s"} today. Upgrade to TutorSnap Premium.`,[{text:"OK"}]); return; }
     setIsProcessing(true);
     H.impactMedium();
     try {
