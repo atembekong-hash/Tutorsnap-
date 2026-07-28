@@ -2319,7 +2319,7 @@ const styles = StyleSheet.create({
   homeworkBannerClose: { padding: 2 },
   homeworkBannerCloseText: { fontSize: 14, fontWeight: "600" },
   trialBanner: {
-    borderRadius: 14, borderWidth: 1, padding: 14, marginHorizontal: 16, marginBottom: 12,
+    borderRadius: 14, borderWidth: 1, padding: 14, marginHorizontal: 16, marginTop: 12, marginBottom: 12,
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
   },
   trialBannerLeft: { flexDirection: "row", alignItems: "center", gap: 10, flex: 1 },

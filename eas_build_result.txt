@@ -1,0 +1,20 @@
+(node:3123) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Resolved "production" environment for the build. Learn more: https://docs.expo.dev/eas/environment-variables/#setting-the-environment-for-your-builds
+No environment variables with visibility "Plain text" and "Sensitive" found for the "production" environment on EAS.
+Environment variables loaded from the "preview" build profile "env" configuration: EXPO_PUBLIC_API_BASE_URL.
+
+
+You've used 100 builds beyond your included credits this billing period ($56.00 in overages so far).
+Additional builds continue at pay-as-you-go rates. See usage in billing.: https://expo.dev/accounts/vvault07/settings/billing
+
+✔ Using remote Android credentials (Expo server)
+✔ Using Keystore from configuration: Build Credentials RQndGZ8SJm (default)
+
+Compressing project files and uploading to EAS Build. Learn more: https://expo.fyi/eas-build-archive
+⠋ Compressing project files⠙ Compressing project files⠹ Compressing project files⠸ Compressing project files⠼ Compressing project files⠴ Compressing project files⠦ Compressing project files⠧ Compressing project files⠇ Compressing project files⠏ Compressing project files⠋ Compressing project files⠙ Compressing project files⠹ Compressing project files⠸ Compressing project files⠼ Compressing project files⠴ Compressing project files⠦ Compressing project files⠧ Compressing project files⠇ Compressing project files⠏ Compressing project files⠋ Compressing project files✔ Compressed project files 2s (4.0 MB)
+⠋ Uploading to EAS Build (0 / 4.0 MB)⠙ Uploading to EAS Build (4.0 MB / 4.0 MB)⠹ Uploading to EAS Build (4.0 MB / 4.0 MB)⠸ Uploading to EAS Build (4.0 MB / 4.0 MB)✔ Uploaded to EAS 
+⠋ Computing project fingerprint⠙ Computing project fingerprint⠹ Computing project fingerprint⠸ Computing project fingerprint⠼ Computing project fingerprint⠴ Computing project fingerprint⠦ Computing project fingerprint⠧ Computing project fingerprint⠇ Computing project fingerprint⠏ Computing project fingerprint⠋ Computing project fingerprint⠙ Computing project fingerprint⠹ Computing project fingerprint⠸ Computing project fingerprint⠼ Computing project fingerprint⠴ Computing project fingerprint⠦ Computing project fingerprint⠧ Computing project fingerprint⠇ Computing project fingerprint⠏ Computing project fingerprint⠋ Computing project fingerprint⠙ Computing project fingerprint⠹ Computing project fingerprint⠸ Computing project fingerprint⠼ Computing project fingerprint⠴ Computing project fingerprint⠦ Computing project fingerprint⠧ Computing project fingerprint⠇ Computing project fingerprint⠏ Computing project fingerprint⠋ Computing project fingerprint⠙ Computing project fingerprint⠹ Computing project fingerprint⠸ Computing project fingerprint⠼ Computing project fingerprint⠴ Computing project fingerprint⠦ Computing project fingerprint✔ Computed project fingerprint
+
+See logs: https://expo.dev/accounts/vvault07/projects/mathgenius-ai/builds/7b446c11-87e5-42c6-8db4-52e88e6e082c
+
