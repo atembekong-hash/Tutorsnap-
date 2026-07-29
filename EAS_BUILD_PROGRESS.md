@@ -56,3 +56,35 @@
 | 3 | Monitor build until complete | ⏳ IN PROGRESS |
 | 4 | Download and verify AAB artifact | ⬜ PENDING |
 | 5 | Deliver final report | ⬜ PENDING |
+
+---
+
+## Build Attempt 3 — versionCode 46 (2026-07-29)
+
+**Build ID**: `2eceeb85-6288-48e0-b233-5f35ac88fdf5`
+**Build URL**: https://expo.dev/accounts/vvault07/projects/mathgenius-ai/builds/2eceeb85-6288-48e0-b233-5f35ac88fdf5
+**Commit**: `eff99f8e` (plugin regex fix)
+**Status**: QUEUED / IN PROGRESS
+
+### Fix Applied
+- `plugins/withLegacyModuleInterop.js`: Switched from literal string match to whitespace-agnostic regex `/([ \t]*override val isNewArchEnabled: Boolean = BuildConfig\.IS_NEW_ARCHITECTURE_ENABLED)/`
+- Plugin validation confirmed: override=true, expression-body=true, import=true
+
+### Previous Failures
+1. Build `0bbc11c2` — `require('@expo/config-plugins')` not resolvable in pnpm → fixed to `require('expo/config-plugins')`
+2. Build `74f7d8de` — Kotlin block-body syntax error → fixed to expression-body syntax
+3. Build `2eceeb85` — THIS BUILD (regex fix)
+
+### Recovery Instructions
+If environment resets:
+1. `cd /home/ubuntu/mathgenius-ai`
+2. Apply pnpm symlinks (see below)
+3. Check build at URL above
+
+### pnpm Symlinks (must apply before each EAS build)
+```bash
+EXPO_CLI_REAL=$(realpath node_modules/.pnpm/@expo+cli@54.0.26_*/node_modules/@expo/cli 2>/dev/null | head -1)
+CONFIG_PLUGINS_REAL=$(realpath node_modules/.pnpm/@expo+config-plugins@54.0.5/node_modules/@expo/config-plugins)
+ln -sfn "$EXPO_CLI_REAL" node_modules/@expo/cli
+ln -sfn "$CONFIG_PLUGINS_REAL" node_modules/@expo/config-plugins
+```
