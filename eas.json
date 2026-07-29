@@ -10,7 +10,8 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://api.tutorsnapai.tech"
+        "EXPO_PUBLIC_API_BASE_URL": "https://api.tutorsnapai.tech",
+        "EXPO_PUBLIC_REVENUECAT_GOOGLE_KEY": "goog_UqfvbpBUcIIAPfVBBFnMjhDeBPU"
       }
     },
     "preview-ios": {
@@ -26,7 +27,8 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://api.tutorsnapai.tech"
+        "EXPO_PUBLIC_API_BASE_URL": "https://api.tutorsnapai.tech",
+        "EXPO_PUBLIC_REVENUECAT_GOOGLE_KEY": "goog_UqfvbpBUcIIAPfVBBFnMjhDeBPU"
       }
     },
     "preview3": {
@@ -34,7 +36,8 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://api.tutorsnapai.tech"
+        "EXPO_PUBLIC_API_BASE_URL": "https://api.tutorsnapai.tech",
+        "EXPO_PUBLIC_REVENUECAT_GOOGLE_KEY": "goog_UqfvbpBUcIIAPfVBBFnMjhDeBPU"
       }
     },
     "play-store-testing": {
@@ -42,7 +45,8 @@
         "buildType": "app-bundle"
       },
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://api.tutorsnapai.tech"
+        "EXPO_PUBLIC_API_BASE_URL": "https://api.tutorsnapai.tech",
+        "EXPO_PUBLIC_REVENUECAT_GOOGLE_KEY": "goog_UqfvbpBUcIIAPfVBBFnMjhDeBPU"
       }
     },
     "production": {
@@ -53,7 +57,8 @@
         "simulator": false
       },
       "env": {
-        "EXPO_PUBLIC_API_BASE_URL": "https://api.tutorsnapai.tech"
+        "EXPO_PUBLIC_API_BASE_URL": "https://api.tutorsnapai.tech",
+        "EXPO_PUBLIC_REVENUECAT_GOOGLE_KEY": "goog_UqfvbpBUcIIAPfVBBFnMjhDeBPU"
       }
     }
   },
