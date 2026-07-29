@@ -34,6 +34,8 @@ const STATUS_MAP: Record<string, SubStatus> = {
   UNCANCELLATION:        "active",
   NON_RENEWING_PURCHASE: "active",
   TRANSFER:              "active",
+  REFUND_REVERSED:       "active",
+  SUBSCRIPTION_EXTENDED: "active",
   BILLING_ISSUE:         "active",
   GRACE_PERIOD_START:    "active",
   GRACE_PERIOD_END:      "expired",
@@ -95,6 +97,18 @@ function computeIsPremium(
   return { isPremium, isInGracePeriod, cancelledButActive };
 }
 
+// ── TRANSFER user resolution logic (mirrors DEFECT-4 fix in server/_core/index.ts) ──
+function resolveRcUserId(
+  eventType: string,
+  appUserId: string,
+  transferredTo?: string
+): string {
+  if (eventType === "TRANSFER" && transferredTo) {
+    return transferredTo;
+  }
+  return appUserId;
+}
+
 // ── Tests ──────────────────────────────────────────────────────────────────────
 
 describe("RevenueCat webhook — event type → status mapping", () => {
@@ -106,6 +120,8 @@ describe("RevenueCat webhook — event type → status mapping", () => {
       "UNCANCELLATION",
       "NON_RENEWING_PURCHASE",
       "TRANSFER",
+      "REFUND_REVERSED",
+      "SUBSCRIPTION_EXTENDED",
     ];
     for (const evt of activeEvents) {
       it(`${evt} → active`, () => {
@@ -133,6 +149,35 @@ describe("RevenueCat webhook — event type → status mapping", () => {
       const result = resolveEventStatus("GRACE_PERIOD_END");
       expect(result.handled).toBe(true);
       expect(result.status).toBe("expired");
+    });
+  });
+
+  describe("DEFECT-3 fix: REFUND_REVERSED and SUBSCRIPTION_EXTENDED", () => {
+    it("REFUND_REVERSED → active (RC claws back refund; access restored)", () => {
+      const result = resolveEventStatus("REFUND_REVERSED");
+      expect(result.handled).toBe(true);
+      expect(result.status).toBe("active");
+    });
+
+    it("SUBSCRIPTION_EXTENDED → active (new expiry date set)", () => {
+      const result = resolveEventStatus("SUBSCRIPTION_EXTENDED");
+      expect(result.handled).toBe(true);
+      expect(result.status).toBe("active");
+    });
+
+    it("REFUND_REVERSED was previously falling through to 'unknown event type' (regression guard)", () => {
+      // Before DEFECT-3 fix, REFUND_REVERSED was not in STATUS_MAP and would
+      // return { handled: false, reason: 'unknown event type' }.
+      // This test ensures it is now handled.
+      const result = resolveEventStatus("REFUND_REVERSED");
+      expect(result.reason).toBeUndefined(); // no reason means it was handled
+      expect(result.handled).toBe(true);
+    });
+
+    it("SUBSCRIPTION_EXTENDED was previously falling through to 'unknown event type' (regression guard)", () => {
+      const result = resolveEventStatus("SUBSCRIPTION_EXTENDED");
+      expect(result.reason).toBeUndefined();
+      expect(result.handled).toBe(true);
     });
   });
 
@@ -179,6 +224,45 @@ describe("RevenueCat webhook — event type → status mapping", () => {
       const result = resolveEventStatus("");
       expect(result.handled).toBe(false);
     });
+  });
+});
+
+describe("DEFECT-4 fix: TRANSFER event user resolution", () => {
+  it("TRANSFER with transferred_to → subscription attributed to new user", () => {
+    const oldUser = "google:old-user-sub";
+    const newUser = "google:new-user-sub";
+    const rcUserId = resolveRcUserId("TRANSFER", oldUser, newUser);
+    expect(rcUserId).toBe(newUser);
+    expect(rcUserId).not.toBe(oldUser);
+  });
+
+  it("TRANSFER without transferred_to → falls back to app_user_id", () => {
+    const oldUser = "google:old-user-sub";
+    const rcUserId = resolveRcUserId("TRANSFER", oldUser, undefined);
+    expect(rcUserId).toBe(oldUser);
+  });
+
+  it("TRANSFER with empty transferred_to → falls back to app_user_id", () => {
+    const oldUser = "google:old-user-sub";
+    const rcUserId = resolveRcUserId("TRANSFER", oldUser, "");
+    // empty string is falsy → falls back to app_user_id
+    expect(rcUserId).toBe(oldUser);
+  });
+
+  it("non-TRANSFER event is never redirected to transferred_to", () => {
+    const appUser = "google:user-sub";
+    const someOtherUser = "google:other-sub";
+    // Even if transferred_to is present on a non-TRANSFER event, it should be ignored
+    for (const evt of ["RENEWAL", "CANCELLATION", "REFUND", "EXPIRATION"]) {
+      const rcUserId = resolveRcUserId(evt, appUser, someOtherUser);
+      expect(rcUserId).toBe(appUser);
+    }
+  });
+
+  it("TRANSFER: subscription status is still 'active' for the new user", () => {
+    const result = resolveEventStatus("TRANSFER");
+    expect(result.handled).toBe(true);
+    expect(result.status).toBe("active");
   });
 });
 
@@ -365,6 +449,19 @@ describe("Source code contract verification", () => {
 
   it("webhook: UNCANCELLATION maps to active", () => {
     expect(webhookSrc).toMatch(/UNCANCELLATION.*"active"/);
+  });
+
+  it("webhook: REFUND_REVERSED maps to active (DEFECT-3 fix)", () => {
+    expect(webhookSrc).toMatch(/REFUND_REVERSED.*"active"/);
+  });
+
+  it("webhook: SUBSCRIPTION_EXTENDED maps to active (DEFECT-3 fix)", () => {
+    expect(webhookSrc).toMatch(/SUBSCRIPTION_EXTENDED.*"active"/);
+  });
+
+  it("webhook: TRANSFER uses transferred_to for user resolution (DEFECT-4 fix)", () => {
+    expect(webhookSrc).toContain('transferred_to');
+    expect(webhookSrc).toContain('DEFECT-4 FIX');
   });
 
   it("webhook: out-of-order guard is present", () => {

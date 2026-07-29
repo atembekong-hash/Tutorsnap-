@@ -183,7 +183,13 @@ async function startServer() {
         }
 
         const eventType: string = event.type ?? "";
-        const rcUserId: string = event.app_user_id ?? "";
+        // DEFECT-4 FIX: For TRANSFER events, app_user_id is the OLD user.
+        // The subscription must be attributed to event.transferred_to (the new user).
+        // For all other events, use app_user_id as normal.
+        const rcUserId: string =
+          (eventType === "TRANSFER" && event.transferred_to)
+            ? (event.transferred_to as string)
+            : (event.app_user_id ?? "");
         const productId: string = event.product_id ?? "";
         const expiresAtMs: number | null = event.expiration_at_ms ?? null;
 
@@ -217,6 +223,10 @@ async function startServer() {
           UNCANCELLATION:        "active",
           NON_RENEWING_PURCHASE: "active",
           TRANSFER:              "active",
+          // Refund reversed → re-activate (RC claws back the refund; access restored)
+          REFUND_REVERSED:       "active",
+          // Subscription extended → still active with new expiry
+          SUBSCRIPTION_EXTENDED: "active",
           // Grace-period events — user still has entitlement
           BILLING_ISSUE:         "active",   // RC keeps access during grace period
           GRACE_PERIOD_START:    "active",   // billing failed; grace period begins
