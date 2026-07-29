@@ -5,6 +5,7 @@
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { getUserInfo, isAuthenticated, logout } from "@/lib/_core/auth-enhanced";
+import { logoutRevenueCat } from "@/lib/subscription";
 import type { User } from "@/lib/_core/auth-enhanced";
 
 interface AuthContextType {
@@ -33,6 +34,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const handleLogout = async () => {
     try {
+      // IDENTITY FIX (Phase 5): Revert RC to anonymous identity on programmatic logout.
+      // This ensures account switching (sign out A -> sign in B) never leaks A's RC identity.
+      // logoutRevenueCat() is non-fatal - if it fails, the next loginRevenueCat() call
+      // on sign-in will overwrite the stale identity anyway.
+      await logoutRevenueCat().catch(() => {});
       await logout();
       setUser(null);
     } catch (error) {

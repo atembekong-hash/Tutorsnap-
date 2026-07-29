@@ -332,10 +332,20 @@ export async function purchaseProduct(productId: string): Promise<PurchaseResult
   return { success: true, productId };
 }
 
-export async function restorePurchases(): Promise<boolean> {
+export async function restorePurchases(openId?: string): Promise<boolean> {
   await initRevenueCat();
 
   if (_devMode || Platform.OS === "web") return false;
+
+  // IDENTITY FIX (Phase 4): Ensure RC is identified with the authenticated user's openId
+  // before restoring. Without this, a restore after app restart (where RC is still anonymous)
+  // would be attributed to the anonymous RC ID, not the user's permanent account.
+  // This prevents the restore from silently succeeding for the wrong customer.
+  if (openId && _rcAvailable) {
+    try {
+      await loginRevenueCat(openId);
+    } catch { /* non-fatal — proceed with current RC identity */ }
+  }
 
   if (_rcAvailable) {
     try {

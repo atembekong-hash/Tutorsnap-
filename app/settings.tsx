@@ -666,7 +666,11 @@ export default function SettingsScreen() {
     H.impactLight()
     setRestoringPurchases(true);
     try {
-      const restored = await restorePurchases();
+      // IDENTITY FIX (Phase 4): Pass the user's openId so RC is identified before restoring.
+      // Without this, a restore after app restart (RC in anonymous mode) would be attributed
+      // to the anonymous RC ID, not the user's permanent account.
+      const currentUser = await getUserInfo().catch(() => null);
+      const restored = await restorePurchases(currentUser?.openId ?? undefined);
       if (restored) {
         H.notificationSuccess()
         Alert.alert("Purchases Restored", "Your premium subscription has been restored.");

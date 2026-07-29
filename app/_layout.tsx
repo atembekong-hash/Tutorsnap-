@@ -37,7 +37,7 @@ import { applyImportedAppearance } from "@/lib/appearance-deep-link";
 import * as Notifications from "expo-notifications";
 import * as Linking from "expo-linking";
 import { syncAllStreakNotifications } from "@/lib/streak-notifications";
-import { initRevenueCat, getSubscriptionStatus, onSubscriptionChange, _notifySubscriptionChange } from "@/lib/subscription"; // NB-2: real-time RC listener
+import { initRevenueCat, getSubscriptionStatus, loginRevenueCat, onSubscriptionChange, _notifySubscriptionChange } from "@/lib/subscription"; // NB-2: real-time RC listener
 import { recordFirstLaunch } from "@/lib/review-prompt";
 import { getOrCreateReferralCode, scheduleWeeklyAffiliateDigest } from "@/lib/affiliate";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -126,9 +126,19 @@ export default function RootLayout() {
     let paywallTimer: ReturnType<typeof setTimeout> | null = null;
     initRevenueCat().then(async () => {
       try {
-        const { isAuthenticated } = await import("@/lib/_core/auth-enhanced");
+        const { isAuthenticated, getUserInfo } = await import("@/lib/_core/auth-enhanced");
         const authed = await isAuthenticated();
         if (!authed) return; // Not signed in — paywall will be shown after sign-in/onboarding
+        // IDENTITY FIX: Re-identify RC with the signed-in user's permanent openId on every app
+        // start. Without this, RC stays on an anonymous UUID after app restart, causing
+        // getSubscriptionStatus() to query the wrong RC customer and misattribute purchases.
+        // loginRevenueCat() is idempotent — RC de-dupes logIn calls for the same openId.
+        try {
+          const cachedUser = await getUserInfo();
+          if (cachedUser?.openId) {
+            await loginRevenueCat(cachedUser.openId);
+          }
+        } catch { /* non-fatal — anonymous RC will be used if this fails */ }
         const status = await getSubscriptionStatus();
         // If trial has expired and user is not premium, show paywall exactly once per session.
         // The session flag uses a date-keyed AsyncStorage entry so it resets each calendar day.
