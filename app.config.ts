@@ -78,7 +78,7 @@ const config: ExpoConfig = {
     },
   },
   android: {
-    versionCode: 45,
+    versionCode: 46,
     adaptiveIcon: {
       backgroundColor: "#E6F4FE",
       foregroundImage: "./assets/images/android-icon-foreground.png",
@@ -172,6 +172,7 @@ const config: ExpoConfig = {
       },
     ],
     "@react-native-google-signin/google-signin",
+    "./plugins/withLegacyModuleInterop",
     [
       "expo-build-properties",
       {

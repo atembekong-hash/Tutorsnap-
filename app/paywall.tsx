@@ -175,9 +175,13 @@ export default function PaywallScreen() {
   const handleStartTrial = useCallback(async () => {
     H.impactMedium();
     setLoading(true);
+    console.log(`[PAYWALL] 💳 Purchase button tapped — selectedPlan: ${selectedPlan}`);
     try {
+      console.log(`[PAYWALL] Calling purchaseProduct("${selectedPlan}")...`);
       const result = await purchaseProduct(selectedPlan);
+      console.log(`[PAYWALL] purchaseProduct result:`, JSON.stringify(result));
       if (result.success) {
+        console.log(`[PAYWALL] ✅ Purchase succeeded for plan: ${selectedPlan}`);
         H.notificationSuccess();
         // Log trial/purchase conversion for A/B test analytics
         logAbTestEvent("trial_started", trialVariant.variant, { plan: selectedPlan }).catch(() => {});
@@ -185,13 +189,19 @@ export default function PaywallScreen() {
         lockVariant().catch(() => {});
         // Navigate to the celebration screen instead of a plain Alert
         router.replace("/premium-welcome" as any);
-      } else if (!result.cancelled) {
+      } else if (result.cancelled) {
+        console.log(`[PAYWALL] 🛑 Purchase cancelled by user for plan: ${selectedPlan}`);
+      } else {
+        console.error(`[PAYWALL] ❌ Purchase failed for plan: ${selectedPlan} — error: ${result.error}`);
         Alert.alert(
           "Purchase Failed",
           result.error ?? "Something went wrong. Please try again.",
           [{ text: "OK" }]
         );
       }
+    } catch (err: any) {
+      console.error(`[PAYWALL] ❌ Unexpected exception in handleStartTrial:`, err?.message ?? err);
+      Alert.alert("Purchase Error", err?.message ?? "An unexpected error occurred.", [{ text: "OK" }]);
     } finally {
       setLoading(false);
     }

@@ -153,11 +153,19 @@ async function _doInit(): Promise<void> {
 
   try {
     const Purchases = await getPurchases();
+    console.log(`[RC-INIT] Calling Purchases.configure() on ${Platform.OS} with key prefix: ${apiKey.slice(0, 8)}...`);
     Purchases.configure({ apiKey });
     _rcAvailable = true;
-  } catch (err) {
-    console.warn("[RevenueCat] configure failed:", err);
-    // _rcAvailable stays false — fallback path will be used
+    console.log("[RC-INIT] ✅ Purchases.configure() succeeded — _rcAvailable = true");
+  } catch (err: any) {
+    // CRITICAL: Log the full error so it is visible in device logs.
+    // Previously this was silently swallowed, hiding the root cause.
+    console.error(
+      "[RC-INIT] ❌ Purchases.configure() FAILED — _rcAvailable stays false.\n" +
+      "This means Google Play Billing will NOT be invoked for purchases.\n" +
+      "Error:", err?.message ?? err
+    );
+    // _rcAvailable stays false — purchaseProduct will return an explicit error (not a silent grant)
   }
 }
 
@@ -326,10 +334,26 @@ export async function purchaseProduct(productId: string): Promise<PurchaseResult
     }
   }
 
-  // Fallback: local grant (no SDK)
-  await AsyncStorage.setItem(PREMIUM_KEY, "true");
-  await AsyncStorage.setItem(PREMIUM_PRODUCT_KEY, productId);
-  return { success: true, productId };
+  // CRITICAL FIX: Previously this fallback silently granted premium locally without
+  // calling RevenueCat or Google Play Billing. This caused the purchase dialog to
+  // never appear — the app just navigated to /premium-welcome with no transaction.
+  //
+  // Root cause: _rcAvailable was false because react-native-purchases was not listed
+  // in the Expo plugins array, so NativeModules.RNPurchases was null and configure()
+  // threw an exception that was silently swallowed.
+  //
+  // Fix: Return an explicit error instead of silently granting premium.
+  // This surfaces the real failure to the user and to crash reporting.
+  console.error(
+    "[RC-PURCHASE] ❌ RevenueCat SDK not available (_rcAvailable=false).\n" +
+    "Google Play Billing was NOT invoked. Check RC-INIT logs above for the configure() error.\n" +
+    `Product attempted: ${productId}`
+  );
+  return {
+    success: false,
+    cancelled: false,
+    error: "Payment system not available. Please restart the app and try again.",
+  };
 }
 
 export async function restorePurchases(openId?: string): Promise<boolean> {
