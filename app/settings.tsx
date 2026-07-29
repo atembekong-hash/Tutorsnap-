@@ -56,6 +56,7 @@ import * as Print from "expo-print";
 import { getSubscriptionStatus,
   restorePurchases,
   openManageSubscriptions,
+  logoutRevenueCat,
   type SubscriptionStatus,
 } from "@/lib/subscription";
 import { TutorSettingsModal } from "@/components/tutor-settings-modal";
@@ -695,6 +696,7 @@ export default function SettingsScreen() {
           onPress: async () => {
             try {
               stopTokenRefreshTimer();
+              await logoutRevenueCat().catch(() => {}); // NB-1: prevent RC identity leak on shared devices
               await logout();
               H.notificationSuccess();
               router.replace("/auth-screen" as any);

@@ -19,6 +19,7 @@ import {
   getSubscriptionStatus,
   getUsageCount,
   incrementUsage as _incrementUsage,
+  onSubscriptionChange,
 } from "@/lib/subscription";
 
 export interface PremiumState extends SubscriptionStatus {
@@ -69,6 +70,11 @@ export function usePremium(): PremiumState {
   // Load on mount
   useEffect(() => {
     loadAll();
+  }, [loadAll]);
+
+  // NB-2: Refresh when RC fires a CustomerInfo update (purchase, renewal, cancellation)
+  useEffect(() => {
+    return onSubscriptionChange(() => { loadAll(); });
   }, [loadAll]);
 
   // Refresh whenever the screen comes into focus (e.g. returning from paywall)

@@ -1865,6 +1865,10 @@ function ChatScreenContent() {
         // Do NOT auto-focus here — doing so re-opens the keyboard which pushes the
         // input bar back up. The user taps the input when they are ready to type.
 
+        // GAP-D fix: increment usage AFTER the stream completes successfully
+        // (moved from handleSend where it fired before the stream, consuming quota on failure)
+        incUsage("chat").catch(() => {});
+
         // Trigger follow-up chip suggestions
         suggestFollowUpsMutation.mutate({
           aiResponse: accumulated,
@@ -1892,7 +1896,7 @@ function ChatScreenContent() {
         setIsStreaming(false);
       }
     },
-    [persistMessages, suggestFollowUpsMutation, getTypingDelayMs]
+    [persistMessages, suggestFollowUpsMutation, getTypingDelayMs, incUsage]
   );
 
   // ── Send ────────────────────────────────────────────────────────────────────
@@ -1924,7 +1928,7 @@ function ChatScreenContent() {
           return;
         }
         setSessionMessageCount((c) => c + 1);
-        await incUsage("chat");
+        // GAP-D: incUsage("chat") moved to sendStreamingChat onSuccess (after stream completes)
       }
 
       Keyboard.dismiss();

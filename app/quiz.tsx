@@ -583,7 +583,13 @@ export default function QuizScreen() {
       }
       setLoadingExplanation(false);
     },
-    onError: () => setLoadingExplanation(false),
+    onError: (err) => {
+      setLoadingExplanation(false);
+      // NB-3: Show paywall if server-side premium check blocks the request (HTTP 402)
+      if (err instanceof TRPCClientError && err.data?.httpStatus === 402) {
+        setShowPaywallModal(true);
+      }
+    },
   });
 
   // ─── Validated explanation trigger ─────────────────────────────────────────

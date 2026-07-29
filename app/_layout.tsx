@@ -37,7 +37,7 @@ import { applyImportedAppearance } from "@/lib/appearance-deep-link";
 import * as Notifications from "expo-notifications";
 import * as Linking from "expo-linking";
 import { syncAllStreakNotifications } from "@/lib/streak-notifications";
-import { initRevenueCat, getSubscriptionStatus } from "@/lib/subscription";
+import { initRevenueCat, getSubscriptionStatus, onSubscriptionChange, _notifySubscriptionChange } from "@/lib/subscription"; // NB-2: real-time RC listener
 import { recordFirstLaunch } from "@/lib/review-prompt";
 import { getOrCreateReferralCode, scheduleWeeklyAffiliateDigest } from "@/lib/affiliate";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -148,6 +148,34 @@ export default function RootLayout() {
     // Cancel the timer if the root layout unmounts before it fires
     return () => {
       if (paywallTimer !== null) clearTimeout(paywallTimer);
+    };
+  }, []);
+
+  // NB-2: Real-time subscription status listener.
+  // addCustomerInfoUpdateListener fires whenever RC receives a purchase,
+  // renewal, cancellation, or restore event — even while the app is open.
+  // Without this, a user who purchases mid-session stays on the free tier
+  // until they background/foreground the app.
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+    let rcListener: ((info: any) => void) | undefined;
+    (async () => {
+      try {
+        await initRevenueCat();
+        const { default: Purchases } = await import("react-native-purchases");
+        rcListener = (_info: any) => {
+          // Notify all usePremium instances to refresh their status
+          _notifySubscriptionChange();
+        };
+        Purchases.addCustomerInfoUpdateListener(rcListener);
+      } catch { /* non-fatal — RC may not be configured */ }
+    })();
+    return () => {
+      if (rcListener) {
+        import("react-native-purchases").then(({ default: Purchases }) => {
+          try { Purchases.removeCustomerInfoUpdateListener(rcListener!); } catch { /* ignore */ }
+        }).catch(() => {});
+      }
     };
   }, []);
 

@@ -403,6 +403,41 @@ export async function loginRevenueCat(openId: string): Promise<void> {
   }
 }
 
+// ─── Subscription change event bus (allows RC listener to trigger usePremium refresh) ─
+type SubscriptionChangeListener = () => void;
+const _subscriptionChangeListeners = new Set<SubscriptionChangeListener>();
+
+/** Register a callback to be called when RC reports a subscription change. */
+export function onSubscriptionChange(fn: SubscriptionChangeListener): () => void {
+  _subscriptionChangeListeners.add(fn);
+  return () => _subscriptionChangeListeners.delete(fn);
+}
+
+/** Fire all registered subscription change listeners. Internal use only. */
+export function _notifySubscriptionChange(): void {
+  _subscriptionChangeListeners.forEach((fn) => { try { fn(); } catch { /* ignore */ } });
+}
+
+// ─── RevenueCat logout (call on sign-out to prevent identity leak on shared devices) ─
+/**
+ * Call this during sign-out so the RC SDK reverts to an anonymous identity.
+ * Without this, the next user to sign in on the same device inherits the
+ * previous user's subscription state until loginRevenueCat() is called.
+ * Safe to call even if RC was never initialised — all guards are checked.
+ */
+export async function logoutRevenueCat(): Promise<void> {
+  if (_devMode || Platform.OS === "web") return;
+  if (!_rcAvailable) return;
+  try {
+    const Purchases = await getPurchases();
+    await Purchases.logOut();
+    console.log("[RevenueCat] Logged out — device reverted to anonymous identity");
+  } catch (err) {
+    // Non-fatal — anonymous identity will be used until next logIn
+    console.warn("[RevenueCat] logOut failed (non-fatal):", err);
+  }
+}
+
 // ─── Offerings (for displaying prices from the store) ────────────────────────
 
 export interface OfferingPackage {
