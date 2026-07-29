@@ -117,6 +117,7 @@ async function startServer() {
   });
 
   // ─── RevenueCat Webhook ─────────────────────────────────────────────────────
+  // Last deployed: 2026-07-29 (Phase 4 — REVENUECAT_WEBHOOK_SECRET push)
   //
   // RevenueCat sends real-time subscription events to this endpoint.
   // The body must be read as raw bytes before JSON.parse so that a future
