@@ -18,7 +18,7 @@
  * - https://reactnative.dev/docs/new-architecture-intro#interoperability-layer
  */
 
-const { withMainApplication } = require('@expo/config-plugins');
+const { withMainApplication } = require('expo/config-plugins');
 
 const withLegacyModuleInterop = (config) => {
   return withMainApplication(config, (config) => {
