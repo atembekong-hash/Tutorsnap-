@@ -6,20 +6,24 @@
  * which uses the old ReactContextBaseJavaModule bridge and is not yet a TurboModule.
  *
  * Root cause: In RN 0.81 New Architecture (Bridgeless) mode, NativeModules.RNPurchases
- * returns undefined because RNPurchasesModule is a legacy module and
- * ReactPackageTurboModuleManagerDelegate.shouldEnableLegacyModuleInterop defaults to false.
+ * returns undefined because:
+ *   1. RNPurchasesModule is a legacy ReactContextBaseJavaModule (not a TurboModule)
+ *   2. ReactPackageTurboModuleManagerDelegate.unstable_shouldEnableLegacyModuleInterop()
+ *      returns enableBridgelessArchitecture() && useTurboModuleInterop()
+ *   3. ReactNativeFeatureFlags.useTurboModuleInterop() defaults to false
  *
- * Fix: Override getReactPackageTurboModuleManagerDelegateBuilder() in DefaultReactNativeHost
- * to return a delegate with unstable_shouldEnableLegacyModuleInterop() = true.
+ * Fix: Call ReactNativeFeatureFlags.override() in MainApplication.onCreate() BEFORE
+ * loadReactNative(this) to set useTurboModuleInterop = true.
  *
- * IMPORTANT: The override MUST use Kotlin expression-body syntax (= if (...)) to match
- * the parent class method signature in DefaultReactNativeHost.kt. Using a block body
- * { return if (...) } causes a Kotlin type inference error at compile time.
+ * This is the correct RN 0.81 API. The previous approach of subclassing
+ * DefaultTurboModuleManagerDelegate.Builder was wrong because:
+ *   - DefaultTurboModuleManagerDelegate.Builder is not open (effectively final in Kotlin)
+ *   - unstable_shouldEnableLegacyModuleInterop() is on the delegate, not the Builder
  *
  * References:
- * - DefaultReactNativeHost.kt (RN 0.81) lines 40-47
- * - ReactPackageTurboModuleManagerDelegate.kt (RN 0.81)
- * - DefaultTurboModuleManagerDelegate.kt (RN 0.81)
+ * - ReactNativeFeatureFlags.kt (RN 0.81) — override() method
+ * - ReactNativeFeatureFlagsDefaults.kt (RN 0.81) — useTurboModuleInterop() defaults to false
+ * - ReactPackageTurboModuleManagerDelegate.kt (RN 0.81) — shouldEnableLegacyModuleInterop
  */
 
 const { withMainApplication } = require('expo/config-plugins');
@@ -29,45 +33,55 @@ const withLegacyModuleInterop = (config) => {
     let contents = config.modResults.contents;
 
     // Check if already patched
-    if (contents.includes('unstable_shouldEnableLegacyModuleInterop')) {
+    if (contents.includes('useTurboModuleInterop')) {
       console.log('[withLegacyModuleInterop] Already patched — skipping.');
       return config;
     }
 
-    // Add the required import for ReactPackageTurboModuleManagerDelegate
-    const importToAdd = 'import com.facebook.react.ReactPackageTurboModuleManagerDelegate';
-    if (!contents.includes(importToAdd)) {
-      // Insert after the first import from com.facebook.react.defaults
-      contents = contents.replace(
-        /(import com\.facebook\.react\.defaults\.[^\n]+\n)/,
-        '$1' + importToAdd + '\n'
-      );
+    // Step 1: Add the required imports for ReactNativeFeatureFlags and ReactNativeFeatureFlagsDefaults.
+    // Insert after the last existing import line.
+    const importBlock =
+      'import com.facebook.react.internal.featureflags.ReactNativeFeatureFlags\n' +
+      'import com.facebook.react.internal.featureflags.ReactNativeFeatureFlagsDefaults';
+
+    const lines = contents.split('\n');
+    let lastImportIdx = -1;
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].startsWith('import ')) {
+        lastImportIdx = i;
+      }
+    }
+    if (lastImportIdx >= 0) {
+      lines.splice(lastImportIdx + 1, 0, importBlock);
+      contents = lines.join('\n');
     }
 
-    // Override using Kotlin expression-body syntax (= if (...)) to match the parent class.
-    // Using a block body { return if (...) } causes a Kotlin type error because the
-    // compiler cannot infer the return type from a block body override.
-    const legacyInteropOverride = `
-    override fun getReactPackageTurboModuleManagerDelegateBuilder(): ReactPackageTurboModuleManagerDelegate.Builder? =
-        if (isNewArchEnabled) {
-          object : com.facebook.react.defaults.DefaultTurboModuleManagerDelegate.Builder() {
-            override fun unstable_shouldEnableLegacyModuleInterop(): Boolean = true
-          }
-        } else {
-          null
-        }`;
+    // Step 2: Insert ReactNativeFeatureFlags.override() call at the beginning of onCreate(),
+    // BEFORE loadReactNative(this) so the flag is set before RN initializes.
+    //
+    // The generated onCreate() looks like:
+    //   override fun onCreate() {
+    //     super.onCreate()
+    //     DefaultNewArchitectureEntryPoint.releaseLevel = ...
+    //     loadReactNative(this)
+    //     ...
+    //   }
+    //
+    // We insert the override call right after super.onCreate()
+    const featureFlagOverride =
+      '\n    ReactNativeFeatureFlags.override(object : ReactNativeFeatureFlagsDefaults() {\n' +
+      '      override fun useTurboModuleInterop(): Boolean = true\n' +
+      '    })';
 
-    // Insert after the isNewArchEnabled property line inside DefaultReactNativeHost.
-    // Use a regex to be whitespace-agnostic (the generated file may have varying indentation).
-    const isNewArchRegex = /([ \t]*override val isNewArchEnabled: Boolean = BuildConfig\.IS_NEW_ARCHITECTURE_ENABLED)/;
-    if (isNewArchRegex.test(contents)) {
+    const onCreateRegex = /(override fun onCreate\(\) \{[\s\S]*?super\.onCreate\(\))/;
+    if (onCreateRegex.test(contents)) {
       contents = contents.replace(
-        isNewArchRegex,
-        (match, line) => line + legacyInteropOverride
+        onCreateRegex,
+        (match) => match + featureFlagOverride
       );
-      console.log('[withLegacyModuleInterop] ✅ Patched MainApplication.kt to enable legacy module interop.');
+      console.log('[withLegacyModuleInterop] ✅ Patched MainApplication.kt onCreate() to enable useTurboModuleInterop.');
     } else {
-      console.warn('[withLegacyModuleInterop] ⚠️ Could not find isNewArchEnabled line in MainApplication.kt. Manual patch required.');
+      console.warn('[withLegacyModuleInterop] ⚠️ Could not find onCreate() in MainApplication.kt. Manual patch required.');
     }
 
     config.modResults.contents = contents;
@@ -76,3 +90,4 @@ const withLegacyModuleInterop = (config) => {
 };
 
 module.exports = withLegacyModuleInterop;
+
