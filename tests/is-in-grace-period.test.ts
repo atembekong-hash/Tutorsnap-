@@ -48,9 +48,14 @@ async function sendWebhook(
       ...overrides,
     },
   });
+  // Include Authorization header if REVENUECAT_WEBHOOK_SECRET is set in the environment.
+  // This allows the test to work in both dev mode (no secret) and production mode (secret required).
+  const secret = process.env.REVENUECAT_WEBHOOK_SECRET;
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (secret) headers["Authorization"] = secret;
   const res = await fetch(`${SERVER_URL}/api/webhooks/revenuecat`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body,
   });
   return res.json() as Promise<{ ok: boolean; handled: boolean; status?: string; reason?: string }>;
