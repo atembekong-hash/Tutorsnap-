@@ -12,10 +12,14 @@
  * Fix: Override getReactPackageTurboModuleManagerDelegateBuilder() in DefaultReactNativeHost
  * to return a delegate with unstable_shouldEnableLegacyModuleInterop() = true.
  *
+ * IMPORTANT: The override MUST use Kotlin expression-body syntax (= if (...)) to match
+ * the parent class method signature in DefaultReactNativeHost.kt. Using a block body
+ * { return if (...) } causes a Kotlin type inference error at compile time.
+ *
  * References:
+ * - DefaultReactNativeHost.kt (RN 0.81) lines 40-47
  * - ReactPackageTurboModuleManagerDelegate.kt (RN 0.81)
  * - DefaultTurboModuleManagerDelegate.kt (RN 0.81)
- * - https://reactnative.dev/docs/new-architecture-intro#interoperability-layer
  */
 
 const { withMainApplication } = require('expo/config-plugins');
@@ -25,7 +29,7 @@ const withLegacyModuleInterop = (config) => {
     let contents = config.modResults.contents;
 
     // Check if already patched
-    if (contents.includes('shouldEnableLegacyModuleInterop')) {
+    if (contents.includes('unstable_shouldEnableLegacyModuleInterop')) {
       console.log('[withLegacyModuleInterop] Already patched — skipping.');
       return config;
     }
@@ -40,26 +44,26 @@ const withLegacyModuleInterop = (config) => {
       );
     }
 
-    // Minimal override: only override unstable_shouldEnableLegacyModuleInterop.
-    // DefaultTurboModuleManagerDelegate.Builder handles setPackages() and
-    // setReactApplicationContext() internally — no need to override build().
+    // Override using Kotlin expression-body syntax (= if (...)) to match the parent class.
+    // Using a block body { return if (...) } causes a Kotlin type error because the
+    // compiler cannot infer the return type from a block body override.
     const legacyInteropOverride = `
-        override fun getReactPackageTurboModuleManagerDelegateBuilder(): ReactPackageTurboModuleManagerDelegate.Builder? {
-          return if (isNewArchEnabled) {
-            object : com.facebook.react.defaults.DefaultTurboModuleManagerDelegate.Builder() {
-              override fun unstable_shouldEnableLegacyModuleInterop(): Boolean = true
-            }
-          } else {
-            null
+    override fun getReactPackageTurboModuleManagerDelegateBuilder(): ReactPackageTurboModuleManagerDelegate.Builder? =
+        if (isNewArchEnabled) {
+          object : com.facebook.react.defaults.DefaultTurboModuleManagerDelegate.Builder() {
+            override fun unstable_shouldEnableLegacyModuleInterop(): Boolean = true
           }
+        } else {
+          null
         }`;
 
-    // Insert after the isNewArchEnabled line inside DefaultReactNativeHost
-    const isNewArchLine = 'override val isNewArchEnabled: Boolean = BuildConfig.IS_NEW_ARCHITECTURE_ENABLED';
-    if (contents.includes(isNewArchLine)) {
+    // Insert after the isNewArchEnabled property line inside DefaultReactNativeHost.
+    // Use a regex to be whitespace-agnostic (the generated file may have varying indentation).
+    const isNewArchRegex = /([ \t]*override val isNewArchEnabled: Boolean = BuildConfig\.IS_NEW_ARCHITECTURE_ENABLED)/;
+    if (isNewArchRegex.test(contents)) {
       contents = contents.replace(
-        isNewArchLine,
-        isNewArchLine + legacyInteropOverride
+        isNewArchRegex,
+        (match, line) => line + legacyInteropOverride
       );
       console.log('[withLegacyModuleInterop] ✅ Patched MainApplication.kt to enable legacy module interop.');
     } else {
