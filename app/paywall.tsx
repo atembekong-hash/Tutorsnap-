@@ -39,6 +39,7 @@ import { useColors } from "@/hooks/use-colors";
 import { useScreenTransition } from "@/hooks/use-screen-transition";
 import {
   DISCOUNT_PCT,
+  FREE_LIMITS,
   PRICE_ANNUAL,
   PRICE_ANNUAL_MONTHLY_EQUIV,
   PRICE_MONTHLY,
@@ -431,6 +432,68 @@ export default function PaywallScreen() {
           </TouchableOpacity>
           <Text style={s.ctaSubtext}>{postTrialPriceLabel}</Text>
         </ReAnimated.View>
+        {/* ── Free vs Premium comparison ──────────────────────────── */}
+        <ReAnimated.View entering={FadeInDown.delay(340).duration(400)} style={s.comparisonCard}>
+          <Text style={s.comparisonTitle}>Free vs Premium</Text>
+          {/* Header row */}
+          <View style={s.comparisonHeaderRow}>
+            <View style={s.comparisonFeatureCol} />
+            <View style={s.comparisonPlanCol}>
+              <Text style={s.comparisonPlanLabelFree}>Free</Text>
+            </View>
+            <View style={s.comparisonPlanCol}>
+              <View style={s.comparisonPremiumBadge}>
+                <Text style={s.comparisonPremiumBadgeText}>Premium</Text>
+              </View>
+            </View>
+          </View>
+          {/* Rows */}
+          {[
+            { label: "AI solves per day", free: `${FREE_LIMITS.solvesPerDay}`, premium: "Unlimited" },
+            { label: "Quiz questions per day", free: `${FREE_LIMITS.quizQuestionsPerDay}`, premium: "Unlimited" },
+            { label: "AI Tutor messages", free: `${FREE_LIMITS.chatMessagesPerSession}/session`, premium: "Unlimited" },
+            { label: "Camera scan", free: "✓", premium: "✓" },
+            { label: "Step-by-step explanations", free: "✓", premium: "✓" },
+            { label: "Progress analytics", free: "Basic", premium: "Full" },
+            { label: "Classroom & study groups", free: "No", premium: "✓" },
+            { label: "PDF export", free: "No", premium: "✓" },
+            { label: "Streak shields", free: "No", premium: "✓" },
+            { label: "Priority support", free: "No", premium: "✓" },
+          ].map((row, i, arr) => (
+            <View
+              key={i}
+              style={[
+                s.comparisonRow,
+                i % 2 === 0 && s.comparisonRowAlt,
+                i === arr.length - 1 && { borderBottomWidth: 0 },
+              ]}
+            >
+              <View style={s.comparisonFeatureCol}>
+                <Text style={s.comparisonFeatureText}>{row.label}</Text>
+              </View>
+              <View style={s.comparisonPlanCol}>
+                <Text style={[
+                  s.comparisonCellText,
+                  row.free === "No" && s.comparisonCellDash,
+                ]}>{row.free}</Text>
+              </View>
+              <View style={s.comparisonPlanCol}>
+                <Text style={[
+                  s.comparisonCellText,
+                  s.comparisonCellPremium,
+                  row.premium === "No" && s.comparisonCellDash,
+                ]}>{row.premium}</Text>
+              </View>
+            </View>
+          ))}
+          {/* Skip note */}
+          <View style={s.comparisonSkipNote}>
+            <Text style={s.comparisonSkipNoteText}>
+              Skipping gives you the Free tier. Upgrade anytime to unlock everything.
+            </Text>
+          </View>
+        </ReAnimated.View>
+
         {/* ── Testimonials ─────────────────────────────────────────── */}
         <ReAnimated.View entering={FadeInDown.delay(360).duration(400)} style={[s.featuresCard, { marginBottom: 12 }]}>
           <Text style={s.featuresTitle}>What students are saying</Text>
@@ -889,6 +952,99 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
       textAlign: "center",
       lineHeight: 15,
       paddingHorizontal: 8,
+    },
+
+    // ── Free vs Premium comparison card ──────────────────────────────────────
+    comparisonCard: {
+      backgroundColor: colors.surface,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.border,
+      marginBottom: 12,
+      overflow: "hidden",
+    },
+    comparisonTitle: {
+      fontSize: 15,
+      fontWeight: "700",
+      color: colors.foreground,
+      paddingHorizontal: 16,
+      paddingTop: 14,
+      paddingBottom: 10,
+    },
+    comparisonHeaderRow: {
+      flexDirection: "row",
+      paddingHorizontal: 16,
+      paddingBottom: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    comparisonFeatureCol: {
+      flex: 2,
+    },
+    comparisonPlanCol: {
+      flex: 1,
+      alignItems: "center",
+    },
+    comparisonPlanLabelFree: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: colors.muted,
+      textAlign: "center",
+    },
+    comparisonPremiumBadge: {
+      backgroundColor: ACCENT,
+      borderRadius: 10,
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+    },
+    comparisonPremiumBadgeText: {
+      fontSize: 11,
+      fontWeight: "700",
+      color: "#fff",
+    },
+    comparisonRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingHorizontal: 16,
+      paddingVertical: 9,
+      borderBottomWidth: 0.5,
+      borderBottomColor: colors.border,
+    },
+    comparisonRowAlt: {
+      backgroundColor: `${colors.border}30`,
+    },
+    comparisonFeatureText: {
+      flex: 2,
+      fontSize: 12,
+      color: colors.foreground,
+      lineHeight: 17,
+    },
+    comparisonCellText: {
+      flex: 1,
+      fontSize: 12,
+      fontWeight: "600",
+      color: colors.muted,
+      textAlign: "center",
+    },
+    comparisonCellPremium: {
+      color: ACCENT,
+    },
+    comparisonCellDash: {
+      color: colors.border,
+      fontWeight: "400",
+    },
+    comparisonSkipNote: {
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      backgroundColor: `${ACCENT}12`,
+      borderTopWidth: 1,
+      borderTopColor: `${ACCENT}30`,
+    },
+    comparisonSkipNoteText: {
+      fontSize: 12,
+      color: colors.muted,
+      textAlign: "center",
+      lineHeight: 17,
     },
   });
 }

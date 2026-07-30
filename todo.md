@@ -1241,6 +1241,12 @@
 - [x] TypeScript: 0 errors, 172/172 tests passing
 - [ ] Save checkpoint
 
+## Paywall Free Tier Display (versionCode 51)
+- [x] Add Free vs Premium comparison table to paywall screen
+- [x] Show exact free limits: 2 solves/day, 3 quiz/day, 3 chat/session
+- [x] Add skip note: "Skipping gives you the Free tier. Upgrade anytime."
+- [x] No em dashes in table cells
+
 ## Paywall & Subscription Fixes (versionCode 50)
 - [x] Fix premium bypass: remove auto-trial-start from getSubscriptionStatus; only grant isPremium:true if RC entitlement active OR user explicitly opted into trial
 - [x] Add TRIAL_OPTED_IN key; set it only when user taps "Start Free Trial" (purchaseProduct success)
