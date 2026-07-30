@@ -37,6 +37,11 @@ export const DISCOUNT_PCT = Math.round(
 const TRIAL_START_KEY = "@tutorsnap/trialStartedAt";
 const PREMIUM_KEY = "@tutorsnap/premiumActive";
 const PREMIUM_PRODUCT_KEY = "@tutorsnap/premiumProductId";
+// Set to "true" only when the user explicitly taps "Start Free Trial" and the
+// purchase succeeds (or in dev mode). Without this flag, users who dismiss the
+// paywall would incorrectly receive premium access because ensureTrialStartRecorded()
+// was previously called for ALL users on every getSubscriptionStatus() call.
+const TRIAL_OPTED_IN_KEY = "@tutorsnap/trialOptedIn";
 
 export async function getTrialStartDate(): Promise<number | null> {
   try {
@@ -54,6 +59,28 @@ export async function ensureTrialStartRecorded(): Promise<void> {
       await AsyncStorage.setItem(TRIAL_START_KEY, String(Date.now()));
     }
   } catch { /* ignore */ }
+}
+
+/**
+ * Mark that the user has explicitly opted into the free trial by tapping
+ * "Start Free Trial" and completing the purchase flow.
+ * This is the gate that separates "skipped paywall" from "started trial".
+ */
+export async function markTrialOptedIn(): Promise<void> {
+  try {
+    await AsyncStorage.setItem(TRIAL_OPTED_IN_KEY, "true");
+    // Also record the trial start date if not already set
+    await ensureTrialStartRecorded();
+  } catch { /* ignore */ }
+}
+
+export async function hasTrialOptedIn(): Promise<boolean> {
+  try {
+    const val = await AsyncStorage.getItem(TRIAL_OPTED_IN_KEY);
+    return val === "true";
+  } catch {
+    return false;
+  }
 }
 
 export function getTrialDaysRemaining(trialStartMs: number): number {
@@ -205,10 +232,12 @@ export interface SubscriptionStatus {
 
 export async function getSubscriptionStatus(): Promise<SubscriptionStatus> {
   await initRevenueCat();
-  await ensureTrialStartRecorded();
+  // NOTE: Do NOT call ensureTrialStartRecorded() here.
+  // Trial start is only recorded when the user explicitly opts in via markTrialOptedIn().
+  // Calling it here would give every user a 14-day free trial just by opening the app.
 
   const trialStart = await getTrialStartDate();
-  const trialDaysRemaining = trialStart ? getTrialDaysRemaining(trialStart) : 14;
+  const trialDaysRemaining = trialStart ? getTrialDaysRemaining(trialStart) : 0;
   const isTrialActive = trialDaysRemaining > 0;
 
   if (_devMode) {
@@ -265,10 +294,24 @@ export async function getSubscriptionStatus(): Promise<SubscriptionStatus> {
     }
   } catch { /* ignore */ }
 
-  // Not premium — check trial
+  // Not premium via RC — check if user explicitly opted into the free trial.
+  // Users who dismissed the paywall without subscribing do NOT get trial access.
+  const trialOptedIn = await hasTrialOptedIn();
+  if (trialOptedIn && isTrialActive) {
+    return {
+      isPremium: true,
+      isTrialActive: true,
+      trialDaysRemaining,
+      activeProductId: null,
+      isDevMode: false,
+    };
+  }
+
+  // User has no active subscription and has not opted into a trial.
+  // Restrict to free tier limits.
   return {
-    isPremium: isTrialActive,
-    isTrialActive,
+    isPremium: false,
+    isTrialActive: false,
     trialDaysRemaining,
     activeProductId: null,
     isDevMode: false,
@@ -288,6 +331,7 @@ export async function purchaseProduct(productId: string): Promise<PurchaseResult
     // Dev / web: grant immediately
     await AsyncStorage.setItem(PREMIUM_KEY, "true");
     await AsyncStorage.setItem(PREMIUM_PRODUCT_KEY, productId);
+    await markTrialOptedIn(); // Mark trial opted-in so dev mode also respects the gate
     return { success: true, productId };
   }
 
@@ -314,6 +358,7 @@ export async function purchaseProduct(productId: string): Promise<PurchaseResult
         // Cache locally for offline access
         await AsyncStorage.setItem(PREMIUM_KEY, "true");
         await AsyncStorage.setItem(PREMIUM_PRODUCT_KEY, productId);
+        await markTrialOptedIn(); // User explicitly started the trial — record opt-in
         return { success: true, productId };
       }
       return { success: false, cancelled: false, error: "Entitlement not activated" };

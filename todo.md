@@ -1240,3 +1240,10 @@
 - [x] Add Cancel button to close sheet
 - [x] TypeScript: 0 errors, 172/172 tests passing
 - [ ] Save checkpoint
+
+## Paywall & Subscription Fixes (versionCode 50)
+- [x] Fix premium bypass: remove auto-trial-start from getSubscriptionStatus; only grant isPremium:true if RC entitlement active OR user explicitly opted into trial
+- [x] Add TRIAL_OPTED_IN key; set it only when user taps "Start Free Trial" (purchaseProduct success)
+- [x] Fix DEFAULT_STATUS in use-premium.ts: change isPremium:false, isDevMode:false as initial state
+- [x] Fix skip button: increase top offset so it clears the status bar (top: insets.top + 8 instead of top: 8)
+- [x] Make skip button more visible: use foreground color text, slightly larger

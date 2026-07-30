@@ -246,9 +246,9 @@ export default function PaywallScreen() {
 
   return (
     <ReAnimated.View entering={FadeInDown.delay(0).duration(350)} style={[s.root, { paddingTop: insets.top }]}>
-      {/* Close / skip button */}
+      {/* Close / skip button — circular for ✕, pill for "Maybe Later" */}
       <TouchableOpacity
-        style={s.closeBtn}
+        style={fromOnboarding ? s.closeBtnPill : s.closeBtn}
         onPress={() => {
           if (fromOnboarding) {
             router.replace({ pathname: "/(tabs)", params: { fromOnboarding: "1" } } as any);
@@ -260,7 +260,9 @@ export default function PaywallScreen() {
         accessibilityLabel={fromOnboarding ? "Continue with free tier" : "Close paywall"}
         accessibilityRole="button"
       >
-        <Text style={s.closeBtnText}>{fromOnboarding ? "Maybe Later" : "✕"}</Text>
+        <Text style={fromOnboarding ? s.closeBtnPillText : s.closeBtnText}>
+          {fromOnboarding ? "Maybe Later" : "✕"}
+        </Text>
       </TouchableOpacity>
 
       <ScrollView
@@ -560,19 +562,44 @@ function makeStyles(colors: ReturnType<typeof useColors>) {
     },
     closeBtn: {
       position: "absolute",
-      top: 8,
-      right: 20,
+      // Position below the status bar: the root View already has paddingTop: insets.top,
+      // so top:12 places the button 12px below the safe area edge (well clear of the status bar).
+      top: 12,
+      right: 16,
       zIndex: 10,
-      width: 32,
-      height: 32,
-      borderRadius: 16,
-      backgroundColor: colors.surface,
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: `${colors.foreground}18`,
+      borderWidth: 1,
+      borderColor: `${colors.foreground}30`,
       alignItems: "center",
       justifyContent: "center",
     },
     closeBtnText: {
-      color: colors.muted,
-      fontSize: 14,
+      color: colors.foreground,
+      fontSize: 15,
+      fontWeight: "700",
+      lineHeight: 18,
+    },
+    // Pill variant for fromOnboarding ("Maybe Later" text)
+    closeBtnPill: {
+      position: "absolute",
+      top: 12,
+      right: 16,
+      zIndex: 10,
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderRadius: 20,
+      backgroundColor: `${colors.foreground}18`,
+      borderWidth: 1,
+      borderColor: `${colors.foreground}30`,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    closeBtnPillText: {
+      color: colors.foreground,
+      fontSize: 13,
       fontWeight: "600",
     },
     scroll: {

@@ -38,12 +38,15 @@ export interface PremiumState extends SubscriptionStatus {
   refresh: () => Promise<void>;
 }
 
+// Safe initial state: restrict access until the real subscription status is loaded.
+// Using isPremium:true here would give every user unlimited access during the brief
+// async load window — which is the bug that caused unlimited free solves/chats.
 const DEFAULT_STATUS: SubscriptionStatus = {
-  isPremium: true, // optimistic until loaded
-  isTrialActive: true,
-  trialDaysRemaining: 14,
+  isPremium: false,
+  isTrialActive: false,
+  trialDaysRemaining: 0,
   activeProductId: null,
-  isDevMode: true,
+  isDevMode: false,
 };
 
 export function usePremium(): PremiumState {
