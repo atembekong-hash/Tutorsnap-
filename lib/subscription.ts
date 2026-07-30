@@ -345,8 +345,12 @@ export async function purchaseProduct(productId: string): Promise<PurchaseResult
         return { success: false, cancelled: false, error: "No offerings available" };
       }
 
+      // Google Play subscription identifiers include the base plan suffix
+      // e.g. "tutorsnap_monthly:monthly" — match both exact and prefix forms
       const pkg = current.availablePackages.find(
-        (p) => p.product.identifier === productId
+        (p) =>
+          p.product.identifier === productId ||
+          p.product.identifier.startsWith(productId + ":")
       );
       if (!pkg) {
         return { success: false, cancelled: false, error: `Product ${productId} not found in offering` };

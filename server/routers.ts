@@ -501,8 +501,13 @@ function extractJsonFromContent(content: string): string {
  */
 function repairTruncatedJson(raw: string): string {
   let s = raw.trim();
-  // Remove trailing incomplete key-value pair (e.g. ,"key":"partial)
-  s = s.replace(/,\s*"[^"]*"\s*:\s*"[^"]*$/, "");
+  // Close any unterminated string value (truncated mid-string)
+  const quoteCount = (s.match(/(?<!\\)"/g) || []).length;
+  if (quoteCount % 2 !== 0) {
+    s = s + '"'; // close the open string
+  }
+  // Remove trailing incomplete key-value pair (e.g. ,"key":"partial")
+  s = s.replace(/,\s*"[^"]*"\s*:\s*"[^"]*"?$/, "");
   s = s.replace(/,\s*"[^"]*"\s*:\s*[^,}\]]*$/, "");
   s = s.replace(/,\s*$/, "");
   // Count unclosed brackets
@@ -832,8 +837,9 @@ Respond ONLY with this JSON (no extra text):
       // ── FIX-4 ──
       if (ctx.user) { const db = await getDb(); const ok = await checkServerSidePremium(ctx.user.id, db); if (!ok) throw new TRPCError({ code: "PAYMENT_REQUIRED", message: "Premium subscription required (10003)" }); }
       // ── END FIX-4 ──
-      // Scale token budget by difficulty: easy=700, medium=1100, hard=1800
-      const practiceTokens = input.difficulty === 'easy' ? 700 : input.difficulty === 'medium' ? 1100 : 1800;
+      // Scale token budget by difficulty: easy=900, medium=1600, hard=2400
+      // Increased from 700/1100/1800 to prevent JSON truncation at position ~4391
+      const practiceTokens = input.difficulty === 'easy' ? 900 : input.difficulty === 'medium' ? 1600 : 2400;
       const practicePrompt = buildPracticePrompt(input.subject, input.difficulty) + gradeContext(input.gradeLevel);
       const result = await invokeLLM({
         model: "claude-haiku-4-5",
