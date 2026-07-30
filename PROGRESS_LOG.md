@@ -19,8 +19,8 @@ Fix Android launch crash and build failure by:
 | Phase | Status | Description |
 |-------|--------|-------------|
 | 1 | ✅ DONE | Create progress log, commit baseline |
-| 2 | ⬜ TODO | Edit package.json + app.config.ts |
-| 3 | ⬜ TODO | pnpm install, TypeScript check, tests |
+| 2 | ✅ DONE | Edit package.json + app.config.ts |
+| 3 | ✅ DONE | pnpm install, TypeScript check, tests |
 | 4 | ⬜ TODO | Checkpoint + trigger APK build |
 | 5 | ⬜ TODO | Report to user |
 
@@ -45,4 +45,4 @@ If environment resets:
 4. Resume from first ⬜ TODO phase
 
 ## Last Updated
-Phase 1 complete. Next: Phase 2 — edit package.json and app.config.ts.
+Phase 3 complete. TypeScript: 0 errors. Tests: 235 passed (20 files). Next: Phase 4 — checkpoint + trigger APK build.
