@@ -46,3 +46,43 @@ If environment resets:
 
 ## Last Updated
 Phase 3 complete. TypeScript: 0 errors. Tests: 235 passed (20 files). Next: Phase 4 — checkpoint + trigger APK build.
+
+---
+
+## versionCode 49 — dangerouslyForceOverride Fix (New Session)
+
+### Context
+Previous attempts to fix the Android launch crash:
+- versionCode 46/47: ReactNativeFeatureFlags.override() BEFORE loadReactNative() → overwritten → crash
+- versionCode 48: Downgraded Reanimated to v3 + newArchEnabled:false → EAS build failed (react-native-css-interop requires worklets/v4)
+
+### Root Cause (Fully Confirmed)
+DefaultNewArchitectureEntryPoint.load() (called INSIDE loadReactNative()) calls
+ReactNativeFeatureFlags.override() with stable defaults that SET useTurboModuleInterop=false.
+Any override() call BEFORE loadReactNative() gets overwritten.
+
+### Fix Applied
+- plugins/withLegacyModuleInterop.js: Rewritten to call dangerouslyForceOverride() AFTER loadReactNative(this)
+- app.config.ts: Plugin re-added, newArchEnabled:true, versionCode:49
+- components/hello-wave.tsx: Fixed TS error (animationName -> withRepeat/withTiming API)
+- components/parallax-scroll-view.tsx: useScrollViewOffset -> useScrollOffset (v4 API)
+- package.json: react-native-reanimated:~4.1.6 + react-native-worklets:0.5.1 (restored)
+- babel.config.js: Restored to babel-preset-expo with nativewind
+
+### Validation
+- expo prebuild: PASS - dangerouslyForceOverride appears AFTER loadReactNative(this)
+- TypeScript: 0 errors
+- pnpm install: react-native-reanimated@4.1.7 + react-native-worklets@0.5.1 installed
+
+### Phase Status
+| Phase | Status | Description |
+|-------|--------|-------------|
+| 1 | DONE | Fix TS errors (hello-wave.tsx, parallax-scroll-view.tsx) |
+| 2 | DONE | Add withLegacyModuleInterop plugin to app.config.ts |
+| 3 | DONE | pnpm install (Reanimated v4 + worklets) |
+| 4 | DONE | expo prebuild validation + TypeScript check |
+| 5 | DONE | Commit + checkpoint |
+| 6 | TODO | Trigger APK build |
+
+### Last Updated
+Phase 5 complete. All validations passed. Next: Phase 6 - trigger APK build.
