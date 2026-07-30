@@ -12,18 +12,21 @@
  *      returns enableBridgelessArchitecture() && useTurboModuleInterop()
  *   3. ReactNativeFeatureFlags.useTurboModuleInterop() defaults to false
  *
- * Fix: Call ReactNativeFeatureFlags.override() in MainApplication.onCreate() BEFORE
- * loadReactNative(this) to set useTurboModuleInterop = true.
+ * Fix: Call SoLoader.init() then ReactNativeFeatureFlags.override() in MainApplication.onCreate()
+ * BEFORE loadReactNative(this) to set useTurboModuleInterop = true.
  *
- * This is the correct RN 0.81 API. The previous approach of subclassing
- * DefaultTurboModuleManagerDelegate.Builder was wrong because:
- *   - DefaultTurboModuleManagerDelegate.Builder is not open (effectively final in Kotlin)
- *   - unstable_shouldEnableLegacyModuleInterop() is on the delegate, not the Builder
+ * IMPORTANT: ReactNativeFeatureFlags.override() calls ReactNativeFeatureFlagsCxxInterop.override()
+ * which is a JNI call that requires SoLoader to be initialized first. Without SoLoader.init(),
+ * the app crashes immediately on launch because the native library cannot be loaded.
+ *
+ * The fix calls SoLoader.init(this, false) before the override() call. SoLoader.init() is
+ * idempotent — loadReactNative() will call it again harmlessly.
  *
  * References:
  * - ReactNativeFeatureFlags.kt (RN 0.81) — override() method
+ * - ReactNativeFeatureFlagsCxxInterop.kt (RN 0.81) — loads react_featureflagsjni via SoLoader
+ * - GenerateEntryPointTask.kt (RN 0.81) — loadReactNative() calls SoLoader.init() first
  * - ReactNativeFeatureFlagsDefaults.kt (RN 0.81) — useTurboModuleInterop() defaults to false
- * - ReactPackageTurboModuleManagerDelegate.kt (RN 0.81) — shouldEnableLegacyModuleInterop
  */
 
 const { withMainApplication } = require('expo/config-plugins');
@@ -38,9 +41,12 @@ const withLegacyModuleInterop = (config) => {
       return config;
     }
 
-    // Step 1: Add the required imports for ReactNativeFeatureFlags and ReactNativeFeatureFlagsDefaults.
-    // Insert after the last existing import line.
+    // Step 1: Add the required imports.
+    // We need:
+    //   - SoLoader (to call SoLoader.init before the JNI-backed feature flags override)
+    //   - ReactNativeFeatureFlags + ReactNativeFeatureFlagsDefaults (for the override itself)
     const importBlock =
+      'import com.facebook.soloader.SoLoader\n' +
       'import com.facebook.react.internal.featureflags.ReactNativeFeatureFlags\n' +
       'import com.facebook.react.internal.featureflags.ReactNativeFeatureFlagsDefaults';
 
@@ -56,8 +62,8 @@ const withLegacyModuleInterop = (config) => {
       contents = lines.join('\n');
     }
 
-    // Step 2: Insert ReactNativeFeatureFlags.override() call at the beginning of onCreate(),
-    // BEFORE loadReactNative(this) so the flag is set before RN initializes.
+    // Step 2: Insert SoLoader.init() + ReactNativeFeatureFlags.override() call at the beginning
+    // of onCreate(), BEFORE loadReactNative(this) so the flag is set before RN initializes.
     //
     // The generated onCreate() looks like:
     //   override fun onCreate() {
@@ -67,9 +73,18 @@ const withLegacyModuleInterop = (config) => {
     //     ...
     //   }
     //
-    // We insert the override call right after super.onCreate()
+    // We insert after super.onCreate():
+    //   SoLoader.init(this, false)   ← required before any JNI-backed feature flag calls
+    //   ReactNativeFeatureFlags.override(object : ReactNativeFeatureFlagsDefaults() {
+    //     override fun useTurboModuleInterop(): Boolean = true
+    //   })
     const featureFlagOverride =
-      '\n    ReactNativeFeatureFlags.override(object : ReactNativeFeatureFlagsDefaults() {\n' +
+      '\n    // Initialize SoLoader before calling ReactNativeFeatureFlags.override().\n' +
+      '    // ReactNativeFeatureFlags.override() is backed by a JNI call that requires\n' +
+      '    // SoLoader to be initialized first. Without this, the app crashes on launch.\n' +
+      '    // SoLoader.init() is idempotent — loadReactNative() will call it again safely.\n' +
+      '    SoLoader.init(this, false)\n' +
+      '    ReactNativeFeatureFlags.override(object : ReactNativeFeatureFlagsDefaults() {\n' +
       '      override fun useTurboModuleInterop(): Boolean = true\n' +
       '    })';
 
@@ -79,7 +94,7 @@ const withLegacyModuleInterop = (config) => {
         onCreateRegex,
         (match) => match + featureFlagOverride
       );
-      console.log('[withLegacyModuleInterop] ✅ Patched MainApplication.kt onCreate() to enable useTurboModuleInterop.');
+      console.log('[withLegacyModuleInterop] ✅ Patched MainApplication.kt onCreate() with SoLoader.init() + useTurboModuleInterop override.');
     } else {
       console.warn('[withLegacyModuleInterop] ⚠️ Could not find onCreate() in MainApplication.kt. Manual patch required.');
     }
@@ -90,4 +105,3 @@ const withLegacyModuleInterop = (config) => {
 };
 
 module.exports = withLegacyModuleInterop;
-
