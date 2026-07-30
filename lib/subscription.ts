@@ -21,7 +21,7 @@ import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // ─── Product / Entitlement constants ─────────────────────────────────────────
-export const RC_ENTITLEMENT_ID = "premium";
+export const RC_ENTITLEMENT_ID = "TutorSnap Pro";
 export const PRODUCT_MONTHLY = "tutorsnap_monthly";
 export const PRODUCT_ANNUAL = "tutorsnap_annual";
 
