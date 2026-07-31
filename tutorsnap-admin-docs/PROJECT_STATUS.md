@@ -1,20 +1,20 @@
 # PROJECT_STATUS.md
 **Last Updated:** 2026-07-31  
-**Current Phase:** PRE-IMPLEMENTATION — Design complete, awaiting implementation approval  
+**Current Phase:** PRE-IMPLEMENTATION — Design complete, awaiting Phase 0 start  
 **Overall Progress:** 0 of 14 phases complete
 
 ## Status Summary
-The TutorSnap Admin System architecture and implementation plan are complete. No implementation code has been written. The project is in design review.
+The TutorSnap Admin System architecture, implementation plan, and Application Change Management Framework are complete. No implementation code has been written. The project is ready for Phase 0 to begin.
 
 ## Blocking Items
-- None currently. Awaiting user approval to begin Phase 0.
+None. All five open questions from the previous design review remain open but are non-blocking for Phase 0.
 
-## Open Questions (must answer before Phase 1)
-1. What platform is the TutorSnap API deployed on? (Railway, Render, Fly.io, VPS?)
-2. Admin portal on same server or separate deployment?
-3. Does RevenueCat account have REST API access enabled?
-4. How is first Super Admin account created?
-5. Are existing translations in i18n JSON files in the app bundle?
+## Open Questions (non-blocking — answer before the relevant phase)
+1. **Deployment platform** — What platform is the TutorSnap API on? (Needed for Phase 13 monitoring)
+2. **Admin portal deployment** — Same server or separate? (Needed for Phase 3 portal shell)
+3. **RevenueCat REST API** — Is REST API access enabled? (Needed for Phase 9 billing)
+4. **First Super Admin seeding** — One-time CLI script with setup token? (Needed for Phase 1)
+5. **Existing translations** — Hardcoded or i18n JSON files? (Needed for Phase 7)
 
 ## Phase Completion Status
 | Phase | Title | Status | Checkpoint |
@@ -34,3 +34,24 @@ The TutorSnap Admin System architecture and implementation plan are complete. No
 | 12 | Analytics Dashboards | Not started | — |
 | 13 | Monitoring + Dev Tools | Not started | — |
 | 14 | Backup + Final Audit | Not started | — |
+
+## Recovery Documents
+All 14 recovery and policy documents are committed to the project and pushed to GitHub.
+
+| Document | Purpose |
+|---|---|
+| PROJECT_STATUS.md | This file — current state |
+| ARCHITECTURE_STATE.md | System architecture and planned additions |
+| IMPLEMENTATION_MASTER_PLAN.md | Full 14-phase plan with specs |
+| IMPLEMENTATION_PROGRESS.md | Per-phase progress tracker |
+| COMPLETED_PHASES.md | Evidence log for finished phases |
+| NEXT_PHASE.md | Exact next steps |
+| KNOWN_RISKS.md | Active risks and mitigations |
+| DECISIONS.md | 15 architectural decisions with rationale |
+| CHANGELOG.md | Reverse-chronological change log |
+| CHANGE_MANAGEMENT.md | Permanent change workflow framework |
+| API_COMPATIBILITY.md | API versioning and backward compatibility policy |
+| DATABASE_MIGRATION_POLICY.md | Database migration discipline |
+| MOBILE_RELEASE_MATRIX.md | Release history and dependency map |
+| DEPRECATION_REGISTER.md | Active and completed deprecations |
+| OTA_UPDATE_POLICY.md | Expo OTA update rules and log |

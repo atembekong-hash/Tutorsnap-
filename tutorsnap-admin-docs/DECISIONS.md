@@ -8,7 +8,7 @@ This document records every architectural and implementation decision made durin
 ## DEC-001 — Admin Portal as Separate Application
 **Date:** 2026-07-31  
 **Decision:** Build the admin portal as a completely separate React application deployed to `admin.tutorsnapai.tech`, not as a route within the existing TutorSnap web build.  
-**Rationale:** Security isolation (a breach in the public app cannot compromise the admin surface), independent deployment, ability to restrict by IP allowlist at the CDN level, and no bloat to the public app bundle.  
+**Rationale:** Security isolation, independent deployment, ability to restrict by IP allowlist at the CDN level, and no bloat to the public app bundle.  
 **Decided by:** User
 
 ## DEC-002 — No Free-Form SQL Console
@@ -61,6 +61,36 @@ This document records every architectural and implementation decision made durin
 
 ## DEC-010 — Phase-Based Implementation with Sandbox Recovery
 **Date:** 2026-07-31  
-**Decision:** Implementation is broken into 14 phases, each designed to complete in 30–90 minutes. After every phase: run validation checklist, save git checkpoint, push to GitHub, update all 8 recovery documents.  
+**Decision:** Implementation is broken into 14 phases, each designed to complete in 30–90 minutes. After every phase: run validation checklist, save git checkpoint, push to GitHub, update all recovery documents.  
 **Rationale:** The sandbox resets under memory pressure. Small phases with checkpoints ensure no significant work is lost on reset.  
+**Decided by:** User
+
+## DEC-011 — Permanent Change Management Framework
+**Date:** 2026-07-31  
+**Decision:** All future TutorSnap changes must follow the 11-step change workflow: Discovery → Impact Analysis → Design → Implementation → Automated Testing → Staging Verification → Real-User Testing → Release Approval → Controlled Rollout → Monitoring → Completion or Rollback. No change is treated as an isolated coding task.  
+**Rationale:** Production systems fail when changes are made without considering their full impact. The framework ensures every change is safe, reversible, and traceable.  
+**Decided by:** User
+
+## DEC-012 — API Versioning with 90-Day Deprecation Period
+**Date:** 2026-07-31  
+**Decision:** All public mobile API contracts are versioned with URL path prefixes (/v1/, /v2/). Breaking changes require a new version. Deprecated endpoints must remain live for at least 90 days and until usage drops below 1% of active users.  
+**Rationale:** Older installed app versions cannot be force-updated instantly. A 90-day deprecation window gives users time to update while keeping the platform safe.  
+**Decided by:** User
+
+## DEC-013 — Expand-and-Contract for Breaking Database Changes
+**Date:** 2026-07-31  
+**Decision:** Breaking schema changes (column rename, type change, column removal) must use the expand-and-contract pattern: add the new structure alongside the old, migrate data, verify adoption, then remove the old structure.  
+**Rationale:** Dropping a column while an active app version reads it causes immediate production failures. The expand-and-contract pattern makes breaking changes zero-downtime.  
+**Decided by:** User
+
+## DEC-014 — OTA Updates Restricted to JavaScript/Asset Changes Only
+**Date:** 2026-07-31  
+**Decision:** Expo OTA updates are permitted only for JavaScript and asset changes that are fully compatible with all installed native builds. OTA updates must not be used to bypass native build requirements or App Store/Google Play review.  
+**Rationale:** Misusing OTA updates to push native-incompatible changes causes crashes on older devices and violates platform policies.  
+**Decided by:** User
+
+## DEC-015 — Admin-System Drift Prevention Checklist
+**Date:** 2026-07-31  
+**Decision:** Every mobile app change must be evaluated against a checklist of admin system implications before it is marked complete. The admin platform and mobile application must evolve together.  
+**Rationale:** An admin system that falls behind the mobile app becomes useless. Explicit coupling via checklist prevents silent drift.  
 **Decided by:** User
