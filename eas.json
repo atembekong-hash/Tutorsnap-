@@ -40,6 +40,16 @@
         "EXPO_PUBLIC_REVENUECAT_GOOGLE_KEY": "goog_UqfvbpBUcIIAPfVBBFnMjhDeBPU"
       }
     },
+    "production-apk": {
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://api.tutorsnapai.tech",
+        "EXPO_PUBLIC_REVENUECAT_GOOGLE_KEY": "goog_UqfvbpBUcIIAPfVBBFnMjhDeBPU",
+        "EXPO_PUBLIC_REVENUECAT_APPLE_KEY": "appl_uNmhddScFdfxnmOsErjGPqQvgxX"
+      }
+    },
     "play-store-testing": {
       "android": {
         "buildType": "app-bundle"
