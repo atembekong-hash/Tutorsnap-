@@ -35,14 +35,14 @@ const mockPurchases = {
   getCustomerInfo: vi.fn(async () => ({
     entitlements: {
       active: mockEntitlementActive
-        ? { premium: { productIdentifier: "tutorsnap_monthly" } }
+        ? { "TutorSnap Pro": { productIdentifier: "tutorsnap_monthly" } }
         : {},
     },
   })),
   restorePurchases: vi.fn(async () => ({
     entitlements: {
       active: mockRestoreEntitlementActive
-        ? { premium: { productIdentifier: "tutorsnap_monthly" } }
+        ? { "TutorSnap Pro": { productIdentifier: "tutorsnap_monthly" } }
         : {},
     },
   })),

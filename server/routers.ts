@@ -69,13 +69,13 @@ Guidance: ${guide}
 CRITICAL RULES:
 - NEVER refuse to answer or say a problem is too hard. Solve EVERYTHING: basic arithmetic, advanced calculus, differential equations, abstract algebra, graduate-level physics, etc.
 - If a problem is advanced, apply the appropriate advanced techniques (L'Hôpital, eigenvalues, Green's theorem, Fourier series, Lagrangians, etc.).
-- Produce an EXHAUSTIVE, DEEPLY DETAILED solution. Aim for AT LEAST 15-20 steps, each with a thorough multi-sentence explanation.
-- Each step explanation MUST be at least 7-10 sentences: state what you are doing, WHY, the rule or theorem that justifies it, any edge cases, and how it connects to the next step.
-- Include a WORKED EXAMPLE section showing a COMPLETE similar problem solved from scratch — this example must itself have at least 12 steps.
-- The conceptExplained field must be a LONG, RICH paragraph (15-20 sentences) covering: the underlying theory, historical context or motivation, formal definition, intuitive explanation, when the concept applies, common pitfalls, and how it connects to at least 5 related topics.
-- The answer field must be a FULL paragraph (7-10 sentences) restating the result, interpreting it, and noting any important caveats or special cases.
-- Tips must be detailed, actionable, and specific (6-8 sentences each). Include at least 6 tips.
-- The workedExample.solution must be a LONG narrative (at least 450 words) walking through every single step.
+- Produce a rigorous solution sized for a mobile screen: 6-10 steps for genuinely complex work, fewer when fewer are sufficient.
+- Keep each step explanation to 2-4 focused sentences covering the action, reason, and rule used.
+- Include one concise worked example only when it materially improves understanding.
+- Keep conceptExplained to 6-10 sentences covering the core theory, when it applies, and common pitfalls.
+- Keep the answer field to 3-5 sentences stating and interpreting the result.
+- Include exactly 3 short, actionable tips.
+- Keep workedExample.solution between 120 and 220 words.
 - The submissionReady field is a COMPLETELY INDEPENDENT second output. Do NOT summarise, condense, or extract from the explanation above. Generate it fresh from scratch as if you were writing only the answer a student would hand in. Rules by subject type:
   * Mathematics / Physics / Chemistry / Statistics: Write the complete worked solution exactly as a student would present it for marking. Show every calculation step on its own numbered line. Include all formula substitutions, intermediate values with units, and state the final answer clearly on the last line. No prose, no commentary, no "therefore" or "we can see that".
   * Programming / Computer Science: Provide only the final production-ready code. No explanation, no inline comments beyond what the code itself requires.
@@ -131,13 +131,13 @@ Determine the subject area automatically, then solve or answer it COMPLETELY and
 
 CRITICAL RULES:
 - NEVER refuse to answer or say a problem is too hard. Solve EVERYTHING.
-- Produce an EXHAUSTIVE, DEEPLY DETAILED solution. Aim for AT LEAST 15-20 steps, each with a thorough multi-sentence explanation.
-- Each step explanation MUST be at least 7-10 sentences: state what you are doing, WHY, the rule or theorem that justifies it, any edge cases, and how it connects to the next step.
-- Include a WORKED EXAMPLE section showing a COMPLETE similar problem solved from scratch — this example must itself have at least 12 steps.
-- The conceptExplained field must be a LONG, RICH paragraph (15-20 sentences) covering: the underlying theory, historical context or motivation, formal definition, intuitive explanation, when the concept applies, common pitfalls, and how it connects to at least 5 related topics.
-- The answer field must be a FULL paragraph (7-10 sentences) restating the result, interpreting it, and noting any important caveats or special cases.
-- Tips must be detailed, actionable, and specific (6-8 sentences each). Include at least 6 tips.
-- The workedExample.solution must be a LONG narrative (at least 450 words) walking through every single step.
+- Produce a rigorous solution sized for a mobile screen: 6-10 steps for genuinely complex work, fewer when fewer are sufficient.
+- Keep each step explanation to 2-4 focused sentences covering the action, reason, and rule used.
+- Include one concise worked example only when it materially improves understanding.
+- Keep conceptExplained to 6-10 sentences covering the core theory, when it applies, and common pitfalls.
+- Keep the answer field to 3-5 sentences stating and interpreting the result.
+- Include exactly 3 short, actionable tips.
+- Keep workedExample.solution between 120 and 220 words.
 
 PLAIN TEXT FORMATTING RULES (CRITICAL - FOLLOW EXACTLY):
 - NEVER use dollar signs ($) for any purpose. Write math in plain text: x^2 + 3x = 0, not $x^2 + 3x = 0$.
@@ -276,13 +276,13 @@ Respond with valid JSON in EXACTLY this format (no extra fields, no extra steps)
       "stepNumber": 1,
       "title": "Set up",
       "explanation": "One sentence identifying what to calculate.",
-      "expression": "$the starting expression$"
+      "expression": "the starting expression"
     },
     {
       "stepNumber": 2,
       "title": "Calculate",
       "explanation": "One sentence showing the calculation and result.",
-      "expression": "$the result expression$"
+      "expression": "the result expression"
     }
   ],
   "workedExample": {
@@ -304,11 +304,11 @@ Guidance: ${guide}
 
 CRITICAL RULES:
 - NEVER refuse to answer. Solve everything.
-- Use 4-7 well-explained steps. Each step explanation: 3-4 sentences (what, why, the rule that justifies it).
-- The answer field: 3-4 sentences restating the result and interpreting it.
-- The conceptExplained field: 5-7 sentences covering the concept, when it applies, and common pitfalls.
-- Include a worked example with 4-5 steps and a 100-150 word solution.
-- Include 3 practical tips (2-3 sentences each).
+- Use 3-6 focused steps. Each step explanation must be 1-2 sentences covering what to do and why.
+- Keep the answer field to 2-3 sentences stating and interpreting the result.
+- Keep conceptExplained to 3-5 sentences covering the concept, when it applies, and one common pitfall.
+- Include a 60-100 word worked example only when useful.
+- Include exactly 3 practical one-sentence tips.
 - ${SUBMISSION_READY_RULES}
 
 ${FORMATTING}
@@ -346,13 +346,13 @@ Guidance: ${guide}
 CRITICAL RULES:
 - NEVER refuse to answer or say a problem is too hard. Solve EVERYTHING: basic arithmetic, advanced calculus, differential equations, abstract algebra, graduate-level physics, etc.
 - If a problem is advanced, apply the appropriate advanced techniques (L'Hopital, eigenvalues, Green's theorem, Fourier series, Lagrangians, etc.).
-- Produce an EXHAUSTIVE, DEEPLY DETAILED solution. Aim for AT LEAST 15-20 steps, each with a thorough multi-sentence explanation.
-- Each step explanation MUST be at least 7-10 sentences: state what you are doing, WHY, the rule or theorem that justifies it, any edge cases, and how it connects to the next step.
-- Include a WORKED EXAMPLE section showing a COMPLETE similar problem solved from scratch — this example must itself have at least 12 steps.
-- The conceptExplained field must be a LONG, RICH paragraph (15-20 sentences) covering: the underlying theory, historical context or motivation, formal definition, intuitive explanation, when the concept applies, common pitfalls, and how it connects to at least 5 related topics.
-- The answer field must be a FULL paragraph (7-10 sentences) restating the result, interpreting it, and noting any important caveats or special cases.
-- Tips must be detailed, actionable, and specific (6-8 sentences each). Include at least 6 tips.
-- The workedExample.solution must be a LONG narrative (at least 450 words) walking through every single step.
+- Produce a rigorous solution sized for a mobile screen: 6-10 steps for genuinely complex work, fewer when fewer are sufficient.
+- Keep each step explanation to 2-4 focused sentences covering the action, reason, and rule used.
+- Include one concise worked example only when it materially improves understanding.
+- Keep conceptExplained to 6-10 sentences covering the core theory, when it applies, and common pitfalls.
+- Keep the answer field to 3-5 sentences stating and interpreting the result.
+- Include exactly 3 short, actionable tips.
+- Keep workedExample.solution between 120 and 220 words.
 - ${SUBMISSION_READY_RULES}
 
 ${FORMATTING}
@@ -395,14 +395,13 @@ Be encouraging, clear, and pedagogical. Use examples when helpful.
 Format mathematical expressions clearly. Keep responses concise but complete.
 Adapt your tone and vocabulary to the subject: precise for math/science, analytical for literature/history.
 
-PLAIN TEXT FORMATTING RULES (CRITICAL):
-- NEVER use dollar signs ($) for any purpose. Write math in plain text: x^2 + 3x = 0, not $x^2 + 3x = 0$.
-- NEVER use LaTeX commands: no \\frac, \\sqrt, \\int, \\sum, no backslashes at all.
-- NEVER use Markdown formatting: no **bold**, no *italic*, no ## headings, no --- rules, no backticks.
-- NEVER use em dashes or en dashes. Use a plain comma or hyphen instead.
-- Write all math in plain readable text: use ^ for powers (x^2), / for fractions (a/b), sqrt() for roots.
-- Use plain numbered lists (1. 2. 3.) only when listing steps. No bullet symbols.
-- Write in clean, plain prose. No special formatting characters of any kind.
+MOBILE OUTPUT RULES (CRITICAL):
+- Use clean, concise prose and short paragraphs.
+- Never use dollar signs or LaTeX commands. Write math in plain text using ^ for powers, / for fractions, and sqrt() for roots.
+- Use numbered steps only when they improve clarity.
+- Do not use decorative Markdown, headings, rules, or code fences.
+- The approved interactive component blocks below are the only structured markup allowed, and should be used sparingly.
+- Prefer one clear explanation over repeated summaries.
 
 INTERACTIVE COMPONENTS - AUTO-INSERT RULES:
 You MUST automatically decide when to insert the following components. Do NOT wait for the student to ask.
@@ -472,12 +471,12 @@ function buildPracticePrompt(subject: string, difficulty: string): string {
   if (isSocial) taskType = "question or analysis prompt";
 
   return `You are TutorSnap, an expert academic tutor. Generate ONE ${difficulty} ${taskType} for: ${subject}.
-The "answer" field must be a FULL PARAGRAPH (4-6 sentences) explaining the complete solution.
-The "steps" array must have AT LEAST 5-8 steps, each with a detailed explanation (3-5 sentences).
-The "hints" array MUST contain EXACTLY 3 hints. Each hint is 1-2 sentences and progressively reveals more of the solution approach. This field is REQUIRED.
+The "answer" field must use 2-4 concise sentences explaining the result.
+The "steps" array must contain 3-6 focused steps, each with a 1-2 sentence explanation. Use fewer steps when the task is simple.
+The "hints" array MUST contain EXACTLY 3 short hints that progressively reveal the solution approach. This field is REQUIRED.
 The "submissionReady" field is a COMPLETELY INDEPENDENT second output. Do NOT summarise or extract from the explanation. Generate it fresh as if writing only the answer a student would hand in. Maths/science: numbered calculation lines, all substitutions, units, final answer on last line. Programming: final code only. Essays: complete polished prose. Definitions: concise precise definition. Multiple choice: correct option + essential supporting work only. NO prose commentary, NO preamble.
 Respond ONLY with this JSON (no extra text):
-{"id":"p1","subject":"${subject}","difficulty":"${difficulty}","problem":"<question>","answer":"<full paragraph answer, 4-6 sentences>","steps":[{"stepNumber":1,"title":"<descriptive title>","explanation":"<detailed explanation, 3-5 sentences>","expression":"<formula if any>"}],"hints":["<hint 1, 1-2 sentences>","<hint 2, 1-2 sentences>","<hint 3, 1-2 sentences>"],"submissionReady":"<independently generated submission answer>"}`;
+{"id":"p1","subject":"${subject}","difficulty":"${difficulty}","problem":"<question>","answer":"<concise answer, 2-4 sentences>","steps":[{"stepNumber":1,"title":"<descriptive title>","explanation":"<focused explanation, 1-2 sentences>","expression":"<plain-text formula if any>"}],"hints":["<short hint 1>","<short hint 2>","<short hint 3>"],"submissionReady":"<independently generated submission answer>"}`;
 }
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
@@ -764,7 +763,7 @@ ${input.selectedAnswer === input.correctAnswer ? "The student got it RIGHT." : "
 
 Respond ONLY with this JSON (no extra text):
 {
-  "explanation": "FULL DETAILED worked solution: (1) state the correct answer clearly with its full text, (2) explain WHY it is correct with full reasoning (4-6 sentences), (3) show the complete working/derivation step by step, (4) if the student was wrong explain specifically why their choice was incorrect (2-3 sentences), (5) give a key insight or tip to remember this concept. Be thorough and educational.",
+  "explanation": "Use 4-7 concise sentences: state the correct option and full text, explain why it is correct, show the essential reasoning, briefly explain why the selected option was wrong when applicable, and end with one useful memory tip. Use plain text only, with no Markdown, LaTeX, dollar signs, or backslashes.",
   "submissionReady": "INDEPENDENTLY GENERATED - not a summary of the explanation above. Write only what a student would hand in. State the correct option letter and its full answer text, then show only the essential supporting work or one-line justification (2-4 lines max). No prose commentary, no preamble."
 }`;
       const result = await invokeLLM({
@@ -773,7 +772,7 @@ Respond ONLY with this JSON (no extra text):
           { role: "system", content: prompt },
           { role: "user", content: "Explain the answer fully." },
         ],
-        max_tokens: 900,
+        max_tokens: 700,
         temperature: 0.3,
         response_format: { type: "json_object" },
       });
@@ -815,7 +814,7 @@ Respond ONLY with this JSON (no extra text):
         const params = {
           model: "gemini-3-flash-preview" as const,
           messages,
-          max_tokens: 2500,
+          max_tokens: 1800,
           temperature: 0.3,
           response_format: { type: "json_object" as const },
         };
@@ -837,9 +836,8 @@ Respond ONLY with this JSON (no extra text):
       // ── FIX-4 ──
       if (ctx.user) { const db = await getDb(); const ok = await checkServerSidePremium(ctx.user.id, db); if (!ok) throw new TRPCError({ code: "PAYMENT_REQUIRED", message: "Premium subscription required (10003)" }); }
       // ── END FIX-4 ──
-      // Scale token budget by difficulty: easy=900, medium=1600, hard=2400
-      // Increased from 700/1100/1800 to prevent JSON truncation at position ~4391
-      const practiceTokens = input.difficulty === 'easy' ? 900 : input.difficulty === 'medium' ? 1600 : 2400;
+      // Concise mobile schema: enough room for valid JSON without encouraging excess prose.
+      const practiceTokens = input.difficulty === "easy" ? 700 : input.difficulty === "medium" ? 1100 : 1600;
       const practicePrompt = buildPracticePrompt(input.subject, input.difficulty) + gradeContext(input.gradeLevel);
       const result = await invokeLLM({
         model: "claude-haiku-4-5",
@@ -903,8 +901,9 @@ Respond ONLY with this JSON (no extra text):
       // ── END FIX-4 ──
       const quizPrompt = `You are TutorSnap, an expert academic tutor.${gradeContext(input.gradeLevel)}
 Generate exactly ${input.count} ${input.difficulty} multiple-choice questions for: ${input.subject}.
-Each question has 4 options (A-D), one correct answer, and a brief 1-sentence explanation.
-Respond ONLY with this JSON:
+Each question has 4 distinct options (A-D), exactly one correct answer, and a brief one-sentence explanation.
+Use plain text only. Do not use Markdown, LaTeX commands, dollar signs, backslashes, or decorative symbols.
+Respond ONLY with this JSON and no surrounding prose:
 {"questions":[{"id":"q1","problem":"<question>","options":{"A":"<a>","B":"<b>","C":"<c>","D":"<d>"},"correctAnswer":"A","explanation":"<1 sentence>"}]}`;
 
       const result = await invokeLLM({
@@ -913,8 +912,8 @@ Respond ONLY with this JSON:
           { role: "system", content: quizPrompt },
           { role: "user", content: `Generate ${input.count} ${input.difficulty} multiple-choice questions for ${input.subject}.` },
         ],
-        // Scale per-question token budget by difficulty
-        max_tokens: Math.min(input.count * (input.difficulty === 'easy' ? 150 : input.difficulty === 'medium' ? 250 : 350), 2500),
+        // Scale per-question token budget while keeping the payload mobile-sized.
+        max_tokens: Math.min(input.count * (input.difficulty === "easy" ? 140 : input.difficulty === "medium" ? 200 : 260), 1800),
         temperature: 0.3,
         response_format: { type: "json_object" },
       });
@@ -967,8 +966,8 @@ Respond ONLY with this JSON:
         : "";
       const isDetailed = input.detailedMode !== false; // default to detailed (current behaviour)
       const detailedCtx = isDetailed
-        ? "\n\nDETAILED MODE is ON: Give the richest, most thorough response possible. For simple questions: 4-8 sentences with a related example. For medium questions: 2 fully worked examples plus a summary table. For complex questions: full working with ALL steps, a verification pass, a summary, and a related extension problem. Always end with a Pro Tip AND a Common Mistake section."
-        : "\n\nCONCISE MODE is ON: Keep responses focused and efficient. Answer the question directly, show essential working steps only, and avoid over-explaining.";
+        ? "\n\nDETAILED MODE is ON: Match depth to the question. Use 2-4 sentences for simple questions, 4-8 sentences plus one useful example for medium questions, and clearly numbered working with a brief verification for complex questions. Add a pro tip or common mistake only when it materially helps."
+        : "\n\nCONCISE MODE is ON: Answer directly, show only essential reasoning, and avoid repetition.";
       const systemPrompt = CHAT_SYSTEM_PROMPT + subjectContext + gradeContext + detailedCtx;
 
       // AIRE: Adaptive token budget for non-streaming fallback path

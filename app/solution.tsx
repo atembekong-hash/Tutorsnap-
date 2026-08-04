@@ -253,6 +253,8 @@ export default function SolutionScreen() {
   const { fs } = useFontSize();
   const router = useRouter();
   const params = useLocalSearchParams();
+  const { fadeStyle } = useScreenTransition({ duration: 300, translateY: 20 });
+  const { settings: appearanceSettings } = useAppearance();
   const [bookmarked, setBookmarked] = useState(false);
   const [copyFeedback, setCopyFeedback] = useState(false);
   const copyFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -607,8 +609,6 @@ export default function SolutionScreen() {
 
   const subjectColor = getSubjectColor(solution.subject);
   const subjectLabel = getSubjectLabel(solution.subject);
-  const { fadeStyle } = useScreenTransition({ duration: 300, translateY: 20 });
-  const { settings: appearanceSettings } = useAppearance();
   const slideInEntering = appearanceSettings.reduceMotion
     ? undefined
     : SlideInUp.springify().damping(18).stiffness(200);

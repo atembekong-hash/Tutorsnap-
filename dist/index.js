@@ -1001,24 +1001,18 @@ function classifyQuestion(message, subject) {
   return { difficulty: 5, type: "phd" };
 }
 function computeTokenBudget(classification, override, detailedMode) {
-  if (override === "short") return 300;
-  if (override === "full") return 12e3;
+  if (override === "short") return 240;
+  if (override === "full") return 5e3;
   const BASE = {
-    1: 400,
-    // trivial
-    2: 900,
-    // simple
-    3: 2800,
-    // medium
-    4: 6500,
-    // complex
-    5: 1e4
-    // PhD-level
+    1: 220,
+    2: 600,
+    3: 1400,
+    4: 2800,
+    5: 4200
   };
-  const base = BASE[classification.difficulty] ?? 2800;
-  const multiplier = detailedMode ? 1.5 : 0.6;
-  const budget = Math.round(base * multiplier);
-  return Math.min(budget, 12e3);
+  const base = BASE[classification.difficulty] ?? 1400;
+  const multiplier = detailedMode ? 1.2 : 0.65;
+  return Math.min(Math.round(base * multiplier), 5e3);
 }
 function endsNaturally(text2) {
   const tail = text2.slice(-120).trimEnd();
@@ -1047,14 +1041,14 @@ function buildTutorProfileContext(profile) {
   const lengthMap = {
     brief: "Keep responses SHORT and to the point. Avoid unnecessary elaboration.",
     standard: "Provide balanced responses: thorough but not overwhelming.",
-    detailed: "Provide COMPREHENSIVE, in-depth explanations. Elaborate fully on every concept."
+    detailed: "Provide an in-depth explanation with necessary reasoning, but avoid repetition and filler."
   };
   if (profile.responseLength && lengthMap[profile.responseLength]) parts.push(lengthMap[profile.responseLength]);
   const styleMap = {
     "visual": "Use diagrams described in text, tables, and visual analogies where possible.",
     "step-by-step": "Always break explanations into numbered steps. Never skip steps.",
     "conceptual": "Focus on the underlying concept and theory before showing calculations.",
-    "example-heavy": "Lead with worked examples. Show at least 2-3 examples per concept."
+    "example-heavy": "Use one strong worked example, or two only when comparison is necessary."
   };
   if (profile.learningStyle && styleMap[profile.learningStyle]) parts.push(styleMap[profile.learningStyle]);
   if (profile.language && profile.language !== "English") {
@@ -1063,7 +1057,7 @@ function buildTutorProfileContext(profile) {
   if (profile.showWorking === false) {
     parts.push("Give the final answer directly without showing every intermediate working step.");
   } else if (profile.showWorking === true) {
-    parts.push("Always show ALL working steps in full detail.");
+    parts.push("Show all necessary working steps clearly, without padding simple operations.");
   }
   if (profile.useEmojis === false) {
     parts.push("Do NOT use emoji in your responses.");
@@ -1072,7 +1066,7 @@ function buildTutorProfileContext(profile) {
   }
   if (profile.detailedMode === true) {
     parts.push(
-      "DETAILED MODE is ON: Give the richest, most thorough response possible. For simple questions: 4-8 sentences with a related example. For medium questions: 2 fully worked examples plus a summary table or key insight list. For complex questions: full working with ALL steps, a verification pass, a summary, and a related extension problem. Always end with a Pro Tip AND a Common Mistake section. After every worked example, add a 'Try It Yourself' practice problem."
+      "DETAILED MODE is ON: Match depth to the question. Use 2-4 sentences for simple questions, 4-8 sentences plus one useful example for medium questions, and clearly numbered working with a brief verification for complex questions. Add a Pro Tip, Common Mistake, or Try It Yourself prompt only when it materially helps."
     );
   } else {
     parts.push(
@@ -1222,7 +1216,7 @@ var init_chatStream = __esm({
     "use strict";
     init_env();
     CONTINUATION_ENABLED = true;
-    MAX_CONTINUATIONS = 3;
+    MAX_CONTINUATIONS = 1;
     CHAT_SYSTEM_PROMPT = `You are TutorSnap, an expert academic tutor covering all school subjects (Mathematics, Science, English, History, and more).
 
 ## RESPONSE STYLE \u2014 CRITICAL RULES:
@@ -1257,15 +1251,15 @@ var init_chatStream = __esm({
 ### Length guidance (STRICT \u2014 follow exactly based on question complexity)
 - **Trivial** (e.g. "What is 1+1?", "What is 2+2?", "What colour is the sky?"): 1-2 sentences MAXIMUM. State the answer and one brief reason. NO steps, NO examples, NO Pro Tip, NO Common Mistake, NO Try It Yourself. Stop immediately after the answer.
 - **Simple** (e.g. "What is the quadratic formula?", "What is photosynthesis?"): 3-6 sentences. Direct answer + brief explanation. One example only if essential. No Pro Tip or Common Mistake for simple factual questions.
-- **Medium** (e.g. "Explain integration by parts", "Solve 3x + 5 = 14"): 2 fully worked examples + a summary table or key insight list. End with a ###### Pro Tip AND a ###### Common Mistake section.
-- **Complex** (e.g. "Prove the fundamental theorem of calculus"): full working with ALL steps shown, a verification pass, a summary, and a related extension problem. End with Pro Tip and Common Mistake. Add a ## Try It Yourself section.
-- **PhD-level** (e.g. "Derive the Navier-Stokes equations from first principles"): exhaustive derivation, every intermediate step, all assumptions stated, physical interpretation. Full Pro Tip, Common Mistake, and Try It Yourself sections required.
+- **Medium** (e.g. "Explain integration by parts", "Solve 3x + 5 = 14"): show the essential steps and at most one worked example. Add a short key insight when useful.
+- **Complex** (e.g. "Prove the fundamental theorem of calculus"): show all necessary steps, state assumptions, and include a brief verification or summary. Add an extension problem only when requested.
+- **PhD-level** (e.g. "Derive the Navier-Stokes equations from first principles"): provide a rigorous derivation with necessary intermediate steps, assumptions, and interpretation, but avoid repeated summaries or filler.
 
-**CRITICAL: For trivial and simple questions, do NOT add Pro Tip, Common Mistake, or Try It Yourself sections. These sections are ONLY for medium, complex, and PhD-level questions.**
+For every level, add Pro Tip, Common Mistake, or Try It Yourself sections only when they materially improve the answer.
 
 ## INTERACTIVE COMPONENTS \u2014 AUTO-INSERT RULES:
 
-You MUST automatically decide when to insert the following components based on content type. Do NOT wait for the student to ask. Insert them whenever they improve understanding.
+Decide whether one of the following components would materially improve understanding. Use at most one by default, and omit components for simple answers.
 
 ### Checklist \u2014 use when listing steps, requirements, or things to remember
 Syntax (emit exactly as shown, one item per line):
@@ -1352,6 +1346,21 @@ For purely conversational messages (greetings, "thank you", meta-questions about
 });
 
 // server/_core/trpc.ts
+async function checkServerSidePremium(userId, db2) {
+  if (!db2) return false;
+  try {
+    const { subscriptions: subscriptions2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
+    const { eq: eq7, desc: desc2 } = await import("drizzle-orm");
+    const rows = await db2.select({ status: subscriptions2.status, expiresAt: subscriptions2.expiresAt }).from(subscriptions2).where(eq7(subscriptions2.userId, userId)).orderBy(desc2(subscriptions2.updatedAt)).limit(1);
+    if (!rows || rows.length === 0) return false;
+    const { status, expiresAt } = rows[0];
+    if (status === "active") return true;
+    if (status === "cancelled" && expiresAt && new Date(expiresAt) > /* @__PURE__ */ new Date()) return true;
+    return false;
+  } catch {
+    return false;
+  }
+}
 var import_server, import_superjson, t, loggingMiddleware, router, publicProcedure, requireUser, protectedProcedure, adminProcedure;
 var init_trpc = __esm({
   "server/_core/trpc.ts"() {
@@ -1924,7 +1933,6 @@ function captureServerError(error, context) {
 // server/_core/index.ts
 var import_express = __toESM(require("express"));
 var import_http = require("http");
-var import_net = __toESM(require("net"));
 var import_express2 = require("@trpc/server/adapters/express");
 
 // server/_core/oauth.ts
@@ -2449,6 +2457,7 @@ async function invokeLLM(params) {
     responseFormat,
     response_format,
     model,
+    temperature,
     thinking,
     reasoning,
     maxTokens,
@@ -2476,6 +2485,9 @@ async function invokeLLM(params) {
   }
   if (reasoning) {
     payload.reasoning = reasoning;
+  }
+  if (typeof temperature === "number") {
+    payload.temperature = temperature;
   }
   const normalizedResponseFormat = normalizeResponseFormat({
     responseFormat,
@@ -3265,21 +3277,22 @@ Determine the subject area automatically, then solve or answer it COMPLETELY and
 
 CRITICAL RULES:
 - NEVER refuse to answer or say a problem is too hard. Solve EVERYTHING.
-- Produce an EXHAUSTIVE, DEEPLY DETAILED solution. Aim for AT LEAST 15-20 steps, each with a thorough multi-sentence explanation.
-- Each step explanation MUST be at least 7-10 sentences: state what you are doing, WHY, the rule or theorem that justifies it, any edge cases, and how it connects to the next step.
-- Include a WORKED EXAMPLE section showing a COMPLETE similar problem solved from scratch \u2014 this example must itself have at least 12 steps.
-- The conceptExplained field must be a LONG, RICH paragraph (15-20 sentences) covering: the underlying theory, historical context or motivation, formal definition, intuitive explanation, when the concept applies, common pitfalls, and how it connects to at least 5 related topics.
-- The answer field must be a FULL paragraph (7-10 sentences) restating the result, interpreting it, and noting any important caveats or special cases.
-- Tips must be detailed, actionable, and specific (6-8 sentences each). Include at least 6 tips.
-- The workedExample.solution must be a LONG narrative (at least 450 words) walking through every single step.
+- Produce a rigorous solution sized for a mobile screen: 6-10 steps for genuinely complex work, fewer when fewer are sufficient.
+- Keep each step explanation to 2-4 focused sentences covering the action, reason, and rule used.
+- Include one concise worked example only when it materially improves understanding.
+- Keep conceptExplained to 6-10 sentences covering the core theory, when it applies, and common pitfalls.
+- Keep the answer field to 3-5 sentences stating and interpreting the result.
+- Include exactly 3 short, actionable tips.
+- Keep workedExample.solution between 120 and 220 words.
 
-FORMATTING RULES (CRITICAL - FOLLOW EXACTLY):
-- ALL mathematical expressions MUST be wrapped in LaTeX delimiters: $...$ for inline math, $$...$$ for block math.
-- NEVER use raw LaTeX commands outside $...$ or $$...$$ delimiters. Never write \\text{}, \\frac{}, \\sqrt{}, \\rightarrow outside math delimiters.
-- Use proper Markdown: **bold**, *italic*, backticks for code, dashes for lists, hashes for headings.
-- NEVER use stray backslashes, asterisks, or underscores outside their proper context.
-- The "expression" field should contain ONLY the mathematical expression wrapped in $...$ or $$...$$ delimiters.
-- All text fields should use clean Markdown with proper math delimiters.
+PLAIN TEXT FORMATTING RULES (CRITICAL - FOLLOW EXACTLY):
+- NEVER use dollar signs ($) for any purpose. Write math in plain text: x^2 + 3x = 0, not $x^2 + 3x = 0$.
+- NEVER use LaTeX commands: no \\frac, \\sqrt, \\int, \\sum, no backslashes at all.
+- NEVER use Markdown formatting: no **bold**, no *italic*, no ## headings, no --- rules, no backticks.
+- NEVER use em dashes or en dashes. Use a plain comma or hyphen instead.
+- Write all math in plain readable text: use ^ for powers (x^2), / for fractions (a/b), sqrt() for roots.
+- The "expression" field: write the formula in plain text only, e.g. 'x = (-b + sqrt(b^2 - 4ac)) / (2a)'.
+- All text fields must be clean plain text with no special formatting characters.
 
 Always respond with valid JSON in this exact format:
 {
@@ -3336,11 +3349,13 @@ function buildSolveSystemPromptScaled(subject, problem) {
     economics: "Apply economic theories and models. Use supply/demand, fiscal/monetary policy, and quantitative reasoning."
   };
   const guide = subjectGuides[subject] ?? "Provide a thorough, accurate, and educational answer. Never refuse a hard question; always attempt a complete solution.";
-  const FORMATTING = `FORMATTING RULES (CRITICAL - FOLLOW EXACTLY):
-- ALL mathematical expressions MUST be wrapped in LaTeX delimiters: $...$ for inline math, $$...$$ for block math.
-- NEVER use raw LaTeX commands outside $...$ or $$...$$ delimiters.
-- Use proper Markdown: **bold**, *italic*, backticks for code, dashes for lists, hashes for headings.
-- The "expression" field should contain ONLY the mathematical expression wrapped in $...$ or $$...$$ delimiters.`;
+  const FORMATTING = `PLAIN TEXT FORMATTING RULES (CRITICAL - FOLLOW EXACTLY):
+- NEVER use dollar signs ($) for any purpose. Write math in plain text: x^2 + 3x = 0, not $x^2 + 3x = 0$.
+- NEVER use LaTeX commands: no \\frac, \\sqrt, \\int, \\sum, no backslashes at all.
+- NEVER use Markdown formatting: no **bold**, no *italic*, no ## headings, no --- rules, no backticks.
+- NEVER use em dashes or en dashes. Use a plain comma or hyphen instead.
+- Write all math in plain readable text: use ^ for powers (x^2), / for fractions (a/b), sqrt() for roots.
+- The "expression" field: write the formula in plain text only, e.g. 'x = (-b + sqrt(b^2 - 4ac)) / (2a)'.`;
   const SUBMISSION_READY_RULES = `The submissionReady field is a COMPLETELY INDEPENDENT second output. Generate it fresh from scratch as if writing only the answer a student would hand in:
   * Mathematics/Physics/Chemistry/Statistics: Complete worked solution. Every calculation on its own numbered line. All formula substitutions shown. Final answer on last line. No prose.
   * Programming/Computer Science: Final production-ready code only. No explanation.
@@ -3369,13 +3384,13 @@ Respond with valid JSON in EXACTLY this format (no extra fields, no extra steps)
       "stepNumber": 1,
       "title": "Set up",
       "explanation": "One sentence identifying what to calculate.",
-      "expression": "$the starting expression$"
+      "expression": "the starting expression"
     },
     {
       "stepNumber": 2,
       "title": "Calculate",
       "explanation": "One sentence showing the calculation and result.",
-      "expression": "$the result expression$"
+      "expression": "the result expression"
     }
   ],
   "workedExample": {
@@ -3395,11 +3410,11 @@ Guidance: ${guide}
 
 CRITICAL RULES:
 - NEVER refuse to answer. Solve everything.
-- Use 4-7 well-explained steps. Each step explanation: 3-4 sentences (what, why, the rule that justifies it).
-- The answer field: 3-4 sentences restating the result and interpreting it.
-- The conceptExplained field: 5-7 sentences covering the concept, when it applies, and common pitfalls.
-- Include a worked example with 4-5 steps and a 100-150 word solution.
-- Include 3 practical tips (2-3 sentences each).
+- Use 3-6 focused steps. Each step explanation must be 1-2 sentences covering what to do and why.
+- Keep the answer field to 2-3 sentences stating and interpreting the result.
+- Keep conceptExplained to 3-5 sentences covering the concept, when it applies, and one common pitfall.
+- Include a 60-100 word worked example only when useful.
+- Include exactly 3 practical one-sentence tips.
 - ${SUBMISSION_READY_RULES}
 
 ${FORMATTING}
@@ -3435,13 +3450,13 @@ Guidance: ${guide}
 CRITICAL RULES:
 - NEVER refuse to answer or say a problem is too hard. Solve EVERYTHING: basic arithmetic, advanced calculus, differential equations, abstract algebra, graduate-level physics, etc.
 - If a problem is advanced, apply the appropriate advanced techniques (L'Hopital, eigenvalues, Green's theorem, Fourier series, Lagrangians, etc.).
-- Produce an EXHAUSTIVE, DEEPLY DETAILED solution. Aim for AT LEAST 15-20 steps, each with a thorough multi-sentence explanation.
-- Each step explanation MUST be at least 7-10 sentences: state what you are doing, WHY, the rule or theorem that justifies it, any edge cases, and how it connects to the next step.
-- Include a WORKED EXAMPLE section showing a COMPLETE similar problem solved from scratch \u2014 this example must itself have at least 12 steps.
-- The conceptExplained field must be a LONG, RICH paragraph (15-20 sentences) covering: the underlying theory, historical context or motivation, formal definition, intuitive explanation, when the concept applies, common pitfalls, and how it connects to at least 5 related topics.
-- The answer field must be a FULL paragraph (7-10 sentences) restating the result, interpreting it, and noting any important caveats or special cases.
-- Tips must be detailed, actionable, and specific (6-8 sentences each). Include at least 6 tips.
-- The workedExample.solution must be a LONG narrative (at least 450 words) walking through every single step.
+- Produce a rigorous solution sized for a mobile screen: 6-10 steps for genuinely complex work, fewer when fewer are sufficient.
+- Keep each step explanation to 2-4 focused sentences covering the action, reason, and rule used.
+- Include one concise worked example only when it materially improves understanding.
+- Keep conceptExplained to 6-10 sentences covering the core theory, when it applies, and common pitfalls.
+- Keep the answer field to 3-5 sentences stating and interpreting the result.
+- Include exactly 3 short, actionable tips.
+- Keep workedExample.solution between 120 and 220 words.
 - ${SUBMISSION_READY_RULES}
 
 ${FORMATTING}
@@ -3483,11 +3498,13 @@ Be encouraging, clear, and pedagogical. Use examples when helpful.
 Format mathematical expressions clearly. Keep responses concise but complete.
 Adapt your tone and vocabulary to the subject: precise for math/science, analytical for literature/history.
 
-FORMATTING RULES (CRITICAL):
-- ALL mathematical expressions MUST be wrapped in LaTeX delimiters: $...$ for inline math, $$...$$ for block math.
-- NEVER use raw LaTeX commands outside $...$ or $$...$$ delimiters. Never write \\text{}, \\frac{}, \\sqrt{}, \\rightarrow outside math delimiters.
-- Use proper Markdown: **bold**, *italic*, backticks for code, dashes for lists, hashes for headings.
-- NEVER use stray backslashes, asterisks, or underscores outside their proper context.
+MOBILE OUTPUT RULES (CRITICAL):
+- Use clean, concise prose and short paragraphs.
+- Never use dollar signs or LaTeX commands. Write math in plain text using ^ for powers, / for fractions, and sqrt() for roots.
+- Use numbered steps only when they improve clarity.
+- Do not use decorative Markdown, headings, rules, or code fences.
+- The approved interactive component blocks below are the only structured markup allowed, and should be used sparingly.
+- Prefer one clear explanation over repeated summaries.
 
 INTERACTIVE COMPONENTS - AUTO-INSERT RULES:
 You MUST automatically decide when to insert the following components. Do NOT wait for the student to ask.
@@ -3553,12 +3570,12 @@ function buildPracticePrompt(subject, difficulty) {
   if (isEnglish) taskType = "question or short writing prompt";
   if (isSocial) taskType = "question or analysis prompt";
   return `You are TutorSnap, an expert academic tutor. Generate ONE ${difficulty} ${taskType} for: ${subject}.
-The "answer" field must be a FULL PARAGRAPH (4-6 sentences) explaining the complete solution.
-The "steps" array must have AT LEAST 5-8 steps, each with a detailed explanation (3-5 sentences).
-The "hints" array MUST contain EXACTLY 3 hints. Each hint is 1-2 sentences and progressively reveals more of the solution approach. This field is REQUIRED.
+The "answer" field must use 2-4 concise sentences explaining the result.
+The "steps" array must contain 3-6 focused steps, each with a 1-2 sentence explanation. Use fewer steps when the task is simple.
+The "hints" array MUST contain EXACTLY 3 short hints that progressively reveal the solution approach. This field is REQUIRED.
 The "submissionReady" field is a COMPLETELY INDEPENDENT second output. Do NOT summarise or extract from the explanation. Generate it fresh as if writing only the answer a student would hand in. Maths/science: numbered calculation lines, all substitutions, units, final answer on last line. Programming: final code only. Essays: complete polished prose. Definitions: concise precise definition. Multiple choice: correct option + essential supporting work only. NO prose commentary, NO preamble.
 Respond ONLY with this JSON (no extra text):
-{"id":"p1","subject":"${subject}","difficulty":"${difficulty}","problem":"<question>","answer":"<full paragraph answer, 4-6 sentences>","steps":[{"stepNumber":1,"title":"<descriptive title>","explanation":"<detailed explanation, 3-5 sentences>","expression":"<formula if any>"}],"hints":["<hint 1, 1-2 sentences>","<hint 2, 1-2 sentences>","<hint 3, 1-2 sentences>"],"submissionReady":"<independently generated submission answer>"}`;
+{"id":"p1","subject":"${subject}","difficulty":"${difficulty}","problem":"<question>","answer":"<concise answer, 2-4 sentences>","steps":[{"stepNumber":1,"title":"<descriptive title>","explanation":"<focused explanation, 1-2 sentences>","expression":"<plain-text formula if any>"}],"hints":["<short hint 1>","<short hint 2>","<short hint 3>"],"submissionReady":"<independently generated submission answer>"}`;
 }
 function extractJsonFromContent(content) {
   let cleaned = content.replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
@@ -3569,7 +3586,11 @@ function extractJsonFromContent(content) {
 }
 function repairTruncatedJson(raw) {
   let s = raw.trim();
-  s = s.replace(/,\s*"[^"]*"\s*:\s*"[^"]*$/, "");
+  const quoteCount = (s.match(/(?<!\\)"/g) || []).length;
+  if (quoteCount % 2 !== 0) {
+    s = s + '"';
+  }
+  s = s.replace(/,\s*"[^"]*"\s*:\s*"[^"]*"?$/, "");
   s = s.replace(/,\s*"[^"]*"\s*:\s*[^,}\]]*$/, "");
   s = s.replace(/,\s*$/, "");
   const stack = [];
@@ -3669,6 +3690,11 @@ var academicRouter = router({
     gradeLevel: import_zod5.z.string().nullable().optional()
   })).mutation(async ({ ctx, input }) => {
     try {
+      if (ctx.user) {
+        const db2 = await getDb();
+        const ok = await checkServerSidePremium(ctx.user.id, db2);
+        if (!ok) throw new import_server3.TRPCError({ code: "PAYMENT_REQUIRED", message: "Premium subscription required (10003)" });
+      }
       let tokenBudget = estimateSolveTokens(input.problem, input.subject);
       if (ctx.user) {
         try {
@@ -3701,7 +3727,8 @@ var academicRouter = router({
             },
             { role: "user", content: input.problem }
           ],
-          max_tokens: 120
+          max_tokens: 120,
+          temperature: 0.3
         });
         const fastText = extractLLMContent(fastResult).trim();
         return {
@@ -3729,6 +3756,7 @@ var academicRouter = router({
           { role: "user", content: input.problem }
         ],
         max_tokens: tokenBudget,
+        temperature: 0.3,
         response_format: { type: "json_object" }
       };
       const jsonStr = await invokeLLMWithFallback("gemini-3-flash-preview", "claude-haiku-4-5", params);
@@ -3753,7 +3781,12 @@ var academicRouter = router({
     difficulty: import_zod5.z.enum(["easy", "medium", "hard"]).optional(),
     subject: import_zod5.z.string().default("other"),
     gradeLevel: import_zod5.z.string().optional()
-  })).mutation(async ({ input }) => {
+  })).mutation(async ({ ctx, input }) => {
+    if (ctx.user) {
+      const db2 = await getDb();
+      const ok = await checkServerSidePremium(ctx.user.id, db2);
+      if (!ok) throw new import_server3.TRPCError({ code: "PAYMENT_REQUIRED", message: "Premium subscription required (10003)" });
+    }
     const optionsBlock = input.options ? `Answer choices:
   A) ${input.options.A}
   B) ${input.options.B}
@@ -3772,7 +3805,7 @@ ${input.selectedAnswer === input.correctAnswer ? "The student got it RIGHT." : "
 
 Respond ONLY with this JSON (no extra text):
 {
-  "explanation": "FULL DETAILED worked solution: (1) state the correct answer clearly with its full text, (2) explain WHY it is correct with full reasoning (4-6 sentences), (3) show the complete working/derivation step by step, (4) if the student was wrong explain specifically why their choice was incorrect (2-3 sentences), (5) give a key insight or tip to remember this concept. Be thorough and educational.",
+  "explanation": "Use 4-7 concise sentences: state the correct option and full text, explain why it is correct, show the essential reasoning, briefly explain why the selected option was wrong when applicable, and end with one useful memory tip. Use plain text only, with no Markdown, LaTeX, dollar signs, or backslashes.",
   "submissionReady": "INDEPENDENTLY GENERATED - not a summary of the explanation above. Write only what a student would hand in. State the correct option letter and its full answer text, then show only the essential supporting work or one-line justification (2-4 lines max). No prose commentary, no preamble."
 }`;
     const result = await invokeLLM({
@@ -3781,7 +3814,8 @@ Respond ONLY with this JSON (no extra text):
         { role: "system", content: prompt },
         { role: "user", content: "Explain the answer fully." }
       ],
-      max_tokens: 900,
+      max_tokens: 700,
+      temperature: 0.3,
       response_format: { type: "json_object" }
     });
     const text2 = extractLLMContent(result);
@@ -3797,8 +3831,13 @@ Respond ONLY with this JSON (no extra text):
     mimeType: import_zod5.z.string().default("image/jpeg"),
     subject: import_zod5.z.string().default("other"),
     gradeLevel: import_zod5.z.string().optional()
-  })).mutation(async ({ input }) => {
+  })).mutation(async ({ ctx, input }) => {
     try {
+      if (ctx.user) {
+        const db2 = await getDb();
+        const ok = await checkServerSidePremium(ctx.user.id, db2);
+        if (!ok) throw new import_server3.TRPCError({ code: "PAYMENT_REQUIRED", message: "Premium subscription required (10003)" });
+      }
       const messages = [
         { role: "system", content: IMAGE_SOLVE_SYSTEM_PROMPT + gradeContext(input.gradeLevel) },
         {
@@ -3815,7 +3854,8 @@ Respond ONLY with this JSON (no extra text):
       const params = {
         model: "gemini-3-flash-preview",
         messages,
-        max_tokens: 2500,
+        max_tokens: 1800,
+        temperature: 0.3,
         response_format: { type: "json_object" }
       };
       const jsonStr = await invokeLLMWithFallback("gemini-3-flash-preview", "claude-haiku-4-5", params);
@@ -3829,8 +3869,13 @@ Respond ONLY with this JSON (no extra text):
     subject: import_zod5.z.string(),
     difficulty: import_zod5.z.enum(["easy", "medium", "hard"]),
     gradeLevel: import_zod5.z.string().optional()
-  })).mutation(async ({ input }) => {
-    const practiceTokens = input.difficulty === "easy" ? 700 : input.difficulty === "medium" ? 1100 : 1800;
+  })).mutation(async ({ ctx, input }) => {
+    if (ctx.user) {
+      const db2 = await getDb();
+      const ok = await checkServerSidePremium(ctx.user.id, db2);
+      if (!ok) throw new import_server3.TRPCError({ code: "PAYMENT_REQUIRED", message: "Premium subscription required (10003)" });
+    }
+    const practiceTokens = input.difficulty === "easy" ? 700 : input.difficulty === "medium" ? 1100 : 1600;
     const practicePrompt = buildPracticePrompt(input.subject, input.difficulty) + gradeContext(input.gradeLevel);
     const result = await invokeLLM({
       model: "claude-haiku-4-5",
@@ -3839,6 +3884,7 @@ Respond ONLY with this JSON (no extra text):
         { role: "user", content: `Generate a ${input.difficulty} ${input.subject} practice question.` }
       ],
       max_tokens: practiceTokens,
+      temperature: 0.3,
       response_format: { type: "json_object" }
     });
     const text2 = extractLLMContent(result);
@@ -3879,11 +3925,17 @@ Respond ONLY with this JSON (no extra text):
     difficulty: import_zod5.z.enum(["easy", "medium", "hard"]),
     count: import_zod5.z.number().min(3).max(10).default(5),
     gradeLevel: import_zod5.z.string().optional()
-  })).mutation(async ({ input }) => {
+  })).mutation(async ({ ctx, input }) => {
+    if (ctx.user) {
+      const db2 = await getDb();
+      const ok = await checkServerSidePremium(ctx.user.id, db2);
+      if (!ok) throw new import_server3.TRPCError({ code: "PAYMENT_REQUIRED", message: "Premium subscription required (10003)" });
+    }
     const quizPrompt = `You are TutorSnap, an expert academic tutor.${gradeContext(input.gradeLevel)}
 Generate exactly ${input.count} ${input.difficulty} multiple-choice questions for: ${input.subject}.
-Each question has 4 options (A-D), one correct answer, and a brief 1-sentence explanation.
-Respond ONLY with this JSON:
+Each question has 4 distinct options (A-D), exactly one correct answer, and a brief one-sentence explanation.
+Use plain text only. Do not use Markdown, LaTeX commands, dollar signs, backslashes, or decorative symbols.
+Respond ONLY with this JSON and no surrounding prose:
 {"questions":[{"id":"q1","problem":"<question>","options":{"A":"<a>","B":"<b>","C":"<c>","D":"<d>"},"correctAnswer":"A","explanation":"<1 sentence>"}]}`;
     const result = await invokeLLM({
       model: "claude-haiku-4-5",
@@ -3891,8 +3943,9 @@ Respond ONLY with this JSON:
         { role: "system", content: quizPrompt },
         { role: "user", content: `Generate ${input.count} ${input.difficulty} multiple-choice questions for ${input.subject}.` }
       ],
-      // Scale per-question token budget by difficulty
-      max_tokens: Math.min(input.count * (input.difficulty === "easy" ? 150 : input.difficulty === "medium" ? 250 : 350), 2500),
+      // Scale per-question token budget while keeping the payload mobile-sized.
+      max_tokens: Math.min(input.count * (input.difficulty === "easy" ? 140 : input.difficulty === "medium" ? 200 : 260), 1800),
+      temperature: 0.3,
       response_format: { type: "json_object" }
     });
     const rawContent = extractLLMContent(result);
@@ -3918,7 +3971,8 @@ Respond ONLY with this JSON:
         { role: "system", content: tipPrompt },
         { role: "user", content: `Give me a study tip for ${input.subject}.` }
       ],
-      max_tokens: 120
+      max_tokens: 120,
+      temperature: 0.3
     });
     const rawTip = result?.error ? "" : result.choices?.[0]?.message?.content ?? "";
     const tip = typeof rawTip === "string" ? rawTip.trim() : "";
@@ -3939,7 +3993,7 @@ The student is currently focused on: ${input.subject}. Tailor your explanations 
     const gradeContext2 = input.gradeLevel && GRADE_LEVEL_DESCRIPTIONS2[input.gradeLevel] ? `
 ADAPT YOUR RESPONSE to this student's level: ${GRADE_LEVEL_DESCRIPTIONS2[input.gradeLevel]}` : "";
     const isDetailed = input.detailedMode !== false;
-    const detailedCtx = isDetailed ? "\n\nDETAILED MODE is ON: Give the richest, most thorough response possible. For simple questions: 4-8 sentences with a related example. For medium questions: 2 fully worked examples plus a summary table. For complex questions: full working with ALL steps, a verification pass, a summary, and a related extension problem. Always end with a Pro Tip AND a Common Mistake section." : "\n\nCONCISE MODE is ON: Keep responses focused and efficient. Answer the question directly, show essential working steps only, and avoid over-explaining.";
+    const detailedCtx = isDetailed ? "\n\nDETAILED MODE is ON: Match depth to the question. Use 2-4 sentences for simple questions, 4-8 sentences plus one useful example for medium questions, and clearly numbered working with a brief verification for complex questions. Add a pro tip or common mistake only when it materially helps." : "\n\nCONCISE MODE is ON: Answer directly, show only essential reasoning, and avoid repetition.";
     const systemPrompt = CHAT_SYSTEM_PROMPT2 + subjectContext + gradeContext2 + detailedCtx;
     const lastMsgContent = input.messages[input.messages.length - 1]?.content ?? "";
     const { detectUserOverride: detectUserOverride2, classifyQuestion: classifyQuestion2, computeTokenBudget: computeTokenBudget2 } = await Promise.resolve().then(() => (init_chatStream(), chatStream_exports));
@@ -3955,7 +4009,8 @@ ADAPT YOUR RESPONSE to this student's level: ${GRADE_LEVEL_DESCRIPTIONS2[input.g
           content: m.content
         }))
       ],
-      max_tokens: chatMaxTokens
+      max_tokens: chatMaxTokens,
+      temperature: 0.3
     });
     const rawContent = result?.error ? "" : result.choices?.[0]?.message?.content ?? "";
     const text2 = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
@@ -3979,6 +4034,7 @@ Respond ONLY with valid JSON in this exact format:
         { role: "user", content: "Generate the 3 follow-up chips now." }
       ],
       max_tokens: 120,
+      temperature: 0.3,
       response_format: { type: "json_object" }
     });
     const text2 = result?.error ? "" : extractLLMContent(result);
@@ -4010,7 +4066,9 @@ Rules:
 - Be concise: 4-6 sentences total.
 - Use plain, student-friendly language.
 - Do NOT repeat the original solution method verbatim.
-- Format math with LaTeX: $...$ for inline, $$...$$ for block.
+- NEVER use dollar signs or LaTeX. Write math in plain text: x^2 + 3x = 0, use ^ for powers, / for fractions.
+- NEVER use Markdown: no **bold**, no *italic*, no ## headings, no backticks.
+- NEVER use em dashes or en dashes. Use a plain comma or hyphen instead.
 - Output plain text only, no JSON.`;
     const userMsg = `Problem: ${input.problem.slice(0, 400)}
 Original answer: ${input.answer.slice(0, 300)}
@@ -4022,7 +4080,8 @@ Now re-explain this using the ${input.style} style.`;
         { role: "system", content: systemPrompt },
         { role: "user", content: userMsg }
       ],
-      max_tokens: 450
+      max_tokens: 450,
+      temperature: 0.3
     });
     const text2 = result?.error ? "" : result.choices?.[0]?.message?.content ?? "";
     const explanation = typeof text2 === "string" ? text2.trim() : JSON.stringify(text2);
@@ -4049,6 +4108,7 @@ Respond ONLY with this JSON:
       ],
       // Scale per-problem token budget by difficulty
       max_tokens: Math.min(input.count * (input.difficulty === "easy" ? 120 : input.difficulty === "medium" ? 180 : 250), 1e3),
+      temperature: 0.3,
       response_format: { type: "json_object" }
     });
     const text2 = extractLLMContent(result);
@@ -4099,6 +4159,7 @@ Respond ONLY with this JSON:
         { role: "user", content: "Generate the study blocks now." }
       ],
       max_tokens: 1200,
+      temperature: 0.3,
       response_format: { type: "json_object" }
     });
     const text2 = extractLLMContent(result);
@@ -4688,39 +4749,46 @@ async function createContext(opts) {
 
 // server/_core/index.ts
 initSentryServer();
-function isPortAvailable(port) {
-  return new Promise((resolve) => {
-    const server = import_net.default.createServer();
-    server.listen(port, () => {
-      server.close(() => resolve(true));
-    });
-    server.on("error", () => resolve(false));
-  });
+var DEFAULT_ALLOWED_ORIGINS = [
+  "https://tutorsnapai.tech",
+  "https://www.tutorsnapai.tech",
+  "http://localhost:8081",
+  "http://localhost:19006"
+];
+function getAllowedOrigins() {
+  const configured = (process.env.CORS_ALLOWED_ORIGINS ?? "").split(",").map((origin) => origin.trim()).filter(Boolean);
+  return /* @__PURE__ */ new Set([...DEFAULT_ALLOWED_ORIGINS, ...configured]);
 }
-async function findAvailablePort(startPort = 3e3) {
-  for (let port = startPort; port < startPort + 20; port++) {
-    if (await isPortAvailable(port)) {
-      return port;
-    }
-  }
-  throw new Error(`No available port found starting from ${startPort}`);
+function getReleaseVersion() {
+  return process.env.APP_VERSION?.trim() || "1.8.5";
 }
 async function startServer() {
   const app = (0, import_express.default)();
   const server = (0, import_http.createServer)(app);
+  const allowedOrigins = getAllowedOrigins();
+  app.set("trust proxy", 1);
+  app.disable("x-powered-by");
   app.use((req, res, next) => {
     const origin = req.headers.origin;
-    res.header("Access-Control-Allow-Origin", origin || "*");
+    const isAllowedOrigin = !origin || allowedOrigins.has(origin);
+    if (!isAllowedOrigin) {
+      res.status(403).json({ ok: false, error: "Origin not allowed" });
+      return;
+    }
+    if (origin) {
+      res.header("Access-Control-Allow-Origin", origin);
+      res.header("Access-Control-Allow-Credentials", "true");
+      res.header("Vary", "Origin");
+    }
     res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
     res.header(
       "Access-Control-Allow-Headers",
-      "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+      "Origin, X-Requested-With, Content-Type, Accept, Authorization, X-Request-Id, X-Cron-Secret"
     );
-    if (origin) {
-      res.header("Access-Control-Allow-Credentials", "true");
-    }
+    res.header("X-Content-Type-Options", "nosniff");
+    res.header("Referrer-Policy", "no-referrer");
     if (req.method === "OPTIONS") {
-      res.sendStatus(200);
+      res.sendStatus(204);
       return;
     }
     next();
@@ -4733,9 +4801,47 @@ async function startServer() {
   registerChatStreamRoute(app);
   registerMathRenderRoute(app);
   app.get("/api/health", (_req, res) => {
-    res.json({ ok: true, timestamp: Date.now() });
+    res.json({
+      ok: true,
+      service: "tutorsnap-api",
+      version: getReleaseVersion(),
+      commit: process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 12) || null,
+      timestamp: (/* @__PURE__ */ new Date()).toISOString()
+    });
   });
-  app.post("/api/scheduled/otp-cleanup", async (_req, res) => {
+  app.get("/api/ready", async (_req, res) => {
+    try {
+      const { getDb: getDb2 } = await Promise.resolve().then(() => (init_db(), db_exports));
+      const { sql: sql3 } = await import("drizzle-orm");
+      const db2 = await getDb2();
+      if (!db2) {
+        res.status(503).json({ ok: false, database: "unavailable" });
+        return;
+      }
+      await db2.execute(sql3`select 1`);
+      res.json({
+        ok: true,
+        database: "ready",
+        version: getReleaseVersion(),
+        timestamp: (/* @__PURE__ */ new Date()).toISOString()
+      });
+    } catch (error) {
+      console.error("[Readiness] Database check failed:", error);
+      res.status(503).json({ ok: false, database: "unavailable" });
+    }
+  });
+  app.post("/api/scheduled/otp-cleanup", async (req, res) => {
+    const scheduleSecret = process.env.SCHEDULE_SECRET?.trim();
+    if (!scheduleSecret) {
+      res.status(503).json({ ok: false, error: "Scheduled operation is not configured" });
+      return;
+    }
+    const authorization = req.headers.authorization;
+    const headerSecret = req.headers["x-cron-secret"];
+    if (authorization !== `Bearer ${scheduleSecret}` && headerSecret !== scheduleSecret) {
+      res.status(401).json({ ok: false, error: "Unauthorized" });
+      return;
+    }
     try {
       const { getDb: getDb2 } = await Promise.resolve().then(() => (init_db(), db_exports));
       const { otpCodes: otpCodes2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
@@ -4754,20 +4860,14 @@ async function startServer() {
     }
   });
   app.get("/version.json", (_req, res) => {
+    const latestVersion = getReleaseVersion();
     res.json({
-      latestVersion: "1.1.0",
-      minVersion: "1.0.0",
-      releaseNotes: [
-        "Flashcard PDF export \u2014 share your entire deck as a printable PDF",
-        "Classroom leaderboard and homework assignment tools",
-        "153 accessibility improvements for screen readers",
-        "App Store privacy manifest and NSUsageDescription strings",
-        "Pomodoro focus timer for Study Planner sessions",
-        "Streak freeze mechanic and badge unlock animations"
-      ],
-      iosStoreUrl: "https://apps.apple.com/app/tutorsnap/id6748752791",
-      androidStoreUrl: "https://play.google.com/store/apps/details?id=com.tutorsnap.app",
-      forceUpdate: false
+      latestVersion,
+      minVersion: process.env.MIN_SUPPORTED_VERSION?.trim() || latestVersion,
+      releaseNotes: (process.env.RELEASE_NOTES ?? "").split("|").map((note) => note.trim()).filter(Boolean),
+      iosStoreUrl: process.env.IOS_STORE_URL?.trim() || "https://apps.apple.com/app/tutorsnap/id6748752791",
+      androidStoreUrl: process.env.ANDROID_STORE_URL?.trim() || "https://play.google.com/store/apps/details?id=com.tutorsnap.app",
+      forceUpdate: process.env.FORCE_UPDATE === "true"
     });
   });
   app.post(
@@ -4776,7 +4876,17 @@ async function startServer() {
     async (req, res) => {
       try {
         const secret = process.env.REVENUECAT_WEBHOOK_SECRET;
-        if (secret) {
+        const isProduction = process.env.NODE_ENV === "production";
+        if (!secret) {
+          if (isProduction) {
+            console.error(
+              "[RC Webhook] CRITICAL: REVENUECAT_WEBHOOK_SECRET is not set in production. All webhook requests are rejected to prevent unauthorized subscription grants."
+            );
+            res.status(500).json({ ok: false, error: "Webhook secret not configured" });
+            return;
+          }
+          console.warn("[RC Webhook] REVENUECAT_WEBHOOK_SECRET not set \u2014 skipping auth check (dev mode)");
+        } else {
           const authHeader = req.headers["authorization"];
           if (authHeader !== secret) {
             console.warn("[RC Webhook] Unauthorized request \u2014 Authorization header mismatch");
@@ -4800,7 +4910,7 @@ async function startServer() {
           return;
         }
         const eventType = event.type ?? "";
-        const rcUserId = event.app_user_id ?? "";
+        const rcUserId = eventType === "TRANSFER" && event.transferred_to ? event.transferred_to : event.app_user_id ?? "";
         const productId = event.product_id ?? "";
         const expiresAtMs = event.expiration_at_ms ?? null;
         console.log(`[RC Webhook] event=${eventType} rcUser=${rcUserId} product=${productId}`);
@@ -4814,6 +4924,10 @@ async function startServer() {
           UNCANCELLATION: "active",
           NON_RENEWING_PURCHASE: "active",
           TRANSFER: "active",
+          // Refund reversed → re-activate (RC claws back the refund; access restored)
+          REFUND_REVERSED: "active",
+          // Subscription extended → still active with new expiry
+          SUBSCRIPTION_EXTENDED: "active",
           // Grace-period events — user still has entitlement
           BILLING_ISSUE: "active",
           // RC keeps access during grace period
@@ -4856,7 +4970,7 @@ async function startServer() {
         }
         const MYSQL_TIMESTAMP_MAX = /* @__PURE__ */ new Date("2038-01-19T03:14:07.000Z");
         const expiresAt = expiresAtMs ? new Date(Math.min(expiresAtMs, MYSQL_TIMESTAMP_MAX.getTime())) : null;
-        const eventTimestampMs = event.purchased_at_ms ?? Date.now();
+        const eventTimestampMs = event.purchased_at_ms ?? event.event_timestamp_ms ?? (expiresAtMs ?? null);
         const existing = await db2.select({
           id: subscriptions2.id,
           status: subscriptions2.status,
@@ -4871,7 +4985,7 @@ async function startServer() {
         if (existing.length > 0) {
           const existingRow = existing[0];
           const existingUpdatedMs = existingRow.updatedAt.getTime();
-          if (existingUpdatedMs > eventTimestampMs + 5e3) {
+          if (eventTimestampMs !== null && existingUpdatedMs > eventTimestampMs + 5e3) {
             console.log(
               `[RC Webhook] Skipping out-of-order event: ${eventType} (existing updatedAt=${existingUpdatedMs} > event ts=${eventTimestampMs})`
             );
@@ -4882,7 +4996,7 @@ async function startServer() {
           const incomingExpiresMs = expiresAt ? expiresAt.getTime() : null;
           const sameStatus = existingRow.status === newStatus;
           const sameExpiry = existingExpiresMs === incomingExpiresMs;
-          const sameTimestamp = Math.abs(existingUpdatedMs - eventTimestampMs) <= 5e3;
+          const sameTimestamp = eventTimestampMs !== null && Math.abs(existingUpdatedMs - eventTimestampMs) <= 5e3;
           if (sameStatus && sameExpiry && sameTimestamp) {
             console.log(`[RC Webhook] Exact duplicate skipped: ${eventType} for rcUser=${rcUserId}`);
             res.json({ ok: true, handled: false, reason: "exact duplicate skipped" });
@@ -4930,14 +5044,49 @@ Status: ${newStatus}`
       createContext
     })
   );
-  const preferredPort = parseInt(process.env.PORT || "3000");
-  const port = await findAvailablePort(preferredPort);
-  if (port !== preferredPort) {
+  const port = Number.parseInt(process.env.PORT || "3000", 10);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error(`Invalid PORT value: ${process.env.PORT}`);
   }
-  server.listen(port, () => {
+  server.keepAliveTimeout = 65e3;
+  server.headersTimeout = 66e3;
+  await new Promise((resolve, reject) => {
+    const onError = (error) => reject(error);
+    server.once("error", onError);
+    server.listen(port, "0.0.0.0", () => {
+      server.off("error", onError);
+      console.log(`[API] TutorSnap ${getReleaseVersion()} listening on port ${port}`);
+      resolve();
+    });
   });
+  await startCleanupScheduler();
+  let shuttingDown = false;
+  const shutdown = (signal) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    console.log(`[API] ${signal} received; draining connections`);
+    const forceExitTimer = setTimeout(() => {
+      console.error("[API] Graceful shutdown timed out");
+      process.exit(1);
+    }, 1e4);
+    forceExitTimer.unref();
+    server.close((error) => {
+      clearTimeout(forceExitTimer);
+      if (error) {
+        console.error("[API] Shutdown failed:", error);
+        process.exit(1);
+      }
+      console.log("[API] Shutdown complete");
+      process.exit(0);
+    });
+  };
+  process.once("SIGTERM", () => shutdown("SIGTERM"));
+  process.once("SIGINT", () => shutdown("SIGINT"));
 }
-startServer().catch(console.error);
+startServer().catch((error) => {
+  console.error("[API] Failed to start:", error);
+  process.exitCode = 1;
+});
 async function startCleanupScheduler() {
   try {
     const { startOtpCleanupScheduler: startOtpCleanupScheduler2 } = await Promise.resolve().then(() => (init_email_auth(), email_auth_exports));
@@ -4946,4 +5095,3 @@ async function startCleanupScheduler() {
     console.warn("[OTP Cleanup] Could not start scheduler (non-fatal):", err?.message ?? err);
   }
 }
-startCleanupScheduler();

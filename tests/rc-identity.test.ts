@@ -185,7 +185,7 @@ describe("RC identity — restorePurchases with openId", () => {
     mockRestorePurchases.mockResolvedValueOnce({
       entitlements: {
         active: {
-          premium: { productIdentifier: "tutorsnap_monthly" },
+          "TutorSnap Pro": { productIdentifier: "tutorsnap_monthly" },
         },
       },
     });

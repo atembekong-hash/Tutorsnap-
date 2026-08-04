@@ -42,6 +42,7 @@ export default function FeedbackScreen() {
   const [category, setCategory] = useState("general");
   const [message, setMessage] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const { fadeStyle } = useScreenTransition({ duration: 280, translateY: 16 });
 
   const handleSubmit = async () => {
     if (rating === 0) {
@@ -93,7 +94,6 @@ export default function FeedbackScreen() {
     );
   }
 
-  const { fadeStyle } = useScreenTransition({ duration: 280, translateY: 16 });
   return (
     <ScreenContainer>
       <Animated.View style={[{ flex: 1 }, fadeStyle]}>

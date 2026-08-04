@@ -38,6 +38,7 @@ import { cleanMathText } from "@/lib/clean-math-text";
 import { SubmissionReadyCard } from "@/components/submission-ready-card";
 import { useFontSize } from "@/lib/font-size-provider";
 import { SolveMilestoneModal, shouldCelebrateSolveMilestone } from "@/components/solve-milestone-modal";
+import { useAssistantContext } from "@/components/contextual-assistant";
 const QUIZ_COUNTS = [3, 5, 10];
 
 function getDifficulties(gradeLevel: string | null): { id: Difficulty; label: string; color: string; desc: string }[] {
@@ -138,6 +139,7 @@ function PracticeScreenContent() {
     await setSubjectDifficulty(selectedSubject, diff);
   }, [selectedSubject]);
   const [currentQuestion, setCurrentQuestion] = useState<PracticeQuestion | null>(null);
+  const { setContext: setAssistantContext, resetContext: resetAssistantContext } = useAssistantContext();
   const [showAnswer, setShowAnswer] = useState(false);
   const [hintsShown, setHintsShown] = useState(0);
   const [consecutiveCorrect, setConsecutiveCorrect] = useState(0);
@@ -157,6 +159,29 @@ function PracticeScreenContent() {
   // Show skeleton on initial mount until first prefetch or question is ready
   const [practiceInitialLoading, setPracticeInitialLoading] = useState(true);
   const { isOnline } = useNetworkStatus();
+
+  useFocusEffect(
+    useCallback(() => {
+      setAssistantContext({
+        source: "practice",
+        title: currentQuestion?.problem ? "Coach me on this exercise" : "Practice with AI Tutor",
+        subject: getSubjectLabel(selectedSubject),
+        gradeLevel: gradeLevel ? GRADE_LABELS[gradeLevel] : null,
+        problem: currentQuestion?.problem ?? null,
+        detail: currentQuestion?.problem
+          ? `This is a ${selectedDifficulty} practice exercise. Give one hint at a time before the answer.`
+          : `Help me prepare for a ${selectedDifficulty} ${getSubjectLabel(selectedSubject)} exercise.`,
+      });
+      return resetAssistantContext;
+    }, [
+      currentQuestion?.problem,
+      gradeLevel,
+      resetAssistantContext,
+      selectedDifficulty,
+      selectedSubject,
+      setAssistantContext,
+    ]),
+  );
 
   useFocusEffect(
     useCallback(() => {

@@ -255,6 +255,7 @@ export default function QuizHistoryDetailScreen() {
   const [loadError, setLoadError] = useState(false);
   const [copied, setCopied] = useState(false);
   const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { fadeStyle } = useScreenTransition({ duration: 280, translateY: 16 });
 
   useEffect(() => {
     if (!id) {
@@ -374,7 +375,6 @@ export default function QuizHistoryDetailScreen() {
   const subjectLabel = getSubjectLabel(quiz.subject);
   const hasDetail = quiz.questions && quiz.questions.length > 0;
 
-  const { fadeStyle } = useScreenTransition({ duration: 280, translateY: 16 });
   return (
     <ScreenContainer>
       <Animated.View style={[{ flex: 1 }, fadeStyle]}>

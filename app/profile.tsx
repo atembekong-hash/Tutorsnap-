@@ -26,6 +26,7 @@ export default function ProfileScreen() {
   const [email, setEmail] = useState(user?.email || "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { fadeStyle } = useScreenTransition({ duration: 280, translateY: 16 });
 
   useEffect(() => {
     if (user) {
@@ -138,7 +139,6 @@ export default function ProfileScreen() {
     );
   }
 
-  const { fadeStyle } = useScreenTransition({ duration: 280, translateY: 16 });
   return (
     <ScreenContainer containerClassName="bg-background">
       <Animated.View style={[{ flex: 1 }, fadeStyle]}>

@@ -96,14 +96,14 @@ describe("classifyQuestion", () => {
 
 // --- computeTokenBudget ---
 describe("computeTokenBudget", () => {
-  it('returns 300 for "short" override regardless of difficulty', () => {
-    expect(computeTokenBudget({ difficulty: 5, type: "phd" }, "short", true)).toBe(300);
-    expect(computeTokenBudget({ difficulty: 1, type: "trivial" }, "short", false)).toBe(300);
+  it('returns 240 for "short" override regardless of difficulty', () => {
+    expect(computeTokenBudget({ difficulty: 5, type: "phd" }, "short", true)).toBe(240);
+    expect(computeTokenBudget({ difficulty: 1, type: "trivial" }, "short", false)).toBe(240);
   });
 
-  it('returns 12000 for "full" override regardless of difficulty', () => {
-    expect(computeTokenBudget({ difficulty: 1, type: "trivial" }, "full", false)).toBe(12000);
-    expect(computeTokenBudget({ difficulty: 3, type: "medium" }, "full", true)).toBe(12000);
+  it('returns 5000 for "full" override regardless of difficulty', () => {
+    expect(computeTokenBudget({ difficulty: 1, type: "trivial" }, "full", false)).toBe(5000);
+    expect(computeTokenBudget({ difficulty: 3, type: "medium" }, "full", true)).toBe(5000);
   });
 
   it("returns higher budget for higher difficulty", () => {
@@ -120,9 +120,9 @@ describe("computeTokenBudget", () => {
     expect(detailed).toBeGreaterThan(concise);
   });
 
-  it("never exceeds 12000 tokens", () => {
+  it("never exceeds 5000 tokens", () => {
     const budget = computeTokenBudget({ difficulty: 5, type: "phd" }, null, true);
-    expect(budget).toBeLessThanOrEqual(12000);
+    expect(budget).toBeLessThanOrEqual(5000);
   });
 
   it("trivial question in concise mode gives a small budget", () => {

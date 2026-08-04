@@ -52,6 +52,7 @@ export default function ReportBugScreen() {
   const [description, setDescription] = useState("");
   const [steps, setSteps] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const { fadeStyle } = useScreenTransition({ duration: 280, translateY: 16 });
 
   const version = Constants.expoConfig?.version ?? "1.1.0";
   const sdkVersion = Constants.expoConfig?.sdkVersion ?? "54";
@@ -104,7 +105,6 @@ export default function ReportBugScreen() {
     );
   }
 
-  const { fadeStyle } = useScreenTransition({ duration: 280, translateY: 16 });
   return (
     <ScreenContainer>
       <Animated.View style={[{ flex: 1 }, fadeStyle]}>

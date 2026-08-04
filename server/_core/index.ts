@@ -4,7 +4,6 @@ import { initSentryServer } from "./sentry-server";
 initSentryServer();
 import express from "express";
 import { createServer } from "http";
-import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { registerStorageProxy } from "./storageProxy";
@@ -14,49 +13,60 @@ import { registerMathRenderRoute } from "./mathRender";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 
-function isPortAvailable(port: number): Promise<boolean> {
-  return new Promise((resolve) => {
-    const server = net.createServer();
-    server.listen(port, () => {
-      server.close(() => resolve(true));
-    });
-    server.on("error", () => resolve(false));
-  });
+const DEFAULT_ALLOWED_ORIGINS = [
+  "https://tutorsnapai.tech",
+  "https://www.tutorsnapai.tech",
+  "http://localhost:8081",
+  "http://localhost:19006",
+];
+
+function getAllowedOrigins(): Set<string> {
+  const configured = (process.env.CORS_ALLOWED_ORIGINS ?? "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+  return new Set([...DEFAULT_ALLOWED_ORIGINS, ...configured]);
 }
 
-async function findAvailablePort(startPort: number = 3000): Promise<number> {
-  for (let port = startPort; port < startPort + 20; port++) {
-    if (await isPortAvailable(port)) {
-      return port;
-    }
-  }
-  throw new Error(`No available port found starting from ${startPort}`);
+function getReleaseVersion(): string {
+  return process.env.APP_VERSION?.trim() || "1.8.5";
 }
 
 async function startServer() {
   const app = express();
   const server = createServer(app);
+  const allowedOrigins = getAllowedOrigins();
+
+  app.set("trust proxy", 1);
+  app.disable("x-powered-by");
 
   // Enable CORS for all routes.
   // Native Android/iOS fetch calls do NOT send an Origin header, so we must
   // always set Access-Control-Allow-Origin regardless of whether Origin is present.
   app.use((req, res, next) => {
     const origin = req.headers.origin;
-    // Reflect origin if present (needed for web + credentials); otherwise allow all
-    res.header("Access-Control-Allow-Origin", origin || "*");
+    const isAllowedOrigin = !origin || allowedOrigins.has(origin);
+
+    if (!isAllowedOrigin) {
+      res.status(403).json({ ok: false, error: "Origin not allowed" });
+      return;
+    }
+
+    if (origin) {
+      res.header("Access-Control-Allow-Origin", origin);
+      res.header("Access-Control-Allow-Credentials", "true");
+      res.header("Vary", "Origin");
+    }
     res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
     res.header(
       "Access-Control-Allow-Headers",
-      "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+      "Origin, X-Requested-With, Content-Type, Accept, Authorization, X-Request-Id, X-Cron-Secret",
     );
-    // Only send Allow-Credentials when we have a specific origin (wildcard + credentials is invalid)
-    if (origin) {
-      res.header("Access-Control-Allow-Credentials", "true");
-    }
+    res.header("X-Content-Type-Options", "nosniff");
+    res.header("Referrer-Policy", "no-referrer");
 
-    // Handle preflight requests
     if (req.method === "OPTIONS") {
-      res.sendStatus(200);
+      res.sendStatus(204);
       return;
     }
     next();
@@ -72,12 +82,55 @@ async function startServer() {
   registerMathRenderRoute(app);
 
   app.get("/api/health", (_req, res) => {
-    res.json({ ok: true, timestamp: Date.now() });
+    res.json({
+      ok: true,
+      service: "tutorsnap-api",
+      version: getReleaseVersion(),
+      commit: process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 12) || null,
+      timestamp: new Date().toISOString(),
+    });
   });
 
-// OTP cleanup is handled by the singleton scheduler in email-auth.ts.
-  // The /api/scheduled/otp-cleanup endpoint is kept for manual/monitoring use only.
-  app.post("/api/scheduled/otp-cleanup", async (_req, res) => {
+  app.get("/api/ready", async (_req, res) => {
+    try {
+      const { getDb } = await import("../db.js");
+      const { sql } = await import("drizzle-orm");
+      const db = await getDb();
+      if (!db) {
+        res.status(503).json({ ok: false, database: "unavailable" });
+        return;
+      }
+      await db.execute(sql`select 1`);
+      res.json({
+        ok: true,
+        database: "ready",
+        version: getReleaseVersion(),
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("[Readiness] Database check failed:", error);
+      res.status(503).json({ ok: false, database: "unavailable" });
+    }
+  });
+
+  // OTP cleanup is handled by the singleton scheduler in email-auth.ts.
+  // This endpoint is retained for authenticated manual/monitoring use only.
+  app.post("/api/scheduled/otp-cleanup", async (req, res) => {
+    const scheduleSecret = process.env.SCHEDULE_SECRET?.trim();
+    if (!scheduleSecret) {
+      res.status(503).json({ ok: false, error: "Scheduled operation is not configured" });
+      return;
+    }
+    const authorization = req.headers.authorization;
+    const headerSecret = req.headers["x-cron-secret"];
+    if (
+      authorization !== `Bearer ${scheduleSecret}` &&
+      headerSecret !== scheduleSecret
+    ) {
+      res.status(401).json({ ok: false, error: "Unauthorized" });
+      return;
+    }
+
     try {
       const { getDb } = await import("../db.js");
       const { otpCodes } = await import("../../drizzle/schema.js");
@@ -94,25 +147,19 @@ async function startServer() {
     }
   });
 
-  // Version metadata endpoint — used by the in-app update check hook.
-  // The live tutorsnapai.tech/version.json is the canonical source for production.
-  // This endpoint serves the same data from the local API server so the update
-  // prompt can be tested in development without a deployed domain.
+  // Version metadata endpoint used by the native in-app update check.
   app.get("/version.json", (_req, res) => {
+    const latestVersion = getReleaseVersion();
     res.json({
-      latestVersion: "1.1.0",
-      minVersion: "1.0.0",
-      releaseNotes: [
-        "Flashcard PDF export — share your entire deck as a printable PDF",
-        "Classroom leaderboard and homework assignment tools",
-        "153 accessibility improvements for screen readers",
-        "App Store privacy manifest and NSUsageDescription strings",
-        "Pomodoro focus timer for Study Planner sessions",
-        "Streak freeze mechanic and badge unlock animations",
-      ],
-      iosStoreUrl: "https://apps.apple.com/app/tutorsnap/id6748752791",
-      androidStoreUrl: "https://play.google.com/store/apps/details?id=com.tutorsnap.app",
-      forceUpdate: false,
+      latestVersion,
+      minVersion: process.env.MIN_SUPPORTED_VERSION?.trim() || latestVersion,
+      releaseNotes: (process.env.RELEASE_NOTES ?? "")
+        .split("|")
+        .map((note) => note.trim())
+        .filter(Boolean),
+      iosStoreUrl: process.env.IOS_STORE_URL?.trim() || "https://apps.apple.com/app/tutorsnap/id6748752791",
+      androidStoreUrl: process.env.ANDROID_STORE_URL?.trim() || "https://play.google.com/store/apps/details?id=com.tutorsnap.app",
+      forceUpdate: process.env.FORCE_UPDATE === "true",
     });
   });
 
@@ -392,19 +439,57 @@ Status: ${newStatus}`,
     }),
   );
 
-  const preferredPort = parseInt(process.env.PORT || "3000");
-  const port = await findAvailablePort(preferredPort);
-
-  if (port !== preferredPort) {
-    // console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
+  const port = Number.parseInt(process.env.PORT || "3000", 10);
+  if (!Number.isInteger(port) || port < 1 || port > 65_535) {
+    throw new Error(`Invalid PORT value: ${process.env.PORT}`);
   }
 
-  server.listen(port, () => {
-    // console.log(`[api] server listening on port ${port}`);
+  server.keepAliveTimeout = 65_000;
+  server.headersTimeout = 66_000;
+
+  await new Promise<void>((resolve, reject) => {
+    const onError = (error: Error) => reject(error);
+    server.once("error", onError);
+    server.listen(port, "0.0.0.0", () => {
+      server.off("error", onError);
+      console.log(`[API] TutorSnap ${getReleaseVersion()} listening on port ${port}`);
+      resolve();
+    });
   });
+
+  await startCleanupScheduler();
+
+  let shuttingDown = false;
+  const shutdown = (signal: NodeJS.Signals) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    console.log(`[API] ${signal} received; draining connections`);
+
+    const forceExitTimer = setTimeout(() => {
+      console.error("[API] Graceful shutdown timed out");
+      process.exit(1);
+    }, 10_000);
+    forceExitTimer.unref();
+
+    server.close((error) => {
+      clearTimeout(forceExitTimer);
+      if (error) {
+        console.error("[API] Shutdown failed:", error);
+        process.exit(1);
+      }
+      console.log("[API] Shutdown complete");
+      process.exit(0);
+    });
+  };
+
+  process.once("SIGTERM", () => shutdown("SIGTERM"));
+  process.once("SIGINT", () => shutdown("SIGINT"));
 }
 
-startServer().catch(console.error);
+startServer().catch((error: unknown) => {
+  console.error("[API] Failed to start:", error);
+  process.exitCode = 1;
+});
 
 /**
  * Start the OTP cleanup singleton scheduler.
@@ -420,5 +505,3 @@ async function startCleanupScheduler() {
     console.warn("[OTP Cleanup] Could not start scheduler (non-fatal):", err?.message ?? err);
   }
 }
-
-startCleanupScheduler();

@@ -21,7 +21,7 @@ import { ENV } from "./env";
 // Set to false to instantly disable the continuation guard without any other change.
 const CONTINUATION_ENABLED = true;
 // Maximum number of continuation passes per response (prevents infinite loops).
-const MAX_CONTINUATIONS = 3;
+const MAX_CONTINUATIONS = 1;
 
 // ─── System prompt ───────────────────────────────────────────────────────────
 const CHAT_SYSTEM_PROMPT = `You are TutorSnap, an expert academic tutor covering all school subjects (Mathematics, Science, English, History, and more).
@@ -58,15 +58,15 @@ const CHAT_SYSTEM_PROMPT = `You are TutorSnap, an expert academic tutor covering
 ### Length guidance (STRICT — follow exactly based on question complexity)
 - **Trivial** (e.g. "What is 1+1?", "What is 2+2?", "What colour is the sky?"): 1-2 sentences MAXIMUM. State the answer and one brief reason. NO steps, NO examples, NO Pro Tip, NO Common Mistake, NO Try It Yourself. Stop immediately after the answer.
 - **Simple** (e.g. "What is the quadratic formula?", "What is photosynthesis?"): 3-6 sentences. Direct answer + brief explanation. One example only if essential. No Pro Tip or Common Mistake for simple factual questions.
-- **Medium** (e.g. "Explain integration by parts", "Solve 3x + 5 = 14"): 2 fully worked examples + a summary table or key insight list. End with a ###### Pro Tip AND a ###### Common Mistake section.
-- **Complex** (e.g. "Prove the fundamental theorem of calculus"): full working with ALL steps shown, a verification pass, a summary, and a related extension problem. End with Pro Tip and Common Mistake. Add a ## Try It Yourself section.
-- **PhD-level** (e.g. "Derive the Navier-Stokes equations from first principles"): exhaustive derivation, every intermediate step, all assumptions stated, physical interpretation. Full Pro Tip, Common Mistake, and Try It Yourself sections required.
+- **Medium** (e.g. "Explain integration by parts", "Solve 3x + 5 = 14"): show the essential steps and at most one worked example. Add a short key insight when useful.
+- **Complex** (e.g. "Prove the fundamental theorem of calculus"): show all necessary steps, state assumptions, and include a brief verification or summary. Add an extension problem only when requested.
+- **PhD-level** (e.g. "Derive the Navier-Stokes equations from first principles"): provide a rigorous derivation with necessary intermediate steps, assumptions, and interpretation, but avoid repeated summaries or filler.
 
-**CRITICAL: For trivial and simple questions, do NOT add Pro Tip, Common Mistake, or Try It Yourself sections. These sections are ONLY for medium, complex, and PhD-level questions.**
+For every level, add Pro Tip, Common Mistake, or Try It Yourself sections only when they materially improve the answer.
 
 ## INTERACTIVE COMPONENTS — AUTO-INSERT RULES:
 
-You MUST automatically decide when to insert the following components based on content type. Do NOT wait for the student to ask. Insert them whenever they improve understanding.
+Decide whether one of the following components would materially improve understanding. Use at most one by default, and omit components for simple answers.
 
 ### Checklist — use when listing steps, requirements, or things to remember
 Syntax (emit exactly as shown, one item per line):
@@ -319,26 +319,21 @@ export function computeTokenBudget(
   detailedMode: boolean,
 ): number {
   // Explicit overrides take absolute priority
-  if (override === "short") return 300;
-  if (override === "full")  return 12000;
+  if (override === "short") return 240;
+  if (override === "full") return 5000;
 
-  // Base budgets by difficulty
+  // Mobile-oriented budgets by difficulty.
   const BASE: Record<number, number> = {
-    1: 400,    // trivial
-    2: 900,    // simple
-    3: 2800,   // medium
-    4: 6500,   // complex
-    5: 10000,  // PhD-level
+    1: 220,
+    2: 600,
+    3: 1400,
+    4: 2800,
+    5: 4200,
   };
 
-  const base = BASE[classification.difficulty] ?? 2800;
-
-  // Detailed Mode: 1.5x multiplier; Concise Mode: 0.6x multiplier
-  const multiplier = detailedMode ? 1.5 : 0.6;
-  const budget = Math.round(base * multiplier);
-
-  // Hard cap at 12,000 tokens
-  return Math.min(budget, 12000);
+  const base = BASE[classification.difficulty] ?? 1400;
+  const multiplier = detailedMode ? 1.2 : 0.65;
+  return Math.min(Math.round(base * multiplier), 5000);
 }
 
 // ─── Stage 5: Natural stop detection ─────────────────────────────────────────
@@ -408,7 +403,7 @@ function buildTutorProfileContext(profile?: TutorProfile): string {
   const lengthMap: Record<string, string> = {
     brief:    "Keep responses SHORT and to the point. Avoid unnecessary elaboration.",
     standard: "Provide balanced responses: thorough but not overwhelming.",
-    detailed: "Provide COMPREHENSIVE, in-depth explanations. Elaborate fully on every concept.",
+    detailed: "Provide an in-depth explanation with necessary reasoning, but avoid repetition and filler.",
   };
   if (profile.responseLength && lengthMap[profile.responseLength]) parts.push(lengthMap[profile.responseLength]);
 
@@ -416,7 +411,7 @@ function buildTutorProfileContext(profile?: TutorProfile): string {
     "visual":        "Use diagrams described in text, tables, and visual analogies where possible.",
     "step-by-step":  "Always break explanations into numbered steps. Never skip steps.",
     "conceptual":    "Focus on the underlying concept and theory before showing calculations.",
-    "example-heavy": "Lead with worked examples. Show at least 2-3 examples per concept.",
+    "example-heavy": "Use one strong worked example, or two only when comparison is necessary.",
   };
   if (profile.learningStyle && styleMap[profile.learningStyle]) parts.push(styleMap[profile.learningStyle]);
 
@@ -427,7 +422,7 @@ function buildTutorProfileContext(profile?: TutorProfile): string {
   if (profile.showWorking === false) {
     parts.push("Give the final answer directly without showing every intermediate working step.");
   } else if (profile.showWorking === true) {
-    parts.push("Always show ALL working steps in full detail.");
+    parts.push("Show all necessary working steps clearly, without padding simple operations.");
   }
 
   if (profile.useEmojis === false) {
@@ -438,12 +433,10 @@ function buildTutorProfileContext(profile?: TutorProfile): string {
 
   if (profile.detailedMode === true) {
     parts.push(
-      "DETAILED MODE is ON: Give the richest, most thorough response possible. " +
-      "For simple questions: 4-8 sentences with a related example. " +
-      "For medium questions: 2 fully worked examples plus a summary table or key insight list. " +
-      "For complex questions: full working with ALL steps, a verification pass, a summary, and a related extension problem. " +
-      "Always end with a Pro Tip AND a Common Mistake section. " +
-      "After every worked example, add a 'Try It Yourself' practice problem."
+      "DETAILED MODE is ON: Match depth to the question. " +
+      "Use 2-4 sentences for simple questions, 4-8 sentences plus one useful example for medium questions, " +
+      "and clearly numbered working with a brief verification for complex questions. " +
+      "Add a Pro Tip, Common Mistake, or Try It Yourself prompt only when it materially helps."
     );
   } else {
     parts.push(

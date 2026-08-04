@@ -48,6 +48,7 @@ import { useNetworkStatus } from "@/hooks/use-network-status";
 import { flushSyncQueueIfDirty } from "@/lib/sync-retry-queue";
 import { scheduleStreakAtRiskCheck } from "@/lib/notifications";
 import { getProgress } from "@/lib/progress";
+import { ContextualAssistantProvider } from "@/components/contextual-assistant";
 
 // Show notifications as banners when app is in foreground
 if (Platform.OS !== "web") {
@@ -341,6 +342,7 @@ export default function RootLayout() {
 
   const content = (
     <GestureHandlerRootView style={{ flex: 1 }}>
+      <ContextualAssistantProvider>
       <AuthProvider>
         <AuthGuard>
         <trpc.Provider client={trpcClient} queryClient={queryClient}>
@@ -674,6 +676,7 @@ export default function RootLayout() {
         </trpc.Provider>
         </AuthGuard>
       </AuthProvider>
+      </ContextualAssistantProvider>
     </GestureHandlerRootView>
   );
 

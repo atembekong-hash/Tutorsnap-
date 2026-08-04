@@ -3,7 +3,7 @@
  * Shows earned free days, referral tier progress, and rewards
  */
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -50,7 +50,8 @@ export default function RewardsScreen() {
   const [perks, setPerks] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const progressAnim = new Animated.Value(0);
+  const progressAnim = useRef(new Animated.Value(0)).current;
+  const { fadeStyle } = useScreenTransition({ duration: 280, translateY: 16 });
 
   useEffect(() => {
     loadRewards();
@@ -111,7 +112,6 @@ export default function RewardsScreen() {
     );
   }
 
-  const { fadeStyle } = useScreenTransition({ duration: 280, translateY: 16 });
   return (
     <ScreenContainer className="p-6">
       <Animated.View style={[{ flex: 1 }, fadeStyle]}>

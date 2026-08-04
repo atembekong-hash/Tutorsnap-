@@ -36,11 +36,12 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { FREE_LIMITS } from "@/lib/subscription";
 import type { HistoryItem, MathSubject } from "@/shared/types";
 import { SubjectPicker } from "@/components/subject-picker";
-import { type SubjectId } from "@/lib/subjects";
+import { type SubjectId, getSubjectLabel } from "@/lib/subjects";
 import { useNetworkStatus } from "@/hooks/use-network-status";
 import { CameraView, useCameraPermissions } from "@/lib/camera-wrapper";
 import { GRADE_OPTIONS, GRADE_LABELS, loadGlobalGrade, saveGlobalGrade } from "@/lib/grade-levels";
 import { DotsLoader, ScanSkeletonScreen } from "@/components/skeleton";
+import { useAssistantContext } from "@/components/contextual-assistant";
 
 type ScanMode = "camera" | "preview" | "web-picker";
 
@@ -58,12 +59,14 @@ function ScanScreenContent() {
   const [mode, setMode] = useState<ScanMode>(Platform.OS !== "web" ? "camera" : "web-picker");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [hasProcessingConsent, setHasProcessingConsent] = useState(false);
   const [selectedSubject, setSelectedSubject] = useState<SubjectId | null>(null);
-  const [isCameraActive, setIsCameraActive] = useState(Platform.OS !== "web");
+  const [isCameraActive, setIsCameraActive] = useState(false);
   const [facing, setFacing] = useState<"back" | "front">("back");
   const { isOnline } = useNetworkStatus();
   const [gradeLevel, setGradeLevel] = useState<string | null>(null);
   const [showGradePicker, setShowGradePicker] = useState(false);
+  const { setContext: setAssistantContext, resetContext: resetAssistantContext } = useAssistantContext();
 
   // Phase 8 animations
   const shutterScale = useSharedValue(1);
@@ -104,13 +107,26 @@ function ScanScreenContent() {
 
   const [permission, requestPermission] = useCameraPermissions();
 
-  // Request camera permission on mount (native only)
-  useEffect(() => {
-    if (Platform.OS === "web") return;
-    if (!permission?.granted) {
-      requestPermission();
-    }
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      setAssistantContext({
+        source: "scan",
+        title: selectedImage ? "Help with this scanned problem" : "Scan with AI Tutor",
+        subject: selectedSubject ? getSubjectLabel(selectedSubject) : null,
+        gradeLevel: gradeLevel ? GRADE_LABELS[gradeLevel] : null,
+        detail: selectedImage
+          ? "A problem photo is selected. Help me identify the important information and plan a solution."
+          : "Help me capture a clear problem image and decide what details matter.",
+      });
+      return resetAssistantContext;
+    }, [
+      gradeLevel,
+      resetAssistantContext,
+      selectedImage,
+      selectedSubject,
+      setAssistantContext,
+    ]),
+  );
 
   // Manage camera active state when screen gains/loses focus
   useFocusEffect(
@@ -184,6 +200,7 @@ function ScanScreenContent() {
       });
       if (photo?.uri) {
         setSelectedImage(photo.uri);
+        setHasProcessingConsent(false);
         setIsCameraActive(false);
         setMode("preview");
         solveMutation.reset();
@@ -207,6 +224,7 @@ function ScanScreenContent() {
     });
     if (!result.canceled && result.assets[0]) {
       setSelectedImage(result.assets[0].uri);
+      setHasProcessingConsent(false);
       setIsCameraActive(false);
       setMode("preview");
       solveMutation.reset();
@@ -215,7 +233,15 @@ function ScanScreenContent() {
 
   // --- Solve the image ---
   const handleSolve = async () => {
-    if (!selectedImage) return;
+    const imageUri = selectedImage;
+    if (!imageUri) return;
+    if (!hasProcessingConsent) {
+      Alert.alert(
+        "Review privacy consent",
+        "Confirm that TutorSnap may securely upload this image for AI analysis before continuing.",
+      );
+      return;
+    }
     // GAP-B
     if (!checkLimit("solves")) { Alert.alert("Daily Limit Reached",`You've used your ${FREE_LIMITS.solvesPerDay} free solve${(FREE_LIMITS.solvesPerDay as number)===1?"":"s"} today. Upgrade to TutorSnap Premium.`,[{text:"OK"}]); return; }
     setIsProcessing(true);
@@ -223,7 +249,7 @@ function ScanScreenContent() {
     try {
       let base64: string;
       if (Platform.OS === "web") {
-        const response = await fetch(selectedImage);
+        const response = await fetch(imageUri);
         const blob = await response.blob();
         base64 = await new Promise((resolve) => {
           const reader = new FileReader();
@@ -234,7 +260,7 @@ function ScanScreenContent() {
           reader.readAsDataURL(blob);
         });
       } else {
-        base64 = await FileSystem.readAsStringAsync(selectedImage, {
+        base64 = await FileSystem.readAsStringAsync(imageUri, {
           encoding: FileSystem.EncodingType.Base64,
         });
       }
@@ -253,6 +279,7 @@ function ScanScreenContent() {
   // --- Retake: go back to camera ---
   const handleRetake = () => {
     setSelectedImage(null);
+    setHasProcessingConsent(false);
     solveMutation.reset();
     if (Platform.OS !== "web") {
       setMode("camera");
@@ -264,9 +291,8 @@ function ScanScreenContent() {
 
   // ===== CAMERA VIEW (native only — default view) =====
   if (mode === "camera" && Platform.OS !== "web" && CameraView) {
-    // permission === null means still loading — show camera UI optimistically
-    // Only show permission screen when we know it's definitively denied
-    const permissionDenied = permission !== null && !permission.granted;
+    // Camera access is requested only after an explicit learner action.
+    const permissionDenied = !permission?.granted;
     if (permissionDenied) {
       return (
         <View style={[styles.permissionContainer, { backgroundColor: colors.background }]}>
@@ -456,13 +482,51 @@ function ScanScreenContent() {
           </View>
 
           <TouchableOpacity
+            onPress={() => {
+              setHasProcessingConsent((current) => !current);
+              H.impactLight();
+            }}
+            activeOpacity={0.82}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: hasProcessingConsent }}
+            accessibilityLabel="Consent to securely upload this image for AI analysis"
+            style={[
+              styles.consentCard,
+              {
+                backgroundColor: hasProcessingConsent ? `${colors.primary}10` : colors.surface,
+                borderColor: hasProcessingConsent ? colors.primary : colors.border,
+              },
+            ]}
+          >
+            <View
+              style={[
+                styles.consentCheck,
+                {
+                  backgroundColor: hasProcessingConsent ? colors.primary : "transparent",
+                  borderColor: hasProcessingConsent ? colors.primary : colors.muted,
+                },
+              ]}
+            >
+              {hasProcessingConsent && (
+                <IconSymbol size={14} name="checkmark" color="#FFFFFF" />
+              )}
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.consentTitle, { color: colors.foreground }]}>Image processing consent</Text>
+              <Text style={[styles.consentText, { color: colors.muted }]}>This photo will be securely uploaded to TutorSnap's AI service to recognize and solve the problem. Do not include faces or unrelated personal information.</Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
             accessibilityLabel="Solve problem"
+            accessibilityHint={hasProcessingConsent ? "Uploads the selected image for AI analysis" : "Review and accept the image processing consent first"}
+            accessibilityState={{ disabled: isProcessing || solveMutation.isPending || !isOnline || !hasProcessingConsent }}
             onPress={handleSolve}
-            disabled={isProcessing || solveMutation.isPending || !isOnline}
+            disabled={isProcessing || solveMutation.isPending || !isOnline || !hasProcessingConsent}
             style={[
               styles.solveBtn,
-              { backgroundColor: isOnline ? colors.primary : colors.muted },
-              (isProcessing || solveMutation.isPending || !isOnline) && { opacity: 0.7 },
+              { backgroundColor: isOnline && hasProcessingConsent ? colors.primary : colors.muted },
+              (isProcessing || solveMutation.isPending || !isOnline || !hasProcessingConsent) && { opacity: 0.7 },
             ]}
             activeOpacity={0.85}
           >
@@ -475,6 +539,11 @@ function ScanScreenContent() {
               <>
                 <IconSymbol size={20} name="wifi.slash" color="#FFFFFF" />
                 <Text style={styles.solveBtnText}>No Internet Connection</Text>
+              </>
+            ) : !hasProcessingConsent ? (
+              <>
+                <IconSymbol size={20} name="checkmark.shield.fill" color="#FFFFFF" />
+                <Text style={styles.solveBtnText}>Confirm Consent to Continue</Text>
               </>
             ) : (
               <>
@@ -700,6 +769,10 @@ const styles = StyleSheet.create({
   clearOverlay: { position: "absolute", top: 12, right: 12, width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" },
   errorBox: { flexDirection: "row", alignItems: "center", gap: 8, padding: 12, borderRadius: 12, borderWidth: 1, marginBottom: 12 },
   errorText: { flex: 1, fontSize: 14 },
+  consentCard: { flexDirection: "row", alignItems: "flex-start", gap: 12, padding: 14, borderRadius: 14, borderWidth: 1.5, marginBottom: 14 },
+  consentCheck: { width: 24, height: 24, borderRadius: 7, borderWidth: 1.5, alignItems: "center", justifyContent: "center", marginTop: 1 },
+  consentTitle: { fontSize: 14, fontWeight: "800", marginBottom: 4 },
+  consentText: { fontSize: 12, lineHeight: 18 },
   solveBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", padding: 16, borderRadius: 16, gap: 8, marginBottom: 12 },
   solveBtnText: { fontSize: 17, fontWeight: "700", color: "#FFFFFF" },
   retakeBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", padding: 14, borderRadius: 14, borderWidth: 1, gap: 8 },

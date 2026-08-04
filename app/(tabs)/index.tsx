@@ -65,6 +65,7 @@ import { StreakMilestoneModal } from "@/components/streak-milestone-modal";
 import { checkStreakMilestone, type MilestoneInfo } from "@/lib/streak-milestones";
 import { HomeSkeletonScreen, DotsLoader } from "@/components/skeleton";
 import { SolveMilestoneModal, shouldCelebrateSolveMilestone } from "@/components/solve-milestone-modal";
+import { useAssistantContext } from "@/components/contextual-assistant";
 
 function getAppearanceSubjectKey(subjectId: string): string {
   const def = getSubjectDef(subjectId);
@@ -646,6 +647,7 @@ function SolveScreenContent() {
   const cursorPosRef = useRef<number>(0);
   const shieldToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [homeGradeLevel, setHomeGradeLevel] = useState<string | null>(null);
+  const { setContext: setAssistantContext, resetContext: resetAssistantContext } = useAssistantContext();
   const [showSolveGradePicker, setShowSolveGradePicker] = useState(false);
   const [rememberGrade, setRememberGrade] = useState(false);
   const [_userName, setUserName] = useState<string | null>(null); // used by StreakMilestoneModal
@@ -691,6 +693,28 @@ function SolveScreenContent() {
   const [solveMilestoneCount, setSolveMilestoneCount] = useState<number | null>(null);
   // Home loading state — show skeleton until first progress load completes
   const [homeLoading, setHomeLoading] = useState(true);
+
+  useFocusEffect(
+    useCallback(() => {
+      setAssistantContext({
+        source: "solve",
+        title: problem.trim() ? "Help with this problem" : "Solve with AI Tutor",
+        subject: selectedSubject ? getSubjectDef(selectedSubject).label : null,
+        gradeLevel: homeGradeLevel ? GRADE_LABELS[homeGradeLevel] : null,
+        problem: problem.trim() || null,
+        detail: problem.trim()
+          ? "Guide me through the reasoning instead of only giving the answer."
+          : "Help me choose an approach or formulate the problem I want to solve.",
+      });
+      return resetAssistantContext;
+    }, [
+      homeGradeLevel,
+      problem,
+      resetAssistantContext,
+      selectedSubject,
+      setAssistantContext,
+    ]),
+  );
 
   const loadProgress = async () => {
     const p = await getProgress();
