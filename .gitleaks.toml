@@ -24,6 +24,10 @@ id = "curl-auth-header"
 id = "generic-api-key"
 
   [[rules.allowlists]]
+  description = "Firebase Android client configuration is public application metadata embedded in the APK."
+  paths = ['''(^|/)google-services\.json$''']
+
+  [[rules.allowlists]]
   description = "RevenueCat unit tests use synthetic SDK keys that cannot authenticate to the service."
   condition = "AND"
   regexTarget = "line"
