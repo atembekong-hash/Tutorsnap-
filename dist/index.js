@@ -3763,6 +3763,7 @@ var academicRouter = router({
       const parsed = JSON.parse(jsonStr);
       return truncateForSimpleTier(parsed, tokenBudget);
     } catch (err) {
+      if (err instanceof import_server3.TRPCError) throw err;
       captureServerError(err, { route: "academic.solve" });
       throw new import_server3.TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err instanceof Error ? err.message : "Failed to solve problem. Please try again." });
     }
@@ -3861,6 +3862,7 @@ Respond ONLY with this JSON (no extra text):
       const jsonStr = await invokeLLMWithFallback("gemini-3-flash-preview", "claude-haiku-4-5", params);
       return JSON.parse(jsonStr);
     } catch (err) {
+      if (err instanceof import_server3.TRPCError) throw err;
       captureServerError(err, { route: "academic.solveFromImage" });
       throw new import_server3.TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err instanceof Error ? err.message : "Failed to process image. Please try again." });
     }
