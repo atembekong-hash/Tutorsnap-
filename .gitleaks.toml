@@ -1,0 +1,25 @@
+title = "TutorSnap Gitleaks configuration"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Firebase Android client configuration is public application metadata embedded in the APK."
+targetRules = ["gcp-api-key"]
+paths = ['''(^|/)google-services\.json$''']
+
+[[allowlists]]
+description = "RevenueCat documentation uses an explicit non-secret placeholder."
+targetRules = ["curl-auth-header"]
+condition = "AND"
+regexTarget = "line"
+regexes = ['''Authorization:\s+YOUR_SECRET_HERE''']
+paths = ['''(^|/)REVENUECAT_SETUP\.md$''']
+
+[[allowlists]]
+description = "RevenueCat unit tests use synthetic SDK keys that cannot authenticate to the service."
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+regexes = ['''EXPO_PUBLIC_REVENUECAT_APPLE_KEY\s*=\s*"appl_test_key_[0-9]+"''']
+paths = ['''(^|/)tests/(subscription-hardening|rc-identity)\.test\.ts$''']
