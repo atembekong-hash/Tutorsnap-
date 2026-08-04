@@ -1902,6 +1902,13 @@ var import_config = require("dotenv/config");
 var Sentry = __toESM(require("@sentry/node"));
 init_env();
 var DSN = process.env.SENTRY_DSN ?? process.env.EXPO_PUBLIC_SENTRY_DSN ?? "";
+function resolveSentryEnvironment(env = process.env) {
+  return env.SENTRY_ENVIRONMENT?.trim() || env.RAILWAY_ENVIRONMENT_NAME?.trim() || (env.NODE_ENV === "production" ? "production" : "development");
+}
+function resolveSentryRelease(env = process.env) {
+  const version = env.APP_VERSION?.trim() || env.RELEASE_VERSION?.trim();
+  return version ? `tutorsnap-api@${version}` : void 0;
+}
 function initSentryServer() {
   if (!DSN) {
     if (!ENV.isProduction) {
@@ -1911,7 +1918,8 @@ function initSentryServer() {
   }
   Sentry.init({
     dsn: DSN,
-    environment: ENV.isProduction ? "production" : "development",
+    environment: resolveSentryEnvironment(),
+    release: resolveSentryRelease(),
     enabled: ENV.isProduction,
     tracesSampleRate: ENV.isProduction ? 0.1 : 1
   });

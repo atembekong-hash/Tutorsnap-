@@ -10,6 +10,25 @@ import { ENV } from "./env";
 // Use the same DSN as the client — stored in SENTRY_DSN (server-side, not EXPO_PUBLIC_)
 const DSN = process.env.SENTRY_DSN ?? process.env.EXPO_PUBLIC_SENTRY_DSN ?? "";
 
+type EnvironmentMap = Record<string, string | undefined>;
+
+export function resolveSentryEnvironment(
+  env: EnvironmentMap = process.env,
+): string {
+  return (
+    env.SENTRY_ENVIRONMENT?.trim() ||
+    env.RAILWAY_ENVIRONMENT_NAME?.trim() ||
+    (env.NODE_ENV === "production" ? "production" : "development")
+  );
+}
+
+export function resolveSentryRelease(
+  env: EnvironmentMap = process.env,
+): string | undefined {
+  const version = env.APP_VERSION?.trim() || env.RELEASE_VERSION?.trim();
+  return version ? `tutorsnap-api@${version}` : undefined;
+}
+
 export function initSentryServer(): void {
   if (!DSN) {
     if (!ENV.isProduction) {
@@ -20,7 +39,8 @@ export function initSentryServer(): void {
 
   Sentry.init({
     dsn: DSN,
-    environment: ENV.isProduction ? "production" : "development",
+    environment: resolveSentryEnvironment(),
+    release: resolveSentryRelease(),
     enabled: ENV.isProduction,
     tracesSampleRate: ENV.isProduction ? 0.1 : 1.0,
   });
