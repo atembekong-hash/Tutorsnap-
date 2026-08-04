@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - "release/**"
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate source and container
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Activate locked pnpm version
+        run: corepack prepare pnpm@9.12.0 --activate
+
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type-check
+        run: pnpm check
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Run deterministic test suite
+        run: pnpm test:ci
+
+      - name: Bundle backend and migration runner
+        run: pnpm build
+
+      - name: Check generated diff and whitespace
+        run: |
+          git diff --check
+          git diff --exit-code -- dist
+
+      - name: Build Railway container image
+        run: docker build --tag tutorsnap-api:${{ github.sha }} .
+
+      - name: Scan repository for committed secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  deploy-staging:
+    name: Deploy and verify staging
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/')
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: staging
+
+    env:
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_STAGING_TOKEN }}
+      RAILWAY_PROJECT_ID: f5dc305e-0e94-471e-88e9-d1ea6544bd9b
+      RAILWAY_ENVIRONMENT: staging
+      RAILWAY_SERVICE: api
+      API_BASE_URL: https://api-staging-f955.up.railway.app
+      EXPECTED_VERSION: 1.8.5
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Enable locked pnpm version
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.12.0 --activate
+
+      - name: Upload and monitor Railway deployment
+        run: node scripts/deploy-railway.mjs
+
+      - name: Verify live staging contract
+        run: node scripts/verify-deployment.mjs
