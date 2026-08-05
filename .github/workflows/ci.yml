@@ -118,6 +118,9 @@ jobs:
           corepack enable
           corepack prepare pnpm@9.12.0 --activate
 
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+
       - name: Enable Guided Classroom in staging
         run: >-
           pnpm dlx @railway/cli variable set CLASSROOM_MVP_ENABLED=true

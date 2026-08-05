@@ -55,6 +55,7 @@ describe("Guided Classroom staging acceptance contract", () => {
     expect(workflow).toContain(
       "Run concurrent teacher and two-learner acceptance",
     );
+    expect(workflow).toContain("pnpm install --frozen-lockfile");
     expect(workflow).toContain("pnpm dlx @railway/cli run");
     expect(workflow).toContain("--no-local");
     expect(workflow).toContain("node dist/classroom-acceptance.js");
