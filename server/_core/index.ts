@@ -30,7 +30,7 @@ function getAllowedOrigins(): Set<string> {
 }
 
 function getReleaseVersion(): string {
-  return process.env.APP_VERSION?.trim() || "2.2.0";
+  return process.env.APP_VERSION?.trim() || "2.3.0";
 }
 
 async function startServer() {
