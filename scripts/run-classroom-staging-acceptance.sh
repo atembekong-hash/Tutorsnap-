@@ -18,88 +18,99 @@ if [[ "${API_BASE_URL}" != *"api-staging"* ]]; then
   exit 1
 fi
 
-command -v jq >/dev/null 2>&1 || {
-  echo "[Classroom Acceptance] jq is required" >&2
-  exit 1
-}
-
-umask 077
-work_dir="$(mktemp -d)"
-trap 'rm -rf "${work_dir}"' EXIT
-services_file="${work_dir}/services.json"
-variables_file="${work_dir}/variables.json"
-
-pnpm dlx @railway/cli service list \
-  --project "${RAILWAY_PROJECT_ID}" \
-  --environment "${RAILWAY_ENVIRONMENT}" \
-  --json >"${services_file}"
-
-mapfile -t services < <(
-  jq -r '
-    def service_array:
-      if type == "array" then .
-      elif (.services? | type) == "array" then .services
-      elif (.project?.services?.edges? | type) == "array" then [.project.services.edges[].node]
-      else []
-      end;
-    service_array[]
-    | [(.id // .serviceId // ""), (.name // .serviceName // "")]
-    | @tsv
-  ' "${services_file}"
-)
-
-if [[ "${#services[@]}" -eq 0 ]]; then
-  echo "[Classroom Acceptance] Railway returned no staging services" >&2
-  exit 1
-fi
-
-public_database_url=""
-selected_database_service=""
-selected_database_key=""
-
-for service in "${services[@]}"; do
-  IFS=$'\t' read -r service_id service_name <<<"${service}"
-  selector="${service_id:-${service_name}}"
-  if [[ -z "${selector}" || "${service_name,,}" == "${RAILWAY_SERVICE,,}" ]]; then
-    continue
-  fi
-
-  if ! pnpm dlx @railway/cli variable list \
+railway_variable_set() {
+  pnpm dlx @railway/cli variable set "$@" \
     --project "${RAILWAY_PROJECT_ID}" \
     --environment "${RAILWAY_ENVIRONMENT}" \
-    --service "${selector}" \
-    --json >"${variables_file}" 2>/dev/null; then
-    continue
+    --service "${RAILWAY_SERVICE}" \
+    --skip-deploys \
+    --json >/dev/null
+}
+
+configure() {
+  if [[ -z "${GITHUB_ENV:-}" ]]; then
+    echo "[Classroom Acceptance] GITHUB_ENV is required during configuration" >&2
+    exit 1
   fi
 
-  for key in MYSQL_PUBLIC_URL DATABASE_PUBLIC_URL MYSQL_URL DATABASE_URL; do
-    candidate="$(jq -r --arg key "${key}" '.[$key] // empty' "${variables_file}")"
-    if [[ "${candidate}" == mysql://* && "${candidate}" != *".railway.internal"* ]]; then
-      public_database_url="${candidate}"
-      selected_database_service="${service_name:-${selector}}"
-      selected_database_key="${key}"
-      break 2
-    fi
-  done
-done
+  local secret expires_at
+  secret="$(openssl rand -hex 32)"
+  expires_at="$(date -u -d '+15 minutes' '+%Y-%m-%dT%H:%M:%SZ')"
 
-if [[ -z "${public_database_url}" ]]; then
-  echo "[Classroom Acceptance] No public MySQL URL was available in Railway staging" >&2
-  exit 1
-fi
+  echo "::add-mask::${secret}"
+  printf 'CLASSROOM_ACCEPTANCE_SECRET=%s\n' "${secret}" >>"${GITHUB_ENV}"
 
-# GitHub Actions interprets this directive and masks the full connection string.
-# The URL is never printed by this script or written outside the temporary directory.
-echo "::add-mask::${public_database_url}"
-echo "[Classroom Acceptance] Using masked ${selected_database_key} from service ${selected_database_service}"
+  railway_variable_set \
+    CLASSROOM_MVP_ENABLED=true \
+    CLASSROOM_ACCEPTANCE_ENDPOINT_ENABLED=true \
+    CLASSROOM_ACCEPTANCE_TARGET=staging \
+    "CLASSROOM_ACCEPTANCE_API_BASE_URL=${API_BASE_URL}" \
+    "CLASSROOM_ACCEPTANCE_EXPIRES_AT=${expires_at}" \
+    "CLASSROOM_ACCEPTANCE_SECRET=${secret}"
 
-export CLASSROOM_ACCEPTANCE_TARGET="staging"
-export CLASSROOM_ACCEPTANCE_API_BASE_URL="${API_BASE_URL}"
-export CLASSROOM_ACCEPTANCE_DATABASE_URL="${public_database_url}"
+  echo "[Classroom Acceptance] Configured a masked, expiring staging window"
+}
 
-pnpm dlx @railway/cli run \
-  --project "${RAILWAY_PROJECT_ID}" \
-  --environment "${RAILWAY_ENVIRONMENT}" \
-  --service "${RAILWAY_SERVICE}" \
-  --no-local \
-  node dist/classroom-acceptance.js
+ACCEPTANCE_RESPONSE_FILE=""
+
+run_acceptance() {
+  if [[ -z "${CLASSROOM_ACCEPTANCE_SECRET:-}" ]]; then
+    echo "[Classroom Acceptance] Masked acceptance secret was not propagated" >&2
+    exit 1
+  fi
+
+  local status
+  ACCEPTANCE_RESPONSE_FILE="$(mktemp)"
+
+  disable_future_runs() {
+    railway_variable_set CLASSROOM_ACCEPTANCE_ENDPOINT_ENABLED=false || true
+    rm -f "${ACCEPTANCE_RESPONSE_FILE:-}"
+  }
+  trap disable_future_runs EXIT
+
+  status="$(
+    curl --silent --show-error \
+      --max-time 240 \
+      --output "${ACCEPTANCE_RESPONSE_FILE}" \
+      --write-out '%{http_code}' \
+      --request POST \
+      --header "Authorization: Bearer ${CLASSROOM_ACCEPTANCE_SECRET}" \
+      "${API_BASE_URL}/api/internal/classroom-acceptance"
+  )"
+
+  cat "${ACCEPTANCE_RESPONSE_FILE}"
+  printf '\n'
+
+  if [[ "${status}" != "200" ]]; then
+    echo "[Classroom Acceptance] Staging endpoint returned HTTP ${status}" >&2
+    exit 1
+  fi
+
+  jq -e '
+    .ok == true and
+    .evidence.target == "staging" and
+    .evidence.checks.concurrentAuthenticatedSessions == 3 and
+    .evidence.checks.concurrentTeacherAndLearnerJoinFlow == true and
+    .evidence.checks.concurrentSubmissions == 2 and
+    .evidence.checks.relationshipAuthorization == true and
+    .evidence.checks.crossStudentMutationDenied == true and
+    .evidence.checks.teacherAggregateCompletionPercent == 100 and
+    .evidence.checks.archiveReadOnlyAndRestore == true and
+    .evidence.checks.teacherConfirmedDeletion == true
+  ' "${ACCEPTANCE_RESPONSE_FILE}" >/dev/null
+
+  echo "[Classroom Acceptance] Concurrent teacher and two-student staging flow passed"
+}
+
+case "${1:-}" in
+  configure)
+    configure
+    ;;
+  run)
+    run_acceptance
+    ;;
+  *)
+    echo "Usage: $0 configure|run" >&2
+    exit 2
+    ;;
+esac

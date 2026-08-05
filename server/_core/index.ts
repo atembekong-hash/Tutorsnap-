@@ -10,6 +10,7 @@ import { registerStorageProxy } from "./storageProxy";
 import { registerVoiceUploadRoute } from "./voiceUpload";
 import { registerChatStreamRoute } from "./chatStream";
 import { registerMathRenderRoute } from "./mathRender";
+import { registerClassroomAcceptanceRoute } from "./classroomAcceptanceRoute";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 
@@ -80,6 +81,7 @@ async function startServer() {
   registerVoiceUploadRoute(app);
   registerChatStreamRoute(app);
   registerMathRenderRoute(app);
+  registerClassroomAcceptanceRoute(app);
 
   app.get("/api/health", (_req, res) => {
     res.json({

@@ -1477,15 +1477,15 @@ async function checkServerSidePremium(userId, db2) {
     return false;
   }
 }
-var import_server, import_superjson, t, loggingMiddleware, router, publicProcedure, requireUser, protectedProcedure, adminProcedure;
+var import_server, import_superjson2, t, loggingMiddleware, router, publicProcedure, requireUser, protectedProcedure, adminProcedure;
 var init_trpc = __esm({
   "server/_core/trpc.ts"() {
     "use strict";
     init_const();
     import_server = require("@trpc/server");
-    import_superjson = __toESM(require("superjson"));
+    import_superjson2 = __toESM(require("superjson"));
     t = import_server.initTRPC.context().create({
-      transformer: import_superjson.default
+      transformer: import_superjson2.default
     });
     loggingMiddleware = t.middleware(async (opts) => {
       const { path, type, input } = opts;
@@ -2051,12 +2051,12 @@ function normalizeJoinCode(value) {
 function generateJoinCode() {
   let code = "";
   for (let index2 = 0; index2 < JOIN_CODE_LENGTH; index2 += 1) {
-    code += JOIN_CODE_ALPHABET[(0, import_node_crypto.randomInt)(0, JOIN_CODE_ALPHABET.length)];
+    code += JOIN_CODE_ALPHABET[(0, import_node_crypto3.randomInt)(0, JOIN_CODE_ALPHABET.length)];
   }
   return code;
 }
 function hashJoinCode(code) {
-  return (0, import_node_crypto.createHash)("sha256").update(code).digest("hex");
+  return (0, import_node_crypto3.createHash)("sha256").update(code).digest("hex");
 }
 function isDuplicateEntry(error) {
   let candidate = error;
@@ -2384,11 +2384,11 @@ async function runClassroomCleanupIfLockAcquired() {
     console.warn(`[Classroom Cleanup] Non-fatal scheduler error: ${message}`);
   }
 }
-var import_node_crypto, import_node_os, import_server3, import_drizzle_orm6, import_zod5, PUBLIC_ID_SCHEMA, CLASSROOM_ID_INPUT, ASSIGNMENT_ID_INPUT, COMMENT_ID_INPUT, CURSOR_SCHEMA, PAGE_SIZE_SCHEMA, CLASS_NAME_SCHEMA, SUBJECT_SCHEMA, GRADE_LEVEL_SCHEMA, ASSIGNMENT_TITLE_SCHEMA, ASSIGNMENT_INSTRUCTIONS_SCHEMA, RESPONSE_TEXT_SCHEMA, COMMENT_BODY_SCHEMA, MODERATION_REASON_SCHEMA, JOIN_CODE_ALPHABET, JOIN_CODE_LENGTH, MAX_JOIN_CODE_GENERATION_ATTEMPTS, MAX_TEACHER_CLASSES, MAX_ACTIVE_LEARNERS, JOIN_RATE_WINDOW_MS, MAX_JOIN_ATTEMPTS_PER_USER, MAX_JOIN_ATTEMPTS_PER_IP, COMMENT_MINUTE_WINDOW_MS, COMMENT_HOUR_WINDOW_MS, MAX_COMMENTS_PER_MINUTE, MAX_COMMENTS_PER_HOUR, CLASS_CODE_ERROR, DEFAULT_TRUSTED_CIDRS2, classroomEnabledProcedure, classroomMemberProcedure, classroomTeacherProcedure, assignmentMemberProcedure, assignmentTeacherProcedure, commentMemberProcedure, classroomRouter, CLEANUP_INTERVAL_MS2, LOCK_TTL_MS2, JOIN_AUDIT_RETENTION_MS, CLEANUP_INSTANCE_ID, cleanupStarted, classroomInternals;
+var import_node_crypto3, import_node_os, import_server3, import_drizzle_orm6, import_zod5, PUBLIC_ID_SCHEMA, CLASSROOM_ID_INPUT, ASSIGNMENT_ID_INPUT, COMMENT_ID_INPUT, CURSOR_SCHEMA, PAGE_SIZE_SCHEMA, CLASS_NAME_SCHEMA, SUBJECT_SCHEMA, GRADE_LEVEL_SCHEMA, ASSIGNMENT_TITLE_SCHEMA, ASSIGNMENT_INSTRUCTIONS_SCHEMA, RESPONSE_TEXT_SCHEMA, COMMENT_BODY_SCHEMA, MODERATION_REASON_SCHEMA, JOIN_CODE_ALPHABET, JOIN_CODE_LENGTH, MAX_JOIN_CODE_GENERATION_ATTEMPTS, MAX_TEACHER_CLASSES, MAX_ACTIVE_LEARNERS, JOIN_RATE_WINDOW_MS, MAX_JOIN_ATTEMPTS_PER_USER, MAX_JOIN_ATTEMPTS_PER_IP, COMMENT_MINUTE_WINDOW_MS, COMMENT_HOUR_WINDOW_MS, MAX_COMMENTS_PER_MINUTE, MAX_COMMENTS_PER_HOUR, CLASS_CODE_ERROR, DEFAULT_TRUSTED_CIDRS2, classroomEnabledProcedure, classroomMemberProcedure, classroomTeacherProcedure, assignmentMemberProcedure, assignmentTeacherProcedure, commentMemberProcedure, classroomRouter, CLEANUP_INTERVAL_MS2, LOCK_TTL_MS2, JOIN_AUDIT_RETENTION_MS, CLEANUP_INSTANCE_ID, cleanupStarted, classroomInternals;
 var init_classroom = __esm({
   "server/routers/classroom.ts"() {
     "use strict";
-    import_node_crypto = require("node:crypto");
+    import_node_crypto3 = require("node:crypto");
     import_node_os = require("node:os");
     import_server3 = require("@trpc/server");
     import_drizzle_orm6 = require("drizzle-orm");
@@ -2523,7 +2523,7 @@ var init_classroom = __esm({
           });
         }
         for (let attempt = 0; attempt < MAX_JOIN_CODE_GENERATION_ATTEMPTS; attempt += 1) {
-          const publicId = (0, import_node_crypto.randomUUID)();
+          const publicId = (0, import_node_crypto3.randomUUID)();
           const joinCode = generateJoinCode();
           try {
             const created = await database.transaction(async (transaction) => {
@@ -2764,7 +2764,7 @@ var init_classroom = __esm({
           })
         ).mutation(async ({ ctx, input }) => {
           requireActiveClass(ctx.classroomAccess.classroom);
-          const publicId = (0, import_node_crypto.randomUUID)();
+          const publicId = (0, import_node_crypto3.randomUUID)();
           await ctx.database.insert(assignments).values({
             publicId,
             classroomId: ctx.classroomAccess.classroom.id,
@@ -2962,7 +2962,7 @@ var init_classroom = __esm({
             });
           }
           const submittedAt = input.status === "complete" ? /* @__PURE__ */ new Date() : null;
-          const publicId = (0, import_node_crypto.randomUUID)();
+          const publicId = (0, import_node_crypto3.randomUUID)();
           await ctx.database.insert(assignmentSubmissions).values({
             publicId,
             assignmentId: ctx.assignmentAccess.assignment.id,
@@ -3100,7 +3100,7 @@ var init_classroom = __esm({
             });
           }
           await enforceCommentRateLimit(ctx.database, ctx.user.id);
-          const publicId = (0, import_node_crypto.randomUUID)();
+          const publicId = (0, import_node_crypto3.randomUUID)();
           await ctx.database.insert(assignmentComments).values({
             publicId,
             assignmentId: ctx.assignmentAccess.assignment.id,
@@ -3704,6 +3704,445 @@ function registerMathRenderRoute(app) {
     } catch (err) {
       console.error("[MathRender] Error:", err.message);
       return res.status(422).json({ error: err.message ?? "Render failed" });
+    }
+  });
+}
+
+// server/_core/classroomAcceptanceRoute.ts
+var import_node_crypto2 = require("node:crypto");
+
+// server/_core/classroom-acceptance-core.ts
+var import_node_crypto = require("node:crypto");
+var import_client = require("@trpc/client");
+var import_promise = require("mysql2/promise");
+var import_superjson = __toESM(require("superjson"));
+init_sdk();
+function assert(condition, message) {
+  if (!condition) throw new Error(message);
+}
+function makeClient(apiBaseUrl, token) {
+  return (0, import_client.createTRPCClient)({
+    links: [
+      (0, import_client.httpBatchLink)({
+        url: `${apiBaseUrl}/api/trpc`,
+        transformer: import_superjson.default,
+        headers: () => ({ Authorization: `Bearer ${token}` })
+      })
+    ]
+  });
+}
+async function expectCode(operation, expectedCode, label) {
+  try {
+    await operation();
+  } catch (error) {
+    if (error instanceof import_client.TRPCClientError && typeof error.data === "object" && error.data && "code" in error.data && error.data.code === expectedCode) {
+      return;
+    }
+    throw new Error(
+      `${label}: expected ${expectedCode}, received ${String(error)}`
+    );
+  }
+  throw new Error(
+    `${label}: expected ${expectedCode}, but the operation succeeded`
+  );
+}
+async function seedIdentity(pool, identity) {
+  await pool.execute(
+    `INSERT INTO users (openId, name, email, loginMethod, role, lastSignedIn)
+     VALUES (?, ?, ?, 'email', 'user', CURRENT_TIMESTAMP)
+     ON DUPLICATE KEY UPDATE
+       name = VALUES(name),
+       email = VALUES(email),
+       loginMethod = 'email',
+       role = 'user',
+       lastSignedIn = CURRENT_TIMESTAMP`,
+    [identity.openId, identity.name, identity.email]
+  );
+}
+async function removeIdentities(pool, identities) {
+  const placeholders = identities.map(() => "?").join(", ");
+  await pool.execute(
+    `DELETE FROM users WHERE openId IN (${placeholders})`,
+    identities.map((identity) => identity.openId)
+  );
+}
+async function runClassroomAcceptance() {
+  const target = process.env.CLASSROOM_ACCEPTANCE_TARGET;
+  assert(
+    target === "staging",
+    "Refusing to run outside an explicit staging target"
+  );
+  assert(
+    process.env.CLASSROOM_MVP_ENABLED === "true",
+    "CLASSROOM_MVP_ENABLED must be true in staging before acceptance"
+  );
+  const databaseUrl = process.env.CLASSROOM_ACCEPTANCE_DATABASE_URL || process.env.DATABASE_URL;
+  assert(
+    databaseUrl,
+    "A staging database URL is required for isolated test identities"
+  );
+  const apiBaseUrl = process.env.CLASSROOM_ACCEPTANCE_API_BASE_URL || `http://127.0.0.1:${process.env.PORT || "3000"}`;
+  assert(
+    apiBaseUrl.includes("127.0.0.1") || apiBaseUrl.includes("api-staging"),
+    "Acceptance API target must be the local staging service or staging hostname"
+  );
+  const started = Date.now();
+  const runId = `${started.toString(36)}-${(0, import_node_crypto.randomBytes)(4).toString("hex")}`;
+  const className = `E2E Guided Classroom ${runId}`;
+  const identities = [
+    {
+      openId: `classroom-e2e-${runId}-teacher`,
+      name: "E2E Teacher",
+      email: `teacher-${runId}@staging.tutorsnap.test`
+    },
+    {
+      openId: `classroom-e2e-${runId}-learner-a`,
+      name: "E2E Learner A",
+      email: `learner-a-${runId}@staging.tutorsnap.test`
+    },
+    {
+      openId: `classroom-e2e-${runId}-learner-b`,
+      name: "E2E Learner B",
+      email: `learner-b-${runId}@staging.tutorsnap.test`
+    },
+    {
+      openId: `classroom-e2e-${runId}-outsider`,
+      name: "E2E Outsider",
+      email: `outsider-${runId}@staging.tutorsnap.test`
+    }
+  ];
+  const evidence = {
+    target,
+    apiBaseUrl,
+    runId,
+    startedAt: new Date(started).toISOString(),
+    checks: {}
+  };
+  const pool = (0, import_promise.createPool)({ uri: databaseUrl, connectionLimit: 2 });
+  let teacher = null;
+  let classroomId = null;
+  try {
+    await removeIdentities(pool, identities);
+    await Promise.all(
+      identities.map((identity) => seedIdentity(pool, identity))
+    );
+    const tokens = await Promise.all(
+      identities.map(
+        (identity) => sdk.createSessionToken(identity.openId, {
+          name: identity.name,
+          expiresInMs: 60 * 60 * 1e3
+        })
+      )
+    );
+    const [teacherClient, learnerA, learnerB, outsider] = tokens.map(
+      (token) => makeClient(apiBaseUrl, token)
+    );
+    teacher = teacherClient;
+    const statuses = await Promise.all([
+      teacher.classroom.status.query(),
+      learnerA.classroom.status.query(),
+      learnerB.classroom.status.query()
+    ]);
+    assert(
+      statuses.every((status) => status.enabled),
+      "Classroom flag is not enabled for every session"
+    );
+    evidence.checks.concurrentAuthenticatedSessions = 3;
+    const classroom = await teacher.classroom.create.mutate({
+      name: className,
+      subject: "algebra",
+      gradeLevel: "Grade 8"
+    });
+    classroomId = classroom.id;
+    assert(
+      classroom.role === "teacher",
+      "Creator did not receive the teacher role"
+    );
+    assert(
+      classroom.joinCode,
+      "Teacher projection did not include a join code"
+    );
+    const [teacherDuringJoin, joinedA, joinedB] = await Promise.all([
+      teacher.classroom.get.query({ classroomId }),
+      learnerA.classroom.join.mutate({ code: classroom.joinCode }),
+      learnerB.classroom.join.mutate({ code: classroom.joinCode })
+    ]);
+    assert(
+      teacherDuringJoin.role === "teacher",
+      "Teacher session lost its class role"
+    );
+    assert(
+      joinedA.role === "learner" && joinedB.role === "learner",
+      "Concurrent learner joins failed"
+    );
+    evidence.checks.concurrentTeacherAndLearnerJoinFlow = true;
+    const memberList = await teacher.classroom.listMembers.query({
+      classroomId,
+      limit: 25
+    });
+    assert(
+      memberList.items.filter((member) => member.role === "learner").length === 2,
+      "Teacher did not see both learners"
+    );
+    await Promise.all([
+      expectCode(
+        () => learnerA.classroom.listMembers.query({
+          classroomId: classroom.id,
+          limit: 25
+        }),
+        "FORBIDDEN",
+        "learner roster access"
+      ),
+      expectCode(
+        () => outsider.classroom.get.query({ classroomId: classroom.id }),
+        "NOT_FOUND",
+        "outsider class access"
+      )
+    ]);
+    evidence.checks.relationshipAuthorization = true;
+    const assignment = await teacher.classroom.assignment.create.mutate({
+      classroomId,
+      title: `Concurrent equations ${runId}`,
+      instructions: "Solve 3x + 5 = 20 and explain each inverse operation.",
+      subject: "algebra",
+      dueAt: new Date(Date.now() + 24 * 60 * 60 * 1e3)
+    });
+    await Promise.all([
+      expectCode(
+        () => learnerA.classroom.assignment.get.query({
+          assignmentId: assignment.id
+        }),
+        "NOT_FOUND",
+        "learner draft access"
+      ),
+      expectCode(
+        () => outsider.classroom.assignment.get.query({
+          assignmentId: assignment.id
+        }),
+        "NOT_FOUND",
+        "outsider assignment access"
+      )
+    ]);
+    await teacher.classroom.assignment.publish.mutate({
+      assignmentId: assignment.id
+    });
+    const [learnerAssignmentA, learnerAssignmentB] = await Promise.all([
+      learnerA.classroom.assignment.get.query({ assignmentId: assignment.id }),
+      learnerB.classroom.assignment.get.query({ assignmentId: assignment.id })
+    ]);
+    assert(
+      learnerAssignmentA.role === "learner" && learnerAssignmentB.role === "learner",
+      "Published assignment was not visible to both learners"
+    );
+    evidence.checks.draftHiddenThenPublished = true;
+    const [submissionA, submissionB, teacherConcurrentView] = await Promise.all(
+      [
+        learnerA.classroom.submission.upsert.mutate({
+          assignmentId: assignment.id,
+          status: "complete",
+          responseText: "Subtract 5, divide by 3, so x = 5."
+        }),
+        learnerB.classroom.submission.upsert.mutate({
+          assignmentId: assignment.id,
+          status: "complete",
+          responseText: "3x = 15, therefore x = 5."
+        }),
+        teacher.classroom.assignment.get.query({ assignmentId: assignment.id })
+      ]
+    );
+    assert(
+      submissionA.status === "complete" && submissionB.status === "complete",
+      "Concurrent submissions did not complete"
+    );
+    assert(
+      teacherConcurrentView.role === "teacher",
+      "Teacher could not view the assignment during submissions"
+    );
+    const teacherSubmissions = await teacher.classroom.submission.listForAssignment.query({
+      assignmentId: assignment.id,
+      limit: 25
+    });
+    assert(
+      teacherSubmissions.items.filter((item) => item.status === "complete").length === 2,
+      "Teacher did not receive both completed submissions"
+    );
+    evidence.checks.concurrentSubmissions = 2;
+    const [commentA, commentB, teacherComment] = await Promise.all([
+      learnerA.classroom.comment.add.mutate({
+        assignmentId: assignment.id,
+        body: "I used inverse operations in two steps."
+      }),
+      learnerB.classroom.comment.add.mutate({
+        assignmentId: assignment.id,
+        body: "Remember to check the solution by substitution."
+      }),
+      teacher.classroom.comment.add.mutate({
+        assignmentId: assignment.id,
+        body: "Good explanations. Keep the reasoning visible."
+      })
+    ]);
+    assert(
+      commentA.body && commentB.body && teacherComment.body,
+      "Concurrent discussion posts failed"
+    );
+    await Promise.all([
+      expectCode(
+        () => learnerA.classroom.comment.delete.mutate({ commentId: commentB.id }),
+        "FORBIDDEN",
+        "cross-learner comment deletion"
+      ),
+      expectCode(
+        () => learnerA.classroom.comment.moderate.mutate({
+          commentId: commentB.id,
+          reason: "spam"
+        }),
+        "FORBIDDEN",
+        "learner moderation"
+      ),
+      expectCode(
+        () => learnerB.classroom.progress.getClassSummary.query({
+          classroomId: classroom.id
+        }),
+        "FORBIDDEN",
+        "learner aggregate progress"
+      )
+    ]);
+    await Promise.all([
+      teacher.classroom.comment.moderate.mutate({
+        commentId: commentB.id,
+        reason: "inappropriate"
+      }),
+      learnerA.classroom.comment.delete.mutate({ commentId: commentA.id })
+    ]);
+    const discussion = await learnerB.classroom.comment.list.query({
+      assignmentId: assignment.id,
+      limit: 25
+    });
+    assert(
+      discussion.items.filter((comment) => comment.isDeleted).length === 2,
+      "Deleted and moderated comments did not render as tombstones"
+    );
+    evidence.checks.moderatedDiscussion = true;
+    evidence.checks.crossStudentMutationDenied = true;
+    const [teacherProgress, learnerAProgress, learnerBProgress] = await Promise.all([
+      teacher.classroom.progress.getClassSummary.query({ classroomId }),
+      learnerA.classroom.progress.getMine.query({ classroomId }),
+      learnerB.classroom.progress.getMine.query({ classroomId })
+    ]);
+    assert(
+      teacherProgress.learnerCount === 2 && teacherProgress.completedSubmissions === 2 && teacherProgress.completionPercent === 100,
+      "Teacher aggregate progress is incorrect"
+    );
+    assert(
+      learnerAProgress.completed === 1 && learnerBProgress.completed === 1,
+      "Learner-private progress is incorrect"
+    );
+    evidence.checks.teacherAggregateCompletionPercent = teacherProgress.completionPercent;
+    evidence.checks.eachLearnerPrivateCompleted = 1;
+    await teacher.classroom.archive.mutate({ classroomId });
+    await Promise.all([
+      expectCode(
+        () => learnerA.classroom.submission.upsert.mutate({
+          assignmentId: assignment.id,
+          status: "pending",
+          responseText: "Attempt after archive"
+        }),
+        "PRECONDITION_FAILED",
+        "archived learner submission"
+      ),
+      expectCode(
+        () => learnerB.classroom.comment.add.mutate({
+          assignmentId: assignment.id,
+          body: "Attempt after archive"
+        }),
+        "PRECONDITION_FAILED",
+        "archived learner comment"
+      )
+    ]);
+    await teacher.classroom.restore.mutate({ classroomId });
+    evidence.checks.archiveReadOnlyAndRestore = true;
+    await teacher.classroom.delete.mutate({
+      classroomId,
+      confirmationName: className
+    });
+    classroomId = null;
+    evidence.checks.teacherConfirmedDeletion = true;
+    evidence.completedAt = (/* @__PURE__ */ new Date()).toISOString();
+    evidence.elapsedMs = Date.now() - started;
+    return evidence;
+  } finally {
+    if (classroomId && teacher) {
+      try {
+        await teacher.classroom.delete.mutate({
+          classroomId,
+          confirmationName: className
+        });
+      } catch {
+      }
+    }
+    await removeIdentities(pool, identities);
+    await pool.end();
+  }
+}
+
+// server/_core/classroomAcceptanceRoute.ts
+var acceptanceStarted = false;
+function safeEqual(left, right) {
+  const leftBuffer = Buffer.from(left);
+  const rightBuffer = Buffer.from(right);
+  if (leftBuffer.length !== rightBuffer.length) return false;
+  return (0, import_node_crypto2.timingSafeEqual)(leftBuffer, rightBuffer);
+}
+function readBearerToken(req) {
+  const authorization = req.headers.authorization;
+  if (!authorization?.startsWith("Bearer ")) return null;
+  const token = authorization.slice("Bearer ".length).trim();
+  return token || null;
+}
+function isStagingAcceptanceWindowOpen() {
+  if (process.env.CLASSROOM_ACCEPTANCE_ENDPOINT_ENABLED !== "true")
+    return false;
+  if (process.env.CLASSROOM_ACCEPTANCE_TARGET !== "staging") return false;
+  if (process.env.CLASSROOM_MVP_ENABLED !== "true") return false;
+  const railwayEnvironment = process.env.RAILWAY_ENVIRONMENT_NAME?.trim().toLowerCase();
+  if (railwayEnvironment && railwayEnvironment !== "staging") return false;
+  const apiBaseUrl = process.env.CLASSROOM_ACCEPTANCE_API_BASE_URL?.trim() ?? "";
+  if (!apiBaseUrl.includes("api-staging")) return false;
+  const expiresAt = Date.parse(
+    process.env.CLASSROOM_ACCEPTANCE_EXPIRES_AT ?? ""
+  );
+  if (!Number.isFinite(expiresAt) || expiresAt <= Date.now()) return false;
+  const secret = process.env.CLASSROOM_ACCEPTANCE_SECRET?.trim() ?? "";
+  return secret.length >= 32;
+}
+function registerClassroomAcceptanceRoute(app) {
+  app.post("/api/internal/classroom-acceptance", async (req, res) => {
+    res.setHeader("Cache-Control", "no-store");
+    if (!isStagingAcceptanceWindowOpen()) {
+      res.status(404).json({ ok: false, error: "Not found" });
+      return;
+    }
+    const expectedSecret = process.env.CLASSROOM_ACCEPTANCE_SECRET.trim();
+    const providedSecret = readBearerToken(req);
+    if (!providedSecret || !safeEqual(providedSecret, expectedSecret)) {
+      res.status(401).json({ ok: false, error: "Unauthorized" });
+      return;
+    }
+    if (acceptanceStarted) {
+      res.status(409).json({
+        ok: false,
+        error: "The staging acceptance flow has already been started on this deployment"
+      });
+      return;
+    }
+    acceptanceStarted = true;
+    try {
+      const evidence = await runClassroomAcceptance();
+      res.json({ ok: true, evidence });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error("[Classroom Acceptance] Staging flow failed:", message);
+      res.status(500).json({ ok: false, error: message });
     }
   });
 }
@@ -6211,6 +6650,7 @@ async function startServer() {
   registerVoiceUploadRoute(app);
   registerChatStreamRoute(app);
   registerMathRenderRoute(app);
+  registerClassroomAcceptanceRoute(app);
   app.get("/api/health", (_req, res) => {
     res.json({
       ok: true,

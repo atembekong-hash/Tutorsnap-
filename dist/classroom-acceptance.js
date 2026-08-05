@@ -22,7 +22,7 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   mod
 ));
 
-// server/_core/classroom-acceptance.ts
+// server/_core/classroom-acceptance-core.ts
 var import_node_crypto = require("node:crypto");
 var import_client = require("@trpc/client");
 var import_promise = require("mysql2/promise");
@@ -746,7 +746,7 @@ function buildCronUser(userInfo) {
 }
 var sdk = new SDKServer();
 
-// server/_core/classroom-acceptance.ts
+// server/_core/classroom-acceptance-core.ts
 function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
@@ -796,7 +796,7 @@ async function removeIdentities(pool, identities) {
     identities.map((identity) => identity.openId)
   );
 }
-async function main() {
+async function runClassroomAcceptance() {
   const target = process.env.CLASSROOM_ACCEPTANCE_TARGET;
   assert(
     target === "staging",
@@ -1099,7 +1099,7 @@ async function main() {
     evidence.checks.teacherConfirmedDeletion = true;
     evidence.completedAt = (/* @__PURE__ */ new Date()).toISOString();
     evidence.elapsedMs = Date.now() - started;
-    console.log(JSON.stringify({ ok: true, evidence }, null, 2));
+    return evidence;
   } finally {
     if (classroomId && teacher) {
       try {
@@ -1114,7 +1114,11 @@ async function main() {
     await pool.end();
   }
 }
-main().catch((error) => {
+
+// server/_core/classroom-acceptance.ts
+runClassroomAcceptance().then((evidence) => {
+  console.log(JSON.stringify({ ok: true, evidence }, null, 2));
+}).catch((error) => {
   console.error(
     JSON.stringify(
       {

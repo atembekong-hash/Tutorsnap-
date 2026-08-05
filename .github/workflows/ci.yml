@@ -121,14 +121,8 @@ jobs:
       - name: Install locked dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Enable Guided Classroom in staging
-        run: >-
-          pnpm dlx @railway/cli variable set CLASSROOM_MVP_ENABLED=true
-          --project "$RAILWAY_PROJECT_ID"
-          --environment "$RAILWAY_ENVIRONMENT"
-          --service "$RAILWAY_SERVICE"
-          --skip-deploys
-          --json
+      - name: Configure expiring Classroom acceptance window
+        run: bash scripts/run-classroom-staging-acceptance.sh configure
 
       - name: Upload and monitor Railway deployment
         run: node scripts/deploy-railway.mjs
@@ -137,4 +131,4 @@ jobs:
         run: node scripts/verify-deployment.mjs
 
       - name: Run concurrent teacher and two-learner acceptance
-        run: bash scripts/run-classroom-staging-acceptance.sh
+        run: bash scripts/run-classroom-staging-acceptance.sh run
