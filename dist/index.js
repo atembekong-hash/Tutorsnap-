@@ -3692,23 +3692,21 @@ function truncateForSimpleTier(parsed, tokenBudget) {
   return out;
 }
 var academicRouter = router({
-  solve: publicProcedure.input(import_zod5.z.object({
+  solve: protectedProcedure.input(import_zod5.z.object({
     problem: import_zod5.z.string().min(1),
     subject: import_zod5.z.string().default("other"),
     gradeLevel: import_zod5.z.string().nullable().optional()
   })).mutation(async ({ ctx, input }) => {
     try {
-      if (ctx.user) {
-        const db2 = await getDb();
-        const ok = await checkServerSidePremium(ctx.user.id, db2);
-        if (!ok) throw new import_server3.TRPCError({ code: "PAYMENT_REQUIRED", message: "Premium subscription required (10003)" });
-      }
+      const db2 = await getDb();
+      const ok = await checkServerSidePremium(ctx.user.id, db2);
+      if (!ok) throw new import_server3.TRPCError({ code: "PAYMENT_REQUIRED", message: "Premium subscription required (10003)" });
       let tokenBudget = estimateSolveTokens(input.problem, input.subject);
       if (ctx.user) {
         try {
-          const db2 = await getDb();
-          if (db2) {
-            const cacheRows = await db2.select({ multiplier: aireSubjectCalibration.multiplier }).from(aireSubjectCalibration).where((0, import_drizzle_orm6.and)(
+          const db3 = await getDb();
+          if (db3) {
+            const cacheRows = await db3.select({ multiplier: aireSubjectCalibration.multiplier }).from(aireSubjectCalibration).where((0, import_drizzle_orm6.and)(
               (0, import_drizzle_orm6.eq)(aireSubjectCalibration.userId, ctx.user.id),
               (0, import_drizzle_orm6.eq)(aireSubjectCalibration.subject, input.subject)
             )).limit(1);
@@ -3718,7 +3716,7 @@ var academicRouter = router({
                 tokenBudget = Math.round(tokenBudget * m);
               }
             } else {
-              const m = await computeSubjectMultiplier(db2, ctx.user.id, input.subject);
+              const m = await computeSubjectMultiplier(db3, ctx.user.id, input.subject);
               if (m !== 1) tokenBudget = Math.round(tokenBudget * m);
             }
           }
@@ -3776,7 +3774,7 @@ var academicRouter = router({
       throw new import_server3.TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err instanceof Error ? err.message : "Failed to solve problem. Please try again." });
     }
   }),
-  solveExplanation: publicProcedure.input(import_zod5.z.object({
+  solveExplanation: protectedProcedure.input(import_zod5.z.object({
     problem: import_zod5.z.string().min(1, "problem is required"),
     correctAnswer: import_zod5.z.string().min(1, "correctAnswer is required"),
     selectedAnswer: import_zod5.z.string().min(1, "selectedAnswer is required"),
@@ -3791,11 +3789,9 @@ var academicRouter = router({
     subject: import_zod5.z.string().default("other"),
     gradeLevel: import_zod5.z.string().optional()
   })).mutation(async ({ ctx, input }) => {
-    if (ctx.user) {
-      const db2 = await getDb();
-      const ok = await checkServerSidePremium(ctx.user.id, db2);
-      if (!ok) throw new import_server3.TRPCError({ code: "PAYMENT_REQUIRED", message: "Premium subscription required (10003)" });
-    }
+    const db2 = await getDb();
+    const ok = await checkServerSidePremium(ctx.user.id, db2);
+    if (!ok) throw new import_server3.TRPCError({ code: "PAYMENT_REQUIRED", message: "Premium subscription required (10003)" });
     const optionsBlock = input.options ? `Answer choices:
   A) ${input.options.A}
   B) ${input.options.B}
@@ -3835,18 +3831,16 @@ Respond ONLY with this JSON (no extra text):
       return { explanation: text2.trim(), submissionReady: "" };
     }
   }),
-  solveFromImage: publicProcedure.input(import_zod5.z.object({
+  solveFromImage: protectedProcedure.input(import_zod5.z.object({
     imageBase64: import_zod5.z.string(),
     mimeType: import_zod5.z.string().default("image/jpeg"),
     subject: import_zod5.z.string().default("other"),
     gradeLevel: import_zod5.z.string().optional()
   })).mutation(async ({ ctx, input }) => {
     try {
-      if (ctx.user) {
-        const db2 = await getDb();
-        const ok = await checkServerSidePremium(ctx.user.id, db2);
-        if (!ok) throw new import_server3.TRPCError({ code: "PAYMENT_REQUIRED", message: "Premium subscription required (10003)" });
-      }
+      const db2 = await getDb();
+      const ok = await checkServerSidePremium(ctx.user.id, db2);
+      if (!ok) throw new import_server3.TRPCError({ code: "PAYMENT_REQUIRED", message: "Premium subscription required (10003)" });
       const messages = [
         { role: "system", content: IMAGE_SOLVE_SYSTEM_PROMPT + gradeContext(input.gradeLevel) },
         {
@@ -3875,16 +3869,14 @@ Respond ONLY with this JSON (no extra text):
       throw new import_server3.TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err instanceof Error ? err.message : "Failed to process image. Please try again." });
     }
   }),
-  generatePractice: publicProcedure.input(import_zod5.z.object({
+  generatePractice: protectedProcedure.input(import_zod5.z.object({
     subject: import_zod5.z.string(),
     difficulty: import_zod5.z.enum(["easy", "medium", "hard"]),
     gradeLevel: import_zod5.z.string().optional()
   })).mutation(async ({ ctx, input }) => {
-    if (ctx.user) {
-      const db2 = await getDb();
-      const ok = await checkServerSidePremium(ctx.user.id, db2);
-      if (!ok) throw new import_server3.TRPCError({ code: "PAYMENT_REQUIRED", message: "Premium subscription required (10003)" });
-    }
+    const db2 = await getDb();
+    const ok = await checkServerSidePremium(ctx.user.id, db2);
+    if (!ok) throw new import_server3.TRPCError({ code: "PAYMENT_REQUIRED", message: "Premium subscription required (10003)" });
     const practiceTokens = input.difficulty === "easy" ? 700 : input.difficulty === "medium" ? 1100 : 1600;
     const practicePrompt = buildPracticePrompt(input.subject, input.difficulty) + gradeContext(input.gradeLevel);
     const result = await invokeLLM({
@@ -3930,17 +3922,15 @@ Respond ONLY with this JSON (no extra text):
     if (!parsed.id) parsed.id = `p-${Date.now()}`;
     return parsed;
   }),
-  generateQuiz: publicProcedure.input(import_zod5.z.object({
+  generateQuiz: protectedProcedure.input(import_zod5.z.object({
     subject: import_zod5.z.string(),
     difficulty: import_zod5.z.enum(["easy", "medium", "hard"]),
     count: import_zod5.z.number().min(3).max(10).default(5),
     gradeLevel: import_zod5.z.string().optional()
   })).mutation(async ({ ctx, input }) => {
-    if (ctx.user) {
-      const db2 = await getDb();
-      const ok = await checkServerSidePremium(ctx.user.id, db2);
-      if (!ok) throw new import_server3.TRPCError({ code: "PAYMENT_REQUIRED", message: "Premium subscription required (10003)" });
-    }
+    const db2 = await getDb();
+    const ok = await checkServerSidePremium(ctx.user.id, db2);
+    if (!ok) throw new import_server3.TRPCError({ code: "PAYMENT_REQUIRED", message: "Premium subscription required (10003)" });
     const quizPrompt = `You are TutorSnap, an expert academic tutor.${gradeContext(input.gradeLevel)}
 Generate exactly ${input.count} ${input.difficulty} multiple-choice questions for: ${input.subject}.
 Each question has 4 distinct options (A-D), exactly one correct answer, and a brief one-sentence explanation.

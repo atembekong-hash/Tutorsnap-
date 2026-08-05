@@ -622,7 +622,7 @@ function truncateForSimpleTier(parsed: any, tokenBudget: number): any {
 // ─── Academic router ──────────────────────────────────────────────────────────
 
 const academicRouter = router({
-  solve: publicProcedure
+  solve: protectedProcedure
     .input(z.object({
       problem: z.string().min(1),
       subject: z.string().default("other"),
@@ -631,7 +631,7 @@ const academicRouter = router({
     .mutation(async ({ ctx, input }) => {
       try {
         // ── FIX-4 ──
-        if (ctx.user) { const db = await getDb(); const ok = await checkServerSidePremium(ctx.user.id, db); if (!ok) throw new TRPCError({ code: "PAYMENT_REQUIRED", message: "Premium subscription required (10003)" }); }
+        const db = await getDb(); const ok = await checkServerSidePremium(ctx.user.id, db); if (!ok) throw new TRPCError({ code: "PAYMENT_REQUIRED", message: "Premium subscription required (10003)" });
         // ── END FIX-4 ──
         let tokenBudget = estimateSolveTokens(input.problem, input.subject);
 
@@ -728,7 +728,7 @@ const academicRouter = router({
       }
     }),
 
-  solveExplanation: publicProcedure
+  solveExplanation: protectedProcedure
     .input(z.object({
       problem: z.string().min(1, "problem is required"),
       correctAnswer: z.string().min(1, "correctAnswer is required"),
@@ -746,7 +746,7 @@ const academicRouter = router({
     }))
     .mutation(async ({ ctx, input }) => {
       // GAP-A: FIX-4 server-side premium check
-      if (ctx.user) { const db = await getDb(); const ok = await checkServerSidePremium(ctx.user.id, db); if (!ok) throw new TRPCError({ code: "PAYMENT_REQUIRED", message: "Premium subscription required (10003)" }); }
+      const db = await getDb(); const ok = await checkServerSidePremium(ctx.user.id, db); if (!ok) throw new TRPCError({ code: "PAYMENT_REQUIRED", message: "Premium subscription required (10003)" });
 
       // Build the options block for the prompt - uses structured data, never OCR or screen content
       const optionsBlock = input.options
@@ -786,7 +786,7 @@ Respond ONLY with this JSON (no extra text):
       }
     }),
 
-  solveFromImage: publicProcedure
+  solveFromImage: protectedProcedure
     .input(z.object({
       imageBase64: z.string(),
       mimeType: z.string().default("image/jpeg"),
@@ -796,7 +796,7 @@ Respond ONLY with this JSON (no extra text):
     .mutation(async ({ ctx, input }) => {
       try {
         // ── FIX-4 ──
-        if (ctx.user) { const db = await getDb(); const ok = await checkServerSidePremium(ctx.user.id, db); if (!ok) throw new TRPCError({ code: "PAYMENT_REQUIRED", message: "Premium subscription required (10003)" }); }
+        const db = await getDb(); const ok = await checkServerSidePremium(ctx.user.id, db); if (!ok) throw new TRPCError({ code: "PAYMENT_REQUIRED", message: "Premium subscription required (10003)" });
         // ── END FIX-4 ──
         // Use gemini for vision (best multimodal) with gpt-5-mini fallback
         const messages = [
@@ -828,7 +828,7 @@ Respond ONLY with this JSON (no extra text):
       }
     }),
 
-  generatePractice: publicProcedure
+  generatePractice: protectedProcedure
     .input(z.object({
       subject: z.string(),
       difficulty: z.enum(["easy", "medium", "hard"]),
@@ -836,7 +836,7 @@ Respond ONLY with this JSON (no extra text):
     }))
     .mutation(async ({ ctx, input }) => {
       // ── FIX-4 ──
-      if (ctx.user) { const db = await getDb(); const ok = await checkServerSidePremium(ctx.user.id, db); if (!ok) throw new TRPCError({ code: "PAYMENT_REQUIRED", message: "Premium subscription required (10003)" }); }
+      const db = await getDb(); const ok = await checkServerSidePremium(ctx.user.id, db); if (!ok) throw new TRPCError({ code: "PAYMENT_REQUIRED", message: "Premium subscription required (10003)" });
       // ── END FIX-4 ──
       // Concise mobile schema: enough room for valid JSON without encouraging excess prose.
       const practiceTokens = input.difficulty === "easy" ? 700 : input.difficulty === "medium" ? 1100 : 1600;
@@ -890,7 +890,7 @@ Respond ONLY with this JSON (no extra text):
       return parsed;
     }),
 
-  generateQuiz: publicProcedure
+  generateQuiz: protectedProcedure
     .input(z.object({
       subject: z.string(),
       difficulty: z.enum(["easy", "medium", "hard"]),
@@ -899,7 +899,7 @@ Respond ONLY with this JSON (no extra text):
     }))
     .mutation(async ({ ctx, input }) => {
       // ── FIX-4 ──
-      if (ctx.user) { const db = await getDb(); const ok = await checkServerSidePremium(ctx.user.id, db); if (!ok) throw new TRPCError({ code: "PAYMENT_REQUIRED", message: "Premium subscription required (10003)" }); }
+      const db = await getDb(); const ok = await checkServerSidePremium(ctx.user.id, db); if (!ok) throw new TRPCError({ code: "PAYMENT_REQUIRED", message: "Premium subscription required (10003)" });
       // ── END FIX-4 ──
       const quizPrompt = `You are TutorSnap, an expert academic tutor.${gradeContext(input.gradeLevel)}
 Generate exactly ${input.count} ${input.difficulty} multiple-choice questions for: ${input.subject}.
