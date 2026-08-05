@@ -55,6 +55,8 @@ describe("Guided Classroom staging acceptance contract", () => {
     expect(workflow).toContain(
       "Run concurrent teacher and two-learner acceptance",
     );
+    expect(workflow).toContain("pnpm dlx @railway/cli run");
+    expect(workflow).toContain("--no-local");
     expect(workflow).toContain("node dist/classroom-acceptance.js");
     expect(workflow.indexOf("Verify live staging contract")).toBeLessThan(
       workflow.indexOf("Run concurrent teacher and two-learner acceptance"),

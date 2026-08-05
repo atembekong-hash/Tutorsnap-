@@ -135,9 +135,11 @@ jobs:
 
       - name: Run concurrent teacher and two-learner acceptance
         run: >-
-          pnpm dlx @railway/cli ssh
+          pnpm dlx @railway/cli run
           --project "$RAILWAY_PROJECT_ID"
           --environment "$RAILWAY_ENVIRONMENT"
           --service "$RAILWAY_SERVICE"
+          --no-local
           env CLASSROOM_ACCEPTANCE_TARGET=staging
+          CLASSROOM_ACCEPTANCE_API_BASE_URL="$API_BASE_URL"
           node dist/classroom-acceptance.js
