@@ -806,10 +806,10 @@ async function main() {
     process.env.CLASSROOM_MVP_ENABLED === "true",
     "CLASSROOM_MVP_ENABLED must be true in staging before acceptance"
   );
-  const databaseUrl = process.env.DATABASE_URL;
+  const databaseUrl = process.env.CLASSROOM_ACCEPTANCE_DATABASE_URL || process.env.DATABASE_URL;
   assert(
     databaseUrl,
-    "DATABASE_URL is required for isolated staging test identities"
+    "A staging database URL is required for isolated test identities"
   );
   const apiBaseUrl = process.env.CLASSROOM_ACCEPTANCE_API_BASE_URL || `http://127.0.0.1:${process.env.PORT || "3000"}`;
   assert(

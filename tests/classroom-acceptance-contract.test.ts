@@ -48,6 +48,7 @@ describe("Guided Classroom staging acceptance contract", () => {
   it("bundles and runs the acceptance gate inside Railway after live staging verification", () => {
     const packageJson = source("package.json");
     const workflow = source(".github/workflows/ci.yml");
+    const wrapper = source("scripts/run-classroom-staging-acceptance.sh");
     const dockerfile = source("Dockerfile");
     expect(packageJson).toContain("server/_core/classroom-acceptance.ts");
     expect(dockerfile).toContain("/app/dist ./dist");
@@ -56,9 +57,16 @@ describe("Guided Classroom staging acceptance contract", () => {
       "Run concurrent teacher and two-learner acceptance",
     );
     expect(workflow).toContain("pnpm install --frozen-lockfile");
-    expect(workflow).toContain("pnpm dlx @railway/cli run");
-    expect(workflow).toContain("--no-local");
-    expect(workflow).toContain("node dist/classroom-acceptance.js");
+    expect(workflow).toContain(
+      "bash scripts/run-classroom-staging-acceptance.sh",
+    );
+    expect(wrapper).toContain("pnpm dlx @railway/cli service list");
+    expect(wrapper).toContain("pnpm dlx @railway/cli variable list");
+    expect(wrapper).toContain("::add-mask::${public_database_url}");
+    expect(wrapper).toContain("CLASSROOM_ACCEPTANCE_DATABASE_URL");
+    expect(wrapper).toContain("pnpm dlx @railway/cli run");
+    expect(wrapper).toContain("--no-local");
+    expect(wrapper).toContain("node dist/classroom-acceptance.js");
     expect(workflow.indexOf("Verify live staging contract")).toBeLessThan(
       workflow.indexOf("Run concurrent teacher and two-learner acceptance"),
     );
