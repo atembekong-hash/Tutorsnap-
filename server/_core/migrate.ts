@@ -24,18 +24,20 @@ async function runMigrations() {
     connectTimeout: 15_000,
   });
 
-  try {
-    await pool.query("SELECT 1");
-    const db = drizzle(pool);
-    await migrate(db, { migrationsFolder });
-    console.log("[Migrations] Committed migrations applied successfully");
-  } finally {
-    await pool.end();
-  }
+  await pool.query("SELECT 1");
+  const db = drizzle(pool);
+  await migrate(db, { migrationsFolder });
+  console.log("[Migrations] Committed migrations applied successfully");
+
+  // This file is a one-shot Railway pre-deploy process. mysql2 can leave a
+  // TiDB TLS pool handle open after all awaited work has completed, so exit
+  // explicitly here; the operating system closes the idle sockets.
 }
 
-runMigrations().catch((error: unknown) => {
-  const message = error instanceof Error ? error.message : String(error);
-  console.error(`[Migrations] Failed: ${message}`);
-  process.exitCode = 1;
-});
+runMigrations()
+  .then(() => process.exit(0))
+  .catch((error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`[Migrations] Failed: ${message}`);
+    process.exit(1);
+  });

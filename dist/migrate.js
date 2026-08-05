@@ -44,17 +44,13 @@ async function runMigrations() {
     keepAliveInitialDelay: 0,
     connectTimeout: 15e3
   });
-  try {
-    await pool.query("SELECT 1");
-    const db = (0, import_mysql2.drizzle)(pool);
-    await (0, import_migrator.migrate)(db, { migrationsFolder });
-    console.log("[Migrations] Committed migrations applied successfully");
-  } finally {
-    await pool.end();
-  }
+  await pool.query("SELECT 1");
+  const db = (0, import_mysql2.drizzle)(pool);
+  await (0, import_migrator.migrate)(db, { migrationsFolder });
+  console.log("[Migrations] Committed migrations applied successfully");
 }
-runMigrations().catch((error) => {
+runMigrations().then(() => process.exit(0)).catch((error) => {
   const message = error instanceof Error ? error.message : String(error);
   console.error(`[Migrations] Failed: ${message}`);
-  process.exitCode = 1;
+  process.exit(1);
 });
