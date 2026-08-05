@@ -80,7 +80,6 @@ jobs:
       RAILWAY_ENVIRONMENT: staging
       RAILWAY_SERVICE: api
       API_BASE_URL: https://api-staging-f955.up.railway.app
-      EXPECTED_VERSION: 1.8.5
 
     steps:
       - name: Check out source
