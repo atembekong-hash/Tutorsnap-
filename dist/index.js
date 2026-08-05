@@ -12,11 +12,11 @@ var __export = (target, all) => {
   for (var name in all)
     __defProp(target, name, { get: all[name], enumerable: true });
 };
-var __copyProps = (to, from, except, desc2) => {
+var __copyProps = (to, from, except, desc3) => {
   if (from && typeof from === "object" || typeof from === "function") {
     for (let key of __getOwnPropNames(from))
       if (!__hasOwnProp.call(to, key) && key !== except)
-        __defProp(to, key, { get: () => from[key], enumerable: !(desc2 = __getOwnPropDesc(from, key)) || desc2.enumerable });
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc3 = __getOwnPropDesc(from, key)) || desc3.enumerable });
   }
   return to;
 };
@@ -66,7 +66,13 @@ var schema_exports = {};
 __export(schema_exports, {
   aireFeedback: () => aireFeedback,
   aireSubjectCalibration: () => aireSubjectCalibration,
+  assignmentComments: () => assignmentComments,
+  assignmentSubmissions: () => assignmentSubmissions,
+  assignments: () => assignments,
   chatSessions: () => chatSessions,
+  classroomJoinAttempts: () => classroomJoinAttempts,
+  classroomMembers: () => classroomMembers,
+  classrooms: () => classrooms,
   fraudAlerts: () => fraudAlerts,
   otpAudit: () => otpAudit,
   otpCodes: () => otpCodes,
@@ -80,7 +86,7 @@ __export(schema_exports, {
   userProgress: () => userProgress,
   users: () => users
 });
-var import_mysql_core, users, referralCodes, fraudAlerts, redemptionHistory, otpCodes, otpAudit, schedulerLocks, aireFeedback, aireSubjectCalibration, solveHistory, chatSessions, userProgress, userBookmarks, userNotes, subscriptions;
+var import_mysql_core, users, referralCodes, fraudAlerts, redemptionHistory, otpCodes, otpAudit, schedulerLocks, aireFeedback, aireSubjectCalibration, solveHistory, chatSessions, userProgress, userBookmarks, userNotes, subscriptions, classrooms, classroomMembers, assignments, assignmentSubmissions, assignmentComments, classroomJoinAttempts;
 var init_schema = __esm({
   "drizzle/schema.ts"() {
     "use strict";
@@ -346,6 +352,116 @@ var init_schema = __esm({
       (t2) => [
         (0, import_mysql_core.index)("idx_subscriptions_userId").on(t2.userId),
         (0, import_mysql_core.index)("idx_subscriptions_rcUserId").on(t2.revenueCatUserId)
+      ]
+    );
+    classrooms = (0, import_mysql_core.mysqlTable)(
+      "classrooms",
+      {
+        id: (0, import_mysql_core.int)("id").autoincrement().primaryKey(),
+        publicId: (0, import_mysql_core.varchar)("publicId", { length: 36 }).notNull().unique(),
+        teacherId: (0, import_mysql_core.int)("teacherId").notNull().references(() => users.id, { onDelete: "cascade" }),
+        name: (0, import_mysql_core.varchar)("name", { length: 120 }).notNull(),
+        joinCode: (0, import_mysql_core.varchar)("joinCode", { length: 8 }).notNull().unique(),
+        subject: (0, import_mysql_core.varchar)("subject", { length: 64 }).notNull(),
+        gradeLevel: (0, import_mysql_core.varchar)("gradeLevel", { length: 32 }),
+        isActive: (0, import_mysql_core.boolean)("isActive").default(true).notNull(),
+        createdAt: (0, import_mysql_core.timestamp)("createdAt").defaultNow().notNull(),
+        updatedAt: (0, import_mysql_core.timestamp)("updatedAt").defaultNow().onUpdateNow().notNull()
+      },
+      (t2) => [
+        (0, import_mysql_core.index)("classrooms_teacher_idx").on(t2.teacherId),
+        (0, import_mysql_core.index)("classrooms_active_updated_idx").on(t2.isActive, t2.updatedAt)
+      ]
+    );
+    classroomMembers = (0, import_mysql_core.mysqlTable)(
+      "classroom_members",
+      {
+        id: (0, import_mysql_core.int)("id").autoincrement().primaryKey(),
+        classroomId: (0, import_mysql_core.int)("classroomId").notNull().references(() => classrooms.id, { onDelete: "cascade" }),
+        userId: (0, import_mysql_core.int)("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+        role: (0, import_mysql_core.mysqlEnum)("role", ["teacher", "learner"]).notNull(),
+        joinedAt: (0, import_mysql_core.timestamp)("joinedAt").defaultNow().notNull()
+      },
+      (t2) => [
+        (0, import_mysql_core.uniqueIndex)("classroom_members_class_user_uq").on(t2.classroomId, t2.userId),
+        (0, import_mysql_core.index)("classroom_members_user_joined_idx").on(t2.userId, t2.joinedAt),
+        (0, import_mysql_core.index)("classroom_members_class_role_idx").on(t2.classroomId, t2.role)
+      ]
+    );
+    assignments = (0, import_mysql_core.mysqlTable)(
+      "assignments",
+      {
+        id: (0, import_mysql_core.int)("id").autoincrement().primaryKey(),
+        publicId: (0, import_mysql_core.varchar)("publicId", { length: 36 }).notNull().unique(),
+        classroomId: (0, import_mysql_core.int)("classroomId").notNull().references(() => classrooms.id, { onDelete: "cascade" }),
+        createdByUserId: (0, import_mysql_core.int)("createdByUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+        title: (0, import_mysql_core.varchar)("title", { length: 160 }).notNull(),
+        instructions: (0, import_mysql_core.text)("instructions").notNull(),
+        subject: (0, import_mysql_core.varchar)("subject", { length: 64 }).notNull(),
+        dueAt: (0, import_mysql_core.timestamp)("dueAt"),
+        status: (0, import_mysql_core.mysqlEnum)("status", ["draft", "published"]).default("draft").notNull(),
+        publishedAt: (0, import_mysql_core.timestamp)("publishedAt"),
+        createdAt: (0, import_mysql_core.timestamp)("createdAt").defaultNow().notNull(),
+        updatedAt: (0, import_mysql_core.timestamp)("updatedAt").defaultNow().onUpdateNow().notNull()
+      },
+      (t2) => [
+        (0, import_mysql_core.index)("assignments_class_status_due_idx").on(t2.classroomId, t2.status, t2.dueAt),
+        (0, import_mysql_core.index)("assignments_class_updated_idx").on(t2.classroomId, t2.updatedAt)
+      ]
+    );
+    assignmentSubmissions = (0, import_mysql_core.mysqlTable)(
+      "assignment_submissions",
+      {
+        id: (0, import_mysql_core.int)("id").autoincrement().primaryKey(),
+        publicId: (0, import_mysql_core.varchar)("publicId", { length: 36 }).notNull().unique(),
+        assignmentId: (0, import_mysql_core.int)("assignmentId").notNull().references(() => assignments.id, { onDelete: "cascade" }),
+        userId: (0, import_mysql_core.int)("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+        status: (0, import_mysql_core.mysqlEnum)("status", ["pending", "complete"]).default("pending").notNull(),
+        responseText: (0, import_mysql_core.text)("responseText"),
+        submittedAt: (0, import_mysql_core.timestamp)("submittedAt"),
+        createdAt: (0, import_mysql_core.timestamp)("createdAt").defaultNow().notNull(),
+        updatedAt: (0, import_mysql_core.timestamp)("updatedAt").defaultNow().onUpdateNow().notNull()
+      },
+      (t2) => [
+        (0, import_mysql_core.uniqueIndex)("assignment_submissions_assignment_user_uq").on(t2.assignmentId, t2.userId),
+        (0, import_mysql_core.index)("assignment_submissions_status_idx").on(t2.assignmentId, t2.status),
+        (0, import_mysql_core.index)("assignment_submissions_user_updated_idx").on(t2.userId, t2.updatedAt)
+      ]
+    );
+    assignmentComments = (0, import_mysql_core.mysqlTable)(
+      "assignment_comments",
+      {
+        id: (0, import_mysql_core.int)("id").autoincrement().primaryKey(),
+        publicId: (0, import_mysql_core.varchar)("publicId", { length: 36 }).notNull().unique(),
+        assignmentId: (0, import_mysql_core.int)("assignmentId").notNull().references(() => assignments.id, { onDelete: "cascade" }),
+        authorUserId: (0, import_mysql_core.int)("authorUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+        body: (0, import_mysql_core.text)("body").notNull(),
+        isDeleted: (0, import_mysql_core.boolean)("isDeleted").default(false).notNull(),
+        deletedAt: (0, import_mysql_core.timestamp)("deletedAt"),
+        deletedByUserId: (0, import_mysql_core.int)("deletedByUserId").references(() => users.id, { onDelete: "set null" }),
+        moderationReason: (0, import_mysql_core.varchar)("moderationReason", { length: 64 }),
+        createdAt: (0, import_mysql_core.timestamp)("createdAt").defaultNow().notNull(),
+        updatedAt: (0, import_mysql_core.timestamp)("updatedAt").defaultNow().onUpdateNow().notNull()
+      },
+      (t2) => [
+        (0, import_mysql_core.index)("assignment_comments_assignment_created_idx").on(t2.assignmentId, t2.createdAt, t2.id),
+        (0, import_mysql_core.index)("assignment_comments_author_created_idx").on(t2.authorUserId, t2.createdAt)
+      ]
+    );
+    classroomJoinAttempts = (0, import_mysql_core.mysqlTable)(
+      "classroom_join_attempts",
+      {
+        id: (0, import_mysql_core.int)("id").autoincrement().primaryKey(),
+        userId: (0, import_mysql_core.int)("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+        ipAddress: (0, import_mysql_core.varchar)("ipAddress", { length: 45 }),
+        codeHash: (0, import_mysql_core.varchar)("codeHash", { length: 64 }).notNull(),
+        outcome: (0, import_mysql_core.varchar)("outcome", { length: 32 }).notNull(),
+        createdAt: (0, import_mysql_core.timestamp)("createdAt").defaultNow().notNull()
+      },
+      (t2) => [
+        (0, import_mysql_core.index)("classroom_join_user_created_idx").on(t2.userId, t2.createdAt),
+        (0, import_mysql_core.index)("classroom_join_ip_created_idx").on(t2.ipAddress, t2.createdAt),
+        (0, import_mysql_core.index)("classroom_join_hash_created_idx").on(t2.codeHash, t2.createdAt)
       ]
     );
   }
@@ -1350,8 +1466,8 @@ async function checkServerSidePremium(userId, db2) {
   if (!db2) return false;
   try {
     const { subscriptions: subscriptions2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq7, desc: desc2 } = await import("drizzle-orm");
-    const rows = await db2.select({ status: subscriptions2.status, expiresAt: subscriptions2.expiresAt }).from(subscriptions2).where(eq7(subscriptions2.userId, userId)).orderBy(desc2(subscriptions2.updatedAt)).limit(1);
+    const { eq: eq8, desc: desc3 } = await import("drizzle-orm");
+    const rows = await db2.select({ status: subscriptions2.status, expiresAt: subscriptions2.expiresAt }).from(subscriptions2).where(eq8(subscriptions2.userId, userId)).orderBy(desc3(subscriptions2.updatedAt)).limit(1);
     if (!rows || rows.length === 0) return false;
     const { status, expiresAt } = rows[0];
     if (status === "active") return true;
@@ -1545,8 +1661,8 @@ function hashCode(code) {
     if (process.env.NODE_ENV === "production") {
       throw new Error("[EmailAuth] OTP_PEPPER is not set \u2014 refusing to hash without pepper in production");
     }
-    const { createHash } = require("crypto");
-    return createHash("sha256").update(code).digest("hex");
+    const { createHash: createHash2 } = require("crypto");
+    return createHash2("sha256").update(code).digest("hex");
   }
   return (0, import_crypto.createHmac)("sha256", pepper).update(code).digest("hex");
 }
@@ -1895,6 +2011,1299 @@ var init_email_auth = __esm({
   }
 });
 
+// server/routers/classroom.ts
+var classroom_exports = {};
+__export(classroom_exports, {
+  classroomInternals: () => classroomInternals,
+  classroomRouter: () => classroomRouter,
+  startClassroomCleanupScheduler: () => startClassroomCleanupScheduler
+});
+function isClassroomEnabled() {
+  const value = process.env.CLASSROOM_MVP_ENABLED?.trim().toLowerCase();
+  return value === "true" || value === "1" || value === "yes" || value === "on";
+}
+async function requireDatabase() {
+  const database = await getDb();
+  if (!database) {
+    throw new import_server3.TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Classroom data is temporarily unavailable."
+    });
+  }
+  return database;
+}
+function requireActiveClass(classroom) {
+  if (!classroom.isActive) {
+    throw new import_server3.TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "This class is archived and is currently read-only."
+    });
+  }
+}
+function safeDisplayName(name, role) {
+  const normalized = name?.trim();
+  if (normalized) return normalized.slice(0, 120);
+  return role === "teacher" ? "Teacher" : "Learner";
+}
+function normalizeJoinCode(value) {
+  return value.toUpperCase().replace(/[\s-]+/g, "");
+}
+function generateJoinCode() {
+  let code = "";
+  for (let index2 = 0; index2 < JOIN_CODE_LENGTH; index2 += 1) {
+    code += JOIN_CODE_ALPHABET[(0, import_node_crypto.randomInt)(0, JOIN_CODE_ALPHABET.length)];
+  }
+  return code;
+}
+function hashJoinCode(code) {
+  return (0, import_node_crypto.createHash)("sha256").update(code).digest("hex");
+}
+function isDuplicateEntry(error) {
+  let candidate = error;
+  for (let depth = 0; candidate && depth < 4; depth += 1) {
+    if (candidate.code === "ER_DUP_ENTRY" || candidate.errno === 1062 || candidate.message?.includes("Duplicate entry") === true) {
+      return true;
+    }
+    candidate = candidate.cause;
+  }
+  return false;
+}
+function encodeCursor(id) {
+  return Buffer.from(String(id), "utf8").toString("base64url");
+}
+function decodeCursor(cursor) {
+  if (!cursor) return null;
+  try {
+    const value = Number(Buffer.from(cursor, "base64url").toString("utf8"));
+    if (!Number.isSafeInteger(value) || value < 0) throw new Error("invalid");
+    return value;
+  } catch {
+    throw new import_server3.TRPCError({
+      code: "BAD_REQUEST",
+      message: "Invalid pagination cursor."
+    });
+  }
+}
+function ipToInt2(ip) {
+  return ip.split(".").reduce((acc, octet) => acc << 8 | Number.parseInt(octet, 10), 0) >>> 0;
+}
+function cidrContains2(cidr, ip) {
+  if (cidr === "::1/128") return ip === "::1";
+  try {
+    const [base, rawBits] = cidr.split("/");
+    if (!/^\d{1,3}(?:\.\d{1,3}){3}$/.test(base) || !/^\d{1,3}(?:\.\d{1,3}){3}$/.test(ip))
+      return false;
+    const bits = rawBits ? Number.parseInt(rawBits, 10) : 32;
+    if (bits < 0 || bits > 32) return false;
+    const mask = bits === 0 ? 0 : 4294967295 << 32 - bits >>> 0;
+    return (ipToInt2(base) & mask) === (ipToInt2(ip) & mask);
+  } catch {
+    return false;
+  }
+}
+function isTrustedProxy2(remoteAddress) {
+  const cidrs = process.env.TRUSTED_PROXY_CIDRS ? process.env.TRUSTED_PROXY_CIDRS.split(",").map((entry) => entry.trim()).filter(Boolean) : DEFAULT_TRUSTED_CIDRS2;
+  const normalized = remoteAddress.replace(/^::ffff:/, "");
+  return cidrs.some((cidr) => cidrContains2(cidr, normalized));
+}
+function getClientIp2(req) {
+  if (!req) return "unknown";
+  const remote = req.socket?.remoteAddress ?? "";
+  if (isTrustedProxy2(remote)) {
+    const cfIp = req.headers["cf-connecting-ip"];
+    if (typeof cfIp === "string" && cfIp.trim())
+      return cfIp.trim().slice(0, 45);
+    const forwarded = req.headers["x-forwarded-for"];
+    if (typeof forwarded === "string") {
+      const first = forwarded.split(",")[0]?.trim();
+      if (first) return first.slice(0, 45);
+    }
+  }
+  return (remote || "unknown").slice(0, 45);
+}
+async function resolveClassroomAccess(database, userId, classroomPublicId) {
+  const rows = await database.select({ classroom: classrooms, membership: classroomMembers }).from(classrooms).innerJoin(
+    classroomMembers,
+    (0, import_drizzle_orm6.and)(
+      (0, import_drizzle_orm6.eq)(classroomMembers.classroomId, classrooms.id),
+      (0, import_drizzle_orm6.eq)(classroomMembers.userId, userId)
+    )
+  ).where((0, import_drizzle_orm6.eq)(classrooms.publicId, classroomPublicId)).limit(1);
+  const row = rows[0];
+  if (!row) {
+    throw new import_server3.TRPCError({ code: "NOT_FOUND", message: "Class not found." });
+  }
+  return row;
+}
+async function resolveAssignmentAccess(database, userId, assignmentPublicId) {
+  const rows = await database.select({
+    assignment: assignments,
+    classroom: classrooms,
+    membership: classroomMembers
+  }).from(assignments).innerJoin(classrooms, (0, import_drizzle_orm6.eq)(classrooms.id, assignments.classroomId)).innerJoin(
+    classroomMembers,
+    (0, import_drizzle_orm6.and)(
+      (0, import_drizzle_orm6.eq)(classroomMembers.classroomId, classrooms.id),
+      (0, import_drizzle_orm6.eq)(classroomMembers.userId, userId)
+    )
+  ).where((0, import_drizzle_orm6.eq)(assignments.publicId, assignmentPublicId)).limit(1);
+  const row = rows[0];
+  if (!row) {
+    throw new import_server3.TRPCError({
+      code: "NOT_FOUND",
+      message: "Assignment not found."
+    });
+  }
+  if (row.membership.role === "learner" && row.assignment.status !== "published") {
+    throw new import_server3.TRPCError({
+      code: "NOT_FOUND",
+      message: "Assignment not found."
+    });
+  }
+  return row;
+}
+async function resolveCommentAccess(database, userId, commentPublicId) {
+  const rows = await database.select({
+    comment: assignmentComments,
+    assignment: assignments,
+    classroom: classrooms,
+    membership: classroomMembers
+  }).from(assignmentComments).innerJoin(assignments, (0, import_drizzle_orm6.eq)(assignments.id, assignmentComments.assignmentId)).innerJoin(classrooms, (0, import_drizzle_orm6.eq)(classrooms.id, assignments.classroomId)).innerJoin(
+    classroomMembers,
+    (0, import_drizzle_orm6.and)(
+      (0, import_drizzle_orm6.eq)(classroomMembers.classroomId, classrooms.id),
+      (0, import_drizzle_orm6.eq)(classroomMembers.userId, userId)
+    )
+  ).where((0, import_drizzle_orm6.eq)(assignmentComments.publicId, commentPublicId)).limit(1);
+  const row = rows[0];
+  if (!row || row.membership.role === "learner" && row.assignment.status !== "published") {
+    throw new import_server3.TRPCError({ code: "NOT_FOUND", message: "Comment not found." });
+  }
+  return row;
+}
+function requireTeacher(role) {
+  if (role !== "teacher") {
+    throw new import_server3.TRPCError({
+      code: "FORBIDDEN",
+      message: "Teacher access is required."
+    });
+  }
+}
+function requireLearner(role) {
+  if (role !== "learner") {
+    throw new import_server3.TRPCError({
+      code: "FORBIDDEN",
+      message: "Learner access is required."
+    });
+  }
+}
+function classProjection(classroom, role, memberCount) {
+  return {
+    id: classroom.publicId,
+    name: classroom.name,
+    subject: classroom.subject,
+    gradeLevel: classroom.gradeLevel,
+    role,
+    isActive: classroom.isActive,
+    ...typeof memberCount === "number" ? { memberCount } : {},
+    ...role === "teacher" ? { joinCode: classroom.joinCode } : {},
+    createdAt: classroom.createdAt,
+    updatedAt: classroom.updatedAt
+  };
+}
+function assignmentProjection(assignment) {
+  return {
+    id: assignment.publicId,
+    title: assignment.title,
+    instructions: assignment.instructions,
+    subject: assignment.subject,
+    dueAt: assignment.dueAt,
+    status: assignment.status,
+    publishedAt: assignment.publishedAt,
+    createdAt: assignment.createdAt,
+    updatedAt: assignment.updatedAt
+  };
+}
+async function enforceJoinRateLimit(database, userId, ipAddress) {
+  const windowStart = new Date(Date.now() - JOIN_RATE_WINDOW_MS);
+  const [userRows, ipRows] = await Promise.all([
+    database.select({ count: import_drizzle_orm6.sql`COUNT(*)` }).from(classroomJoinAttempts).where(
+      (0, import_drizzle_orm6.and)(
+        (0, import_drizzle_orm6.eq)(classroomJoinAttempts.userId, userId),
+        (0, import_drizzle_orm6.gt)(classroomJoinAttempts.createdAt, windowStart)
+      )
+    ),
+    ipAddress === "unknown" ? Promise.resolve([{ count: 0 }]) : database.select({ count: import_drizzle_orm6.sql`COUNT(*)` }).from(classroomJoinAttempts).where(
+      (0, import_drizzle_orm6.and)(
+        (0, import_drizzle_orm6.eq)(classroomJoinAttempts.ipAddress, ipAddress),
+        (0, import_drizzle_orm6.gt)(classroomJoinAttempts.createdAt, windowStart)
+      )
+    )
+  ]);
+  if ((Number(userRows[0]?.count) || 0) >= MAX_JOIN_ATTEMPTS_PER_USER || (Number(ipRows[0]?.count) || 0) >= MAX_JOIN_ATTEMPTS_PER_IP) {
+    throw new import_server3.TRPCError({
+      code: "TOO_MANY_REQUESTS",
+      message: "Too many class-code attempts. Please wait before trying again."
+    });
+  }
+}
+async function recordJoinAttempt(database, userId, ipAddress, normalizedCode, outcome) {
+  await database.insert(classroomJoinAttempts).values({
+    userId,
+    ipAddress: ipAddress === "unknown" ? null : ipAddress,
+    codeHash: hashJoinCode(normalizedCode),
+    outcome: outcome.slice(0, 32)
+  });
+}
+async function findClassByJoinCode(database, normalizedCode) {
+  const rows = await database.select().from(classrooms).where(
+    (0, import_drizzle_orm6.and)(
+      (0, import_drizzle_orm6.eq)(classrooms.joinCode, normalizedCode),
+      (0, import_drizzle_orm6.eq)(classrooms.isActive, true)
+    )
+  ).limit(1);
+  return rows[0] ?? null;
+}
+async function countLearners(database, classroomId) {
+  const rows = await database.select({ count: import_drizzle_orm6.sql`COUNT(*)` }).from(classroomMembers).where(
+    (0, import_drizzle_orm6.and)(
+      (0, import_drizzle_orm6.eq)(classroomMembers.classroomId, classroomId),
+      (0, import_drizzle_orm6.eq)(classroomMembers.role, "learner")
+    )
+  );
+  return Number(rows[0]?.count) || 0;
+}
+async function enforceCommentRateLimit(database, userId) {
+  const now = Date.now();
+  const [minuteRows, hourRows] = await Promise.all([
+    database.select({ count: import_drizzle_orm6.sql`COUNT(*)` }).from(assignmentComments).where(
+      (0, import_drizzle_orm6.and)(
+        (0, import_drizzle_orm6.eq)(assignmentComments.authorUserId, userId),
+        (0, import_drizzle_orm6.gt)(
+          assignmentComments.createdAt,
+          new Date(now - COMMENT_MINUTE_WINDOW_MS)
+        )
+      )
+    ),
+    database.select({ count: import_drizzle_orm6.sql`COUNT(*)` }).from(assignmentComments).where(
+      (0, import_drizzle_orm6.and)(
+        (0, import_drizzle_orm6.eq)(assignmentComments.authorUserId, userId),
+        (0, import_drizzle_orm6.gt)(
+          assignmentComments.createdAt,
+          new Date(now - COMMENT_HOUR_WINDOW_MS)
+        )
+      )
+    )
+  ]);
+  if ((Number(minuteRows[0]?.count) || 0) >= MAX_COMMENTS_PER_MINUTE || (Number(hourRows[0]?.count) || 0) >= MAX_COMMENTS_PER_HOUR) {
+    throw new import_server3.TRPCError({
+      code: "TOO_MANY_REQUESTS",
+      message: "You are commenting too quickly. Please wait before posting again."
+    });
+  }
+}
+async function buildClassCard(database, classroom, membership) {
+  const assignmentRows = await database.select({
+    id: assignments.id,
+    publicId: assignments.publicId,
+    title: assignments.title,
+    dueAt: assignments.dueAt,
+    status: assignments.status
+  }).from(assignments).where((0, import_drizzle_orm6.eq)(assignments.classroomId, classroom.id)).orderBy((0, import_drizzle_orm6.asc)(assignments.dueAt), (0, import_drizzle_orm6.desc)(assignments.id));
+  const published = assignmentRows.filter(
+    (assignment) => assignment.status === "published"
+  );
+  let completed = 0;
+  let completedAssignmentIds = /* @__PURE__ */ new Set();
+  if (membership.role === "learner" && published.length > 0) {
+    const submissionRows = await database.select({
+      assignmentId: assignmentSubmissions.assignmentId,
+      status: assignmentSubmissions.status
+    }).from(assignmentSubmissions).where(
+      (0, import_drizzle_orm6.and)(
+        (0, import_drizzle_orm6.eq)(assignmentSubmissions.userId, membership.userId),
+        (0, import_drizzle_orm6.inArray)(
+          assignmentSubmissions.assignmentId,
+          published.map((assignment) => assignment.id)
+        ),
+        (0, import_drizzle_orm6.eq)(assignmentSubmissions.status, "complete")
+      )
+    );
+    completed = submissionRows.length;
+    completedAssignmentIds = new Set(
+      submissionRows.map((submission) => submission.assignmentId)
+    );
+  }
+  const nextDue = published.find(
+    (assignment) => assignment.dueAt && assignment.dueAt.getTime() >= Date.now() && (membership.role === "teacher" || !completedAssignmentIds.has(assignment.id))
+  ) ?? null;
+  const memberCount = membership.role === "teacher" ? await countLearners(database, classroom.id) : void 0;
+  return {
+    ...classProjection(classroom, membership.role, memberCount),
+    assignmentCounts: {
+      draft: membership.role === "teacher" ? assignmentRows.filter((assignment) => assignment.status === "draft").length : 0,
+      published: published.length,
+      completed,
+      pending: membership.role === "learner" ? Math.max(0, published.length - completed) : 0
+    },
+    nextDue: nextDue ? { id: nextDue.publicId, title: nextDue.title, dueAt: nextDue.dueAt } : null
+  };
+}
+async function startClassroomCleanupScheduler() {
+  if (cleanupStarted) return;
+  cleanupStarted = true;
+  await runClassroomCleanupIfLockAcquired();
+  const timer = setInterval(
+    runClassroomCleanupIfLockAcquired,
+    CLEANUP_INTERVAL_MS2
+  );
+  timer.unref?.();
+}
+async function runClassroomCleanupIfLockAcquired() {
+  const database = await getDb();
+  if (!database) return;
+  const now = /* @__PURE__ */ new Date();
+  const lockExpiry = new Date(now.getTime() + LOCK_TTL_MS2);
+  try {
+    await database.execute(import_drizzle_orm6.sql`INSERT INTO scheduler_locks (jobName, instanceId, expiresAt, acquiredAt)
+      VALUES ('classroom-security-cleanup', ${CLEANUP_INSTANCE_ID}, ${lockExpiry}, ${now})
+      ON DUPLICATE KEY UPDATE
+        instanceId = IF(expiresAt < ${now}, VALUES(instanceId), instanceId),
+        expiresAt = IF(expiresAt < ${now}, VALUES(expiresAt), expiresAt),
+        acquiredAt = IF(expiresAt < ${now}, VALUES(acquiredAt), acquiredAt)`);
+    const lockRows = await database.select().from(schedulerLocks).where((0, import_drizzle_orm6.eq)(schedulerLocks.jobName, "classroom-security-cleanup")).limit(1);
+    if (!lockRows[0] || lockRows[0].instanceId !== CLEANUP_INSTANCE_ID) return;
+    await database.delete(classroomJoinAttempts).where(
+      (0, import_drizzle_orm6.lt)(
+        classroomJoinAttempts.createdAt,
+        new Date(now.getTime() - JOIN_AUDIT_RETENTION_MS)
+      )
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`[Classroom Cleanup] Non-fatal scheduler error: ${message}`);
+  }
+}
+var import_node_crypto, import_node_os, import_server3, import_drizzle_orm6, import_zod5, PUBLIC_ID_SCHEMA, CLASSROOM_ID_INPUT, ASSIGNMENT_ID_INPUT, COMMENT_ID_INPUT, CURSOR_SCHEMA, PAGE_SIZE_SCHEMA, CLASS_NAME_SCHEMA, SUBJECT_SCHEMA, GRADE_LEVEL_SCHEMA, ASSIGNMENT_TITLE_SCHEMA, ASSIGNMENT_INSTRUCTIONS_SCHEMA, RESPONSE_TEXT_SCHEMA, COMMENT_BODY_SCHEMA, MODERATION_REASON_SCHEMA, JOIN_CODE_ALPHABET, JOIN_CODE_LENGTH, MAX_JOIN_CODE_GENERATION_ATTEMPTS, MAX_TEACHER_CLASSES, MAX_ACTIVE_LEARNERS, JOIN_RATE_WINDOW_MS, MAX_JOIN_ATTEMPTS_PER_USER, MAX_JOIN_ATTEMPTS_PER_IP, COMMENT_MINUTE_WINDOW_MS, COMMENT_HOUR_WINDOW_MS, MAX_COMMENTS_PER_MINUTE, MAX_COMMENTS_PER_HOUR, CLASS_CODE_ERROR, DEFAULT_TRUSTED_CIDRS2, classroomEnabledProcedure, classroomMemberProcedure, classroomTeacherProcedure, assignmentMemberProcedure, assignmentTeacherProcedure, commentMemberProcedure, classroomRouter, CLEANUP_INTERVAL_MS2, LOCK_TTL_MS2, JOIN_AUDIT_RETENTION_MS, CLEANUP_INSTANCE_ID, cleanupStarted, classroomInternals;
+var init_classroom = __esm({
+  "server/routers/classroom.ts"() {
+    "use strict";
+    import_node_crypto = require("node:crypto");
+    import_node_os = require("node:os");
+    import_server3 = require("@trpc/server");
+    import_drizzle_orm6 = require("drizzle-orm");
+    import_zod5 = require("zod");
+    init_schema();
+    init_db();
+    init_trpc();
+    PUBLIC_ID_SCHEMA = import_zod5.z.string().uuid();
+    CLASSROOM_ID_INPUT = import_zod5.z.object({ classroomId: PUBLIC_ID_SCHEMA });
+    ASSIGNMENT_ID_INPUT = import_zod5.z.object({ assignmentId: PUBLIC_ID_SCHEMA });
+    COMMENT_ID_INPUT = import_zod5.z.object({ commentId: PUBLIC_ID_SCHEMA });
+    CURSOR_SCHEMA = import_zod5.z.string().max(64).optional();
+    PAGE_SIZE_SCHEMA = import_zod5.z.number().int().min(1).max(50).default(25);
+    CLASS_NAME_SCHEMA = import_zod5.z.string().trim().min(1).max(120);
+    SUBJECT_SCHEMA = import_zod5.z.string().trim().min(1).max(64);
+    GRADE_LEVEL_SCHEMA = import_zod5.z.string().trim().min(1).max(32).nullable().optional();
+    ASSIGNMENT_TITLE_SCHEMA = import_zod5.z.string().trim().min(1).max(160);
+    ASSIGNMENT_INSTRUCTIONS_SCHEMA = import_zod5.z.string().trim().min(1).max(2e4);
+    RESPONSE_TEXT_SCHEMA = import_zod5.z.string().trim().max(4e3).nullable().optional();
+    COMMENT_BODY_SCHEMA = import_zod5.z.string().trim().min(1).max(1e3);
+    MODERATION_REASON_SCHEMA = import_zod5.z.enum([
+      "inappropriate",
+      "harassment",
+      "spam",
+      "personal_information",
+      "other"
+    ]);
+    JOIN_CODE_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+    JOIN_CODE_LENGTH = 8;
+    MAX_JOIN_CODE_GENERATION_ATTEMPTS = 8;
+    MAX_TEACHER_CLASSES = 20;
+    MAX_ACTIVE_LEARNERS = 100;
+    JOIN_RATE_WINDOW_MS = 10 * 60 * 1e3;
+    MAX_JOIN_ATTEMPTS_PER_USER = 10;
+    MAX_JOIN_ATTEMPTS_PER_IP = 100;
+    COMMENT_MINUTE_WINDOW_MS = 60 * 1e3;
+    COMMENT_HOUR_WINDOW_MS = 60 * 60 * 1e3;
+    MAX_COMMENTS_PER_MINUTE = 10;
+    MAX_COMMENTS_PER_HOUR = 50;
+    CLASS_CODE_ERROR = "That class code is invalid or unavailable.";
+    DEFAULT_TRUSTED_CIDRS2 = [
+      "173.245.48.0/20",
+      "103.21.244.0/22",
+      "103.22.200.0/22",
+      "103.31.4.0/22",
+      "141.101.64.0/18",
+      "108.162.192.0/18",
+      "190.93.240.0/20",
+      "188.114.96.0/20",
+      "197.234.240.0/22",
+      "198.41.128.0/17",
+      "162.158.0.0/15",
+      "104.16.0.0/13",
+      "104.24.0.0/14",
+      "172.64.0.0/13",
+      "131.0.72.0/22",
+      "10.0.0.0/8",
+      "172.16.0.0/12",
+      "192.168.0.0/16",
+      "169.254.0.0/16",
+      "127.0.0.0/8",
+      "::1/128"
+    ];
+    classroomEnabledProcedure = protectedProcedure.use(async ({ next }) => {
+      if (!isClassroomEnabled()) {
+        throw new import_server3.TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Guided Classroom is temporarily unavailable."
+        });
+      }
+      return next();
+    });
+    classroomMemberProcedure = classroomEnabledProcedure.input(CLASSROOM_ID_INPUT).use(async ({ ctx, input, next }) => {
+      const database = await requireDatabase();
+      const access = await resolveClassroomAccess(
+        database,
+        ctx.user.id,
+        input.classroomId
+      );
+      return next({ ctx: { ...ctx, database, classroomAccess: access } });
+    });
+    classroomTeacherProcedure = classroomMemberProcedure.use(
+      async ({ ctx, next }) => {
+        requireTeacher(ctx.classroomAccess.membership.role);
+        return next({ ctx });
+      }
+    );
+    assignmentMemberProcedure = classroomEnabledProcedure.input(ASSIGNMENT_ID_INPUT).use(async ({ ctx, input, next }) => {
+      const database = await requireDatabase();
+      const access = await resolveAssignmentAccess(
+        database,
+        ctx.user.id,
+        input.assignmentId
+      );
+      return next({ ctx: { ...ctx, database, assignmentAccess: access } });
+    });
+    assignmentTeacherProcedure = assignmentMemberProcedure.use(
+      async ({ ctx, next }) => {
+        requireTeacher(ctx.assignmentAccess.membership.role);
+        return next({ ctx });
+      }
+    );
+    commentMemberProcedure = classroomEnabledProcedure.input(COMMENT_ID_INPUT).use(async ({ ctx, input, next }) => {
+      const database = await requireDatabase();
+      const access = await resolveCommentAccess(
+        database,
+        ctx.user.id,
+        input.commentId
+      );
+      return next({ ctx: { ...ctx, database, commentAccess: access } });
+    });
+    classroomRouter = router({
+      status: protectedProcedure.query(() => ({ enabled: isClassroomEnabled() })),
+      create: classroomEnabledProcedure.input(
+        import_zod5.z.object({
+          name: CLASS_NAME_SCHEMA,
+          subject: SUBJECT_SCHEMA,
+          gradeLevel: GRADE_LEVEL_SCHEMA
+        })
+      ).mutation(async ({ ctx, input }) => {
+        const database = await requireDatabase();
+        const ownedRows = await database.select({ count: import_drizzle_orm6.sql`COUNT(*)` }).from(classrooms).where(
+          (0, import_drizzle_orm6.and)(
+            (0, import_drizzle_orm6.eq)(classrooms.teacherId, ctx.user.id),
+            (0, import_drizzle_orm6.eq)(classrooms.isActive, true)
+          )
+        );
+        if ((Number(ownedRows[0]?.count) || 0) >= MAX_TEACHER_CLASSES) {
+          throw new import_server3.TRPCError({
+            code: "FORBIDDEN",
+            message: `You can own up to ${MAX_TEACHER_CLASSES} active classes.`
+          });
+        }
+        for (let attempt = 0; attempt < MAX_JOIN_CODE_GENERATION_ATTEMPTS; attempt += 1) {
+          const publicId = (0, import_node_crypto.randomUUID)();
+          const joinCode = generateJoinCode();
+          try {
+            const created = await database.transaction(async (transaction) => {
+              await transaction.insert(classrooms).values({
+                publicId,
+                teacherId: ctx.user.id,
+                name: input.name,
+                joinCode,
+                subject: input.subject,
+                gradeLevel: input.gradeLevel ?? null
+              });
+              const rows = await transaction.select().from(classrooms).where((0, import_drizzle_orm6.eq)(classrooms.publicId, publicId)).limit(1);
+              const classroom = rows[0];
+              if (!classroom)
+                throw new Error("Classroom creation did not return a record");
+              await transaction.insert(classroomMembers).values({
+                classroomId: classroom.id,
+                userId: ctx.user.id,
+                role: "teacher"
+              });
+              return classroom;
+            });
+            return classProjection(created, "teacher", 0);
+          } catch (error) {
+            if (isDuplicateEntry(error) && attempt < MAX_JOIN_CODE_GENERATION_ATTEMPTS - 1)
+              continue;
+            throw error;
+          }
+        }
+        throw new import_server3.TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Unable to generate a unique class code."
+        });
+      }),
+      getMyClasses: classroomEnabledProcedure.input(import_zod5.z.object({ includeArchived: import_zod5.z.boolean().default(false) }).optional()).query(async ({ ctx, input }) => {
+        const database = await requireDatabase();
+        const where = input?.includeArchived ? (0, import_drizzle_orm6.eq)(classroomMembers.userId, ctx.user.id) : (0, import_drizzle_orm6.and)(
+          (0, import_drizzle_orm6.eq)(classroomMembers.userId, ctx.user.id),
+          (0, import_drizzle_orm6.eq)(classrooms.isActive, true)
+        );
+        const rows = await database.select({ classroom: classrooms, membership: classroomMembers }).from(classroomMembers).innerJoin(classrooms, (0, import_drizzle_orm6.eq)(classrooms.id, classroomMembers.classroomId)).where(where).orderBy((0, import_drizzle_orm6.desc)(classrooms.updatedAt));
+        return Promise.all(
+          rows.map(
+            (row) => buildClassCard(database, row.classroom, row.membership)
+          )
+        );
+      }),
+      get: classroomMemberProcedure.query(async ({ ctx }) => {
+        const memberCount = await countLearners(
+          ctx.database,
+          ctx.classroomAccess.classroom.id
+        );
+        return classProjection(
+          ctx.classroomAccess.classroom,
+          ctx.classroomAccess.membership.role,
+          memberCount
+        );
+      }),
+      getByCode: classroomEnabledProcedure.input(import_zod5.z.object({ code: import_zod5.z.string().trim().min(4).max(32) })).query(async ({ ctx, input }) => {
+        const database = await requireDatabase();
+        const code = normalizeJoinCode(input.code);
+        const ipAddress = getClientIp2(ctx.req);
+        await enforceJoinRateLimit(database, ctx.user.id, ipAddress);
+        const classroom = code.length === JOIN_CODE_LENGTH ? await findClassByJoinCode(database, code) : null;
+        await recordJoinAttempt(
+          database,
+          ctx.user.id,
+          ipAddress,
+          code,
+          classroom ? "preview_success" : "preview_failed"
+        );
+        if (!classroom)
+          throw new import_server3.TRPCError({ code: "NOT_FOUND", message: CLASS_CODE_ERROR });
+        return {
+          id: classroom.publicId,
+          name: classroom.name,
+          subject: classroom.subject,
+          gradeLevel: classroom.gradeLevel
+        };
+      }),
+      join: classroomEnabledProcedure.input(import_zod5.z.object({ code: import_zod5.z.string().trim().min(4).max(32) })).mutation(async ({ ctx, input }) => {
+        const database = await requireDatabase();
+        const code = normalizeJoinCode(input.code);
+        const ipAddress = getClientIp2(ctx.req);
+        await enforceJoinRateLimit(database, ctx.user.id, ipAddress);
+        const classroom = code.length === JOIN_CODE_LENGTH ? await findClassByJoinCode(database, code) : null;
+        if (!classroom) {
+          await recordJoinAttempt(
+            database,
+            ctx.user.id,
+            ipAddress,
+            code,
+            "join_failed"
+          );
+          throw new import_server3.TRPCError({ code: "NOT_FOUND", message: CLASS_CODE_ERROR });
+        }
+        const existingRows = await database.select().from(classroomMembers).where(
+          (0, import_drizzle_orm6.and)(
+            (0, import_drizzle_orm6.eq)(classroomMembers.classroomId, classroom.id),
+            (0, import_drizzle_orm6.eq)(classroomMembers.userId, ctx.user.id)
+          )
+        ).limit(1);
+        if (existingRows[0]) {
+          await recordJoinAttempt(
+            database,
+            ctx.user.id,
+            ipAddress,
+            code,
+            "already_member"
+          );
+          return classProjection(
+            classroom,
+            existingRows[0].role,
+            await countLearners(database, classroom.id)
+          );
+        }
+        if (await countLearners(database, classroom.id) >= MAX_ACTIVE_LEARNERS) {
+          await recordJoinAttempt(
+            database,
+            ctx.user.id,
+            ipAddress,
+            code,
+            "class_full"
+          );
+          throw new import_server3.TRPCError({ code: "FORBIDDEN", message: CLASS_CODE_ERROR });
+        }
+        try {
+          await database.insert(classroomMembers).values({
+            classroomId: classroom.id,
+            userId: ctx.user.id,
+            role: "learner"
+          });
+        } catch (error) {
+          if (!isDuplicateEntry(error)) throw error;
+        }
+        await recordJoinAttempt(
+          database,
+          ctx.user.id,
+          ipAddress,
+          code,
+          "join_success"
+        );
+        return classProjection(
+          classroom,
+          "learner",
+          await countLearners(database, classroom.id)
+        );
+      }),
+      leave: classroomMemberProcedure.mutation(async ({ ctx }) => {
+        requireLearner(ctx.classroomAccess.membership.role);
+        await ctx.database.delete(classroomMembers).where((0, import_drizzle_orm6.eq)(classroomMembers.id, ctx.classroomAccess.membership.id));
+        return { success: true };
+      }),
+      listMembers: classroomTeacherProcedure.input(import_zod5.z.object({ cursor: CURSOR_SCHEMA, limit: PAGE_SIZE_SCHEMA })).query(async ({ ctx, input }) => {
+        const cursorId = decodeCursor(input.cursor);
+        const condition = (0, import_drizzle_orm6.and)(
+          (0, import_drizzle_orm6.eq)(classroomMembers.classroomId, ctx.classroomAccess.classroom.id),
+          cursorId === null ? void 0 : (0, import_drizzle_orm6.gt)(classroomMembers.id, cursorId)
+        );
+        const rows = await ctx.database.select({ membership: classroomMembers, name: users.name }).from(classroomMembers).innerJoin(users, (0, import_drizzle_orm6.eq)(users.id, classroomMembers.userId)).where(condition).orderBy((0, import_drizzle_orm6.asc)(classroomMembers.id)).limit(input.limit + 1);
+        const page = rows.slice(0, input.limit);
+        const learnerIds = page.filter((row) => row.membership.role === "learner").map((row) => row.membership.userId);
+        const publishedRows = await ctx.database.select({ id: assignments.id }).from(assignments).where(
+          (0, import_drizzle_orm6.and)(
+            (0, import_drizzle_orm6.eq)(assignments.classroomId, ctx.classroomAccess.classroom.id),
+            (0, import_drizzle_orm6.eq)(assignments.status, "published")
+          )
+        );
+        const completionRows = learnerIds.length > 0 && publishedRows.length > 0 ? await ctx.database.select({
+          userId: assignmentSubmissions.userId,
+          count: import_drizzle_orm6.sql`COUNT(*)`
+        }).from(assignmentSubmissions).where(
+          (0, import_drizzle_orm6.and)(
+            (0, import_drizzle_orm6.inArray)(assignmentSubmissions.userId, learnerIds),
+            (0, import_drizzle_orm6.inArray)(
+              assignmentSubmissions.assignmentId,
+              publishedRows.map((row) => row.id)
+            ),
+            (0, import_drizzle_orm6.eq)(assignmentSubmissions.status, "complete")
+          )
+        ).groupBy(assignmentSubmissions.userId) : [];
+        const completionByUser = new Map(
+          completionRows.map((row) => [row.userId, Number(row.count) || 0])
+        );
+        return {
+          items: page.map((row) => ({
+            name: safeDisplayName(row.name, row.membership.role),
+            role: row.membership.role,
+            joinedAt: row.membership.joinedAt,
+            completedAssignments: completionByUser.get(row.membership.userId) ?? 0,
+            totalPublishedAssignments: publishedRows.length
+          })),
+          nextCursor: rows.length > input.limit ? encodeCursor(page.at(-1).membership.id) : null
+        };
+      }),
+      rotateJoinCode: classroomTeacherProcedure.mutation(async ({ ctx }) => {
+        for (let attempt = 0; attempt < MAX_JOIN_CODE_GENERATION_ATTEMPTS; attempt += 1) {
+          const joinCode = generateJoinCode();
+          try {
+            await ctx.database.update(classrooms).set({ joinCode, updatedAt: /* @__PURE__ */ new Date() }).where((0, import_drizzle_orm6.eq)(classrooms.id, ctx.classroomAccess.classroom.id));
+            return { joinCode };
+          } catch (error) {
+            if (isDuplicateEntry(error) && attempt < MAX_JOIN_CODE_GENERATION_ATTEMPTS - 1)
+              continue;
+            throw error;
+          }
+        }
+        throw new import_server3.TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Unable to rotate the class code."
+        });
+      }),
+      archive: classroomTeacherProcedure.mutation(async ({ ctx }) => {
+        await ctx.database.update(classrooms).set({ isActive: false, updatedAt: /* @__PURE__ */ new Date() }).where((0, import_drizzle_orm6.eq)(classrooms.id, ctx.classroomAccess.classroom.id));
+        return { success: true, isActive: false };
+      }),
+      restore: classroomTeacherProcedure.mutation(async ({ ctx }) => {
+        await ctx.database.update(classrooms).set({ isActive: true, updatedAt: /* @__PURE__ */ new Date() }).where((0, import_drizzle_orm6.eq)(classrooms.id, ctx.classroomAccess.classroom.id));
+        return { success: true, isActive: true };
+      }),
+      delete: classroomTeacherProcedure.input(import_zod5.z.object({ confirmationName: CLASS_NAME_SCHEMA })).mutation(async ({ ctx, input }) => {
+        if (input.confirmationName !== ctx.classroomAccess.classroom.name) {
+          throw new import_server3.TRPCError({
+            code: "BAD_REQUEST",
+            message: "The class name confirmation does not match."
+          });
+        }
+        await ctx.database.delete(classrooms).where((0, import_drizzle_orm6.eq)(classrooms.id, ctx.classroomAccess.classroom.id));
+        return { success: true };
+      }),
+      assignment: router({
+        create: classroomTeacherProcedure.input(
+          import_zod5.z.object({
+            title: ASSIGNMENT_TITLE_SCHEMA,
+            instructions: ASSIGNMENT_INSTRUCTIONS_SCHEMA,
+            subject: SUBJECT_SCHEMA,
+            dueAt: import_zod5.z.coerce.date().nullable().optional()
+          })
+        ).mutation(async ({ ctx, input }) => {
+          requireActiveClass(ctx.classroomAccess.classroom);
+          const publicId = (0, import_node_crypto.randomUUID)();
+          await ctx.database.insert(assignments).values({
+            publicId,
+            classroomId: ctx.classroomAccess.classroom.id,
+            createdByUserId: ctx.user.id,
+            title: input.title,
+            instructions: input.instructions,
+            subject: input.subject,
+            dueAt: input.dueAt ?? null,
+            status: "draft"
+          });
+          const rows = await ctx.database.select().from(assignments).where((0, import_drizzle_orm6.eq)(assignments.publicId, publicId)).limit(1);
+          return assignmentProjection(rows[0]);
+        }),
+        publish: assignmentTeacherProcedure.mutation(async ({ ctx }) => {
+          requireActiveClass(ctx.assignmentAccess.classroom);
+          const publishedAt = ctx.assignmentAccess.assignment.publishedAt ?? /* @__PURE__ */ new Date();
+          await ctx.database.update(assignments).set({ status: "published", publishedAt, updatedAt: /* @__PURE__ */ new Date() }).where((0, import_drizzle_orm6.eq)(assignments.id, ctx.assignmentAccess.assignment.id));
+          return assignmentProjection({
+            ...ctx.assignmentAccess.assignment,
+            status: "published",
+            publishedAt,
+            updatedAt: /* @__PURE__ */ new Date()
+          });
+        }),
+        list: classroomMemberProcedure.input(
+          import_zod5.z.object({
+            status: import_zod5.z.enum(["draft", "published"]).optional(),
+            cursor: CURSOR_SCHEMA,
+            limit: PAGE_SIZE_SCHEMA
+          })
+        ).query(async ({ ctx, input }) => {
+          const cursorId = decodeCursor(input.cursor);
+          const requestedStatus = ctx.classroomAccess.membership.role === "learner" ? "published" : input.status;
+          const conditions = [
+            (0, import_drizzle_orm6.eq)(assignments.classroomId, ctx.classroomAccess.classroom.id),
+            cursorId === null ? void 0 : (0, import_drizzle_orm6.lt)(assignments.id, cursorId),
+            requestedStatus ? (0, import_drizzle_orm6.eq)(assignments.status, requestedStatus) : void 0
+          ].filter(Boolean);
+          const rows = await ctx.database.select().from(assignments).where((0, import_drizzle_orm6.and)(...conditions)).orderBy((0, import_drizzle_orm6.desc)(assignments.id)).limit(input.limit + 1);
+          const page = rows.slice(0, input.limit);
+          let completionByAssignment = /* @__PURE__ */ new Map();
+          let submissionCountByAssignment = /* @__PURE__ */ new Map();
+          if (page.length > 0 && ctx.classroomAccess.membership.role === "learner") {
+            const submissionRows = await ctx.database.select({
+              assignmentId: assignmentSubmissions.assignmentId,
+              status: assignmentSubmissions.status
+            }).from(assignmentSubmissions).where(
+              (0, import_drizzle_orm6.and)(
+                (0, import_drizzle_orm6.eq)(assignmentSubmissions.userId, ctx.user.id),
+                (0, import_drizzle_orm6.inArray)(
+                  assignmentSubmissions.assignmentId,
+                  page.map((assignment) => assignment.id)
+                )
+              )
+            );
+            completionByAssignment = new Map(
+              submissionRows.map((row) => [
+                row.assignmentId,
+                row.status === "complete"
+              ])
+            );
+          } else if (page.length > 0) {
+            const countRows = await ctx.database.select({
+              assignmentId: assignmentSubmissions.assignmentId,
+              count: import_drizzle_orm6.sql`COUNT(*)`
+            }).from(assignmentSubmissions).where(
+              (0, import_drizzle_orm6.and)(
+                (0, import_drizzle_orm6.inArray)(
+                  assignmentSubmissions.assignmentId,
+                  page.map((assignment) => assignment.id)
+                ),
+                (0, import_drizzle_orm6.eq)(assignmentSubmissions.status, "complete")
+              )
+            ).groupBy(assignmentSubmissions.assignmentId);
+            submissionCountByAssignment = new Map(
+              countRows.map((row) => [row.assignmentId, Number(row.count) || 0])
+            );
+          }
+          const learnerCount = ctx.classroomAccess.membership.role === "teacher" ? await countLearners(
+            ctx.database,
+            ctx.classroomAccess.classroom.id
+          ) : void 0;
+          return {
+            items: page.map((assignment) => ({
+              ...assignmentProjection(assignment),
+              ...ctx.classroomAccess.membership.role === "learner" ? {
+                submissionStatus: completionByAssignment.get(assignment.id) ? "complete" : "pending"
+              } : {
+                completedSubmissions: submissionCountByAssignment.get(assignment.id) ?? 0,
+                totalLearners: learnerCount ?? 0
+              }
+            })),
+            nextCursor: rows.length > input.limit ? encodeCursor(page.at(-1).id) : null
+          };
+        }),
+        get: assignmentMemberProcedure.query(async ({ ctx }) => {
+          const base = assignmentProjection(ctx.assignmentAccess.assignment);
+          if (ctx.assignmentAccess.membership.role === "learner") {
+            const submissionRows = await ctx.database.select().from(assignmentSubmissions).where(
+              (0, import_drizzle_orm6.and)(
+                (0, import_drizzle_orm6.eq)(
+                  assignmentSubmissions.assignmentId,
+                  ctx.assignmentAccess.assignment.id
+                ),
+                (0, import_drizzle_orm6.eq)(assignmentSubmissions.userId, ctx.user.id)
+              )
+            ).limit(1);
+            const submission = submissionRows[0];
+            return {
+              ...base,
+              role: "learner",
+              submission: submission ? {
+                id: submission.publicId,
+                status: submission.status,
+                responseText: submission.responseText,
+                submittedAt: submission.submittedAt,
+                updatedAt: submission.updatedAt
+              } : {
+                id: null,
+                status: "pending",
+                responseText: null,
+                submittedAt: null,
+                updatedAt: null
+              }
+            };
+          }
+          const learnerCount = await countLearners(
+            ctx.database,
+            ctx.assignmentAccess.classroom.id
+          );
+          const completeRows = await ctx.database.select({ count: import_drizzle_orm6.sql`COUNT(*)` }).from(assignmentSubmissions).where(
+            (0, import_drizzle_orm6.and)(
+              (0, import_drizzle_orm6.eq)(
+                assignmentSubmissions.assignmentId,
+                ctx.assignmentAccess.assignment.id
+              ),
+              (0, import_drizzle_orm6.eq)(assignmentSubmissions.status, "complete")
+            )
+          );
+          return {
+            ...base,
+            role: "teacher",
+            completedSubmissions: Number(completeRows[0]?.count) || 0,
+            totalLearners: learnerCount
+          };
+        }),
+        update: assignmentTeacherProcedure.input(
+          import_zod5.z.object({
+            title: ASSIGNMENT_TITLE_SCHEMA.optional(),
+            instructions: ASSIGNMENT_INSTRUCTIONS_SCHEMA.optional(),
+            subject: SUBJECT_SCHEMA.optional(),
+            dueAt: import_zod5.z.coerce.date().nullable().optional()
+          }).refine(
+            (value) => Object.keys(value).some((key) => key !== "assignmentId"),
+            { message: "Provide at least one field to update." }
+          )
+        ).mutation(async ({ ctx, input }) => {
+          requireActiveClass(ctx.assignmentAccess.classroom);
+          const values = {
+            updatedAt: /* @__PURE__ */ new Date()
+          };
+          if (input.title !== void 0) values.title = input.title;
+          if (input.instructions !== void 0)
+            values.instructions = input.instructions;
+          if (input.subject !== void 0) values.subject = input.subject;
+          if (input.dueAt !== void 0) values.dueAt = input.dueAt;
+          await ctx.database.update(assignments).set(values).where((0, import_drizzle_orm6.eq)(assignments.id, ctx.assignmentAccess.assignment.id));
+          const rows = await ctx.database.select().from(assignments).where((0, import_drizzle_orm6.eq)(assignments.id, ctx.assignmentAccess.assignment.id)).limit(1);
+          return assignmentProjection(rows[0]);
+        }),
+        delete: assignmentTeacherProcedure.input(import_zod5.z.object({ confirmationTitle: ASSIGNMENT_TITLE_SCHEMA })).mutation(async ({ ctx, input }) => {
+          if (input.confirmationTitle !== ctx.assignmentAccess.assignment.title) {
+            throw new import_server3.TRPCError({
+              code: "BAD_REQUEST",
+              message: "The assignment title confirmation does not match."
+            });
+          }
+          await ctx.database.delete(assignments).where((0, import_drizzle_orm6.eq)(assignments.id, ctx.assignmentAccess.assignment.id));
+          return { success: true };
+        })
+      }),
+      submission: router({
+        upsert: assignmentMemberProcedure.input(
+          import_zod5.z.object({
+            status: import_zod5.z.enum(["pending", "complete"]),
+            responseText: RESPONSE_TEXT_SCHEMA
+          })
+        ).mutation(async ({ ctx, input }) => {
+          requireLearner(ctx.assignmentAccess.membership.role);
+          requireActiveClass(ctx.assignmentAccess.classroom);
+          if (ctx.assignmentAccess.assignment.status !== "published") {
+            throw new import_server3.TRPCError({
+              code: "NOT_FOUND",
+              message: "Assignment not found."
+            });
+          }
+          const submittedAt = input.status === "complete" ? /* @__PURE__ */ new Date() : null;
+          const publicId = (0, import_node_crypto.randomUUID)();
+          await ctx.database.insert(assignmentSubmissions).values({
+            publicId,
+            assignmentId: ctx.assignmentAccess.assignment.id,
+            userId: ctx.user.id,
+            status: input.status,
+            responseText: input.responseText ?? null,
+            submittedAt
+          }).onDuplicateKeyUpdate({
+            set: {
+              status: input.status,
+              responseText: input.responseText ?? null,
+              submittedAt,
+              updatedAt: /* @__PURE__ */ new Date()
+            }
+          });
+          const rows = await ctx.database.select().from(assignmentSubmissions).where(
+            (0, import_drizzle_orm6.and)(
+              (0, import_drizzle_orm6.eq)(
+                assignmentSubmissions.assignmentId,
+                ctx.assignmentAccess.assignment.id
+              ),
+              (0, import_drizzle_orm6.eq)(assignmentSubmissions.userId, ctx.user.id)
+            )
+          ).limit(1);
+          const submission = rows[0];
+          return {
+            id: submission.publicId,
+            status: submission.status,
+            responseText: submission.responseText,
+            submittedAt: submission.submittedAt,
+            updatedAt: submission.updatedAt
+          };
+        }),
+        getMine: assignmentMemberProcedure.query(async ({ ctx }) => {
+          requireLearner(ctx.assignmentAccess.membership.role);
+          const rows = await ctx.database.select().from(assignmentSubmissions).where(
+            (0, import_drizzle_orm6.and)(
+              (0, import_drizzle_orm6.eq)(
+                assignmentSubmissions.assignmentId,
+                ctx.assignmentAccess.assignment.id
+              ),
+              (0, import_drizzle_orm6.eq)(assignmentSubmissions.userId, ctx.user.id)
+            )
+          ).limit(1);
+          const submission = rows[0];
+          return submission ? {
+            id: submission.publicId,
+            status: submission.status,
+            responseText: submission.responseText,
+            submittedAt: submission.submittedAt,
+            updatedAt: submission.updatedAt
+          } : {
+            id: null,
+            status: "pending",
+            responseText: null,
+            submittedAt: null,
+            updatedAt: null
+          };
+        }),
+        listForAssignment: assignmentTeacherProcedure.input(import_zod5.z.object({ cursor: CURSOR_SCHEMA, limit: PAGE_SIZE_SCHEMA })).query(async ({ ctx, input }) => {
+          const cursorId = decodeCursor(input.cursor);
+          const rows = await ctx.database.select({
+            membership: classroomMembers,
+            name: users.name,
+            submission: assignmentSubmissions
+          }).from(classroomMembers).innerJoin(users, (0, import_drizzle_orm6.eq)(users.id, classroomMembers.userId)).leftJoin(
+            assignmentSubmissions,
+            (0, import_drizzle_orm6.and)(
+              (0, import_drizzle_orm6.eq)(
+                assignmentSubmissions.assignmentId,
+                ctx.assignmentAccess.assignment.id
+              ),
+              (0, import_drizzle_orm6.eq)(assignmentSubmissions.userId, classroomMembers.userId)
+            )
+          ).where(
+            (0, import_drizzle_orm6.and)(
+              (0, import_drizzle_orm6.eq)(
+                classroomMembers.classroomId,
+                ctx.assignmentAccess.classroom.id
+              ),
+              (0, import_drizzle_orm6.eq)(classroomMembers.role, "learner"),
+              cursorId === null ? void 0 : (0, import_drizzle_orm6.gt)(classroomMembers.id, cursorId)
+            )
+          ).orderBy((0, import_drizzle_orm6.asc)(classroomMembers.id)).limit(input.limit + 1);
+          const page = rows.slice(0, input.limit);
+          return {
+            items: page.map((row) => ({
+              learnerName: safeDisplayName(row.name, "learner"),
+              joinedAt: row.membership.joinedAt,
+              status: row.submission?.status ?? "pending",
+              responseText: row.submission?.responseText ?? null,
+              submittedAt: row.submission?.submittedAt ?? null,
+              updatedAt: row.submission?.updatedAt ?? null
+            })),
+            nextCursor: rows.length > input.limit ? encodeCursor(page.at(-1).membership.id) : null
+          };
+        })
+      }),
+      comment: router({
+        list: assignmentMemberProcedure.input(import_zod5.z.object({ cursor: CURSOR_SCHEMA, limit: PAGE_SIZE_SCHEMA })).query(async ({ ctx, input }) => {
+          const cursorId = decodeCursor(input.cursor);
+          const rows = await ctx.database.select({ comment: assignmentComments, authorName: users.name }).from(assignmentComments).innerJoin(users, (0, import_drizzle_orm6.eq)(users.id, assignmentComments.authorUserId)).where(
+            (0, import_drizzle_orm6.and)(
+              (0, import_drizzle_orm6.eq)(
+                assignmentComments.assignmentId,
+                ctx.assignmentAccess.assignment.id
+              ),
+              cursorId === null ? void 0 : (0, import_drizzle_orm6.gt)(assignmentComments.id, cursorId)
+            )
+          ).orderBy((0, import_drizzle_orm6.asc)(assignmentComments.id)).limit(input.limit + 1);
+          const page = rows.slice(0, input.limit);
+          return {
+            items: page.map((row) => ({
+              id: row.comment.publicId,
+              authorName: safeDisplayName(
+                row.authorName,
+                row.comment.authorUserId === ctx.assignmentAccess.classroom.teacherId ? "teacher" : "learner"
+              ),
+              isMine: row.comment.authorUserId === ctx.user.id,
+              isDeleted: row.comment.isDeleted,
+              body: row.comment.isDeleted ? null : row.comment.body,
+              moderationReason: row.comment.isDeleted ? row.comment.moderationReason : null,
+              createdAt: row.comment.createdAt,
+              updatedAt: row.comment.updatedAt
+            })),
+            nextCursor: rows.length > input.limit ? encodeCursor(page.at(-1).comment.id) : null
+          };
+        }),
+        add: assignmentMemberProcedure.input(import_zod5.z.object({ body: COMMENT_BODY_SCHEMA })).mutation(async ({ ctx, input }) => {
+          requireActiveClass(ctx.assignmentAccess.classroom);
+          if (ctx.assignmentAccess.assignment.status !== "published") {
+            throw new import_server3.TRPCError({
+              code: "PRECONDITION_FAILED",
+              message: "Publish the assignment before starting a discussion."
+            });
+          }
+          await enforceCommentRateLimit(ctx.database, ctx.user.id);
+          const publicId = (0, import_node_crypto.randomUUID)();
+          await ctx.database.insert(assignmentComments).values({
+            publicId,
+            assignmentId: ctx.assignmentAccess.assignment.id,
+            authorUserId: ctx.user.id,
+            body: input.body
+          });
+          const rows = await ctx.database.select().from(assignmentComments).where((0, import_drizzle_orm6.eq)(assignmentComments.publicId, publicId)).limit(1);
+          const comment = rows[0];
+          return {
+            id: comment.publicId,
+            authorName: safeDisplayName(
+              ctx.user.name,
+              ctx.assignmentAccess.membership.role
+            ),
+            isMine: true,
+            isDeleted: false,
+            body: comment.body,
+            moderationReason: null,
+            createdAt: comment.createdAt,
+            updatedAt: comment.updatedAt
+          };
+        }),
+        delete: commentMemberProcedure.mutation(async ({ ctx }) => {
+          if (ctx.commentAccess.comment.authorUserId !== ctx.user.id) {
+            throw new import_server3.TRPCError({
+              code: "FORBIDDEN",
+              message: "You can remove only your own comment."
+            });
+          }
+          if (!ctx.commentAccess.comment.isDeleted) {
+            await ctx.database.update(assignmentComments).set({
+              body: "",
+              isDeleted: true,
+              deletedAt: /* @__PURE__ */ new Date(),
+              deletedByUserId: ctx.user.id,
+              moderationReason: "author_removed",
+              updatedAt: /* @__PURE__ */ new Date()
+            }).where((0, import_drizzle_orm6.eq)(assignmentComments.id, ctx.commentAccess.comment.id));
+          }
+          return { success: true };
+        }),
+        moderate: commentMemberProcedure.input(import_zod5.z.object({ reason: MODERATION_REASON_SCHEMA })).mutation(async ({ ctx, input }) => {
+          requireTeacher(ctx.commentAccess.membership.role);
+          if (!ctx.commentAccess.comment.isDeleted) {
+            await ctx.database.update(assignmentComments).set({
+              body: "",
+              isDeleted: true,
+              deletedAt: /* @__PURE__ */ new Date(),
+              deletedByUserId: ctx.user.id,
+              moderationReason: input.reason,
+              updatedAt: /* @__PURE__ */ new Date()
+            }).where((0, import_drizzle_orm6.eq)(assignmentComments.id, ctx.commentAccess.comment.id));
+          }
+          return { success: true };
+        })
+      }),
+      progress: router({
+        getClassSummary: classroomTeacherProcedure.query(async ({ ctx }) => {
+          const learnerRows = await ctx.database.select({ userId: classroomMembers.userId }).from(classroomMembers).where(
+            (0, import_drizzle_orm6.and)(
+              (0, import_drizzle_orm6.eq)(classroomMembers.classroomId, ctx.classroomAccess.classroom.id),
+              (0, import_drizzle_orm6.eq)(classroomMembers.role, "learner")
+            )
+          );
+          const assignmentRows = await ctx.database.select({
+            id: assignments.id,
+            publicId: assignments.publicId,
+            title: assignments.title,
+            dueAt: assignments.dueAt
+          }).from(assignments).where(
+            (0, import_drizzle_orm6.and)(
+              (0, import_drizzle_orm6.eq)(assignments.classroomId, ctx.classroomAccess.classroom.id),
+              (0, import_drizzle_orm6.eq)(assignments.status, "published")
+            )
+          ).orderBy((0, import_drizzle_orm6.asc)(assignments.dueAt), (0, import_drizzle_orm6.asc)(assignments.id));
+          const submissionRows = learnerRows.length > 0 && assignmentRows.length > 0 ? await ctx.database.select({
+            assignmentId: assignmentSubmissions.assignmentId,
+            userId: assignmentSubmissions.userId,
+            status: assignmentSubmissions.status
+          }).from(assignmentSubmissions).where(
+            (0, import_drizzle_orm6.and)(
+              (0, import_drizzle_orm6.inArray)(
+                assignmentSubmissions.assignmentId,
+                assignmentRows.map((assignment) => assignment.id)
+              ),
+              (0, import_drizzle_orm6.inArray)(
+                assignmentSubmissions.userId,
+                learnerRows.map((learner) => learner.userId)
+              )
+            )
+          ) : [];
+          const completedPairs = new Set(
+            submissionRows.filter((row) => row.status === "complete").map((row) => `${row.assignmentId}:${row.userId}`)
+          );
+          const expected = learnerRows.length * assignmentRows.length;
+          const completed = completedPairs.size;
+          const now = Date.now();
+          const overdue = assignmentRows.reduce((total, assignment) => {
+            if (!assignment.dueAt || assignment.dueAt.getTime() >= now)
+              return total;
+            return total + learnerRows.filter(
+              (learner) => !completedPairs.has(`${assignment.id}:${learner.userId}`)
+            ).length;
+          }, 0);
+          return {
+            learnerCount: learnerRows.length,
+            publishedAssignmentCount: assignmentRows.length,
+            expectedSubmissions: expected,
+            completedSubmissions: completed,
+            pendingSubmissions: Math.max(0, expected - completed),
+            overdueSubmissions: overdue,
+            completionPercent: expected === 0 ? 0 : Math.round(completed / expected * 100),
+            assignments: assignmentRows.map((assignment) => {
+              const completeCount = learnerRows.filter(
+                (learner) => completedPairs.has(`${assignment.id}:${learner.userId}`)
+              ).length;
+              return {
+                id: assignment.publicId,
+                title: assignment.title,
+                dueAt: assignment.dueAt,
+                completed: completeCount,
+                pending: Math.max(0, learnerRows.length - completeCount),
+                overdue: Boolean(
+                  assignment.dueAt && assignment.dueAt.getTime() < now
+                ) ? Math.max(0, learnerRows.length - completeCount) : 0
+              };
+            })
+          };
+        }),
+        getMine: classroomMemberProcedure.query(async ({ ctx }) => {
+          requireLearner(ctx.classroomAccess.membership.role);
+          const assignmentRows = await ctx.database.select({
+            id: assignments.id,
+            publicId: assignments.publicId,
+            title: assignments.title,
+            dueAt: assignments.dueAt
+          }).from(assignments).where(
+            (0, import_drizzle_orm6.and)(
+              (0, import_drizzle_orm6.eq)(assignments.classroomId, ctx.classroomAccess.classroom.id),
+              (0, import_drizzle_orm6.eq)(assignments.status, "published")
+            )
+          ).orderBy((0, import_drizzle_orm6.asc)(assignments.dueAt), (0, import_drizzle_orm6.asc)(assignments.id));
+          const submissionRows = assignmentRows.length > 0 ? await ctx.database.select({
+            assignmentId: assignmentSubmissions.assignmentId,
+            status: assignmentSubmissions.status
+          }).from(assignmentSubmissions).where(
+            (0, import_drizzle_orm6.and)(
+              (0, import_drizzle_orm6.eq)(assignmentSubmissions.userId, ctx.user.id),
+              (0, import_drizzle_orm6.inArray)(
+                assignmentSubmissions.assignmentId,
+                assignmentRows.map((assignment) => assignment.id)
+              )
+            )
+          ) : [];
+          const completeIds = new Set(
+            submissionRows.filter((row) => row.status === "complete").map((row) => row.assignmentId)
+          );
+          const now = Date.now();
+          const items = assignmentRows.map((assignment) => {
+            const status = completeIds.has(assignment.id) ? "complete" : "pending";
+            return {
+              id: assignment.publicId,
+              title: assignment.title,
+              dueAt: assignment.dueAt,
+              status,
+              isOverdue: status === "pending" && Boolean(assignment.dueAt && assignment.dueAt.getTime() < now)
+            };
+          });
+          const completed = items.filter(
+            (item) => item.status === "complete"
+          ).length;
+          const pending = items.length - completed;
+          const overdue = items.filter((item) => item.isOverdue).length;
+          const nextDue = items.find(
+            (item) => item.status === "pending" && item.dueAt && item.dueAt.getTime() >= now
+          ) ?? null;
+          return {
+            completed,
+            pending,
+            overdue,
+            completionPercent: items.length === 0 ? 0 : Math.round(completed / items.length * 100),
+            nextDue,
+            assignments: items
+          };
+        })
+      })
+    });
+    CLEANUP_INTERVAL_MS2 = 30 * 60 * 1e3;
+    LOCK_TTL_MS2 = 35 * 60 * 1e3;
+    JOIN_AUDIT_RETENTION_MS = 24 * 60 * 60 * 1e3;
+    CLEANUP_INSTANCE_ID = `${(0, import_node_os.hostname)()}-${process.pid}`;
+    cleanupStarted = false;
+    classroomInternals = {
+      normalizeJoinCode,
+      hashJoinCode,
+      generateJoinCode,
+      encodeCursor,
+      decodeCursor,
+      isClassroomEnabled
+    };
+  }
+});
+
 // server/_core/index.ts
 var import_config = require("dotenv/config");
 
@@ -1960,19 +3369,19 @@ function isSecureRequest(req) {
   const protoList = Array.isArray(forwardedProto) ? forwardedProto : forwardedProto.split(",");
   return protoList.some((proto) => proto.trim().toLowerCase() === "https");
 }
-function getParentDomain(hostname2) {
-  if (LOCAL_HOSTS.has(hostname2) || isIpAddress(hostname2)) {
+function getParentDomain(hostname3) {
+  if (LOCAL_HOSTS.has(hostname3) || isIpAddress(hostname3)) {
     return void 0;
   }
-  const parts = hostname2.split(".");
+  const parts = hostname3.split(".");
   if (parts.length < 3) {
     return void 0;
   }
   return "." + parts.slice(-2).join(".");
 }
 function getSessionCookieOptions(req) {
-  const hostname2 = req.hostname;
-  const domain = getParentDomain(hostname2);
+  const hostname3 = req.hostname;
+  const domain = getParentDomain(hostname3);
   return {
     domain,
     httpOnly: true,
@@ -2300,11 +3709,11 @@ function registerMathRenderRoute(app) {
 }
 
 // server/routers.ts
-var import_zod5 = require("zod");
+var import_zod6 = require("zod");
 init_trpc();
 init_db();
 init_schema();
-var import_drizzle_orm6 = require("drizzle-orm");
+var import_drizzle_orm7 = require("drizzle-orm");
 
 // server/_core/llm.ts
 init_env();
@@ -3148,6 +4557,7 @@ var oauthRouter = router({
 
 // server/routers.ts
 init_email_auth();
+init_classroom();
 init_const();
 
 // server/_core/voiceTranscription.ts
@@ -3278,7 +4688,7 @@ function getLanguageName(langCode) {
 }
 
 // server/routers.ts
-var import_server3 = require("@trpc/server");
+var import_server4 = require("@trpc/server");
 var IMAGE_SOLVE_SYSTEM_PROMPT = `You are TutorSnap, an expert academic tutor and professor covering ALL subjects at ALL difficulty levels.
 Analyze the image and identify any question, problem, or text in it.
 Determine the subject area automatically, then solve or answer it COMPLETELY and COMPREHENSIVELY.
@@ -3567,9 +4977,9 @@ var GRADE_LEVEL_DESCRIPTIONS2 = {
 };
 function gradeContext(gradeLevel) {
   if (!gradeLevel) return "";
-  const desc2 = GRADE_LEVEL_DESCRIPTIONS2[gradeLevel];
-  return desc2 ? `
-ADAPT YOUR RESPONSE to this student's level: ${desc2}` : "";
+  const desc3 = GRADE_LEVEL_DESCRIPTIONS2[gradeLevel];
+  return desc3 ? `
+ADAPT YOUR RESPONSE to this student's level: ${desc3}` : "";
 }
 function buildPracticePrompt(subject, difficulty) {
   const isEnglish = ["american_literature", "british_literature", "world_literature", "composition", "creative_writing", "debate", "journalism", "grammar", "poetry"].includes(subject);
@@ -3648,7 +5058,7 @@ async function invokeLLMWithFallback(primaryModel, fallbackModel, params) {
 function extractLLMContent(result) {
   if (result?.error) {
     const msg = result.error?.message ?? JSON.stringify(result.error);
-    throw new import_server3.TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `AI service error: ${msg}` });
+    throw new import_server4.TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `AI service error: ${msg}` });
   }
   const raw = result?.choices?.[0]?.message?.content ?? "";
   return typeof raw === "string" ? raw : JSON.stringify(raw);
@@ -3692,23 +5102,23 @@ function truncateForSimpleTier(parsed, tokenBudget) {
   return out;
 }
 var academicRouter = router({
-  solve: protectedProcedure.input(import_zod5.z.object({
-    problem: import_zod5.z.string().min(1),
-    subject: import_zod5.z.string().default("other"),
-    gradeLevel: import_zod5.z.string().nullable().optional()
+  solve: protectedProcedure.input(import_zod6.z.object({
+    problem: import_zod6.z.string().min(1),
+    subject: import_zod6.z.string().default("other"),
+    gradeLevel: import_zod6.z.string().nullable().optional()
   })).mutation(async ({ ctx, input }) => {
     try {
       const db2 = await getDb();
       const ok = await checkServerSidePremium(ctx.user.id, db2);
-      if (!ok) throw new import_server3.TRPCError({ code: "PAYMENT_REQUIRED", message: "Premium subscription required (10003)" });
+      if (!ok) throw new import_server4.TRPCError({ code: "PAYMENT_REQUIRED", message: "Premium subscription required (10003)" });
       let tokenBudget = estimateSolveTokens(input.problem, input.subject);
       if (ctx.user) {
         try {
           const db3 = await getDb();
           if (db3) {
-            const cacheRows = await db3.select({ multiplier: aireSubjectCalibration.multiplier }).from(aireSubjectCalibration).where((0, import_drizzle_orm6.and)(
-              (0, import_drizzle_orm6.eq)(aireSubjectCalibration.userId, ctx.user.id),
-              (0, import_drizzle_orm6.eq)(aireSubjectCalibration.subject, input.subject)
+            const cacheRows = await db3.select({ multiplier: aireSubjectCalibration.multiplier }).from(aireSubjectCalibration).where((0, import_drizzle_orm7.and)(
+              (0, import_drizzle_orm7.eq)(aireSubjectCalibration.userId, ctx.user.id),
+              (0, import_drizzle_orm7.eq)(aireSubjectCalibration.subject, input.subject)
             )).limit(1);
             if (cacheRows.length > 0) {
               const m = parseFloat(cacheRows[0].multiplier);
@@ -3769,29 +5179,29 @@ var academicRouter = router({
       const parsed = JSON.parse(jsonStr);
       return truncateForSimpleTier(parsed, tokenBudget);
     } catch (err) {
-      if (err instanceof import_server3.TRPCError) throw err;
+      if (err instanceof import_server4.TRPCError) throw err;
       captureServerError(err, { route: "academic.solve" });
-      throw new import_server3.TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err instanceof Error ? err.message : "Failed to solve problem. Please try again." });
+      throw new import_server4.TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err instanceof Error ? err.message : "Failed to solve problem. Please try again." });
     }
   }),
-  solveExplanation: protectedProcedure.input(import_zod5.z.object({
-    problem: import_zod5.z.string().min(1, "problem is required"),
-    correctAnswer: import_zod5.z.string().min(1, "correctAnswer is required"),
-    selectedAnswer: import_zod5.z.string().min(1, "selectedAnswer is required"),
+  solveExplanation: protectedProcedure.input(import_zod6.z.object({
+    problem: import_zod6.z.string().min(1, "problem is required"),
+    correctAnswer: import_zod6.z.string().min(1, "correctAnswer is required"),
+    selectedAnswer: import_zod6.z.string().min(1, "selectedAnswer is required"),
     // Full option texts - required so the AI never has to infer or hallucinate option content
-    options: import_zod5.z.object({
-      A: import_zod5.z.string().min(1),
-      B: import_zod5.z.string().min(1),
-      C: import_zod5.z.string().min(1),
-      D: import_zod5.z.string().min(1)
+    options: import_zod6.z.object({
+      A: import_zod6.z.string().min(1),
+      B: import_zod6.z.string().min(1),
+      C: import_zod6.z.string().min(1),
+      D: import_zod6.z.string().min(1)
     }).optional(),
-    difficulty: import_zod5.z.enum(["easy", "medium", "hard"]).optional(),
-    subject: import_zod5.z.string().default("other"),
-    gradeLevel: import_zod5.z.string().optional()
+    difficulty: import_zod6.z.enum(["easy", "medium", "hard"]).optional(),
+    subject: import_zod6.z.string().default("other"),
+    gradeLevel: import_zod6.z.string().optional()
   })).mutation(async ({ ctx, input }) => {
     const db2 = await getDb();
     const ok = await checkServerSidePremium(ctx.user.id, db2);
-    if (!ok) throw new import_server3.TRPCError({ code: "PAYMENT_REQUIRED", message: "Premium subscription required (10003)" });
+    if (!ok) throw new import_server4.TRPCError({ code: "PAYMENT_REQUIRED", message: "Premium subscription required (10003)" });
     const optionsBlock = input.options ? `Answer choices:
   A) ${input.options.A}
   B) ${input.options.B}
@@ -3831,16 +5241,16 @@ Respond ONLY with this JSON (no extra text):
       return { explanation: text2.trim(), submissionReady: "" };
     }
   }),
-  solveFromImage: protectedProcedure.input(import_zod5.z.object({
-    imageBase64: import_zod5.z.string(),
-    mimeType: import_zod5.z.string().default("image/jpeg"),
-    subject: import_zod5.z.string().default("other"),
-    gradeLevel: import_zod5.z.string().optional()
+  solveFromImage: protectedProcedure.input(import_zod6.z.object({
+    imageBase64: import_zod6.z.string(),
+    mimeType: import_zod6.z.string().default("image/jpeg"),
+    subject: import_zod6.z.string().default("other"),
+    gradeLevel: import_zod6.z.string().optional()
   })).mutation(async ({ ctx, input }) => {
     try {
       const db2 = await getDb();
       const ok = await checkServerSidePremium(ctx.user.id, db2);
-      if (!ok) throw new import_server3.TRPCError({ code: "PAYMENT_REQUIRED", message: "Premium subscription required (10003)" });
+      if (!ok) throw new import_server4.TRPCError({ code: "PAYMENT_REQUIRED", message: "Premium subscription required (10003)" });
       const messages = [
         { role: "system", content: IMAGE_SOLVE_SYSTEM_PROMPT + gradeContext(input.gradeLevel) },
         {
@@ -3864,19 +5274,19 @@ Respond ONLY with this JSON (no extra text):
       const jsonStr = await invokeLLMWithFallback("gemini-3-flash-preview", "claude-haiku-4-5", params);
       return JSON.parse(jsonStr);
     } catch (err) {
-      if (err instanceof import_server3.TRPCError) throw err;
+      if (err instanceof import_server4.TRPCError) throw err;
       captureServerError(err, { route: "academic.solveFromImage" });
-      throw new import_server3.TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err instanceof Error ? err.message : "Failed to process image. Please try again." });
+      throw new import_server4.TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err instanceof Error ? err.message : "Failed to process image. Please try again." });
     }
   }),
-  generatePractice: protectedProcedure.input(import_zod5.z.object({
-    subject: import_zod5.z.string(),
-    difficulty: import_zod5.z.enum(["easy", "medium", "hard"]),
-    gradeLevel: import_zod5.z.string().optional()
+  generatePractice: protectedProcedure.input(import_zod6.z.object({
+    subject: import_zod6.z.string(),
+    difficulty: import_zod6.z.enum(["easy", "medium", "hard"]),
+    gradeLevel: import_zod6.z.string().optional()
   })).mutation(async ({ ctx, input }) => {
     const db2 = await getDb();
     const ok = await checkServerSidePremium(ctx.user.id, db2);
-    if (!ok) throw new import_server3.TRPCError({ code: "PAYMENT_REQUIRED", message: "Premium subscription required (10003)" });
+    if (!ok) throw new import_server4.TRPCError({ code: "PAYMENT_REQUIRED", message: "Premium subscription required (10003)" });
     const practiceTokens = input.difficulty === "easy" ? 700 : input.difficulty === "medium" ? 1100 : 1600;
     const practicePrompt = buildPracticePrompt(input.subject, input.difficulty) + gradeContext(input.gradeLevel);
     const result = await invokeLLM({
@@ -3900,13 +5310,13 @@ Respond ONLY with this JSON (no extra text):
         parsed = JSON.parse(repaired);
       } catch (repairErr) {
         captureServerError(repairErr, { route: "academic.generatePractice", reason: "invalid JSON from AI" });
-        throw new import_server3.TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned invalid JSON. Please try again." });
+        throw new import_server4.TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "AI returned invalid JSON. Please try again." });
       }
     }
     const requiredPracticeFields = ["problem", "answer"];
     const missingPracticeFields = requiredPracticeFields.filter((f) => !parsed[f]);
     if (missingPracticeFields.length > 0) {
-      throw new import_server3.TRPCError({
+      throw new import_server4.TRPCError({
         code: "INTERNAL_SERVER_ERROR",
         message: `AI response missing required fields: ${missingPracticeFields.join(", ")}. Please try again.`
       });
@@ -3922,15 +5332,15 @@ Respond ONLY with this JSON (no extra text):
     if (!parsed.id) parsed.id = `p-${Date.now()}`;
     return parsed;
   }),
-  generateQuiz: protectedProcedure.input(import_zod5.z.object({
-    subject: import_zod5.z.string(),
-    difficulty: import_zod5.z.enum(["easy", "medium", "hard"]),
-    count: import_zod5.z.number().min(3).max(10).default(5),
-    gradeLevel: import_zod5.z.string().optional()
+  generateQuiz: protectedProcedure.input(import_zod6.z.object({
+    subject: import_zod6.z.string(),
+    difficulty: import_zod6.z.enum(["easy", "medium", "hard"]),
+    count: import_zod6.z.number().min(3).max(10).default(5),
+    gradeLevel: import_zod6.z.string().optional()
   })).mutation(async ({ ctx, input }) => {
     const db2 = await getDb();
     const ok = await checkServerSidePremium(ctx.user.id, db2);
-    if (!ok) throw new import_server3.TRPCError({ code: "PAYMENT_REQUIRED", message: "Premium subscription required (10003)" });
+    if (!ok) throw new import_server4.TRPCError({ code: "PAYMENT_REQUIRED", message: "Premium subscription required (10003)" });
     const quizPrompt = `You are TutorSnap, an expert academic tutor.${gradeContext(input.gradeLevel)}
 Generate exactly ${input.count} ${input.difficulty} multiple-choice questions for: ${input.subject}.
 Each question has 4 distinct options (A-D), exactly one correct answer, and a brief one-sentence explanation.
@@ -3955,13 +5365,13 @@ Respond ONLY with this JSON and no surrounding prose:
     try {
       parsed = JSON.parse(jsonStr);
     } catch {
-      throw new import_server3.TRPCError({ code: "BAD_REQUEST", message: "Invalid JSON in AI response" });
+      throw new import_server4.TRPCError({ code: "BAD_REQUEST", message: "Invalid JSON in AI response" });
     }
     return parsed.questions ?? [];
   }),
-  studyTip: publicProcedure.input(import_zod5.z.object({
-    subject: import_zod5.z.string(),
-    gradeLevel: import_zod5.z.string().optional()
+  studyTip: publicProcedure.input(import_zod6.z.object({
+    subject: import_zod6.z.string(),
+    gradeLevel: import_zod6.z.string().optional()
   })).mutation(async ({ input }) => {
     const gradeHint = input.gradeLevel && GRADE_LEVEL_DESCRIPTIONS2[input.gradeLevel] ? ` Tailor the tip for a ${GRADE_LEVEL_DESCRIPTIONS2[input.gradeLevel].split(":")[0]} student.` : "";
     const tipPrompt = `You are TutorSnap, a friendly academic tutor. Generate a single, practical, actionable study tip for a student studying ${input.subject}.${gradeHint} The tip should be specific, encouraging, and 1-2 sentences long. Respond with ONLY the tip text, no preamble, no quotes.`;
@@ -3978,14 +5388,14 @@ Respond ONLY with this JSON and no surrounding prose:
     const tip = typeof rawTip === "string" ? rawTip.trim() : "";
     return { tip: tip || `Practice ${input.subject} problems daily. Consistency is the key to mastery!` };
   }),
-  chat: publicProcedure.input(import_zod5.z.object({
-    messages: import_zod5.z.array(import_zod5.z.object({
-      role: import_zod5.z.enum(["user", "assistant"]),
-      content: import_zod5.z.string()
+  chat: publicProcedure.input(import_zod6.z.object({
+    messages: import_zod6.z.array(import_zod6.z.object({
+      role: import_zod6.z.enum(["user", "assistant"]),
+      content: import_zod6.z.string()
     })),
-    subject: import_zod5.z.string().optional(),
-    gradeLevel: import_zod5.z.string().optional(),
-    detailedMode: import_zod5.z.boolean().optional()
+    subject: import_zod6.z.string().optional(),
+    gradeLevel: import_zod6.z.string().optional(),
+    detailedMode: import_zod6.z.boolean().optional()
     // When true, use doubled token budgets
   })).mutation(async ({ input }) => {
     const subjectContext = input.subject ? `
@@ -4016,9 +5426,9 @@ ADAPT YOUR RESPONSE to this student's level: ${GRADE_LEVEL_DESCRIPTIONS2[input.g
     const text2 = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
     return { content: text2 || "I apologize, I couldn't process your request." };
   }),
-  suggestFollowUps: publicProcedure.input(import_zod5.z.object({
-    aiResponse: import_zod5.z.string(),
-    subject: import_zod5.z.string().optional()
+  suggestFollowUps: publicProcedure.input(import_zod6.z.object({
+    aiResponse: import_zod6.z.string(),
+    subject: import_zod6.z.string().optional()
   })).mutation(async ({ input }) => {
     const prompt = `You are a helpful academic tutor assistant. Based on the following AI tutor response, generate exactly 3 short follow-up questions or prompts a student might want to ask next. Each should be 3-7 words, specific to the content of the response, and help deepen understanding.
 
@@ -4045,12 +5455,12 @@ Respond ONLY with valid JSON in this exact format:
       return { chips: ["Give me an example", "Explain differently", "Quiz me on this"] };
     }
   }),
-  explainDifferently: publicProcedure.input(import_zod5.z.object({
-    problem: import_zod5.z.string().min(1),
-    answer: import_zod5.z.string(),
-    subject: import_zod5.z.string().default("other"),
-    gradeLevel: import_zod5.z.string().optional(),
-    style: import_zod5.z.enum(["analogy", "step-by-step", "visual"]).default("analogy")
+  explainDifferently: publicProcedure.input(import_zod6.z.object({
+    problem: import_zod6.z.string().min(1),
+    answer: import_zod6.z.string(),
+    subject: import_zod6.z.string().default("other"),
+    gradeLevel: import_zod6.z.string().optional(),
+    style: import_zod6.z.enum(["analogy", "step-by-step", "visual"]).default("analogy")
   })).mutation(async ({ input }) => {
     const gradeCtx = gradeContext(input.gradeLevel);
     const styleGuide = {
@@ -4087,12 +5497,12 @@ Now re-explain this using the ${input.style} style.`;
     const explanation = typeof text2 === "string" ? text2.trim() : JSON.stringify(text2);
     return { explanation: explanation || "Could not generate an alternative explanation. Please try again." };
   }),
-  generateSimilar: publicProcedure.input(import_zod5.z.object({
-    problem: import_zod5.z.string(),
-    subject: import_zod5.z.string(),
-    difficulty: import_zod5.z.enum(["easy", "medium", "hard"]).default("medium"),
-    count: import_zod5.z.number().min(1).max(5).default(3),
-    gradeLevel: import_zod5.z.string().optional()
+  generateSimilar: publicProcedure.input(import_zod6.z.object({
+    problem: import_zod6.z.string(),
+    subject: import_zod6.z.string(),
+    difficulty: import_zod6.z.enum(["easy", "medium", "hard"]).default("medium"),
+    count: import_zod6.z.number().min(1).max(5).default(3),
+    gradeLevel: import_zod6.z.string().optional()
   })).mutation(async ({ input }) => {
     const prompt = `You are TutorSnap, an expert academic tutor.${gradeContext(input.gradeLevel)}
 The student solved: "${input.problem.slice(0, 200)}"
@@ -4120,19 +5530,19 @@ Respond ONLY with this JSON:
       return JSON.parse(repaired);
     }
   }),
-  generateStudyBlocks: publicProcedure.input(import_zod5.z.object({
-    problem: import_zod5.z.string(),
-    answer: import_zod5.z.string(),
-    steps: import_zod5.z.array(import_zod5.z.object({
-      stepNumber: import_zod5.z.number(),
-      title: import_zod5.z.string(),
-      explanation: import_zod5.z.string(),
-      expression: import_zod5.z.string().optional()
+  generateStudyBlocks: publicProcedure.input(import_zod6.z.object({
+    problem: import_zod6.z.string(),
+    answer: import_zod6.z.string(),
+    steps: import_zod6.z.array(import_zod6.z.object({
+      stepNumber: import_zod6.z.number(),
+      title: import_zod6.z.string(),
+      explanation: import_zod6.z.string(),
+      expression: import_zod6.z.string().optional()
     })).optional(),
-    conceptExplained: import_zod5.z.string().optional(),
-    tips: import_zod5.z.array(import_zod5.z.string()).optional(),
-    subject: import_zod5.z.string(),
-    gradeLevel: import_zod5.z.string().optional()
+    conceptExplained: import_zod6.z.string().optional(),
+    tips: import_zod6.z.array(import_zod6.z.string()).optional(),
+    subject: import_zod6.z.string(),
+    gradeLevel: import_zod6.z.string().optional()
   })).mutation(async ({ input }) => {
     const stepsText = (input.steps ?? []).map(
       (s) => `Step ${s.stepNumber}: ${s.title}${s.expression ? ` [${s.expression}]` : ""} - ${s.explanation}`
@@ -4180,7 +5590,7 @@ Respond ONLY with this JSON:
 });
 var voiceRouter = router({
   /** Get a presigned PUT URL to upload audio directly from the client */
-  getUploadUrl: publicProcedure.input(import_zod5.z.object({ filename: import_zod5.z.string(), contentType: import_zod5.z.string() })).mutation(async ({ input }) => {
+  getUploadUrl: publicProcedure.input(import_zod6.z.object({ filename: import_zod6.z.string(), contentType: import_zod6.z.string() })).mutation(async ({ input }) => {
     const { key, url } = await storagePut(
       `voice/${input.filename}`,
       Buffer.alloc(0),
@@ -4190,9 +5600,9 @@ var voiceRouter = router({
   }),
   /** Transcribe audio from a storage key */
   transcribe: publicProcedure.input(
-    import_zod5.z.object({
-      audioUrl: import_zod5.z.string(),
-      language: import_zod5.z.string().optional()
+    import_zod6.z.object({
+      audioUrl: import_zod6.z.string(),
+      language: import_zod6.z.string().optional()
     })
   ).mutation(async ({ input }) => {
     const result = await transcribeAudio({
@@ -4201,7 +5611,7 @@ var voiceRouter = router({
       prompt: "Transcribe the student's spoken academic question accurately."
     });
     if ("error" in result) {
-      throw new import_server3.TRPCError({
+      throw new import_server4.TRPCError({
         code: "BAD_REQUEST",
         message: result.error
       });
@@ -4216,7 +5626,7 @@ var userRouter = router({
     const raw = await getAppearanceSettings2(ctx.user.id);
     return { settings: raw ?? null };
   }),
-  saveAppearanceSettings: protectedProcedure.input(import_zod5.z.object({ settings: import_zod5.z.string().max(65535) })).mutation(async ({ ctx, input }) => {
+  saveAppearanceSettings: protectedProcedure.input(import_zod6.z.object({ settings: import_zod6.z.string().max(65535) })).mutation(async ({ ctx, input }) => {
     const { saveAppearanceSettings: saveAppearanceSettings2 } = await Promise.resolve().then(() => (init_db(), db_exports));
     await saveAppearanceSettings2(ctx.user.id, input.settings);
     return { success: true };
@@ -4224,7 +5634,7 @@ var userRouter = router({
 });
 async function computeSubjectMultiplier(db2, userId, subject) {
   if (!db2) return 1;
-  const rows = await db2.select({ rating: aireFeedback.rating }).from(aireFeedback).where((0, import_drizzle_orm6.and)((0, import_drizzle_orm6.eq)(aireFeedback.userId, userId), (0, import_drizzle_orm6.eq)(aireFeedback.subject, subject))).orderBy((0, import_drizzle_orm6.desc)(aireFeedback.createdAt)).limit(20);
+  const rows = await db2.select({ rating: aireFeedback.rating }).from(aireFeedback).where((0, import_drizzle_orm7.and)((0, import_drizzle_orm7.eq)(aireFeedback.userId, userId), (0, import_drizzle_orm7.eq)(aireFeedback.subject, subject))).orderBy((0, import_drizzle_orm7.desc)(aireFeedback.createdAt)).limit(20);
   if (rows.length < 3) return 1;
   const tooLong = rows.filter((r) => r.rating === 1).length;
   const tooShort = rows.filter((r) => r.rating === -1).length;
@@ -4236,11 +5646,11 @@ async function computeSubjectMultiplier(db2, userId, subject) {
 async function refreshSubjectCalibration(db2, userId, subject) {
   if (!db2) return;
   const multiplier = await computeSubjectMultiplier(db2, userId, subject);
-  const rows = await db2.select({ id: aireSubjectCalibration.id }).from(aireSubjectCalibration).where((0, import_drizzle_orm6.and)((0, import_drizzle_orm6.eq)(aireSubjectCalibration.userId, userId), (0, import_drizzle_orm6.eq)(aireSubjectCalibration.subject, subject))).limit(1);
-  const countRows = await db2.select({ cnt: import_drizzle_orm6.sql`count(*)` }).from(aireFeedback).where((0, import_drizzle_orm6.and)((0, import_drizzle_orm6.eq)(aireFeedback.userId, userId), (0, import_drizzle_orm6.eq)(aireFeedback.subject, subject)));
+  const rows = await db2.select({ id: aireSubjectCalibration.id }).from(aireSubjectCalibration).where((0, import_drizzle_orm7.and)((0, import_drizzle_orm7.eq)(aireSubjectCalibration.userId, userId), (0, import_drizzle_orm7.eq)(aireSubjectCalibration.subject, subject))).limit(1);
+  const countRows = await db2.select({ cnt: import_drizzle_orm7.sql`count(*)` }).from(aireFeedback).where((0, import_drizzle_orm7.and)((0, import_drizzle_orm7.eq)(aireFeedback.userId, userId), (0, import_drizzle_orm7.eq)(aireFeedback.subject, subject)));
   const sampleCount = Number(countRows[0]?.cnt ?? 0);
   if (rows.length > 0) {
-    await db2.update(aireSubjectCalibration).set({ multiplier: String(multiplier), sampleCount }).where((0, import_drizzle_orm6.and)((0, import_drizzle_orm6.eq)(aireSubjectCalibration.userId, userId), (0, import_drizzle_orm6.eq)(aireSubjectCalibration.subject, subject)));
+    await db2.update(aireSubjectCalibration).set({ multiplier: String(multiplier), sampleCount }).where((0, import_drizzle_orm7.and)((0, import_drizzle_orm7.eq)(aireSubjectCalibration.userId, userId), (0, import_drizzle_orm7.eq)(aireSubjectCalibration.subject, subject)));
   } else {
     await db2.insert(aireSubjectCalibration).values({ userId, subject, multiplier: String(multiplier), sampleCount });
   }
@@ -4251,11 +5661,11 @@ var aireRouter = router({
    * Stores up to 10 ratings per user; older ones are pruned.
    * rating: -1 = too short, 0 = just right, 1 = too long
    */
-  logFeedback: publicProcedure.input(import_zod5.z.object({
-    difficulty: import_zod5.z.number().int().min(1).max(5),
-    subject: import_zod5.z.string().default("other"),
-    steps: import_zod5.z.number().int().min(0).default(1),
-    rating: import_zod5.z.number().int().min(-1).max(1)
+  logFeedback: publicProcedure.input(import_zod6.z.object({
+    difficulty: import_zod6.z.number().int().min(1).max(5),
+    subject: import_zod6.z.string().default("other"),
+    steps: import_zod6.z.number().int().min(0).default(1),
+    rating: import_zod6.z.number().int().min(-1).max(1)
   })).mutation(async ({ ctx, input }) => {
     const userId = ctx.user?.id ?? null;
     try {
@@ -4269,11 +5679,11 @@ var aireRouter = router({
         rating: input.rating
       });
       if (userId) {
-        const rows = await db2.select({ id: aireFeedback.id }).from(aireFeedback).where((0, import_drizzle_orm6.eq)(aireFeedback.userId, userId)).orderBy((0, import_drizzle_orm6.desc)(aireFeedback.createdAt)).limit(30);
+        const rows = await db2.select({ id: aireFeedback.id }).from(aireFeedback).where((0, import_drizzle_orm7.eq)(aireFeedback.userId, userId)).orderBy((0, import_drizzle_orm7.desc)(aireFeedback.createdAt)).limit(30);
         if (rows.length > 20) {
           const idsToDelete = rows.slice(20).map((r) => r.id);
           for (const id of idsToDelete) {
-            await db2.delete(aireFeedback).where((0, import_drizzle_orm6.eq)(aireFeedback.id, id));
+            await db2.delete(aireFeedback).where((0, import_drizzle_orm7.eq)(aireFeedback.id, id));
           }
         }
         try {
@@ -4300,7 +5710,7 @@ var aireRouter = router({
         multiplier: aireSubjectCalibration.multiplier,
         sampleCount: aireSubjectCalibration.sampleCount,
         updatedAt: aireSubjectCalibration.updatedAt
-      }).from(aireSubjectCalibration).where((0, import_drizzle_orm6.eq)(aireSubjectCalibration.userId, ctx.user.id)).orderBy((0, import_drizzle_orm6.desc)(aireSubjectCalibration.sampleCount));
+      }).from(aireSubjectCalibration).where((0, import_drizzle_orm7.eq)(aireSubjectCalibration.userId, ctx.user.id)).orderBy((0, import_drizzle_orm7.desc)(aireSubjectCalibration.sampleCount));
       return { calibrations: rows };
     } catch (err) {
       console.error("[AIRE] getSubjectCalibrations error:", err);
@@ -4317,7 +5727,7 @@ var aireRouter = router({
       const db2 = await getDb();
       if (!db2) return { multiplier: 1, sampleSize: 0 };
       const userId = ctx.user.id;
-      const rows = await db2.select({ rating: aireFeedback.rating }).from(aireFeedback).where((0, import_drizzle_orm6.eq)(aireFeedback.userId, userId)).orderBy((0, import_drizzle_orm6.desc)(aireFeedback.createdAt)).limit(10);
+      const rows = await db2.select({ rating: aireFeedback.rating }).from(aireFeedback).where((0, import_drizzle_orm7.eq)(aireFeedback.userId, userId)).orderBy((0, import_drizzle_orm7.desc)(aireFeedback.createdAt)).limit(10);
       if (rows.length < 3) {
         return { multiplier: 1, sampleSize: rows.length };
       }
@@ -4333,14 +5743,14 @@ var aireRouter = router({
   })
 });
 var cloudSyncRouter = router({
-  pushSolveHistory: protectedProcedure.input(import_zod5.z.object({
-    items: import_zod5.z.array(import_zod5.z.object({
-      problem: import_zod5.z.string(),
-      answer: import_zod5.z.string().optional(),
-      subject: import_zod5.z.string().optional(),
-      solutionJson: import_zod5.z.string().optional(),
-      bookmarked: import_zod5.z.boolean().optional(),
-      solvedAt: import_zod5.z.number()
+  pushSolveHistory: protectedProcedure.input(import_zod6.z.object({
+    items: import_zod6.z.array(import_zod6.z.object({
+      problem: import_zod6.z.string(),
+      answer: import_zod6.z.string().optional(),
+      subject: import_zod6.z.string().optional(),
+      solutionJson: import_zod6.z.string().optional(),
+      bookmarked: import_zod6.z.boolean().optional(),
+      solvedAt: import_zod6.z.number()
     })).max(200)
   })).mutation(async ({ ctx, input }) => {
     try {
@@ -4368,7 +5778,7 @@ var cloudSyncRouter = router({
     try {
       const db2 = await getDb();
       if (!db2) return { items: [] };
-      const rows = await db2.select().from(solveHistory).where((0, import_drizzle_orm6.eq)(solveHistory.userId, ctx.user.id)).orderBy((0, import_drizzle_orm6.desc)(solveHistory.solvedAt)).limit(200);
+      const rows = await db2.select().from(solveHistory).where((0, import_drizzle_orm7.eq)(solveHistory.userId, ctx.user.id)).orderBy((0, import_drizzle_orm7.desc)(solveHistory.solvedAt)).limit(200);
       return {
         items: rows.map((r) => ({
           problem: r.problem,
@@ -4384,23 +5794,23 @@ var cloudSyncRouter = router({
       return { items: [] };
     }
   }),
-  pushChatSession: protectedProcedure.input(import_zod5.z.object({
-    sessionId: import_zod5.z.string().max(64),
-    title: import_zod5.z.string().max(255).optional(),
-    subject: import_zod5.z.string().max(64).optional(),
-    gradeLevel: import_zod5.z.string().max(32).optional(),
-    messagesJson: import_zod5.z.string(),
-    tags: import_zod5.z.string().optional(),
-    pinned: import_zod5.z.boolean().optional(),
-    messageCount: import_zod5.z.number().int().optional(),
-    sessionCreatedAt: import_zod5.z.number(),
-    sessionUpdatedAt: import_zod5.z.number()
+  pushChatSession: protectedProcedure.input(import_zod6.z.object({
+    sessionId: import_zod6.z.string().max(64),
+    title: import_zod6.z.string().max(255).optional(),
+    subject: import_zod6.z.string().max(64).optional(),
+    gradeLevel: import_zod6.z.string().max(32).optional(),
+    messagesJson: import_zod6.z.string(),
+    tags: import_zod6.z.string().optional(),
+    pinned: import_zod6.z.boolean().optional(),
+    messageCount: import_zod6.z.number().int().optional(),
+    sessionCreatedAt: import_zod6.z.number(),
+    sessionUpdatedAt: import_zod6.z.number()
   })).mutation(async ({ ctx, input }) => {
     try {
       const db2 = await getDb();
       if (!db2) return { ok: false };
       const userId = ctx.user.id;
-      const existing = await db2.select({ id: chatSessions.id }).from(chatSessions).where((0, import_drizzle_orm6.and)((0, import_drizzle_orm6.eq)(chatSessions.userId, userId), (0, import_drizzle_orm6.eq)(chatSessions.sessionId, input.sessionId))).limit(1);
+      const existing = await db2.select({ id: chatSessions.id }).from(chatSessions).where((0, import_drizzle_orm7.and)((0, import_drizzle_orm7.eq)(chatSessions.userId, userId), (0, import_drizzle_orm7.eq)(chatSessions.sessionId, input.sessionId))).limit(1);
       if (existing.length > 0) {
         await db2.update(chatSessions).set({
           title: input.title ?? null,
@@ -4411,7 +5821,7 @@ var cloudSyncRouter = router({
           pinned: input.pinned ?? false,
           messageCount: input.messageCount ?? 0,
           sessionUpdatedAt: new Date(input.sessionUpdatedAt)
-        }).where((0, import_drizzle_orm6.and)((0, import_drizzle_orm6.eq)(chatSessions.userId, userId), (0, import_drizzle_orm6.eq)(chatSessions.sessionId, input.sessionId)));
+        }).where((0, import_drizzle_orm7.and)((0, import_drizzle_orm7.eq)(chatSessions.userId, userId), (0, import_drizzle_orm7.eq)(chatSessions.sessionId, input.sessionId)));
       } else {
         await db2.insert(chatSessions).values({
           userId,
@@ -4433,11 +5843,11 @@ var cloudSyncRouter = router({
       return { ok: false };
     }
   }),
-  deleteChatSession: protectedProcedure.input(import_zod5.z.object({ sessionId: import_zod5.z.string().max(64) })).mutation(async ({ ctx, input }) => {
+  deleteChatSession: protectedProcedure.input(import_zod6.z.object({ sessionId: import_zod6.z.string().max(64) })).mutation(async ({ ctx, input }) => {
     try {
       const db2 = await getDb();
       if (!db2) return { ok: false };
-      await db2.delete(chatSessions).where((0, import_drizzle_orm6.and)((0, import_drizzle_orm6.eq)(chatSessions.userId, ctx.user.id), (0, import_drizzle_orm6.eq)(chatSessions.sessionId, input.sessionId)));
+      await db2.delete(chatSessions).where((0, import_drizzle_orm7.and)((0, import_drizzle_orm7.eq)(chatSessions.userId, ctx.user.id), (0, import_drizzle_orm7.eq)(chatSessions.sessionId, input.sessionId)));
       return { ok: true };
     } catch (err) {
       console.error("[cloudSync] deleteChatSession error:", err);
@@ -4448,7 +5858,7 @@ var cloudSyncRouter = router({
     try {
       const db2 = await getDb();
       if (!db2) return { sessions: [] };
-      const rows = await db2.select().from(chatSessions).where((0, import_drizzle_orm6.eq)(chatSessions.userId, ctx.user.id)).orderBy((0, import_drizzle_orm6.desc)(chatSessions.sessionUpdatedAt)).limit(100);
+      const rows = await db2.select().from(chatSessions).where((0, import_drizzle_orm7.eq)(chatSessions.userId, ctx.user.id)).orderBy((0, import_drizzle_orm7.desc)(chatSessions.sessionUpdatedAt)).limit(100);
       return {
         sessions: rows.map((r) => ({
           sessionId: r.sessionId,
@@ -4468,14 +5878,14 @@ var cloudSyncRouter = router({
       return { sessions: [] };
     }
   }),
-  pushProgress: protectedProcedure.input(import_zod5.z.object({ progressJson: import_zod5.z.string() })).mutation(async ({ ctx, input }) => {
+  pushProgress: protectedProcedure.input(import_zod6.z.object({ progressJson: import_zod6.z.string() })).mutation(async ({ ctx, input }) => {
     try {
       const db2 = await getDb();
       if (!db2) return { ok: false };
       const userId = ctx.user.id;
-      const existing = await db2.select({ id: userProgress.id }).from(userProgress).where((0, import_drizzle_orm6.eq)(userProgress.userId, userId)).limit(1);
+      const existing = await db2.select({ id: userProgress.id }).from(userProgress).where((0, import_drizzle_orm7.eq)(userProgress.userId, userId)).limit(1);
       if (existing.length > 0) {
-        await db2.update(userProgress).set({ progressJson: input.progressJson }).where((0, import_drizzle_orm6.eq)(userProgress.userId, userId));
+        await db2.update(userProgress).set({ progressJson: input.progressJson }).where((0, import_drizzle_orm7.eq)(userProgress.userId, userId));
       } else {
         await db2.insert(userProgress).values({ userId, progressJson: input.progressJson });
       }
@@ -4489,25 +5899,25 @@ var cloudSyncRouter = router({
     try {
       const db2 = await getDb();
       if (!db2) return { progressJson: null };
-      const rows = await db2.select({ progressJson: userProgress.progressJson }).from(userProgress).where((0, import_drizzle_orm6.eq)(userProgress.userId, ctx.user.id)).limit(1);
+      const rows = await db2.select({ progressJson: userProgress.progressJson }).from(userProgress).where((0, import_drizzle_orm7.eq)(userProgress.userId, ctx.user.id)).limit(1);
       return { progressJson: rows[0]?.progressJson ?? null };
     } catch (err) {
       console.error("[cloudSync] pullProgress error:", err);
       return { progressJson: null };
     }
   }),
-  pushBookmarks: protectedProcedure.input(import_zod5.z.object({
-    bookmarks: import_zod5.z.array(import_zod5.z.object({
-      bookmarkId: import_zod5.z.string().max(64),
-      itemJson: import_zod5.z.string(),
-      subject: import_zod5.z.string().max(64).optional()
+  pushBookmarks: protectedProcedure.input(import_zod6.z.object({
+    bookmarks: import_zod6.z.array(import_zod6.z.object({
+      bookmarkId: import_zod6.z.string().max(64),
+      itemJson: import_zod6.z.string(),
+      subject: import_zod6.z.string().max(64).optional()
     })).max(200)
   })).mutation(async ({ ctx, input }) => {
     try {
       const db2 = await getDb();
       if (!db2) return { ok: false };
       const userId = ctx.user.id;
-      await db2.delete(userBookmarks).where((0, import_drizzle_orm6.eq)(userBookmarks.userId, userId));
+      await db2.delete(userBookmarks).where((0, import_drizzle_orm7.eq)(userBookmarks.userId, userId));
       if (input.bookmarks.length > 0) {
         await db2.insert(userBookmarks).values(
           input.bookmarks.map((b) => ({
@@ -4528,7 +5938,7 @@ var cloudSyncRouter = router({
     try {
       const db2 = await getDb();
       if (!db2) return { bookmarks: [] };
-      const rows = await db2.select().from(userBookmarks).where((0, import_drizzle_orm6.eq)(userBookmarks.userId, ctx.user.id)).orderBy((0, import_drizzle_orm6.desc)(userBookmarks.createdAt)).limit(200);
+      const rows = await db2.select().from(userBookmarks).where((0, import_drizzle_orm7.eq)(userBookmarks.userId, ctx.user.id)).orderBy((0, import_drizzle_orm7.desc)(userBookmarks.createdAt)).limit(200);
       return {
         bookmarks: rows.map((r) => ({
           bookmarkId: r.bookmarkId,
@@ -4541,17 +5951,17 @@ var cloudSyncRouter = router({
       return { bookmarks: [] };
     }
   }),
-  pushNotes: protectedProcedure.input(import_zod5.z.object({
-    notes: import_zod5.z.array(import_zod5.z.object({
-      noteId: import_zod5.z.string().max(64),
-      noteJson: import_zod5.z.string()
+  pushNotes: protectedProcedure.input(import_zod6.z.object({
+    notes: import_zod6.z.array(import_zod6.z.object({
+      noteId: import_zod6.z.string().max(64),
+      noteJson: import_zod6.z.string()
     })).max(500)
   })).mutation(async ({ ctx, input }) => {
     try {
       const db2 = await getDb();
       if (!db2) return { ok: false };
       const userId = ctx.user.id;
-      await db2.delete(userNotes).where((0, import_drizzle_orm6.eq)(userNotes.userId, userId));
+      await db2.delete(userNotes).where((0, import_drizzle_orm7.eq)(userNotes.userId, userId));
       if (input.notes.length > 0) {
         await db2.insert(userNotes).values(
           input.notes.map((n) => ({
@@ -4571,7 +5981,7 @@ var cloudSyncRouter = router({
     try {
       const db2 = await getDb();
       if (!db2) return { notes: [] };
-      const rows = await db2.select().from(userNotes).where((0, import_drizzle_orm6.eq)(userNotes.userId, ctx.user.id)).orderBy((0, import_drizzle_orm6.desc)(userNotes.updatedAt)).limit(500);
+      const rows = await db2.select().from(userNotes).where((0, import_drizzle_orm7.eq)(userNotes.userId, ctx.user.id)).orderBy((0, import_drizzle_orm7.desc)(userNotes.updatedAt)).limit(500);
       return {
         notes: rows.map((r) => ({
           noteId: r.noteId,
@@ -4592,11 +6002,11 @@ var cloudSyncRouter = router({
       if (!db2) return { solveHistory: [], chatSessions: [], progressJson: null, bookmarks: [], notes: [] };
       const userId = ctx.user.id;
       const [historyRows, chatRows, progressRows, bookmarkRows, noteRows] = await Promise.all([
-        db2.select().from(solveHistory).where((0, import_drizzle_orm6.eq)(solveHistory.userId, userId)).orderBy((0, import_drizzle_orm6.desc)(solveHistory.solvedAt)).limit(200),
-        db2.select().from(chatSessions).where((0, import_drizzle_orm6.eq)(chatSessions.userId, userId)).orderBy((0, import_drizzle_orm6.desc)(chatSessions.sessionUpdatedAt)).limit(100),
-        db2.select({ progressJson: userProgress.progressJson }).from(userProgress).where((0, import_drizzle_orm6.eq)(userProgress.userId, userId)).limit(1),
-        db2.select().from(userBookmarks).where((0, import_drizzle_orm6.eq)(userBookmarks.userId, userId)).orderBy((0, import_drizzle_orm6.desc)(userBookmarks.createdAt)).limit(200),
-        db2.select().from(userNotes).where((0, import_drizzle_orm6.eq)(userNotes.userId, userId)).orderBy((0, import_drizzle_orm6.desc)(userNotes.updatedAt)).limit(500)
+        db2.select().from(solveHistory).where((0, import_drizzle_orm7.eq)(solveHistory.userId, userId)).orderBy((0, import_drizzle_orm7.desc)(solveHistory.solvedAt)).limit(200),
+        db2.select().from(chatSessions).where((0, import_drizzle_orm7.eq)(chatSessions.userId, userId)).orderBy((0, import_drizzle_orm7.desc)(chatSessions.sessionUpdatedAt)).limit(100),
+        db2.select({ progressJson: userProgress.progressJson }).from(userProgress).where((0, import_drizzle_orm7.eq)(userProgress.userId, userId)).limit(1),
+        db2.select().from(userBookmarks).where((0, import_drizzle_orm7.eq)(userBookmarks.userId, userId)).orderBy((0, import_drizzle_orm7.desc)(userBookmarks.createdAt)).limit(200),
+        db2.select().from(userNotes).where((0, import_drizzle_orm7.eq)(userNotes.userId, userId)).orderBy((0, import_drizzle_orm7.desc)(userNotes.updatedAt)).limit(500)
       ]);
       return {
         solveHistory: historyRows.map((r) => ({
@@ -4646,7 +6056,7 @@ var subscriptionRouter = router({
     try {
       const db2 = await getDb();
       if (!db2) return { isPremium: false, status: null, productId: null, expiresAt: null, isInGracePeriod: false, cancelledButActive: false };
-      const rows = await db2.select().from(subscriptions).where((0, import_drizzle_orm6.eq)(subscriptions.userId, ctx.user.id)).orderBy((0, import_drizzle_orm6.desc)(subscriptions.updatedAt)).limit(1);
+      const rows = await db2.select().from(subscriptions).where((0, import_drizzle_orm7.eq)(subscriptions.userId, ctx.user.id)).orderBy((0, import_drizzle_orm7.desc)(subscriptions.updatedAt)).limit(1);
       if (rows.length === 0) {
         return { isPremium: false, status: null, productId: null, expiresAt: null, isInGracePeriod: false, cancelledButActive: false };
       }
@@ -4684,7 +6094,7 @@ var subscriptionRouter = router({
         expiresAt: subscriptions.expiresAt,
         createdAt: subscriptions.createdAt,
         updatedAt: subscriptions.updatedAt
-      }).from(subscriptions).where((0, import_drizzle_orm6.eq)(subscriptions.userId, ctx.user.id)).orderBy((0, import_drizzle_orm6.desc)(subscriptions.updatedAt)).limit(50);
+      }).from(subscriptions).where((0, import_drizzle_orm7.eq)(subscriptions.userId, ctx.user.id)).orderBy((0, import_drizzle_orm7.desc)(subscriptions.updatedAt)).limit(50);
       return rows.map((r) => {
         const pid = (r.productId ?? "").toLowerCase();
         const platform = pid.includes("android") || pid.includes("google") || pid.includes("play") ? "android" : pid.includes("ios") || pid.includes("apple") ? "ios" : "unknown";
@@ -4728,7 +6138,8 @@ var appRouter = router({
   oauth: oauthRouter,
   emailAuth: emailAuthRouter,
   aire: aireRouter,
-  subscription: subscriptionRouter
+  subscription: subscriptionRouter,
+  classroom: classroomRouter
 });
 
 // server/_core/context.ts
@@ -4812,13 +6223,13 @@ async function startServer() {
   app.get("/api/ready", async (_req, res) => {
     try {
       const { getDb: getDb2 } = await Promise.resolve().then(() => (init_db(), db_exports));
-      const { sql: sql3 } = await import("drizzle-orm");
+      const { sql: sql4 } = await import("drizzle-orm");
       const db2 = await getDb2();
       if (!db2) {
         res.status(503).json({ ok: false, database: "unavailable" });
         return;
       }
-      await db2.execute(sql3`select 1`);
+      await db2.execute(sql4`select 1`);
       res.json({
         ok: true,
         database: "ready",
@@ -4845,13 +6256,13 @@ async function startServer() {
     try {
       const { getDb: getDb2 } = await Promise.resolve().then(() => (init_db(), db_exports));
       const { otpCodes: otpCodes2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-      const { lt: lt2 } = await import("drizzle-orm");
+      const { lt: lt3 } = await import("drizzle-orm");
       const db2 = await getDb2();
       if (!db2) {
         res.status(503).json({ ok: false, error: "DB unavailable" });
         return;
       }
-      const result = await db2.delete(otpCodes2).where(lt2(otpCodes2.expiresAt, /* @__PURE__ */ new Date()));
+      const result = await db2.delete(otpCodes2).where(lt3(otpCodes2.expiresAt, /* @__PURE__ */ new Date()));
       const deleted = result[0]?.affectedRows ?? 0;
       res.json({ ok: true, deleted });
     } catch (err) {
@@ -4954,7 +6365,7 @@ async function startServer() {
         }
         const { getDb: getDb2 } = await Promise.resolve().then(() => (init_db(), db_exports));
         const { subscriptions: subscriptions2, users: users2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-        const { eq: eq7, and: and5 } = await import("drizzle-orm");
+        const { eq: eq8, and: and6 } = await import("drizzle-orm");
         const db2 = await getDb2();
         if (!db2) {
           console.warn("[RC Webhook] DB unavailable \u2014 cannot persist subscription event");
@@ -4963,7 +6374,7 @@ async function startServer() {
         }
         let localUserId = null;
         if (rcUserId) {
-          const userRows = await db2.select({ id: users2.id }).from(users2).where(eq7(users2.openId, rcUserId)).limit(1);
+          const userRows = await db2.select({ id: users2.id }).from(users2).where(eq8(users2.openId, rcUserId)).limit(1);
           if (userRows.length > 0) {
             localUserId = userRows[0].id;
           }
@@ -4977,9 +6388,9 @@ async function startServer() {
           expiresAt: subscriptions2.expiresAt,
           updatedAt: subscriptions2.updatedAt
         }).from(subscriptions2).where(
-          and5(
-            eq7(subscriptions2.revenueCatUserId, rcUserId),
-            eq7(subscriptions2.productId, productId)
+          and6(
+            eq8(subscriptions2.revenueCatUserId, rcUserId),
+            eq8(subscriptions2.productId, productId)
           )
         ).limit(1);
         if (existing.length > 0) {
@@ -5007,7 +6418,7 @@ async function startServer() {
             isInGracePeriod: GRACE_PERIOD_EVENTS.has(eventType),
             ...localUserId !== null ? { userId: localUserId } : {},
             ...expiresAt !== null ? { expiresAt } : {}
-          }).where(eq7(subscriptions2.id, existingRow.id));
+          }).where(eq8(subscriptions2.id, existingRow.id));
         } else {
           await db2.insert(subscriptions2).values({
             revenueCatUserId: rcUserId,
@@ -5089,9 +6500,15 @@ startServer().catch((error) => {
 });
 async function startCleanupScheduler() {
   try {
-    const { startOtpCleanupScheduler: startOtpCleanupScheduler2 } = await Promise.resolve().then(() => (init_email_auth(), email_auth_exports));
-    await startOtpCleanupScheduler2();
+    const [{ startOtpCleanupScheduler: startOtpCleanupScheduler2 }, { startClassroomCleanupScheduler: startClassroomCleanupScheduler2 }] = await Promise.all([
+      Promise.resolve().then(() => (init_email_auth(), email_auth_exports)),
+      Promise.resolve().then(() => (init_classroom(), classroom_exports))
+    ]);
+    await Promise.all([
+      startOtpCleanupScheduler2(),
+      startClassroomCleanupScheduler2()
+    ]);
   } catch (err) {
-    console.warn("[OTP Cleanup] Could not start scheduler (non-fatal):", err?.message ?? err);
+    console.warn("[Cleanup] Could not start a scheduler (non-fatal):", err?.message ?? err);
   }
 }

@@ -492,16 +492,20 @@ startServer().catch((error: unknown) => {
 });
 
 /**
- * Start the OTP cleanup singleton scheduler.
- * Uses the scheduler_locks MySQL table to ensure only ONE server instance
- * runs the cleanup job at a time across horizontal scaling.
- * Replaces the heartbeat-based cron approach.
+ * Start database-backed singleton cleanup schedulers. Each job uses its own
+ * scheduler_locks key, so horizontal API replicas cannot run duplicate work.
  */
 async function startCleanupScheduler() {
   try {
-    const { startOtpCleanupScheduler } = await import("../routers/email-auth.js");
-    await startOtpCleanupScheduler();
+    const [{ startOtpCleanupScheduler }, { startClassroomCleanupScheduler }] = await Promise.all([
+      import("../routers/email-auth.js"),
+      import("../routers/classroom.js"),
+    ]);
+    await Promise.all([
+      startOtpCleanupScheduler(),
+      startClassroomCleanupScheduler(),
+    ]);
   } catch (err: any) {
-    console.warn("[OTP Cleanup] Could not start scheduler (non-fatal):", err?.message ?? err);
+    console.warn("[Cleanup] Could not start a scheduler (non-fatal):", err?.message ?? err);
   }
 }

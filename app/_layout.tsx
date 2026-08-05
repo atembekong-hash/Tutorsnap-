@@ -212,7 +212,10 @@ export default function RootLayout() {
           const code = joinCodeParam.trim().toUpperCase();
           if (code.length >= 4) {
             await AsyncStorage.setItem("@tutorsnap/pendingClassroomJoinCode", code);
-            router.push("/(tabs)/classroom" as any);
+            router.push({
+              pathname: "/(tabs)/classroom/join",
+              params: { code },
+            } as any);
           }
           return;
         }
@@ -254,8 +257,20 @@ export default function RootLayout() {
       } else if (data?.type === "streak_alert" || data?.type === "weekly_report") {
         // Tapped a streak alert or weekly progress report — go to Progress
         router.push("/progress" as any);
+      } else if (
+        data?.type === "classroom_assignment_reminder" &&
+        typeof data?.classroomId === "string" &&
+        typeof data?.assignmentId === "string"
+      ) {
+        router.push({
+          pathname: "/(tabs)/classroom/[classroomId]/assignment/[assignmentId]",
+          params: {
+            classroomId: data.classroomId,
+            assignmentId: data.assignmentId,
+          },
+        } as any);
       } else if (data?.type === "homework_reminder" || data?.problemId) {
-        // Tapped a homework reminder (by type or by problemId payload) — go to Classroom
+        // Backward compatibility for reminders scheduled by TutorSnap 2.2.x.
         router.push("/(tabs)/classroom" as any);
       } else if (data?.screen === "/refer" || data?.screen === "refer" || data?.type === "affiliate_digest") {
         // Tapped an affiliate / referral notification — open the Refer screen

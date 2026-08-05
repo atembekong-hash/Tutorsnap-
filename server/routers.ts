@@ -8,6 +8,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { referralRouter } from "./routers/referrals";
 import { oauthRouter } from "./routers/oauth";
 import { emailAuthRouter } from "./routers/email-auth";
+import { classroomRouter } from "./routers/classroom";
 import { COOKIE_NAME } from "../shared/const";
 import { transcribeAudio } from "./_core/voiceTranscription";
 import { storagePut } from "./storage";
@@ -1905,6 +1906,7 @@ export const appRouter = router({
   emailAuth: emailAuthRouter,
   aire: aireRouter,
   subscription: subscriptionRouter,
+  classroom: classroomRouter,
 });
 
 export type AppRouter = typeof appRouter;

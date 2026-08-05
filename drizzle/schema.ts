@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, boolean, index } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, boolean, index, uniqueIndex } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -419,3 +419,160 @@ export const subscriptions = mysqlTable(
 
 export type SubscriptionRow = typeof subscriptions.$inferSelect;
 export type InsertSubscription = typeof subscriptions.$inferInsert;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Guided Classroom — private, asynchronous teacher/learner workspace
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * A private classroom owned by exactly one creator/teacher.
+ * `publicId` is the only classroom identifier exposed through the API.
+ * `joinCode` is teacher-only data and may be rotated at any time.
+ */
+export const classrooms = mysqlTable(
+  "classrooms",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    publicId: varchar("publicId", { length: 36 }).notNull().unique(),
+    teacherId: int("teacherId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 120 }).notNull(),
+    joinCode: varchar("joinCode", { length: 8 }).notNull().unique(),
+    subject: varchar("subject", { length: 64 }).notNull(),
+    gradeLevel: varchar("gradeLevel", { length: 32 }),
+    isActive: boolean("isActive").default(true).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (t) => [
+    index("classrooms_teacher_idx").on(t.teacherId),
+    index("classrooms_active_updated_idx").on(t.isActive, t.updatedAt),
+  ],
+);
+
+export type ClassroomRow = typeof classrooms.$inferSelect;
+export type InsertClassroom = typeof classrooms.$inferInsert;
+
+/**
+ * Relationship-based classroom authorization. A user's classroom role exists
+ * only in this table; it never changes the account-wide users.role value.
+ */
+export const classroomMembers = mysqlTable(
+  "classroom_members",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    classroomId: int("classroomId").notNull().references(() => classrooms.id, { onDelete: "cascade" }),
+    userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    role: mysqlEnum("role", ["teacher", "learner"]).notNull(),
+    joinedAt: timestamp("joinedAt").defaultNow().notNull(),
+  },
+  (t) => [
+    uniqueIndex("classroom_members_class_user_uq").on(t.classroomId, t.userId),
+    index("classroom_members_user_joined_idx").on(t.userId, t.joinedAt),
+    index("classroom_members_class_role_idx").on(t.classroomId, t.role),
+  ],
+);
+
+export type ClassroomMemberRow = typeof classroomMembers.$inferSelect;
+export type InsertClassroomMember = typeof classroomMembers.$inferInsert;
+
+/** Text-only class work. Learners can resolve published assignments only. */
+export const assignments = mysqlTable(
+  "assignments",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    publicId: varchar("publicId", { length: 36 }).notNull().unique(),
+    classroomId: int("classroomId").notNull().references(() => classrooms.id, { onDelete: "cascade" }),
+    createdByUserId: int("createdByUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    title: varchar("title", { length: 160 }).notNull(),
+    instructions: text("instructions").notNull(),
+    subject: varchar("subject", { length: 64 }).notNull(),
+    dueAt: timestamp("dueAt"),
+    status: mysqlEnum("status", ["draft", "published"]).default("draft").notNull(),
+    publishedAt: timestamp("publishedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (t) => [
+    index("assignments_class_status_due_idx").on(t.classroomId, t.status, t.dueAt),
+    index("assignments_class_updated_idx").on(t.classroomId, t.updatedAt),
+  ],
+);
+
+export type AssignmentRow = typeof assignments.$inferSelect;
+export type InsertAssignment = typeof assignments.$inferInsert;
+
+/** One current submission per learner and assignment. */
+export const assignmentSubmissions = mysqlTable(
+  "assignment_submissions",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    publicId: varchar("publicId", { length: 36 }).notNull().unique(),
+    assignmentId: int("assignmentId").notNull().references(() => assignments.id, { onDelete: "cascade" }),
+    userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    status: mysqlEnum("status", ["pending", "complete"]).default("pending").notNull(),
+    responseText: text("responseText"),
+    submittedAt: timestamp("submittedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (t) => [
+    uniqueIndex("assignment_submissions_assignment_user_uq").on(t.assignmentId, t.userId),
+    index("assignment_submissions_status_idx").on(t.assignmentId, t.status),
+    index("assignment_submissions_user_updated_idx").on(t.userId, t.updatedAt),
+  ],
+);
+
+export type AssignmentSubmissionRow = typeof assignmentSubmissions.$inferSelect;
+export type InsertAssignmentSubmission = typeof assignmentSubmissions.$inferInsert;
+
+/**
+ * Flat, class-visible assignment discussion. Deletion is a moderation tombstone;
+ * the API never returns a deleted body to normal clients.
+ */
+export const assignmentComments = mysqlTable(
+  "assignment_comments",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    publicId: varchar("publicId", { length: 36 }).notNull().unique(),
+    assignmentId: int("assignmentId").notNull().references(() => assignments.id, { onDelete: "cascade" }),
+    authorUserId: int("authorUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    body: text("body").notNull(),
+    isDeleted: boolean("isDeleted").default(false).notNull(),
+    deletedAt: timestamp("deletedAt"),
+    deletedByUserId: int("deletedByUserId").references(() => users.id, { onDelete: "set null" }),
+    moderationReason: varchar("moderationReason", { length: 64 }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (t) => [
+    index("assignment_comments_assignment_created_idx").on(t.assignmentId, t.createdAt, t.id),
+    index("assignment_comments_author_created_idx").on(t.authorUserId, t.createdAt),
+  ],
+);
+
+export type AssignmentCommentRow = typeof assignmentComments.$inferSelect;
+export type InsertAssignmentComment = typeof assignmentComments.$inferInsert;
+
+/**
+ * Durable, privacy-minimized audit source for join-code brute-force protection.
+ * Only a SHA-256 code hash is stored; raw join codes never enter this table.
+ */
+export const classroomJoinAttempts = mysqlTable(
+  "classroom_join_attempts",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    ipAddress: varchar("ipAddress", { length: 45 }),
+    codeHash: varchar("codeHash", { length: 64 }).notNull(),
+    outcome: varchar("outcome", { length: 32 }).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (t) => [
+    index("classroom_join_user_created_idx").on(t.userId, t.createdAt),
+    index("classroom_join_ip_created_idx").on(t.ipAddress, t.createdAt),
+    index("classroom_join_hash_created_idx").on(t.codeHash, t.createdAt),
+  ],
+);
+
+export type ClassroomJoinAttemptRow = typeof classroomJoinAttempts.$inferSelect;
+export type InsertClassroomJoinAttempt = typeof classroomJoinAttempts.$inferInsert;

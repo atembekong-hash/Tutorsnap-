@@ -2276,47 +2276,11 @@ function ChatScreenContent() {
     router.push({ pathname: "/(tabs)/practice", params: selectedSubject ? { subject: selectedSubject } : {} } as any);
   }, [selectedSubject, router]);
 
-  // ── Share to Classroom ──────────────────────────────────────────────────────
-
-  const handleShareToClassroom = useCallback(async () => {
+    // ── Open Guided Classroom ────────────────────────────────────────────────────
+  const handleOpenClassroom = useCallback(() => {
     setShowShareMenu(false);
-    try {
-      const { getMyClassroom, getJoinedClassroom, shareToClassroom } = await import("@/lib/classroom");
-      const mine = await getMyClassroom();
-      const joined = await getJoinedClassroom();
-      const classroom = mine || joined;
-      if (!classroom) {
-        Alert.alert(
-          "No Classroom",
-          "You haven't joined or created a classroom yet. Go to Settings → Classroom to get started.",
-          [{ text: "OK" }]
-        );
-        return;
-      }
-      // Build a summary of the last user question and AI answer
-      const lastUser = [...messages].reverse().find((m) => m.role === "user");
-      const lastAI = [...messages].reverse().find((m) => m.role === "assistant");
-      if (!lastUser) {
-        Alert.alert("Nothing to share", "Send a message first before sharing to classroom.");
-        return;
-      }
-      if (Platform.OS !== "web") {
-        const Haptics = require("expo-haptics");
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      }
-      await shareToClassroom(classroom.code, {
-        problem: lastUser.content,
-        answer: lastAI?.content ?? "",
-        subject: selectedSubject ?? "general",
-        steps: [],
-        sharedBy: "You",
-        sharerAvatarUri: avatarUri ?? undefined,
-      });
-      Alert.alert("Shared!", `Added to "${classroom.name}" feed.`);
-    } catch {
-      Alert.alert("Error", "Could not share to classroom. Please try again.");
-    }
-  }, [messages, selectedSubject, avatarUri]);
+    router.push("/(tabs)/classroom" as any);
+  }, [router]);
 
   // ── Bookmark ────────────────────────────────────────────────────────────────
 
@@ -3404,14 +3368,14 @@ function ChatScreenContent() {
                 <IconSymbol size={14} name="chevron.right" color={colors.muted} />
               </TouchableOpacity>
 
-              {/* Share to Classroom */}
-              <TouchableOpacity style={[chatStyles.shareMenuItem, { borderBottomWidth: 0.5, borderBottomColor: colors.border }]} onPress={handleShareToClassroom} activeOpacity={0.7}>
+              {/* Guided Classroom */}
+              <TouchableOpacity style={[chatStyles.shareMenuItem, { borderBottomWidth: 0.5, borderBottomColor: colors.border }]} onPress={handleOpenClassroom} activeOpacity={0.7}>
                 <View style={[chatStyles.shareMenuIcon, { backgroundColor: `${colors.primary}20` }]}>
                   <IconSymbol size={18} name="person.2.fill" color={colors.primary} />
                 </View>
                 <View style={chatStyles.shareMenuInfo}>
-                  <Text style={[chatStyles.shareMenuLabel, { color: colors.foreground, fontSize: fs(14) }]}>Share to Classroom</Text>
-                  <Text style={[chatStyles.shareMenuDesc, { color: colors.muted, fontSize: fs(12) }]}>Add to your class problem feed</Text>
+                  <Text style={[chatStyles.shareMenuLabel, { color: colors.foreground, fontSize: fs(14) }]}>Open Guided Classroom</Text>
+                  <Text style={[chatStyles.shareMenuDesc, { color: colors.muted, fontSize: fs(12) }]}>View assignments and class discussion</Text>
                 </View>
                 <IconSymbol size={14} name="chevron.right" color={colors.muted} />
               </TouchableOpacity>

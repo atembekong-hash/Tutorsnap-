@@ -1,9 +1,9 @@
 /**
  * Challenge a Classmate Screen
  *
- * Timed challenge flow: a problem from the Classroom feed is shown with a
- * countdown timer. The student types their answer, submits, and sees whether
- * they matched the correct answer. Results can be shared back to the class feed.
+ * Timed challenge flow for a supplied problem. The learner types an answer,
+ * submits, and sees whether it matched the expected result. Challenge history
+ * remains private on the device and is not used for Classroom ranking.
  */
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
@@ -26,7 +26,6 @@ import { IconSymbol } from "@/components/ui/icon-symbol";
 import { useColors } from "@/hooks/use-colors";
 import { useScreenTransition } from "@/hooks/use-screen-transition";
 import { getSubjectColor, getSubjectLabel, getSubjectEmoji } from "@/lib/subjects";
-import { recordChallengeResult, getClassroomDisplayName } from "@/lib/classroom";
 import { saveChallengeAttempt } from "@/lib/challenge-history";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Sharing from "expo-sharing";
@@ -64,10 +63,10 @@ export default function ChallengeScreen() {
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string>("You");
 
-  // Load profile photo and display name for result card
+  // Load profile identity for the private result card.
   useEffect(() => {
     AsyncStorage.getItem("@tutorsnap/avatarUri").then((uri) => setAvatarUri(uri || null)).catch(() => {});
-    getClassroomDisplayName().then((name) => { if (name) setDisplayName(name); }).catch(() => {});
+    AsyncStorage.getItem("@tutorsnap/userName").then((name) => { if (name) setDisplayName(name); }).catch(() => {});
   }, []);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -157,13 +156,6 @@ export default function ChallengeScreen() {
       timeTaken: elapsed,
       date: new Date().toISOString(),
     }).catch(() => {/* ignore */});
-
-    // Record result in leaderboard if this came from a classroom
-    if (classCode) {
-      getClassroomDisplayName()
-        .then((name) => recordChallengeResult(classCode, name || "Student", correct, elapsed, avatarUri ?? undefined))
-        .catch(() => {/* ignore */});
-    }
 
     if (Platform.OS !== "web") {
       if (correct) {

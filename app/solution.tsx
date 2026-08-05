@@ -30,7 +30,6 @@ import type { MathSolution, SolutionStep, HistoryItem, MathSubject, StudyBlock }
 import { getSubjectColor, getSubjectLabel } from "@/lib/subjects";
 import { useFontSize } from "@/lib/font-size-provider";
 import { trpc } from "@/lib/trpc";
-import { getMyClassroom, getJoinedClassroom, shareToClassroom } from "@/lib/classroom";
 import { createSession, renameSession } from "@/lib/chat-sessions";
 import { APP_URL } from "@/constants/app";
 import { loadGlobalGrade, GRADE_LABELS } from "@/lib/grade-levels";
@@ -740,34 +739,10 @@ export default function SolutionScreen() {
     router.push({ pathname: "/(tabs)/practice", params: { subject: solution!.subject } } as any);
   };
 
-  const handleShareToClassroom = async () => {
+  const handleOpenClassroom = () => {
     setShowShareMenu(false);
-    try {
-      const mine = await getMyClassroom();
-      const joined = await getJoinedClassroom();
-      const classroom = mine || joined;
-      if (!classroom) {
-        Alert.alert(
-          "No Classroom",
-          "You haven't joined or created a classroom yet. Go to Settings → Classroom to get started.",
-          [{ text: "OK" }]
-        );
-        return;
-      }
-      H.notificationSuccess()
-      await shareToClassroom(classroom.code, {
-        problem: solution!.problem,
-        answer: solution!.answer,
-        subject: solution!.subject,
-        // Store steps as JSON strings so they can be parsed back into SolutionStep objects
-        steps: (solution!.steps || []).map((s) => JSON.stringify(s)),
-        sharedBy: "You",
-        sharerAvatarUri: avatarUri ?? undefined,
-      });
-      Alert.alert("Shared!", `Problem added to "${classroom.name}" feed.`);
-    } catch {
-      Alert.alert("Error", "Could not share to classroom. Please try again.");
-    }
+    H.impactLight();
+    router.push("/(tabs)/classroom" as any);
   };
 
   const handleShare = () => setShowShareMenu(true);
@@ -1147,8 +1122,8 @@ export default function SolutionScreen() {
               <IconSymbol size={16} name="chevron.right" color={colors.muted} />
             </TouchableOpacity>
             <TouchableOpacity
-              accessibilityLabel="Share" accessibilityHint="Opens the share sheet"
-              onPress={handleShareToClassroom}
+              accessibilityLabel="Open Guided Classroom" accessibilityHint="Opens assignments and class discussion"
+              onPress={handleOpenClassroom}
               style={[styles.shareMenuItem, { borderBottomWidth: 0.5, borderBottomColor: colors.border }]}
               activeOpacity={0.7}
             >
@@ -1156,8 +1131,8 @@ export default function SolutionScreen() {
                 <IconSymbol size={18} name="person.2.fill" color={colors.primary} />
               </View>
               <View style={styles.shareMenuInfo}>
-                <Text style={[styles.shareMenuLabel, { color: colors.foreground }]}>Share to Classroom</Text>
-                <Text style={[styles.shareMenuDesc, { color: colors.muted }]}>Add to your class problem feed</Text>
+                <Text style={[styles.shareMenuLabel, { color: colors.foreground }]}>Open Guided Classroom</Text>
+                <Text style={[styles.shareMenuDesc, { color: colors.muted }]}>View assignments and class discussion</Text>
               </View>
               <IconSymbol size={16} name="chevron.right" color={colors.muted} />
             </TouchableOpacity>

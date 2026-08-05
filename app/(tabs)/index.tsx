@@ -49,7 +49,6 @@ import { loadStudySlots, formatTime, type StudySlot } from "@/lib/study-planner"
 import { getShieldCount as _getShieldCount, earnShield } from "@/lib/progress";
 import { BadgeUnlockModal } from "@/components/badge-unlock-modal";
 import { getTodayQuestion, getDailyChallengeState } from "@/lib/daily-challenge";
-import { getMyClassroom, getJoinedClassroom, getClassroomFeed, type ClassroomProblem } from "@/lib/classroom";
 import * as Notifications from "expo-notifications";
 import { usePremium } from "@/hooks/use-premium";
 import { FREE_LIMITS } from "@/lib/subscription";
@@ -633,11 +632,10 @@ function SolveScreenContent() {
   const [weeklyData, setWeeklyData] = useState<WeeklyData | null>(null);
   const [almostBadge, setAlmostBadge] = useState<{ subject: string; subjectLabel: string; remaining: number; nextTier: "bronze" | "silver" | "gold" } | null>(null);
   const [bannerDismissed, setBannerDismissed] = useState(false);
+  const [classroomBannerDismissed, setClassroomBannerDismissed] = useState(false);
   const [_shieldCount, setShieldCount] = useState(0);
   const [shieldUsedToast, setShieldUsedToast] = useState(false);
   const [pendingBadge, setPendingBadge] = useState<{ tier: BadgeTier; subjectLabel: string } | null>(null);
-  const [dueSoonHomework, setDueSoonHomework] = useState<ClassroomProblem | null>(null);
-  const [homeworkBannerDismissed, setHomeworkBannerDismissed] = useState(false);
   const [_pendingNotifCount, setPendingNotifCount] = useState(0);
   const [showPaywallModal, setShowPaywallModal] = useState(false);
   const [paywallContext, setPaywallContext] = useState<string | null>(null);
@@ -736,24 +734,6 @@ function SolveScreenContent() {
     setWeeklyData(w);
   };
 
-  const loadDueSoonHomework = async () => {
-    try {
-      const [mine, joined] = await Promise.all([getMyClassroom(), getJoinedClassroom()]);
-      const active = mine || joined;
-      if (!active) { setDueSoonHomework(null); return; }
-      const feed = await getClassroomFeed(active.code);
-      const now = Date.now();
-      const soon = feed
-        .filter((p) => p.isHomework && p.dueDate)
-        .filter((p) => {
-          const diff = (new Date(p.dueDate!).getTime() - now) / (1000 * 60 * 60);
-          return diff >= 0 && diff <= 24;
-        })
-        .sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime());
-      setDueSoonHomework(soon[0] || null);
-      setHomeworkBannerDismissed(false);
-    } catch { setDueSoonHomework(null); }
-  };
 
   useFocusEffect(
     useCallback(() => {
@@ -801,7 +781,6 @@ function SolveScreenContent() {
       }).catch(() => {});
       loadProgress();
       loadWeeklyData();
-      loadDueSoonHomework();
       // Load recent solves for mini-history widget
       AsyncStorage.getItem("math_history").then((v) => {
         const history: HistoryItem[] = v ? JSON.parse(v) : [];
@@ -825,6 +804,38 @@ function SolveScreenContent() {
   // signed in. Running this unconditionally on mount caused a race where
   // onboarding appeared before the auth-screen on fresh installs.
   const { isSignedIn, isLoading: authLoading } = useAuth();
+  const { data: classroomStatus } = trpc.classroom.status.useQuery(undefined, {
+    enabled: Boolean(isSignedIn),
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+  const { data: homeClasses } = trpc.classroom.getMyClasses.useQuery(
+    { includeArchived: false },
+    {
+      enabled: Boolean(isSignedIn && classroomStatus?.enabled),
+      staleTime: 60 * 1000,
+      retry: false,
+    },
+  );
+  const nextClassAssignment = homeClasses
+    ?.filter((classroom) => classroom.role === "learner" && classroom.nextDue)
+    .map((classroom) => ({
+      classroomId: classroom.id,
+      classroomName: classroom.name,
+      assignmentId: classroom.nextDue!.id,
+      title: classroom.nextDue!.title,
+      dueAt: classroom.nextDue!.dueAt,
+    }))
+    .filter((item) => {
+      const hoursUntilDue = (new Date(item.dueAt!).getTime() - Date.now()) / (60 * 60 * 1000);
+      return hoursUntilDue >= 0 && hoursUntilDue <= 24;
+    })
+    .sort((left, right) => new Date(left.dueAt!).getTime() - new Date(right.dueAt!).getTime())[0] ?? null;
+
+  useEffect(() => {
+    setClassroomBannerDismissed(false);
+  }, [nextClassAssignment?.assignmentId]);
+
   // Server-side subscription verification — only runs when signed in, stale for 5 min
   const { data: serverSubStatus } = trpc.subscription.getStatus.useQuery(undefined, {
     enabled: !!isSignedIn,
@@ -1283,32 +1294,43 @@ function SolveScreenContent() {
               </Text>
             </View>
           )}
-          {/* Homework Due Soon Banner */}
-          {dueSoonHomework && !homeworkBannerDismissed && (
+          {/* Server-backed next Classroom assignment */}
+          {nextClassAssignment && !classroomBannerDismissed && (
             <TouchableOpacity
-              accessibilityLabel="Open classroom"
+              accessibilityLabel={`Open assignment ${nextClassAssignment.title}`}
               style={[styles.homeworkBanner, { backgroundColor: `${colors.warning}18`, borderColor: `${colors.warning}50` }]}
-              onPress={() => router.push("/(tabs)/classroom" as any)}
+              onPress={() =>
+                router.push({
+                  pathname: "/(tabs)/classroom/[classroomId]/assignment/[assignmentId]",
+                  params: {
+                    classroomId: nextClassAssignment.classroomId,
+                    assignmentId: nextClassAssignment.assignmentId,
+                  },
+                } as any)
+              }
               activeOpacity={0.8}
             >
               <View style={styles.homeworkBannerLeft}>
-                <Text style={styles.homeworkBannerEmoji}>📚</Text>
-                <View>
-                  <Text style={[styles.homeworkBannerTitle, { color: colors.foreground }]}>Homework Due Soon</Text>
+                <IconSymbol name="pencil.and.list.clipboard" size={22} color={colors.warning} />
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={[styles.homeworkBannerTitle, { color: colors.foreground }]}>Assignment due soon</Text>
                   <Text style={[styles.homeworkBannerSub, { color: colors.muted }]} numberOfLines={1}>
-                    {dueSoonHomework.homeworkTitle || dueSoonHomework.problem.slice(0, 40)}
+                    {nextClassAssignment.classroomName} · {nextClassAssignment.title}
                   </Text>
                 </View>
               </View>
               <View style={styles.homeworkBannerRight}>
-                <Text style={[styles.homeworkBannerDue, { color: colors.warning }]}>Due today</Text>
+                <Text style={[styles.homeworkBannerDue, { color: colors.warning }]}>Due {new Date(nextClassAssignment.dueAt!).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</Text>
                 <TouchableOpacity
-                  accessibilityLabel="Toggle homework banner dismissed"
-                  onPress={() => setHomeworkBannerDismissed(true)}
+                  accessibilityLabel="Dismiss assignment reminder"
+                  onPress={(event) => {
+                    event.stopPropagation();
+                    setClassroomBannerDismissed(true);
+                  }}
                   style={styles.homeworkBannerClose}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Text style={[styles.homeworkBannerCloseText, { color: colors.muted }]}>✕</Text>
+                  <Text style={[styles.homeworkBannerCloseText, { color: colors.muted }]}>×</Text>
                 </TouchableOpacity>
               </View>
             </TouchableOpacity>

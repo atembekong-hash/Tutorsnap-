@@ -1,32 +1,34 @@
-/**
- * Homework Due-Date Reminder Notifications
- *
- * Schedules a local push notification the morning a homework item is due
- * (8:00 AM on the due date) and an evening reminder the day before (7:00 PM).
- *
- * Notification IDs are stored in AsyncStorage keyed by problem ID so they
- * can be cancelled when the homework is unassigned or marked as done.
- *
- * Note: Local notifications only work on iOS and Android (not web).
- */
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+
 import { isNotifEnabled } from "./notification-prefs";
 
-const NOTIF_IDS_KEY = "@tutorsnap/hw_notif_ids";
+const ASSIGNMENT_NOTIF_IDS_KEY = "@tutorsnap/classroom_assignment_reminder_ids_v2";
+const CHANNEL_ID = "classroom-assignments";
 
-type NotifIdMap = Record<string, string[]>; // problemId → [notifId, ...]
+type StoredReminder = {
+  classroomId: string;
+  assignmentId: string;
+  dueAt: string;
+  notificationIds: string[];
+};
 
-// ─── Permission ─────────────────────────────────────────────────────────────
+type ReminderMap = Record<string, StoredReminder>;
 
-/** Request notification permission. Returns true if granted. */
-export async function requestNotifPermission(): Promise<boolean> {
+export type ReminderAssignment = {
+  id: string;
+  title: string;
+  dueAt: Date | string | null;
+  status: "pending" | "complete";
+};
+
+async function requestAssignmentNotificationPermission(): Promise<boolean> {
   if (Platform.OS === "web") return false;
   try {
     if (Platform.OS === "android") {
-      await Notifications.setNotificationChannelAsync("homework", {
-        name: "Homework Reminders",
+      await Notifications.setNotificationChannelAsync(CHANNEL_ID, {
+        name: "Class assignment reminders",
         importance: Notifications.AndroidImportance.HIGH,
         vibrationPattern: [0, 250, 250, 250],
       });
@@ -40,110 +42,155 @@ export async function requestNotifPermission(): Promise<boolean> {
   }
 }
 
-// ─── Storage helpers ─────────────────────────────────────────────────────────
-
-async function getNotifIds(): Promise<NotifIdMap> {
+async function readReminderMap(): Promise<ReminderMap> {
   try {
-    const raw = await AsyncStorage.getItem(NOTIF_IDS_KEY);
-    return raw ? (JSON.parse(raw) as NotifIdMap) : {};
+    const raw = await AsyncStorage.getItem(ASSIGNMENT_NOTIF_IDS_KEY);
+    return raw ? (JSON.parse(raw) as ReminderMap) : {};
   } catch {
     return {};
   }
 }
 
-async function saveNotifIds(map: NotifIdMap): Promise<void> {
-  await AsyncStorage.setItem(NOTIF_IDS_KEY, JSON.stringify(map));
+async function writeReminderMap(map: ReminderMap): Promise<void> {
+  await AsyncStorage.setItem(ASSIGNMENT_NOTIF_IDS_KEY, JSON.stringify(map));
 }
 
-// ─── Schedule ────────────────────────────────────────────────────────────────
+async function cancelStoredReminder(reminder: StoredReminder): Promise<void> {
+  await Promise.all(
+    reminder.notificationIds.map((id) =>
+      Notifications.cancelScheduledNotificationAsync(id).catch(() => undefined),
+    ),
+  );
+}
+
+function reminderTimes(dueAt: Date): Date[] {
+  const eveningBefore = new Date(dueAt);
+  eveningBefore.setDate(eveningBefore.getDate() - 1);
+  eveningBefore.setHours(19, 0, 0, 0);
+
+  const morningOf = new Date(dueAt);
+  morningOf.setHours(8, 0, 0, 0);
+
+  return [eveningBefore, morningOf].filter((date) => date.getTime() > Date.now());
+}
+
+async function scheduleOneAssignment(
+  classroomId: string,
+  assignment: ReminderAssignment,
+): Promise<StoredReminder | null> {
+  if (Platform.OS === "web" || !assignment.dueAt || assignment.status === "complete") return null;
+  const dueAt = assignment.dueAt instanceof Date ? assignment.dueAt : new Date(assignment.dueAt);
+  if (Number.isNaN(dueAt.getTime()) || dueAt.getTime() <= Date.now()) return null;
+
+  const notificationIds: string[] = [];
+  for (const [index, date] of reminderTimes(dueAt).entries()) {
+    try {
+      const notificationId = await Notifications.scheduleNotificationAsync({
+        content: {
+          title: index === 0 ? "Assignment due tomorrow" : "Assignment due today",
+          body: assignment.title,
+          data: {
+            type: "classroom_assignment_reminder",
+            screen: "classroom_assignment",
+            classroomId,
+            assignmentId: assignment.id,
+          },
+          sound: true,
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          date,
+          channelId: Platform.OS === "android" ? CHANNEL_ID : undefined,
+        },
+      });
+      notificationIds.push(notificationId);
+    } catch {
+      // A reminder can become stale between computation and scheduling.
+    }
+  }
+
+  return notificationIds.length > 0
+    ? {
+        classroomId,
+        assignmentId: assignment.id,
+        dueAt: dueAt.toISOString(),
+        notificationIds,
+      }
+    : null;
+}
 
 /**
- * Schedule two reminders for a homework item:
- *  1. Evening before (7 PM the day before the due date)
- *  2. Morning of (8 AM on the due date)
- *
- * If the trigger time is already in the past it is silently skipped.
+ * Reconcile local reminders with the learner's current published assignment list.
+ * Completed, removed, archived, or rescheduled assignments are cancelled first.
  */
-export async function scheduleHomeworkReminders(
-  problemId: string,
-  homeworkTitle: string,
-  dueDateIso: string
+export async function syncAssignmentReminders(
+  classroomId: string,
+  assignments: ReminderAssignment[],
 ): Promise<void> {
   if (Platform.OS === "web") return;
   const enabled = await isNotifEnabled("studyReminders");
-  if (!enabled) return;
-  const granted = await requestNotifPermission();
-  if (!granted) return;
+  const map = await readReminderMap();
+  const relevant = Object.values(map).filter((entry) => entry.classroomId === classroomId);
 
-  const dueDate = new Date(dueDateIso);
-  const ids: string[] = [];
-  const now = Date.now();
+  const activeAssignments = enabled
+    ? assignments.filter((assignment) => {
+        if (assignment.status === "complete" || !assignment.dueAt) return false;
+        const dueAt = assignment.dueAt instanceof Date ? assignment.dueAt : new Date(assignment.dueAt);
+        return !Number.isNaN(dueAt.getTime()) && dueAt.getTime() > Date.now();
+      })
+    : [];
+  const activeIds = new Set(activeAssignments.map((assignment) => assignment.id));
 
-  // Evening before: 7 PM the day before
-  const evening = new Date(dueDate);
-  evening.setDate(evening.getDate() - 1);
-  evening.setHours(19, 0, 0, 0);
-  if (evening.getTime() > now) {
-    try {
-      const id = await Notifications.scheduleNotificationAsync({
-        content: {
-          title: "📚 Homework due tomorrow",
-          body: homeworkTitle,
-          data: { problemId },
-          sound: true,
-        },
-        trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: evening },
-      });
-      ids.push(id);
-    } catch { /* skip if past */ }
+  for (const stored of relevant) {
+    const active = activeAssignments.find((assignment) => assignment.id === stored.assignmentId);
+    const activeDueAt = active?.dueAt ? new Date(active.dueAt).toISOString() : null;
+    if (!activeIds.has(stored.assignmentId) || activeDueAt !== stored.dueAt) {
+      await cancelStoredReminder(stored);
+      delete map[stored.assignmentId];
+    }
   }
 
-  // Morning of: 8 AM on due date
-  const morning = new Date(dueDate);
-  morning.setHours(8, 0, 0, 0);
-  if (morning.getTime() > now) {
-    try {
-      const id = await Notifications.scheduleNotificationAsync({
-        content: {
-          title: "📚 Homework due today",
-          body: homeworkTitle,
-          data: { problemId },
-          sound: true,
-        },
-        trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: morning },
-      });
-      ids.push(id);
-    } catch { /* skip if past */ }
+  if (activeAssignments.length === 0) {
+    await writeReminderMap(map);
+    return;
   }
 
-  if (ids.length > 0) {
-    const map = await getNotifIds();
-    map[problemId] = ids;
-    await saveNotifIds(map);
+  const granted = await requestAssignmentNotificationPermission();
+  if (!granted) {
+    await writeReminderMap(map);
+    return;
   }
+
+  for (const assignment of activeAssignments) {
+    if (map[assignment.id]) continue;
+    const scheduled = await scheduleOneAssignment(classroomId, assignment);
+    if (scheduled) map[assignment.id] = scheduled;
+  }
+  await writeReminderMap(map);
 }
 
-// ─── Cancel ──────────────────────────────────────────────────────────────────
-
-/** Cancel all scheduled reminders for a homework item. */
-export async function cancelHomeworkReminders(problemId: string): Promise<void> {
+export async function cancelAssignmentReminders(assignmentId: string): Promise<void> {
   if (Platform.OS === "web") return;
-  try {
-    const map = await getNotifIds();
-    const ids = map[problemId] ?? [];
-    await Promise.all(ids.map((id) => Notifications.cancelScheduledNotificationAsync(id)));
-    delete map[problemId];
-    await saveNotifIds(map);
-  } catch { /* ignore */ }
+  const map = await readReminderMap();
+  const reminder = map[assignmentId];
+  if (!reminder) return;
+  await cancelStoredReminder(reminder);
+  delete map[assignmentId];
+  await writeReminderMap(map);
 }
 
-/** Cancel all homework reminders (e.g. when leaving a classroom). */
+export async function cancelClassroomAssignmentReminders(classroomId: string): Promise<void> {
+  if (Platform.OS === "web") return;
+  const map = await readReminderMap();
+  const reminders = Object.values(map).filter((entry) => entry.classroomId === classroomId);
+  await Promise.all(reminders.map(cancelStoredReminder));
+  for (const reminder of reminders) delete map[reminder.assignmentId];
+  await writeReminderMap(map);
+}
+
 export async function cancelAllHomeworkReminders(): Promise<void> {
   if (Platform.OS === "web") return;
-  try {
-    const map = await getNotifIds();
-    const allIds = Object.values(map).flat();
-    await Promise.all(allIds.map((id) => Notifications.cancelScheduledNotificationAsync(id)));
-    await AsyncStorage.removeItem(NOTIF_IDS_KEY);
-  } catch { /* ignore */ }
+  const map = await readReminderMap();
+  await Promise.all(Object.values(map).map(cancelStoredReminder));
+  await AsyncStorage.removeItem(ASSIGNMENT_NOTIF_IDS_KEY);
 }
