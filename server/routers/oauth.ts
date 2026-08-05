@@ -8,6 +8,7 @@ import { z } from "zod";
 import { getDb } from "@/server/db";
 import { users } from "@/drizzle/schema";
 import { eq } from "drizzle-orm";
+import { sdk } from "@/server/_core/sdk";
 
 interface OAuthUser {
   id: string;
@@ -219,8 +220,14 @@ export const oauthRouter = router({
           // console.log(`[OAuth] New user created: ${openId}`);
         }
 
+        // Issue a real JWT session token
+        const sessionToken = await sdk.createSessionToken(user.openId, {
+          name: user.name || "",
+        });
+
         return {
           success: true,
+          token: sessionToken,
           user: {
             id: user.id,
             openId: user.openId,

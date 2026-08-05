@@ -112,7 +112,9 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
 
       const result = await validateOAuthCredentials(credentials);
       if (result.success && result.user) {
-        await finaliseSignIn(result.user, credentials.idToken);
+        // Use the real JWT session token from the server
+        const sessionToken = (result as any).token || credentials.idToken;
+        await finaliseSignIn(result.user, sessionToken);
       } else {
         setError(result.error || "Google Sign-In failed");
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -147,7 +149,9 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
 
       const result = await validateOAuthCredentials(credentials);
       if (result.success && result.user) {
-        await finaliseSignIn(result.user, credentials.idToken);
+        // Use the real JWT session token from the server
+        const sessionToken = (result as any).token || credentials.idToken;
+        await finaliseSignIn(result.user, sessionToken);
       } else {
         setError(result.error || "Apple Sign-In failed");
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
