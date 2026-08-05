@@ -1241,7 +1241,7 @@ function ChatScreenContent() {
   }, [isStreaming, scrollToBottom]);
 
   // ── Swipe-to-show tab bar ───────────────────────────────────────────────────
-  const [tabBarVisible, setTabBarVisible] = useState(true); // Always show tab bar
+  const [tabBarVisible] = useState(true); // Always show tab bar
   const tabBarTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const navigation = useNavigation();
   useEffect(() => {

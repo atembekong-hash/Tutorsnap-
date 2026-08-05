@@ -4737,6 +4737,7 @@ var import_zod3 = require("zod");
 init_db();
 init_schema();
 var import_drizzle_orm4 = require("drizzle-orm");
+init_sdk();
 async function verifyGoogleToken(idToken) {
   try {
     const { OAuth2Client } = await import("google-auth-library");
@@ -4866,8 +4867,12 @@ var oauthRouter = router({
         const newUser = await db2.select().from(users).where((0, import_drizzle_orm4.eq)(users.openId, openId)).limit(1);
         user = newUser[0];
       }
+      const sessionToken = await sdk.createSessionToken(user.openId, {
+        name: user.name || ""
+      });
       return {
         success: true,
+        token: sessionToken,
         user: {
           id: user.id,
           openId: user.openId,
