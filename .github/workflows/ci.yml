@@ -68,7 +68,7 @@ jobs:
       - name: Run deterministic test suite
         run: pnpm test:ci
 
-      - name: Bundle backend and migration runner
+      - name: Bundle backend, migration, and staging acceptance runners
         run: pnpm build
 
       - name: Apply committed migrations to CI MySQL
@@ -118,8 +118,26 @@ jobs:
           corepack enable
           corepack prepare pnpm@9.12.0 --activate
 
+      - name: Enable Guided Classroom in staging
+        run: >-
+          pnpm dlx @railway/cli variable set CLASSROOM_MVP_ENABLED=true
+          --project "$RAILWAY_PROJECT_ID"
+          --environment "$RAILWAY_ENVIRONMENT"
+          --service "$RAILWAY_SERVICE"
+          --skip-deploys
+          --json
+
       - name: Upload and monitor Railway deployment
         run: node scripts/deploy-railway.mjs
 
       - name: Verify live staging contract
         run: node scripts/verify-deployment.mjs
+
+      - name: Run concurrent teacher and two-learner acceptance
+        run: >-
+          pnpm dlx @railway/cli ssh
+          --project "$RAILWAY_PROJECT_ID"
+          --environment "$RAILWAY_ENVIRONMENT"
+          --service "$RAILWAY_SERVICE"
+          env CLASSROOM_ACCEPTANCE_TARGET=staging
+          node dist/classroom-acceptance.js
