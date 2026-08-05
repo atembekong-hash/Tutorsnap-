@@ -4760,7 +4760,7 @@ function getAllowedOrigins() {
   return /* @__PURE__ */ new Set([...DEFAULT_ALLOWED_ORIGINS, ...configured]);
 }
 function getReleaseVersion() {
-  return process.env.APP_VERSION?.trim() || "1.8.5";
+  return process.env.APP_VERSION?.trim() || "2.2.0";
 }
 async function startServer() {
   const app = (0, import_express.default)();
