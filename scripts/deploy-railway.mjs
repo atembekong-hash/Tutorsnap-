@@ -80,7 +80,10 @@ if (upload.status !== 0 || !deploymentId) {
 
 console.log(JSON.stringify({ phase: "uploaded", deploymentId }));
 
-const successStates = new Set(["SUCCESS"]);
+// Railway reports SKIPPED when an upload is deduplicated against an identical
+// active deployment. The subsequent live-contract verifier remains the source
+// of truth that the expected release is healthy.
+const successStates = new Set(["SUCCESS", "SKIPPED"]);
 const failureStates = new Set(["FAILED", "CRASHED", "REMOVED"]);
 const deadline = Date.now() + timeoutMs;
 let lastStatus = "UNKNOWN";
