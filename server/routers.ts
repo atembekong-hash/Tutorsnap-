@@ -527,17 +527,38 @@ function repairTruncatedJson(raw: string): string {
   return s + stack.reverse().join("");
 }
 
+async function invokeLLMJsonCompatible(params: Parameters<typeof invokeLLM>[0]) {
+  try {
+    return await invokeLLM(params);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!message.includes("Web Search cannot be used with JSON mode")) throw error;
+
+    // Some production proxy/model routes enable web search implicitly and reject
+    // response_format JSON. The prompts already require JSON, so retry as text
+    // and keep the existing parsing/validation safeguards at the call sites.
+    const {
+      response_format: _responseFormat,
+      responseFormat: _responseFormatCamel,
+      output_schema: _outputSchema,
+      outputSchema: _outputSchemaCamel,
+      ...textParams
+    } = params as Parameters<typeof invokeLLM>[0] & Record<string, unknown>;
+    return await invokeLLM(textParams);
+  }
+}
+
 async function invokeLLMWithFallback(primaryModel: string, fallbackModel: string, params: Parameters<typeof invokeLLM>[0]): Promise<string> {
   // Try primary model
   try {
-    const result = await invokeLLM({ ...params, model: primaryModel });
+    const result = await invokeLLMJsonCompatible({ ...params, model: primaryModel });
     const text = extractLLMContent(result);
     const jsonStr = extractJsonFromContent(text);
     JSON.parse(jsonStr); // validate
     return jsonStr;
   } catch {
     // Fallback to stronger model
-    const result2 = await invokeLLM({ ...params, model: fallbackModel, max_tokens: Math.min((params.max_tokens ?? 4000) + 1000, 6000) });
+    const result2 = await invokeLLMJsonCompatible({ ...params, model: fallbackModel, max_tokens: Math.min((params.max_tokens ?? 4000) + 1000, 6000) });
     const text2 = extractLLMContent(result2);
     const raw2 = extractJsonFromContent(text2);
     try {
@@ -762,7 +783,7 @@ Respond ONLY with this JSON (no extra text):
   "explanation": "Use 4-7 concise sentences: state the correct option and full text, explain why it is correct, show the essential reasoning, briefly explain why the selected option was wrong when applicable, and end with one useful memory tip. Use plain text only, with no Markdown, LaTeX, dollar signs, or backslashes.",
   "submissionReady": "INDEPENDENTLY GENERATED - not a summary of the explanation above. Write only what a student would hand in. State the correct option letter and its full answer text, then show only the essential supporting work or one-line justification (2-4 lines max). No prose commentary, no preamble."
 }`;
-      const result = await invokeLLM({
+      const result = await invokeLLMJsonCompatible({
         model: "claude-haiku-4-5",
         messages: [
           { role: "system", content: prompt },
@@ -830,7 +851,7 @@ Respond ONLY with this JSON (no extra text):
       // Concise mobile schema: enough room for valid JSON without encouraging excess prose.
       const practiceTokens = input.difficulty === "easy" ? 700 : input.difficulty === "medium" ? 1100 : 1600;
       const practicePrompt = buildPracticePrompt(input.subject, input.difficulty) + gradeContext(input.gradeLevel);
-      const result = await invokeLLM({
+      const result = await invokeLLMJsonCompatible({
         model: "claude-haiku-4-5",
         messages: [
           { role: "system", content: practicePrompt },
@@ -894,7 +915,7 @@ Use plain text only. Do not use Markdown, LaTeX commands, dollar signs, backslas
 Respond ONLY with this JSON and no surrounding prose:
 {"questions":[{"id":"q1","problem":"<question>","options":{"A":"<a>","B":"<b>","C":"<c>","D":"<d>"},"correctAnswer":"A","explanation":"<1 sentence>"}]}`;
 
-      const result = await invokeLLM({
+      const result = await invokeLLMJsonCompatible({
         model: "claude-haiku-4-5",
         messages: [
           { role: "system", content: quizPrompt },

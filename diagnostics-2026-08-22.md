@@ -23,3 +23,11 @@ A secondary split-brain issue existed in the Google refresh path and OAuth callb
 - Expo’s Access tokens page now shows 7 personal tokens, and the temporary `TutorSnap build 67 temporary` token is absent, confirming revocation and deletion.
 
 - Production OTP request returned `{success:true, sent:true}` for the supplied account. Gmail opened successfully to the Google password step for `atembekong@gmail.com`; no email content or OTP has been accessed yet.
+
+## 2026-08-22 production fix and deployment findings
+- Email OTP authentication succeeded for the production test account and returned a server session JWT; the token was kept only in `/tmp/tutorsnap-session-token` with restrictive permissions.
+- Authenticated protected contracts (`subscription.getStatus`, `classroom.status`, `classroom.getMyClasses`, appearance settings, and AIRE calibration) returned successfully. The Classroom create/read/assignment publish/discussion/cleanup workflow passed and left no intended smoke-test record.
+- Before deployment, `academic.solve`, `academic.generatePractice`, and `academic.solveFromImage` returned HTTP 402 `PAYMENT_REQUIRED` because the live production deployment still contained the old hard premium gates. The repository FAQ and free-tier contract document these as core free features.
+- Removed those hard gates from the core academic procedures, updated the regression test, regenerated `dist/index.js`, pushed commits `892d2ec` and `4b145fb` to `atembekong-hash/Tutorsnap-`, and GitHub CI completed successfully for `4b145fb`.
+- Production `/api/ready` remains healthy at version 2.3.0, but still reports the old 402 behavior, confirming that Railway production has not yet received the new commit.
+- Railway dashboard login is open but currently blocked by a Cloudflare `Verify you are human` challenge; user takeover is required to complete it.
