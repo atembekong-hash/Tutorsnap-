@@ -112,8 +112,9 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
 
       const result = await validateOAuthCredentials(credentials);
       if (result.success && result.user) {
-        // Use the real JWT session token from the server
-        const sessionToken = (result as any).token || credentials.idToken;
+        // Use the real TutorSnap session JWT returned by the backend.
+        // The provider ID token is only a compatibility fallback for older servers.
+        const sessionToken = result.token || credentials.idToken;
         await finaliseSignIn(result.user, sessionToken);
       } else {
         setError(result.error || "Google Sign-In failed");
@@ -149,8 +150,9 @@ export default function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
 
       const result = await validateOAuthCredentials(credentials);
       if (result.success && result.user) {
-        // Use the real JWT session token from the server
-        const sessionToken = (result as any).token || credentials.idToken;
+        // Use the real TutorSnap session JWT returned by the backend.
+        // The provider ID token is only a compatibility fallback for older servers.
+        const sessionToken = result.token || credentials.idToken;
         await finaliseSignIn(result.user, sessionToken);
       } else {
         setError(result.error || "Apple Sign-In failed");

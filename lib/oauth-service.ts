@@ -19,6 +19,7 @@ export interface OAuthCredentials {
 
 export interface OAuthResponse {
   success: boolean;
+  token?: string;
   user?: {
     id: number;
     openId: string;
@@ -78,6 +79,7 @@ export async function validateOAuthCredentials(credentials: OAuthCredentials): P
     }
     return {
       success: result.success,
+      token: result.token,
       user: result.user,
       error: result.error,
       message: result.message,

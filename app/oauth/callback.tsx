@@ -1,12 +1,25 @@
 import { ThemedView } from "@/components/themed-view";
 import * as Api from "@/lib/_core/api";
 import * as Auth from "@/lib/_core/auth";
+import * as EnhancedAuth from "@/lib/_core/auth-enhanced";
 import * as Linking from "expo-linking";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { Text } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { DotsLoader } from "@/components/skeleton";
+
+async function persistCallbackSession(sessionToken: string): Promise<void> {
+  await Auth.setSessionToken(sessionToken);
+  // Keep the active auth context and tRPC client in sync. The callback
+  // historically populated only the legacy session key.
+  await EnhancedAuth.setAuthTokens({
+    accessToken: sessionToken,
+    refreshToken: sessionToken,
+    expiresAt: Date.now() + 60 * 60 * 1000,
+    refreshExpiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
+  });
+}
 
 export default function OAuthCallback() {
   const router = useRouter();
@@ -34,7 +47,7 @@ export default function OAuthCallback() {
         // Check for sessionToken in params first (web OAuth callback from server redirect)
         if (params.sessionToken) {
           // console.log("[OAuth] Session token found in params (web callback)");
-          await Auth.setSessionToken(params.sessionToken);
+          await persistCallbackSession(params.sessionToken);
 
           // Decode and store user info if available
           if (params.user) {
@@ -153,7 +166,7 @@ export default function OAuthCallback() {
         // If we have sessionToken directly from URL, use it
         if (sessionToken) {
           // console.log("[OAuth] Session token found in URL, storing...");
-          await Auth.setSessionToken(sessionToken);
+          await persistCallbackSession(sessionToken);
           // console.log("[OAuth] Session token stored successfully");
           // User info is already in the OAuth callback response
           // No need to fetch from API
@@ -190,7 +203,7 @@ export default function OAuthCallback() {
         if (result.sessionToken) {
           // console.log("[OAuth] Session token received, storing...");
           // Store session token
-          await Auth.setSessionToken(result.sessionToken);
+          await persistCallbackSession(result.sessionToken);
           // console.log("[OAuth] Session token stored successfully");
 
           // Store user info if available

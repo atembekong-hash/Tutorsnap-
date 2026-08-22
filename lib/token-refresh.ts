@@ -11,7 +11,8 @@
  */
 
 import { Platform } from "react-native";
-import { setAuthTokens, getAuthToken, isTokenExpired } from "@/lib/_core/auth-enhanced";
+import { setAuthTokens, setSessionToken, getAuthToken, isTokenExpired } from "@/lib/_core/auth-enhanced";
+import { validateOAuthCredentials } from "@/lib/oauth-service";
 
 let _refreshTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -35,14 +36,25 @@ export async function refreshGoogleToken(): Promise<boolean> {
       return false;
     }
 
+    // Exchange the fresh Google ID token for a fresh TutorSnap session JWT.
+    // tRPC protected procedures accept only the latter, not a provider token.
+    const validated = await validateOAuthCredentials({
+      provider: "google",
+      idToken: tokens.idToken,
+    });
+    if (!validated.success || !validated.token) {
+      console.warn("[TokenRefresh] Backend did not issue a session token");
+      return false;
+    }
+
+    await setSessionToken(validated.token);
     await setAuthTokens({
       accessToken: tokens.idToken,
       refreshToken: tokens.idToken,
-      expiresAt: Date.now() + 60 * 60 * 1000,        // 1 hour
-      refreshExpiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000, // 30 days
+      expiresAt: Date.now() + 60 * 60 * 1000,
+      refreshExpiresAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
     });
 
-    // console.log("[TokenRefresh] Google ID token refreshed successfully");
     return true;
   } catch (error) {
     // Token refresh failure is non-fatal — the user will be prompted to sign in
