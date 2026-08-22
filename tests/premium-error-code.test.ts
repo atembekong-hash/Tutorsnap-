@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import type { TrpcContext } from "../server/_core/context";
 
-const { getDbMock } = vi.hoisted(() => ({
+const { getDbMock, invokeLLMMock } = vi.hoisted(() => ({
   getDbMock: vi.fn(),
+  invokeLLMMock: vi.fn(),
 }));
 
 vi.mock("../server/db", async () => {
@@ -13,6 +14,10 @@ vi.mock("../server/db", async () => {
     getDb: getDbMock,
   };
 });
+
+vi.mock("../server/_core/llm", () => ({
+  invokeLLM: invokeLLMMock,
+}));
 
 import { appRouter } from "../server/routers";
 
@@ -110,7 +115,30 @@ const premiumCalls: {
   },
 ];
 
-describe("academic premium enforcement", () => {
+describe("academic access contract", () => {
+  beforeEach(() => {
+    getDbMock.mockReset();
+    invokeLLMMock.mockReset();
+    getDbMock.mockResolvedValue(createNonPremiumDb());
+    invokeLLMMock.mockResolvedValue({
+      choices: [
+        {
+          message: {
+            content: JSON.stringify({
+              problem: "What is 2 + 2?",
+              answer: "4",
+              explanation: "4 is the sum of 2 and 2.",
+              submissionReady: "B) 4",
+              steps: [{ stepNumber: 1, title: "Add", explanation: "2 + 2 = 4", expression: "2 + 2 = 4" }],
+              hints: [],
+              questions: [{ id: "q1", problem: "What is 1 + 1?", options: { A: "1", B: "2", C: "3", D: "4" }, correctAnswer: "B", explanation: "1 + 1 = 2" }],
+            }),
+          },
+        },
+      ],
+    });
+  });
+
   it.each(premiumCalls)(
     "rejects anonymous access to $name",
     async ({ invoke }) => {
@@ -124,15 +152,11 @@ describe("academic premium enforcement", () => {
   );
 
   it.each(premiumCalls)(
-    "preserves PAYMENT_REQUIRED for $name",
+    "allows authenticated non-premium access to core feature $name",
     async ({ invoke }) => {
-      getDbMock.mockResolvedValue(createNonPremiumDb());
       const caller = appRouter.createCaller(createContext(true));
 
-      await expect(invoke(caller)).rejects.toMatchObject({
-        code: "PAYMENT_REQUIRED",
-        message: "Premium subscription required (10003)",
-      });
+      await expect(invoke(caller)).resolves.toBeDefined();
     },
   );
 });
