@@ -1462,21 +1462,6 @@ For purely conversational messages (greetings, "thank you", meta-questions about
 });
 
 // server/_core/trpc.ts
-async function checkServerSidePremium(userId, db2) {
-  if (!db2) return false;
-  try {
-    const { subscriptions: subscriptions2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-    const { eq: eq8, desc: desc3 } = await import("drizzle-orm");
-    const rows = await db2.select({ status: subscriptions2.status, expiresAt: subscriptions2.expiresAt }).from(subscriptions2).where(eq8(subscriptions2.userId, userId)).orderBy(desc3(subscriptions2.updatedAt)).limit(1);
-    if (!rows || rows.length === 0) return false;
-    const { status, expiresAt } = rows[0];
-    if (status === "active") return true;
-    if (status === "cancelled" && expiresAt && new Date(expiresAt) > /* @__PURE__ */ new Date()) return true;
-    return false;
-  } catch {
-    return false;
-  }
-}
 var import_server, import_superjson2, t, loggingMiddleware, router, publicProcedure, requireUser, protectedProcedure, adminProcedure;
 var init_trpc = __esm({
   "server/_core/trpc.ts"() {
@@ -5552,15 +5537,12 @@ var academicRouter = router({
     gradeLevel: import_zod6.z.string().nullable().optional()
   })).mutation(async ({ ctx, input }) => {
     try {
-      const db2 = await getDb();
-      const ok = await checkServerSidePremium(ctx.user.id, db2);
-      if (!ok) throw new import_server4.TRPCError({ code: "PAYMENT_REQUIRED", message: "Premium subscription required (10003)" });
       let tokenBudget = estimateSolveTokens(input.problem, input.subject);
       if (ctx.user) {
         try {
-          const db3 = await getDb();
-          if (db3) {
-            const cacheRows = await db3.select({ multiplier: aireSubjectCalibration.multiplier }).from(aireSubjectCalibration).where((0, import_drizzle_orm7.and)(
+          const db2 = await getDb();
+          if (db2) {
+            const cacheRows = await db2.select({ multiplier: aireSubjectCalibration.multiplier }).from(aireSubjectCalibration).where((0, import_drizzle_orm7.and)(
               (0, import_drizzle_orm7.eq)(aireSubjectCalibration.userId, ctx.user.id),
               (0, import_drizzle_orm7.eq)(aireSubjectCalibration.subject, input.subject)
             )).limit(1);
@@ -5570,7 +5552,7 @@ var academicRouter = router({
                 tokenBudget = Math.round(tokenBudget * m);
               }
             } else {
-              const m = await computeSubjectMultiplier(db3, ctx.user.id, input.subject);
+              const m = await computeSubjectMultiplier(db2, ctx.user.id, input.subject);
               if (m !== 1) tokenBudget = Math.round(tokenBudget * m);
             }
           }
@@ -5643,9 +5625,6 @@ var academicRouter = router({
     subject: import_zod6.z.string().default("other"),
     gradeLevel: import_zod6.z.string().optional()
   })).mutation(async ({ ctx, input }) => {
-    const db2 = await getDb();
-    const ok = await checkServerSidePremium(ctx.user.id, db2);
-    if (!ok) throw new import_server4.TRPCError({ code: "PAYMENT_REQUIRED", message: "Premium subscription required (10003)" });
     const optionsBlock = input.options ? `Answer choices:
   A) ${input.options.A}
   B) ${input.options.B}
@@ -5692,9 +5671,6 @@ Respond ONLY with this JSON (no extra text):
     gradeLevel: import_zod6.z.string().optional()
   })).mutation(async ({ ctx, input }) => {
     try {
-      const db2 = await getDb();
-      const ok = await checkServerSidePremium(ctx.user.id, db2);
-      if (!ok) throw new import_server4.TRPCError({ code: "PAYMENT_REQUIRED", message: "Premium subscription required (10003)" });
       const messages = [
         { role: "system", content: IMAGE_SOLVE_SYSTEM_PROMPT + gradeContext(input.gradeLevel) },
         {
@@ -5728,9 +5704,6 @@ Respond ONLY with this JSON (no extra text):
     difficulty: import_zod6.z.enum(["easy", "medium", "hard"]),
     gradeLevel: import_zod6.z.string().optional()
   })).mutation(async ({ ctx, input }) => {
-    const db2 = await getDb();
-    const ok = await checkServerSidePremium(ctx.user.id, db2);
-    if (!ok) throw new import_server4.TRPCError({ code: "PAYMENT_REQUIRED", message: "Premium subscription required (10003)" });
     const practiceTokens = input.difficulty === "easy" ? 700 : input.difficulty === "medium" ? 1100 : 1600;
     const practicePrompt = buildPracticePrompt(input.subject, input.difficulty) + gradeContext(input.gradeLevel);
     const result = await invokeLLM({
@@ -5782,9 +5755,6 @@ Respond ONLY with this JSON (no extra text):
     count: import_zod6.z.number().min(3).max(10).default(5),
     gradeLevel: import_zod6.z.string().optional()
   })).mutation(async ({ ctx, input }) => {
-    const db2 = await getDb();
-    const ok = await checkServerSidePremium(ctx.user.id, db2);
-    if (!ok) throw new import_server4.TRPCError({ code: "PAYMENT_REQUIRED", message: "Premium subscription required (10003)" });
     const quizPrompt = `You are TutorSnap, an expert academic tutor.${gradeContext(input.gradeLevel)}
 Generate exactly ${input.count} ${input.difficulty} multiple-choice questions for: ${input.subject}.
 Each question has 4 distinct options (A-D), exactly one correct answer, and a brief one-sentence explanation.
