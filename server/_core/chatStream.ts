@@ -460,7 +460,7 @@ async function streamOnce(
   emitTokens: boolean,
 ): Promise<{ text: string; finishReason: string }> {
   const payload = {
-    model: "gpt-4o-mini",
+    model: "gpt-5-mini",
     stream: true,
     max_tokens: maxTokens,
     messages,
