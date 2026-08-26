@@ -1220,8 +1220,8 @@ ${parts.map((p) => `- ${p}`).join("\n")}` : "";
 }
 async function streamOnce(messages, maxTokens, res, emitTokens) {
   const payload = {
-    model: "gpt-4o-mini",
-    stream: true,
+    model: "gpt-5-mini",
+    stream: false,
     max_tokens: maxTokens,
     messages
   };
@@ -1236,6 +1236,45 @@ async function streamOnce(messages, maxTokens, res, emitTokens) {
   if (!upstream.ok) {
     const errText = await upstream.text();
     throw new Error(`LLM error: ${upstream.status} ${errText}`);
+  }
+  const contentType = upstream.headers.get("content-type") ?? "";
+  if (contentType.includes("application/json")) {
+    const body = await upstream.json();
+    if (body.error) {
+      const errorMessage = typeof body.error === "string" ? body.error : body.error.message ?? "Unknown LLM error";
+      if (errorMessage !== "Streaming is not supported") {
+        throw new Error(`LLM error: ${errorMessage}`);
+      }
+      const fallback = await fetch(resolveApiUrl(), {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${ENV.forgeApiKey}`
+        },
+        body: JSON.stringify({ ...payload, stream: false })
+      });
+      if (!fallback.ok) {
+        const errorText = await fallback.text();
+        throw new Error(`LLM fallback error: ${fallback.status} ${errorText}`);
+      }
+      const fallbackBody = await fallback.json();
+      if (fallbackBody.error) {
+        const fallbackError = typeof fallbackBody.error === "string" ? fallbackBody.error : fallbackBody.error.message ?? "Unknown LLM error";
+        throw new Error(`LLM fallback error: ${fallbackError}`);
+      }
+      const fallbackContent = fallbackBody.choices?.[0]?.message?.content;
+      const text3 = Array.isArray(fallbackContent) ? fallbackContent.map((part) => part.text ?? "").join("") : fallbackContent ?? "";
+      if (text3 && emitTokens) res.write(`data: ${JSON.stringify({ token: text3 })}
+
+`);
+      return { text: text3, finishReason: "stop" };
+    }
+    const content = body.choices?.[0]?.message?.content;
+    const text2 = Array.isArray(content) ? content.map((part) => part.text ?? "").join("") : content ?? "";
+    if (text2 && emitTokens) res.write(`data: ${JSON.stringify({ token: text2 })}
+
+`);
+    return { text: text2, finishReason: "stop" };
   }
   const reader = upstream.body?.getReader();
   if (!reader) return { text: "", finishReason: "stop" };
