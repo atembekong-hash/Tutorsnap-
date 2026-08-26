@@ -480,6 +480,45 @@ async function streamOnce(
     throw new Error(`LLM error: ${upstream.status} ${errText}`);
   }
 
+  const contentType = upstream.headers.get("content-type") ?? "";
+  if (contentType.includes("application/json")) {
+    const body = (await upstream.json()) as {
+      error?: string | { message?: string };
+      choices?: Array<{ message?: { content?: string | Array<{ type?: string; text?: string }> } }>;
+    };
+
+    if (body.error) {
+      const errorMessage = typeof body.error === "string" ? body.error : body.error.message ?? "Unknown LLM error";
+      if (errorMessage !== "Streaming is not supported") {
+        throw new Error(`LLM error: ${errorMessage}`);
+      }
+
+      const fallback = await fetch(resolveApiUrl(), {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${ENV.forgeApiKey}`,
+        },
+        body: JSON.stringify({ ...payload, stream: false }),
+      });
+      if (!fallback.ok) {
+        const errorText = await fallback.text();
+        throw new Error(`LLM fallback error: ${fallback.status} ${errorText}`);
+      }
+      const fallbackBody = (await fallback.json()) as typeof body;
+      if (fallbackBody.error) {
+        const fallbackError = typeof fallbackBody.error === "string" ? fallbackBody.error : fallbackBody.error.message ?? "Unknown LLM error";
+        throw new Error(`LLM fallback error: ${fallbackError}`);
+      }
+      const fallbackContent = fallbackBody.choices?.[0]?.message?.content;
+      const text = Array.isArray(fallbackContent)
+        ? fallbackContent.map((part) => part.text ?? "").join("")
+        : fallbackContent ?? "";
+      if (text && emitTokens) res.write(`data: ${JSON.stringify({ token: text })}\n\n`);
+      return { text, finishReason: "stop" };
+    }
+  }
+
   const reader = upstream.body?.getReader();
   if (!reader) return { text: "", finishReason: "stop" };
 
