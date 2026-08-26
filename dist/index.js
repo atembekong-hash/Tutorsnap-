@@ -1220,7 +1220,7 @@ ${parts.map((p) => `- ${p}`).join("\n")}` : "";
 }
 async function streamOnce(messages, maxTokens, res, emitTokens) {
   const payload = {
-    model: "gpt-5-mini",
+    model: "claude-haiku-4-5",
     stream: false,
     max_tokens: maxTokens,
     messages
