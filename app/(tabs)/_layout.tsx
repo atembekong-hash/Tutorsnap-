@@ -316,9 +316,9 @@ export default function TabLayout() {
       <Tabs.Screen
         name="chat"
         options={{
-          title: "AI Tutor",
-          tabBarIcon: ({ color, focused }) => <ChatTabIcon color={color} focused={focused} />,
-          tabBarStyle: chatTabBarStyle,
+          // AI Tutor is a page opened from the top-page action, not a bottom tab.
+          href: null,
+          tabBarStyle: { display: "none" },
         }}
       />
       <Tabs.Screen

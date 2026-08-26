@@ -111,7 +111,7 @@ function ContextualAssistantButton({
       style={[
         styles.anchor,
         {
-          bottom: Math.max(insets.bottom, 8) + 72,
+          top: Math.max(insets.top, 8) + 8,
         },
       ]}
     >
@@ -124,17 +124,14 @@ function ContextualAssistantButton({
         style={[
           styles.button,
           {
-            backgroundColor: colors.primary,
+            borderColor: colors.border,
             shadowColor: colors.foreground,
           },
         ]}
       >
         <View style={styles.iconWrap}>
-          <IconSymbol name="sparkles" size={20} color="#FFFFFF" />
+          <IconSymbol name="sparkles" size={18} color={colors.primary} />
         </View>
-        <Text numberOfLines={1} style={styles.label}>
-          {label}
-        </Text>
       </TouchableOpacity>
     </View>
   );
@@ -206,17 +203,18 @@ const styles = StyleSheet.create({
     zIndex: 1000,
   },
   button: {
-    minHeight: 52,
-    maxWidth: 190,
-    paddingHorizontal: 16,
-    borderRadius: 26,
-    flexDirection: "row",
+    width: 38,
+    height: 38,
+    paddingHorizontal: 0,
+    borderRadius: 19,
+    borderWidth: StyleSheet.hairlineWidth,
+    backgroundColor: "transparent",
     alignItems: "center",
-    gap: 9,
-    shadowOpacity: Platform.OS === "web" ? 0.16 : 0.28,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 8,
+    justifyContent: "center",
+    shadowOpacity: Platform.OS === "web" ? 0.08 : 0.12,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
   iconWrap: {
     width: 28,

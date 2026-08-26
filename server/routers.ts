@@ -811,9 +811,14 @@ Respond ONLY with this JSON (no extra text):
     }))
     .mutation(async ({ ctx, input }) => {
       try {
-        // Use gemini for vision (best multimodal) with gpt-5-mini fallback
+        // Use one fast supported multimodal request. Sequential fallback added avoidable latency.
+        const fastImagePrompt = `You are TutorSnap, an expert academic tutor. Read the problem in the image and solve it accurately.
+Return only valid JSON with these fields: problem, subject, answer, submissionReady, steps, workedExample, conceptExplained, tips, relatedTopics.
+Make the response polished and classroom-ready: clear reasoning, numbered steps, plain readable math, concise explanations, and no references to AI, models, prompts, or image generation.
+Use 3-6 steps unless the problem genuinely needs more. Keep answer to 3-5 sentences, conceptExplained to 4-6 sentences, workedExample optional and under 100 words, and tips to exactly 3 short actionable items.
+Do not use Markdown, LaTeX, dollar signs, or backslashes in text fields. Ensure submissionReady is an independent student-ready solution, not a summary.`;
         const messages = [
-          { role: "system" as const, content: IMAGE_SOLVE_SYSTEM_PROMPT + gradeContext(input.gradeLevel) },
+          { role: "system" as const, content: fastImagePrompt + gradeContext(input.gradeLevel) },
           {
             role: "user" as const,
             content: [
@@ -826,13 +831,14 @@ Respond ONLY with this JSON (no extra text):
           },
         ];
         const params = {
-          model: "gemini-3-flash-preview" as const,
+          model: "claude-haiku-4-5" as const,
           messages,
-          max_tokens: 1800,
+          max_tokens: 1000,
           temperature: 0.3,
           response_format: { type: "json_object" as const },
         };
-        const jsonStr = await invokeLLMWithFallback("gemini-3-flash-preview", "claude-haiku-4-5", params);
+        const result = await invokeLLMJsonCompatible(params);
+        const jsonStr = extractJsonFromContent(extractLLMContent(result));
         return JSON.parse(jsonStr);
       } catch (err: unknown) {
         if (err instanceof TRPCError) throw err;
