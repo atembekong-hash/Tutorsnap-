@@ -27,6 +27,9 @@
  */
 import { ENV } from "./env";
 
+const MAX_AUDIO_BYTES = 16 * 1024 * 1024;
+const AUDIO_FETCH_TIMEOUT_MS = 20_000;
+
 export type TranscribeOptions = {
   audioUrl: string; // URL to the audio file (e.g., S3 URL)
   language?: string; // Optional: specify language code (e.g., "en", "es", "zh")
@@ -95,11 +98,19 @@ export async function transcribeAudio(
       };
     }
 
-    // Step 2: Download audio from URL
+    // Step 2: Download audio from the application storage URL.
     let audioBuffer: Buffer;
     let mimeType: string;
     try {
-      const response = await fetch(options.audioUrl);
+      const audioUrl = new URL(options.audioUrl);
+      if (audioUrl.protocol !== "https:" && !(process.env.NODE_ENV !== "production" && audioUrl.protocol === "http:")) {
+        return { error: "Audio URL must use HTTPS", code: "INVALID_FORMAT" };
+      }
+
+      const response = await fetch(audioUrl, {
+        redirect: "follow",
+        signal: AbortSignal.timeout(AUDIO_FETCH_TIMEOUT_MS),
+      });
       if (!response.ok) {
         return {
           error: "Failed to download audio file",
@@ -108,17 +119,40 @@ export async function transcribeAudio(
         };
       }
 
-      audioBuffer = Buffer.from(await response.arrayBuffer());
-      mimeType = response.headers.get("content-type") || "audio/mpeg";
-
-      // Check file size (16MB limit)
-      const sizeMB = audioBuffer.length / (1024 * 1024);
-      if (sizeMB > 16) {
+      const declaredLength = Number(response.headers.get("content-length") || 0);
+      if (declaredLength > MAX_AUDIO_BYTES) {
         return {
           error: "Audio file exceeds maximum size limit",
           code: "FILE_TOO_LARGE",
-          details: `File size is ${sizeMB.toFixed(2)}MB, maximum allowed is 16MB`,
+          details: "Declared file size exceeds 16MB",
         };
+      }
+
+      const chunks: Uint8Array[] = [];
+      let totalBytes = 0;
+      if (response.body) {
+        const reader = response.body.getReader();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          if (!value) continue;
+          totalBytes += value.byteLength;
+          if (totalBytes > MAX_AUDIO_BYTES) {
+            await reader.cancel();
+            return {
+              error: "Audio file exceeds maximum size limit",
+              code: "FILE_TOO_LARGE",
+              details: "Downloaded file exceeds 16MB",
+            };
+          }
+          chunks.push(value);
+        }
+      }
+      audioBuffer = Buffer.concat(chunks.map((chunk) => Buffer.from(chunk)), totalBytes);
+      mimeType = (response.headers.get("content-type") || "audio/mpeg").split(";", 1)[0].trim().toLowerCase();
+
+      if (audioBuffer.length === 0) {
+        return { error: "Audio file is empty", code: "INVALID_FORMAT" };
       }
     } catch (error) {
       return {

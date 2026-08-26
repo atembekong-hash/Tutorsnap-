@@ -58,6 +58,39 @@ const requireUser = t.middleware(async (opts) => {
 
 export const protectedProcedure = t.procedure.use(loggingMiddleware).use(requireUser);
 
+const AI_RATE_LIMIT_WINDOW_MS = 60_000;
+const AI_RATE_LIMIT_MAX_REQUESTS = 30;
+const aiRateLimitWindows = new Map<string, { startedAt: number; count: number }>();
+
+const aiRateLimitMiddleware = t.middleware(async (opts) => {
+  const userId = opts.ctx.user?.id;
+  if (!userId) {
+    throw new TRPCError({ code: "UNAUTHORIZED", message: UNAUTHED_ERR_MSG });
+  }
+
+  const now = Date.now();
+  const key = `${userId}:${opts.path}`;
+  const current = aiRateLimitWindows.get(key);
+  if (!current || now - current.startedAt >= AI_RATE_LIMIT_WINDOW_MS) {
+    aiRateLimitWindows.set(key, { startedAt: now, count: 1 });
+  } else {
+    current.count += 1;
+    if (current.count > AI_RATE_LIMIT_MAX_REQUESTS) {
+      throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "AI request limit reached. Please try again shortly." });
+    }
+  }
+
+  // Prevent stale keys from growing without bound in long-lived API processes.
+  if (aiRateLimitWindows.size > 10_000) {
+    for (const [windowKey, window] of aiRateLimitWindows) {
+      if (now - window.startedAt >= AI_RATE_LIMIT_WINDOW_MS) aiRateLimitWindows.delete(windowKey);
+    }
+  }
+  return opts.next();
+});
+
+export const aiProcedure = t.procedure.use(loggingMiddleware).use(requireUser).use(aiRateLimitMiddleware);
+
 export const adminProcedure = t.procedure.use(loggingMiddleware).use(
   t.middleware(async (opts) => {
     const { ctx, next } = opts;

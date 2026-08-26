@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { router, publicProcedure, protectedProcedure } from "./_core/trpc";
+import { router, publicProcedure, protectedProcedure, aiProcedure } from "./_core/trpc";
 import { getDb } from "./db";
 import { aireFeedback, aireSubjectCalibration, solveHistory, chatSessions, userProgress, userBookmarks, userNotes, subscriptions } from "../drizzle/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
@@ -11,7 +11,7 @@ import { emailAuthRouter } from "./routers/email-auth";
 import { classroomRouter } from "./routers/classroom";
 import { COOKIE_NAME } from "../shared/const";
 import { transcribeAudio } from "./_core/voiceTranscription";
-import { storagePut } from "./storage";
+import { storagePut, storageGetSignedUrl } from "./storage";
 import { TRPCError } from "@trpc/server";
 import { captureServerError } from "./_core/sentry-server";
 
@@ -644,7 +644,7 @@ function truncateForSimpleTier(parsed: any, tokenBudget: number): any {
 // ─── Academic router ──────────────────────────────────────────────────────────
 
 const academicRouter = router({
-  solve: protectedProcedure
+  solve: aiProcedure
     .input(z.object({
       problem: z.string().min(1),
       subject: z.string().default("other"),
@@ -747,7 +747,7 @@ const academicRouter = router({
       }
     }),
 
-  solveExplanation: protectedProcedure
+  solveExplanation: aiProcedure
     .input(z.object({
       problem: z.string().min(1, "problem is required"),
       correctAnswer: z.string().min(1, "correctAnswer is required"),
@@ -802,7 +802,7 @@ Respond ONLY with this JSON (no extra text):
       }
     }),
 
-  solveFromImage: protectedProcedure
+  solveFromImage: aiProcedure
     .input(z.object({
       imageBase64: z.string(),
       mimeType: z.string().default("image/jpeg"),
@@ -841,11 +841,11 @@ Respond ONLY with this JSON (no extra text):
       }
     }),
 
-  generatePractice: protectedProcedure
+  generatePractice: aiProcedure
     .input(z.object({
-      subject: z.string(),
+      subject: z.string().trim().min(1).max(100),
       difficulty: z.enum(["easy", "medium", "hard"]),
-      gradeLevel: z.string().optional(),
+      gradeLevel: z.string().trim().max(50).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       // Concise mobile schema: enough room for valid JSON without encouraging excess prose.
@@ -900,12 +900,12 @@ Respond ONLY with this JSON (no extra text):
       return parsed;
     }),
 
-  generateQuiz: protectedProcedure
+  generateQuiz: aiProcedure
     .input(z.object({
-      subject: z.string(),
+      subject: z.string().trim().min(1).max(100),
       difficulty: z.enum(["easy", "medium", "hard"]),
-      count: z.number().min(3).max(10).default(5),
-      gradeLevel: z.string().optional(),
+      count: z.number().int().min(3).max(10).default(5),
+      gradeLevel: z.string().trim().max(50).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const quizPrompt = `You are TutorSnap, an expert academic tutor.${gradeContext(input.gradeLevel)}
@@ -934,10 +934,10 @@ Respond ONLY with this JSON and no surrounding prose:
       return parsed.questions ?? [];
     }),
 
-  studyTip: publicProcedure
+  studyTip: aiProcedure
     .input(z.object({
-      subject: z.string(),
-      gradeLevel: z.string().optional(),
+      subject: z.string().trim().min(1).max(100),
+      gradeLevel: z.string().trim().max(50).optional(),
     }))
     .mutation(async ({ input }) => {
       const gradeHint = input.gradeLevel && GRADE_LEVEL_DESCRIPTIONS[input.gradeLevel] ? ` Tailor the tip for a ${GRADE_LEVEL_DESCRIPTIONS[input.gradeLevel].split(":")[0]} student.` : "";
@@ -956,14 +956,14 @@ Respond ONLY with this JSON and no surrounding prose:
       return { tip: tip || `Practice ${input.subject} problems daily. Consistency is the key to mastery!` };
     }),
 
-  chat: publicProcedure
+  chat: aiProcedure
     .input(z.object({
       messages: z.array(z.object({
         role: z.enum(["user", "assistant"]),
-        content: z.string(),
-      })),
-      subject: z.string().optional(),
-      gradeLevel: z.string().optional(),
+        content: z.string().trim().min(1).max(4000),
+      })).min(1).max(40),
+      subject: z.string().trim().max(100).optional(),
+      gradeLevel: z.string().trim().max(50).optional(),
       detailedMode: z.boolean().optional(), // When true, use doubled token budgets
     }))
     .mutation(async ({ input }) => {
@@ -1002,10 +1002,10 @@ Respond ONLY with this JSON and no surrounding prose:
       const text = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
       return { content: text || "I apologize, I couldn't process your request." };
     }),
-  suggestFollowUps: publicProcedure
+  suggestFollowUps: aiProcedure
     .input(z.object({
-      aiResponse: z.string(),
-      subject: z.string().optional(),
+      aiResponse: z.string().trim().min(1).max(10000),
+      subject: z.string().trim().max(100).optional(),
     }))
     .mutation(async ({ input }) => {
       const prompt = `You are a helpful academic tutor assistant. Based on the following AI tutor response, generate exactly 3 short follow-up questions or prompts a student might want to ask next. Each should be 3-7 words, specific to the content of the response, and help deepen understanding.\n\nAI response:\n"${input.aiResponse.slice(0, 800)}"\n\nRespond ONLY with valid JSON in this exact format:\n{"chips": ["Question 1", "Question 2", "Question 3"]}`;
@@ -1028,12 +1028,12 @@ Respond ONLY with this JSON and no surrounding prose:
       }
     }),
 
-  explainDifferently: publicProcedure
+  explainDifferently: aiProcedure
     .input(z.object({
-      problem: z.string().min(1),
-      answer: z.string(),
-      subject: z.string().default("other"),
-      gradeLevel: z.string().optional(),
+      problem: z.string().trim().min(1).max(400),
+      answer: z.string().trim().max(300),
+      subject: z.string().trim().min(1).max(100).default("other"),
+      gradeLevel: z.string().trim().max(50).optional(),
       style: z.enum(["analogy", "step-by-step", "visual"]).default("analogy"),
     }))
     .mutation(async ({ input }) => {
@@ -1073,13 +1073,13 @@ Now re-explain this using the ${input.style} style.`;
       return { explanation: explanation || "Could not generate an alternative explanation. Please try again." };
     }),
 
-  generateSimilar: publicProcedure
+  generateSimilar: aiProcedure
     .input(z.object({
-      problem: z.string(),
-      subject: z.string(),
+      problem: z.string().trim().min(1).max(200),
+      subject: z.string().trim().min(1).max(100),
       difficulty: z.enum(["easy", "medium", "hard"]).default("medium"),
-      count: z.number().min(1).max(5).default(3),
-      gradeLevel: z.string().optional(),
+      count: z.number().int().min(1).max(5).default(3),
+      gradeLevel: z.string().trim().max(50).optional(),
     }))
     .mutation(async ({ input }) => {
       const prompt = `You are TutorSnap, an expert academic tutor.${gradeContext(input.gradeLevel)}
@@ -1108,20 +1108,20 @@ Respond ONLY with this JSON:
         return JSON.parse(repaired) as { problems: { id: string; problem: string; hint: string }[] };
       }
     }),
-  generateStudyBlocks: publicProcedure
+  generateStudyBlocks: aiProcedure
     .input(z.object({
-      problem: z.string(),
-      answer: z.string(),
+      problem: z.string().trim().min(1).max(300),
+      answer: z.string().trim().max(4000),
       steps: z.array(z.object({
-        stepNumber: z.number(),
-        title: z.string(),
-        explanation: z.string(),
-        expression: z.string().optional(),
-      })).optional(),
-      conceptExplained: z.string().optional(),
-      tips: z.array(z.string()).optional(),
-      subject: z.string(),
-      gradeLevel: z.string().optional(),
+        stepNumber: z.number().int().min(1).max(100),
+        title: z.string().trim().max(200),
+        explanation: z.string().trim().max(2000),
+        expression: z.string().trim().max(500).optional(),
+      })).max(30).optional(),
+      conceptExplained: z.string().trim().max(1000).optional(),
+      tips: z.array(z.string().trim().max(500)).max(20).optional(),
+      subject: z.string().trim().min(1).max(100),
+      gradeLevel: z.string().trim().max(50).optional(),
     }))
     .mutation(async ({ input }) => {
       const stepsText = (input.steps ?? []).map((s) =>
@@ -1170,11 +1170,11 @@ Respond ONLY with this JSON:
 // ─── Voice router ────────────────────────────────────────────────────────────
 const voiceRouter = router({
   /** Get a presigned PUT URL to upload audio directly from the client */
-  getUploadUrl: publicProcedure
-    .input(z.object({ filename: z.string(), contentType: z.string() }))
-    .mutation(async ({ input }) => {
+  getUploadUrl: protectedProcedure
+    .input(z.object({ filename: z.string().trim().min(1).max(120), contentType: z.string().trim().max(100) }))
+    .mutation(async ({ ctx, input }) => {
       const { key, url } = await storagePut(
-        `voice/${input.filename}`,
+        `voice/${ctx.user.id}/${input.filename.replace(/[^a-zA-Z0-9._-]/g, "_")}`,
         Buffer.alloc(0),
         input.contentType,
       );
@@ -1186,16 +1186,38 @@ const voiceRouter = router({
     }),
 
   /** Transcribe audio from a storage key */
-  transcribe: publicProcedure
+  transcribe: protectedProcedure
     .input(
       z.object({
-        audioUrl: z.string(),
-        language: z.string().optional(),
+        audioUrl: z.string().url().max(2048),
+        language: z.string().trim().min(2).max(16).regex(/^[a-zA-Z-]+$/).optional(),
       }),
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      let audioUrl: URL;
+      try {
+        audioUrl = new URL(input.audioUrl);
+      } catch {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid audio URL" });
+      }
+      const configuredOrigin = process.env.PUBLIC_API_URL?.trim() || process.env.API_BASE_URL?.trim();
+      const expectedOrigin = configuredOrigin
+        ? new URL(configuredOrigin).origin
+        : `${ctx.req.protocol}://${ctx.req.get("host") || "localhost:3000"}`;
+      if (
+        audioUrl.origin !== expectedOrigin ||
+        !audioUrl.pathname.startsWith("/manus-storage/") ||
+        (audioUrl.protocol !== "https:" && !(process.env.NODE_ENV !== "production" && audioUrl.protocol === "http:"))
+      ) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Audio URL is not a valid TutorSnap storage URL" });
+      }
+      const storageKey = decodeURIComponent(audioUrl.pathname.slice("/manus-storage/".length));
+      if (!storageKey.startsWith(`voice/${ctx.user.id}/`) || storageKey.includes("..")) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Audio object does not belong to this user" });
+      }
+      const signedAudioUrl = await storageGetSignedUrl(storageKey);
       const result = await transcribeAudio({
-        audioUrl: input.audioUrl,
+        audioUrl: signedAudioUrl,
         language: input.language,
         prompt: "Transcribe the student's spoken academic question accurately.",
       });
@@ -1295,20 +1317,19 @@ const aireRouter = router({
    * Stores up to 10 ratings per user; older ones are pruned.
    * rating: -1 = too short, 0 = just right, 1 = too long
    */
-  logFeedback: publicProcedure
+  logFeedback: protectedProcedure
     .input(z.object({
       difficulty: z.number().int().min(1).max(5),
-      subject: z.string().default("other"),
-      steps: z.number().int().min(0).default(1),
+      subject: z.string().trim().min(1).max(64).default("other"),
+      steps: z.number().int().min(0).max(100).default(1),
       rating: z.number().int().min(-1).max(1),
     }))
     .mutation(async ({ ctx, input }) => {
-      // userId is optional — anonymous feedback is still valuable
-      const userId = (ctx as any).user?.id ?? null;
+      const userId = ctx.user.id;
       try {
         const db = await getDb();
         if (!db) return { ok: false, reason: "db_unavailable" };
-        // Insert the new rating (userId may be null for anonymous users)
+        // Insert the new rating for the authenticated user.
         await db.insert(aireFeedback).values({
           userId,
           difficulty: input.difficulty,

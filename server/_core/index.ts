@@ -243,6 +243,12 @@ async function startServer() {
         const productId: string = event.product_id ?? "";
         const expiresAtMs: number | null = event.expiration_at_ms ?? null;
 
+        if (!rcUserId || !productId) {
+          console.warn(`[RC Webhook] Missing required identity fields for ${eventType}`);
+          res.status(400).json({ ok: false, error: "Missing subscription identity" });
+          return;
+        }
+
         console.log(`[RC Webhook] event=${eventType} rcUser=${rcUserId} product=${productId}`);
 
         // ── 3. Determine new status ───────────────────────────────────────────
@@ -308,9 +314,8 @@ async function startServer() {
         const { eq, and } = await import("drizzle-orm");
         const db = await getDb();
         if (!db) {
-          console.warn("[RC Webhook] DB unavailable — cannot persist subscription event");
-          // Return 200 so RevenueCat does not keep retrying indefinitely
-          res.json({ ok: true, persisted: false });
+          console.error("[RC Webhook] DB unavailable — requesting webhook retry");
+          res.status(503).json({ ok: false, error: "Database unavailable" });
           return;
         }
 
