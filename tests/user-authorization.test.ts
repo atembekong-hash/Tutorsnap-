@@ -29,4 +29,13 @@ describe("user-scoped authorization", () => {
     await expect(caller.referral.getUserCodes()).rejects.toThrow();
     await expect(caller.referral.validateCode({ code: "SAMPLE-CODE" })).rejects.toThrow();
   });
+
+  it("requires authentication for AI, voice, and feedback operations", async () => {
+    const caller = appRouter.createCaller(createUnauthenticatedContext());
+
+    await expect(caller.academic.studyTip({ subject: "algebra" })).rejects.toThrow();
+    await expect(caller.academic.chat({ messages: [{ role: "user", content: "Help" }] })).rejects.toThrow();
+    await expect(caller.voice.transcribe({ audioUrl: "https://api.example.com/manus-storage/voice/1/audio.m4a" })).rejects.toThrow();
+    await expect(caller.aire.logFeedback({ difficulty: 2, rating: 0 })).rejects.toThrow();
+  });
 });
