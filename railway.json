@@ -6,6 +6,7 @@
     "watchPatterns": [
       "server/**",
       "drizzle/**",
+      "drizzle-pg/**",
       "shared/**",
       "package.json",
       "pnpm-lock.yaml",

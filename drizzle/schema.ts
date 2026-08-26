@@ -1,24 +1,30 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, boolean, index, uniqueIndex } from "drizzle-orm/mysql-core";
+import { boolean, index, integer, pgEnum, pgTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/pg-core";
+
+const userRoleEnum = pgEnum("user_role", ["user", "admin"]);
+const subscriptionStatusEnum = pgEnum("subscription_status", ["active", "cancelled", "expired", "refunded"]);
+const classroomRoleEnum = pgEnum("classroom_role", ["teacher", "learner"]);
+const assignmentStatusEnum = pgEnum("assignment_status", ["draft", "published"]);
+const submissionStatusEnum = pgEnum("submission_status", ["pending", "complete"]);
 
 /**
  * Core user table backing auth flow.
  * Extend this file with additional tables as your product grows.
  * Columns use camelCase to match both database fields and generated types.
  */
-export const users = mysqlTable("users", {
+export const users = pgTable("users", {
   /**
    * Surrogate primary key. Auto-incremented numeric value managed by the database.
    * Use this for relations between tables.
    */
-  id: int("id").autoincrement().primaryKey(),
+  id: integer("id").generatedAlwaysAsIdentity().primaryKey(),
   /** Manus OAuth identifier (openId) returned from the OAuth callback. Unique per user. */
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
-  role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  role: userRoleEnum("role").default("user").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
   appearanceSettings: text("appearanceSettings"),
 });
@@ -29,15 +35,15 @@ export type InsertUser = typeof users.$inferInsert;
 /**
  * Referral codes table for tracking referral program
  */
-export const referralCodes = mysqlTable("referral_codes", {
-  id: int("id").autoincrement().primaryKey(),
+export const referralCodes = pgTable("referral_codes", {
+  id: integer("id").generatedAlwaysAsIdentity().primaryKey(),
   code: varchar("code", { length: 50 }).notNull().unique(),
-  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
-  uses: int("uses").default(0).notNull(),
-  maxUses: int("maxUses").default(999).notNull(),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  uses: integer("uses").default(0).notNull(),
+  maxUses: integer("maxUses").default(999).notNull(),
   expiresAt: timestamp("expiresAt").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
 export type ReferralCode = typeof referralCodes.$inferSelect;
@@ -46,9 +52,9 @@ export type InsertReferralCode = typeof referralCodes.$inferInsert;
 /**
  * Fraud detection tracking table
  */
-export const fraudAlerts = mysqlTable("fraud_alerts", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").references(() => users.id, { onDelete: "cascade" }),
+export const fraudAlerts = pgTable("fraud_alerts", {
+  id: integer("id").generatedAlwaysAsIdentity().primaryKey(),
+  userId: integer("userId").references(() => users.id, { onDelete: "cascade" }),
   alertType: varchar("alertType", { length: 50 }).notNull(),
   ipAddress: varchar("ipAddress", { length: 45 }),
   deviceId: varchar("deviceId", { length: 255 }),
@@ -57,16 +63,16 @@ export const fraudAlerts = mysqlTable("fraud_alerts", {
   resolved: boolean("resolved").default(false).notNull(),
   actionTaken: varchar("actionTaken", { length: 100 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
 /**
  * Redemption history for tracking patterns
  */
-export const redemptionHistory = mysqlTable("redemption_history", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").references(() => users.id, { onDelete: "cascade" }),
-  codeId: int("codeId"),
+export const redemptionHistory = pgTable("redemption_history", {
+  id: integer("id").generatedAlwaysAsIdentity().primaryKey(),
+  userId: integer("userId").references(() => users.id, { onDelete: "cascade" }),
+  codeId: integer("codeId"),
   code: varchar("code", { length: 50 }).notNull(),
   ipAddress: varchar("ipAddress", { length: 45 }),
   deviceId: varchar("deviceId", { length: 255 }),
@@ -93,10 +99,10 @@ export type InsertRedemptionRecord = typeof redemptionHistory.$inferInsert;
  *   - idx_otp_email_purpose: supports cooldown check and prior-code invalidation
  *   - idx_otp_expires: supports scheduled cleanup
  */
-export const otpCodes = mysqlTable(
+export const otpCodes = pgTable(
   "otp_codes",
   {
-    id: int("id").autoincrement().primaryKey(),
+    id: integer("id").generatedAlwaysAsIdentity().primaryKey(),
     /** The email address the code was issued for. */
     email: varchar("email", { length: 320 }).notNull(),
     /**
@@ -112,7 +118,7 @@ export const otpCodes = mysqlTable(
     /** Timestamp after which the code is invalid (10 minutes from issue). */
     expiresAt: timestamp("expiresAt").notNull(),
     /** Number of failed verification attempts. Locked out at 5. */
-    attempts: int("attempts").default(0).notNull(),
+    attempts: integer("attempts").default(0).notNull(),
     /** IP address of the requester (trusted-proxy extracted). */
     ipAddress: varchar("ipAddress", { length: 45 }),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -141,10 +147,10 @@ export type InsertOtpCode = typeof otpCodes.$inferInsert;
  *   - idx_audit_email_created: per-email rate-limit query (O(log n))
  *   - idx_audit_ip_created: per-IP rate-limit query (O(log n))
  */
-export const otpAudit = mysqlTable(
+export const otpAudit = pgTable(
   "otp_audit",
   {
-    id: int("id").autoincrement().primaryKey(),
+    id: integer("id").generatedAlwaysAsIdentity().primaryKey(),
     /** Email the OTP was issued for. */
     email: varchar("email", { length: 320 }).notNull(),
     /** Purpose: "signin" or "change_email". */
@@ -169,7 +175,7 @@ export type InsertOtpAuditEntry = typeof otpAudit.$inferInsert;
  * A worker acquires the lock by inserting a row; it releases it on completion.
  * Rows older than the lock TTL are considered stale and can be overwritten.
  */
-export const schedulerLocks = mysqlTable("scheduler_locks", {
+export const schedulerLocks = pgTable("scheduler_locks", {
   /** Unique job name (e.g., "otp-cleanup"). */
   jobName: varchar("jobName", { length: 100 }).notNull().primaryKey(),
   /** Instance identifier (hostname + PID). */
@@ -186,19 +192,19 @@ export type SchedulerLock = typeof schedulerLocks.$inferSelect;
  * Stores the last 10 response-length ratings per user.
  * Used server-side to adjust classifier token budgets for that user.
  */
-export const aireFeedback = mysqlTable(
+export const aireFeedback = pgTable(
   "aire_feedback",
   {
-    id: int("id").autoincrement().primaryKey(),
-    userId: int("userId").references(() => users.id, { onDelete: "cascade" }),
+    id: integer("id").generatedAlwaysAsIdentity().primaryKey(),
+    userId: integer("userId").references(() => users.id, { onDelete: "cascade" }),
     /** Difficulty tier: 1=trivial, 2=simple, 3=medium, 4=complex, 5=phd */
-    difficulty: int("difficulty").notNull(),
+    difficulty: integer("difficulty").notNull(),
     /** Subject slug (e.g. "calculus", "algebra", "other") */
     subject: varchar("subject", { length: 64 }).notNull().default("other"),
     /** Number of steps in the response */
-    steps: int("steps").notNull().default(1),
+    steps: integer("steps").notNull().default(1),
     /** User rating: -1 = too short, 0 = just right, 1 = too long */
-    rating: int("rating").notNull(),
+    rating: integer("rating").notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
   (t) => [index("aire_feedback_userId_idx").on(t.userId)],
@@ -213,20 +219,20 @@ export type InsertAireFeedback = typeof aireFeedback.$inferInsert;
  * re-aggregate on every solve request.
  * multiplier: 0.7 = user finds responses too long, 1.3 = too short, 1.0 = calibrated.
  */
-export const aireSubjectCalibration = mysqlTable(
+export const aireSubjectCalibration = pgTable(
   "aire_subject_calibration",
   {
-    id: int("id").autoincrement().primaryKey(),
-    userId: int("userId").references(() => users.id, { onDelete: "cascade" }),
+    id: integer("id").generatedAlwaysAsIdentity().primaryKey(),
+    userId: integer("userId").references(() => users.id, { onDelete: "cascade" }),
     /** Subject slug matching aire_feedback.subject */
     subject: varchar("subject", { length: 64 }).notNull().default("other"),
     /** Computed multiplier: 0.7 | 1.0 | 1.3 */
     multiplier: varchar("multiplier", { length: 8 }).notNull().default("1.0"),
     /** Number of feedback samples used to compute this multiplier */
-    sampleCount: int("sampleCount").notNull().default(0),
+    sampleCount: integer("sampleCount").notNull().default(0),
     /** Timestamp of the last feedback submission for this subject — used for 30-day decay */
     lastFeedbackAt: timestamp("lastFeedbackAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().notNull(),
   },
   (t) => [
     index("aire_calib_userId_subject_idx").on(t.userId, t.subject),
@@ -245,11 +251,11 @@ export type InsertAireSubjectCalibration = typeof aireSubjectCalibration.$inferI
  * Mirrors the local "math_history" AsyncStorage key.
  * Synced to the server on every solve; pulled on sign-in.
  */
-export const solveHistory = mysqlTable(
+export const solveHistory = pgTable(
   "solve_history",
   {
-    id: int("id").autoincrement().primaryKey(),
-    userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    id: integer("id").generatedAlwaysAsIdentity().primaryKey(),
+    userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
     /** The problem text (may be a question or image description). */
     problem: text("problem").notNull(),
     /** The AI-generated answer (short form). */
@@ -275,11 +281,11 @@ export type InsertSolveHistory = typeof solveHistory.$inferInsert;
  * Mirrors the local "@tutorsnap/chatSessions/*" AsyncStorage keys.
  * Each row is one session; messages stored as JSON blob.
  */
-export const chatSessions = mysqlTable(
+export const chatSessions = pgTable(
   "chat_sessions",
   {
-    id: int("id").autoincrement().primaryKey(),
-    userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    id: integer("id").generatedAlwaysAsIdentity().primaryKey(),
+    userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
     /** Client-generated session ID (e.g. "session_1234_abc"). */
     sessionId: varchar("sessionId", { length: 64 }).notNull(),
     title: varchar("title", { length: 255 }),
@@ -290,12 +296,12 @@ export const chatSessions = mysqlTable(
     /** Comma-separated tag strings. */
     tags: text("tags"),
     pinned: boolean("pinned").default(false).notNull(),
-    messageCount: int("messageCount").default(0).notNull(),
+    messageCount: integer("messageCount").default(0).notNull(),
     /** Client-side timestamps. */
     sessionCreatedAt: timestamp("sessionCreatedAt").notNull(),
     sessionUpdatedAt: timestamp("sessionUpdatedAt").notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().notNull(),
   },
   (t) => [
     index("chat_sessions_userId_idx").on(t.userId),
@@ -311,12 +317,12 @@ export type InsertChatSession = typeof chatSessions.$inferInsert;
  * Mirrors the local "math_progress" AsyncStorage key.
  * One row per user; upserted on every solve.
  */
-export const userProgress = mysqlTable("user_progress", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }).unique(),
+export const userProgress = pgTable("user_progress", {
+  id: integer("id").generatedAlwaysAsIdentity().primaryKey(),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }).unique(),
   /** Full ProgressData JSON blob. */
   progressJson: text("progressJson").notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
 export type UserProgressRow = typeof userProgress.$inferSelect;
@@ -326,11 +332,11 @@ export type InsertUserProgress = typeof userProgress.$inferInsert;
  * User bookmarks — saved solutions.
  * Mirrors the local "math_bookmarks" AsyncStorage key.
  */
-export const userBookmarks = mysqlTable(
+export const userBookmarks = pgTable(
   "user_bookmarks",
   {
-    id: int("id").autoincrement().primaryKey(),
-    userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    id: integer("id").generatedAlwaysAsIdentity().primaryKey(),
+    userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
     /** Client-side bookmark ID (timestamp string). */
     bookmarkId: varchar("bookmarkId", { length: 64 }).notNull(),
     /** Full HistoryItem JSON blob. */
@@ -352,17 +358,17 @@ export type InsertUserBookmark = typeof userBookmarks.$inferInsert;
  * User notes — saved notes from the Notes screen.
  * Mirrors the local "tutor_saved_notes" AsyncStorage key.
  */
-export const userNotes = mysqlTable(
+export const userNotes = pgTable(
   "user_notes",
   {
-    id: int("id").autoincrement().primaryKey(),
-    userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    id: integer("id").generatedAlwaysAsIdentity().primaryKey(),
+    userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
     /** Client-side note ID. */
     noteId: varchar("noteId", { length: 64 }).notNull(),
     /** Full note JSON blob. */
     noteJson: text("noteJson").notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().notNull(),
   },
   (t) => [
     index("user_notes_userId_idx").on(t.userId),
@@ -388,18 +394,18 @@ export type InsertUserNote = typeof userNotes.$inferInsert;
  *   - idx_subscriptions_userId: look up all subscriptions for a user
  *   - idx_subscriptions_rcUserId: look up by RevenueCat app user ID
  */
-export const subscriptions = mysqlTable(
+export const subscriptions = pgTable(
   "subscriptions",
   {
-    id: int("id").autoincrement().primaryKey(),
+    id: integer("id").generatedAlwaysAsIdentity().primaryKey(),
     /** FK to users.id — null if the RevenueCat user cannot be resolved to a local user. */
-    userId: int("userId").references(() => users.id, { onDelete: "set null" }),
+    userId: integer("userId").references(() => users.id, { onDelete: "set null" }),
     /** RevenueCat app user ID (the `app_user_id` field in webhook payloads). */
     revenueCatUserId: varchar("revenueCatUserId", { length: 255 }).notNull(),
     /** Product ID, e.g. "tutorsnap_monthly" or "tutorsnap_annual". */
     productId: varchar("productId", { length: 255 }).notNull(),
     /** Current subscription status. */
-    status: mysqlEnum("status", ["active", "cancelled", "expired", "refunded"]).notNull().default("active"),
+    status: subscriptionStatusEnum("status").notNull().default("active"),
     /**
      * True when the subscription is in a billing grace period.
      * Set to true on BILLING_ISSUE / GRACE_PERIOD_START; cleared to false on all other events.
@@ -409,7 +415,7 @@ export const subscriptions = mysqlTable(
     /** Timestamp when the subscription expires (from RevenueCat expiration_at_ms). */
     expiresAt: timestamp("expiresAt"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().notNull(),
   },
   (t) => [
     index("idx_subscriptions_userId").on(t.userId),
@@ -429,19 +435,19 @@ export type InsertSubscription = typeof subscriptions.$inferInsert;
  * `publicId` is the only classroom identifier exposed through the API.
  * `joinCode` is teacher-only data and may be rotated at any time.
  */
-export const classrooms = mysqlTable(
+export const classrooms = pgTable(
   "classrooms",
   {
-    id: int("id").autoincrement().primaryKey(),
+    id: integer("id").generatedAlwaysAsIdentity().primaryKey(),
     publicId: varchar("publicId", { length: 36 }).notNull().unique(),
-    teacherId: int("teacherId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    teacherId: integer("teacherId").notNull().references(() => users.id, { onDelete: "cascade" }),
     name: varchar("name", { length: 120 }).notNull(),
     joinCode: varchar("joinCode", { length: 8 }).notNull().unique(),
     subject: varchar("subject", { length: 64 }).notNull(),
     gradeLevel: varchar("gradeLevel", { length: 32 }),
     isActive: boolean("isActive").default(true).notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().notNull(),
   },
   (t) => [
     index("classrooms_teacher_idx").on(t.teacherId),
@@ -456,13 +462,13 @@ export type InsertClassroom = typeof classrooms.$inferInsert;
  * Relationship-based classroom authorization. A user's classroom role exists
  * only in this table; it never changes the account-wide users.role value.
  */
-export const classroomMembers = mysqlTable(
+export const classroomMembers = pgTable(
   "classroom_members",
   {
-    id: int("id").autoincrement().primaryKey(),
-    classroomId: int("classroomId").notNull().references(() => classrooms.id, { onDelete: "cascade" }),
-    userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
-    role: mysqlEnum("role", ["teacher", "learner"]).notNull(),
+    id: integer("id").generatedAlwaysAsIdentity().primaryKey(),
+    classroomId: integer("classroomId").notNull().references(() => classrooms.id, { onDelete: "cascade" }),
+    userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    role: classroomRoleEnum("role").notNull(),
     joinedAt: timestamp("joinedAt").defaultNow().notNull(),
   },
   (t) => [
@@ -476,21 +482,21 @@ export type ClassroomMemberRow = typeof classroomMembers.$inferSelect;
 export type InsertClassroomMember = typeof classroomMembers.$inferInsert;
 
 /** Text-only class work. Learners can resolve published assignments only. */
-export const assignments = mysqlTable(
+export const assignments = pgTable(
   "assignments",
   {
-    id: int("id").autoincrement().primaryKey(),
+    id: integer("id").generatedAlwaysAsIdentity().primaryKey(),
     publicId: varchar("publicId", { length: 36 }).notNull().unique(),
-    classroomId: int("classroomId").notNull().references(() => classrooms.id, { onDelete: "cascade" }),
-    createdByUserId: int("createdByUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    classroomId: integer("classroomId").notNull().references(() => classrooms.id, { onDelete: "cascade" }),
+    createdByUserId: integer("createdByUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
     title: varchar("title", { length: 160 }).notNull(),
     instructions: text("instructions").notNull(),
     subject: varchar("subject", { length: 64 }).notNull(),
     dueAt: timestamp("dueAt"),
-    status: mysqlEnum("status", ["draft", "published"]).default("draft").notNull(),
+    status: assignmentStatusEnum("status").default("draft").notNull(),
     publishedAt: timestamp("publishedAt"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().notNull(),
   },
   (t) => [
     index("assignments_class_status_due_idx").on(t.classroomId, t.status, t.dueAt),
@@ -502,18 +508,18 @@ export type AssignmentRow = typeof assignments.$inferSelect;
 export type InsertAssignment = typeof assignments.$inferInsert;
 
 /** One current submission per learner and assignment. */
-export const assignmentSubmissions = mysqlTable(
+export const assignmentSubmissions = pgTable(
   "assignment_submissions",
   {
-    id: int("id").autoincrement().primaryKey(),
+    id: integer("id").generatedAlwaysAsIdentity().primaryKey(),
     publicId: varchar("publicId", { length: 36 }).notNull().unique(),
-    assignmentId: int("assignmentId").notNull().references(() => assignments.id, { onDelete: "cascade" }),
-    userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
-    status: mysqlEnum("status", ["pending", "complete"]).default("pending").notNull(),
+    assignmentId: integer("assignmentId").notNull().references(() => assignments.id, { onDelete: "cascade" }),
+    userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    status: submissionStatusEnum("status").default("pending").notNull(),
     responseText: text("responseText"),
     submittedAt: timestamp("submittedAt"),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().notNull(),
   },
   (t) => [
     uniqueIndex("assignment_submissions_assignment_user_uq").on(t.assignmentId, t.userId),
@@ -529,20 +535,20 @@ export type InsertAssignmentSubmission = typeof assignmentSubmissions.$inferInse
  * Flat, class-visible assignment discussion. Deletion is a moderation tombstone;
  * the API never returns a deleted body to normal clients.
  */
-export const assignmentComments = mysqlTable(
+export const assignmentComments = pgTable(
   "assignment_comments",
   {
-    id: int("id").autoincrement().primaryKey(),
+    id: integer("id").generatedAlwaysAsIdentity().primaryKey(),
     publicId: varchar("publicId", { length: 36 }).notNull().unique(),
-    assignmentId: int("assignmentId").notNull().references(() => assignments.id, { onDelete: "cascade" }),
-    authorUserId: int("authorUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    assignmentId: integer("assignmentId").notNull().references(() => assignments.id, { onDelete: "cascade" }),
+    authorUserId: integer("authorUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
     body: text("body").notNull(),
     isDeleted: boolean("isDeleted").default(false).notNull(),
     deletedAt: timestamp("deletedAt"),
-    deletedByUserId: int("deletedByUserId").references(() => users.id, { onDelete: "set null" }),
+    deletedByUserId: integer("deletedByUserId").references(() => users.id, { onDelete: "set null" }),
     moderationReason: varchar("moderationReason", { length: 64 }),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
-    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().notNull(),
   },
   (t) => [
     index("assignment_comments_assignment_created_idx").on(t.assignmentId, t.createdAt, t.id),
@@ -557,11 +563,11 @@ export type InsertAssignmentComment = typeof assignmentComments.$inferInsert;
  * Durable, privacy-minimized audit source for join-code brute-force protection.
  * Only a SHA-256 code hash is stored; raw join codes never enter this table.
  */
-export const classroomJoinAttempts = mysqlTable(
+export const classroomJoinAttempts = pgTable(
   "classroom_join_attempts",
   {
-    id: int("id").autoincrement().primaryKey(),
-    userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+    id: integer("id").generatedAlwaysAsIdentity().primaryKey(),
+    userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
     ipAddress: varchar("ipAddress", { length: 45 }),
     codeHash: varchar("codeHash", { length: 64 }).notNull(),
     outcome: varchar("outcome", { length: 32 }).notNull(),

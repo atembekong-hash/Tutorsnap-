@@ -86,382 +86,387 @@ __export(schema_exports, {
   userProgress: () => userProgress,
   users: () => users
 });
-var import_mysql_core, users, referralCodes, fraudAlerts, redemptionHistory, otpCodes, otpAudit, schedulerLocks, aireFeedback, aireSubjectCalibration, solveHistory, chatSessions, userProgress, userBookmarks, userNotes, subscriptions, classrooms, classroomMembers, assignments, assignmentSubmissions, assignmentComments, classroomJoinAttempts;
+var import_pg_core, userRoleEnum, subscriptionStatusEnum, classroomRoleEnum, assignmentStatusEnum, submissionStatusEnum, users, referralCodes, fraudAlerts, redemptionHistory, otpCodes, otpAudit, schedulerLocks, aireFeedback, aireSubjectCalibration, solveHistory, chatSessions, userProgress, userBookmarks, userNotes, subscriptions, classrooms, classroomMembers, assignments, assignmentSubmissions, assignmentComments, classroomJoinAttempts;
 var init_schema = __esm({
   "drizzle/schema.ts"() {
     "use strict";
-    import_mysql_core = require("drizzle-orm/mysql-core");
-    users = (0, import_mysql_core.mysqlTable)("users", {
+    import_pg_core = require("drizzle-orm/pg-core");
+    userRoleEnum = (0, import_pg_core.pgEnum)("user_role", ["user", "admin"]);
+    subscriptionStatusEnum = (0, import_pg_core.pgEnum)("subscription_status", ["active", "cancelled", "expired", "refunded"]);
+    classroomRoleEnum = (0, import_pg_core.pgEnum)("classroom_role", ["teacher", "learner"]);
+    assignmentStatusEnum = (0, import_pg_core.pgEnum)("assignment_status", ["draft", "published"]);
+    submissionStatusEnum = (0, import_pg_core.pgEnum)("submission_status", ["pending", "complete"]);
+    users = (0, import_pg_core.pgTable)("users", {
       /**
        * Surrogate primary key. Auto-incremented numeric value managed by the database.
        * Use this for relations between tables.
        */
-      id: (0, import_mysql_core.int)("id").autoincrement().primaryKey(),
+      id: (0, import_pg_core.integer)("id").generatedAlwaysAsIdentity().primaryKey(),
       /** Manus OAuth identifier (openId) returned from the OAuth callback. Unique per user. */
-      openId: (0, import_mysql_core.varchar)("openId", { length: 64 }).notNull().unique(),
-      name: (0, import_mysql_core.text)("name"),
-      email: (0, import_mysql_core.varchar)("email", { length: 320 }),
-      loginMethod: (0, import_mysql_core.varchar)("loginMethod", { length: 64 }),
-      role: (0, import_mysql_core.mysqlEnum)("role", ["user", "admin"]).default("user").notNull(),
-      createdAt: (0, import_mysql_core.timestamp)("createdAt").defaultNow().notNull(),
-      updatedAt: (0, import_mysql_core.timestamp)("updatedAt").defaultNow().onUpdateNow().notNull(),
-      lastSignedIn: (0, import_mysql_core.timestamp)("lastSignedIn").defaultNow().notNull(),
-      appearanceSettings: (0, import_mysql_core.text)("appearanceSettings")
+      openId: (0, import_pg_core.varchar)("openId", { length: 64 }).notNull().unique(),
+      name: (0, import_pg_core.text)("name"),
+      email: (0, import_pg_core.varchar)("email", { length: 320 }),
+      loginMethod: (0, import_pg_core.varchar)("loginMethod", { length: 64 }),
+      role: userRoleEnum("role").default("user").notNull(),
+      createdAt: (0, import_pg_core.timestamp)("createdAt").defaultNow().notNull(),
+      updatedAt: (0, import_pg_core.timestamp)("updatedAt").defaultNow().notNull(),
+      lastSignedIn: (0, import_pg_core.timestamp)("lastSignedIn").defaultNow().notNull(),
+      appearanceSettings: (0, import_pg_core.text)("appearanceSettings")
     });
-    referralCodes = (0, import_mysql_core.mysqlTable)("referral_codes", {
-      id: (0, import_mysql_core.int)("id").autoincrement().primaryKey(),
-      code: (0, import_mysql_core.varchar)("code", { length: 50 }).notNull().unique(),
-      userId: (0, import_mysql_core.int)("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
-      uses: (0, import_mysql_core.int)("uses").default(0).notNull(),
-      maxUses: (0, import_mysql_core.int)("maxUses").default(999).notNull(),
-      expiresAt: (0, import_mysql_core.timestamp)("expiresAt").notNull(),
-      createdAt: (0, import_mysql_core.timestamp)("createdAt").defaultNow().notNull(),
-      updatedAt: (0, import_mysql_core.timestamp)("updatedAt").defaultNow().onUpdateNow().notNull()
+    referralCodes = (0, import_pg_core.pgTable)("referral_codes", {
+      id: (0, import_pg_core.integer)("id").generatedAlwaysAsIdentity().primaryKey(),
+      code: (0, import_pg_core.varchar)("code", { length: 50 }).notNull().unique(),
+      userId: (0, import_pg_core.integer)("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+      uses: (0, import_pg_core.integer)("uses").default(0).notNull(),
+      maxUses: (0, import_pg_core.integer)("maxUses").default(999).notNull(),
+      expiresAt: (0, import_pg_core.timestamp)("expiresAt").notNull(),
+      createdAt: (0, import_pg_core.timestamp)("createdAt").defaultNow().notNull(),
+      updatedAt: (0, import_pg_core.timestamp)("updatedAt").defaultNow().notNull()
     });
-    fraudAlerts = (0, import_mysql_core.mysqlTable)("fraud_alerts", {
-      id: (0, import_mysql_core.int)("id").autoincrement().primaryKey(),
-      userId: (0, import_mysql_core.int)("userId").references(() => users.id, { onDelete: "cascade" }),
-      alertType: (0, import_mysql_core.varchar)("alertType", { length: 50 }).notNull(),
-      ipAddress: (0, import_mysql_core.varchar)("ipAddress", { length: 45 }),
-      deviceId: (0, import_mysql_core.varchar)("deviceId", { length: 255 }),
-      severity: (0, import_mysql_core.varchar)("severity", { length: 20 }).default("medium").notNull(),
-      description: (0, import_mysql_core.text)("description"),
-      resolved: (0, import_mysql_core.boolean)("resolved").default(false).notNull(),
-      actionTaken: (0, import_mysql_core.varchar)("actionTaken", { length: 100 }),
-      createdAt: (0, import_mysql_core.timestamp)("createdAt").defaultNow().notNull(),
-      updatedAt: (0, import_mysql_core.timestamp)("updatedAt").defaultNow().onUpdateNow().notNull()
+    fraudAlerts = (0, import_pg_core.pgTable)("fraud_alerts", {
+      id: (0, import_pg_core.integer)("id").generatedAlwaysAsIdentity().primaryKey(),
+      userId: (0, import_pg_core.integer)("userId").references(() => users.id, { onDelete: "cascade" }),
+      alertType: (0, import_pg_core.varchar)("alertType", { length: 50 }).notNull(),
+      ipAddress: (0, import_pg_core.varchar)("ipAddress", { length: 45 }),
+      deviceId: (0, import_pg_core.varchar)("deviceId", { length: 255 }),
+      severity: (0, import_pg_core.varchar)("severity", { length: 20 }).default("medium").notNull(),
+      description: (0, import_pg_core.text)("description"),
+      resolved: (0, import_pg_core.boolean)("resolved").default(false).notNull(),
+      actionTaken: (0, import_pg_core.varchar)("actionTaken", { length: 100 }),
+      createdAt: (0, import_pg_core.timestamp)("createdAt").defaultNow().notNull(),
+      updatedAt: (0, import_pg_core.timestamp)("updatedAt").defaultNow().notNull()
     });
-    redemptionHistory = (0, import_mysql_core.mysqlTable)("redemption_history", {
-      id: (0, import_mysql_core.int)("id").autoincrement().primaryKey(),
-      userId: (0, import_mysql_core.int)("userId").references(() => users.id, { onDelete: "cascade" }),
-      codeId: (0, import_mysql_core.int)("codeId"),
-      code: (0, import_mysql_core.varchar)("code", { length: 50 }).notNull(),
-      ipAddress: (0, import_mysql_core.varchar)("ipAddress", { length: 45 }),
-      deviceId: (0, import_mysql_core.varchar)("deviceId", { length: 255 }),
-      userAgent: (0, import_mysql_core.text)("userAgent"),
-      success: (0, import_mysql_core.boolean)("success").default(true).notNull(),
-      failureReason: (0, import_mysql_core.varchar)("failureReason", { length: 100 }),
-      createdAt: (0, import_mysql_core.timestamp)("createdAt").defaultNow().notNull()
+    redemptionHistory = (0, import_pg_core.pgTable)("redemption_history", {
+      id: (0, import_pg_core.integer)("id").generatedAlwaysAsIdentity().primaryKey(),
+      userId: (0, import_pg_core.integer)("userId").references(() => users.id, { onDelete: "cascade" }),
+      codeId: (0, import_pg_core.integer)("codeId"),
+      code: (0, import_pg_core.varchar)("code", { length: 50 }).notNull(),
+      ipAddress: (0, import_pg_core.varchar)("ipAddress", { length: 45 }),
+      deviceId: (0, import_pg_core.varchar)("deviceId", { length: 255 }),
+      userAgent: (0, import_pg_core.text)("userAgent"),
+      success: (0, import_pg_core.boolean)("success").default(true).notNull(),
+      failureReason: (0, import_pg_core.varchar)("failureReason", { length: 100 }),
+      createdAt: (0, import_pg_core.timestamp)("createdAt").defaultNow().notNull()
     });
-    otpCodes = (0, import_mysql_core.mysqlTable)(
+    otpCodes = (0, import_pg_core.pgTable)(
       "otp_codes",
       {
-        id: (0, import_mysql_core.int)("id").autoincrement().primaryKey(),
+        id: (0, import_pg_core.integer)("id").generatedAlwaysAsIdentity().primaryKey(),
         /** The email address the code was issued for. */
-        email: (0, import_mysql_core.varchar)("email", { length: 320 }).notNull(),
+        email: (0, import_pg_core.varchar)("email", { length: 320 }).notNull(),
         /**
          * HMAC-SHA-256 of the 6-digit code, keyed with OTP_PEPPER.
          * Never store the raw code.
          */
-        hashedCode: (0, import_mysql_core.varchar)("hashedCode", { length: 64 }).notNull(),
+        hashedCode: (0, import_pg_core.varchar)("hashedCode", { length: 64 }).notNull(),
         /**
          * Purpose binding: "signin" or "change_email".
          * A code issued for one purpose cannot be used for another.
          */
-        purpose: (0, import_mysql_core.varchar)("purpose", { length: 20 }).notNull().default("signin"),
+        purpose: (0, import_pg_core.varchar)("purpose", { length: 20 }).notNull().default("signin"),
         /** Timestamp after which the code is invalid (10 minutes from issue). */
-        expiresAt: (0, import_mysql_core.timestamp)("expiresAt").notNull(),
+        expiresAt: (0, import_pg_core.timestamp)("expiresAt").notNull(),
         /** Number of failed verification attempts. Locked out at 5. */
-        attempts: (0, import_mysql_core.int)("attempts").default(0).notNull(),
+        attempts: (0, import_pg_core.integer)("attempts").default(0).notNull(),
         /** IP address of the requester (trusted-proxy extracted). */
-        ipAddress: (0, import_mysql_core.varchar)("ipAddress", { length: 45 }),
-        createdAt: (0, import_mysql_core.timestamp)("createdAt").defaultNow().notNull()
+        ipAddress: (0, import_pg_core.varchar)("ipAddress", { length: 45 }),
+        createdAt: (0, import_pg_core.timestamp)("createdAt").defaultNow().notNull()
       },
       (t2) => ({
-        idxEmailPurpose: (0, import_mysql_core.index)("idx_otp_email_purpose").on(t2.email, t2.purpose, t2.createdAt),
-        idxExpires: (0, import_mysql_core.index)("idx_otp_expires").on(t2.expiresAt)
+        idxEmailPurpose: (0, import_pg_core.index)("idx_otp_email_purpose").on(t2.email, t2.purpose, t2.createdAt),
+        idxExpires: (0, import_pg_core.index)("idx_otp_expires").on(t2.expiresAt)
       })
     );
-    otpAudit = (0, import_mysql_core.mysqlTable)(
+    otpAudit = (0, import_pg_core.pgTable)(
       "otp_audit",
       {
-        id: (0, import_mysql_core.int)("id").autoincrement().primaryKey(),
+        id: (0, import_pg_core.integer)("id").generatedAlwaysAsIdentity().primaryKey(),
         /** Email the OTP was issued for. */
-        email: (0, import_mysql_core.varchar)("email", { length: 320 }).notNull(),
+        email: (0, import_pg_core.varchar)("email", { length: 320 }).notNull(),
         /** Purpose: "signin" or "change_email". */
-        purpose: (0, import_mysql_core.varchar)("purpose", { length: 20 }).notNull().default("signin"),
+        purpose: (0, import_pg_core.varchar)("purpose", { length: 20 }).notNull().default("signin"),
         /** Trusted-proxy extracted IP address of the requester. */
-        ipAddress: (0, import_mysql_core.varchar)("ipAddress", { length: 45 }),
+        ipAddress: (0, import_pg_core.varchar)("ipAddress", { length: 45 }),
         /** Outcome: "sent" | "rate_limited_email" | "rate_limited_ip" | "cooldown" | "error" */
-        outcome: (0, import_mysql_core.varchar)("outcome", { length: 30 }).notNull().default("sent"),
-        createdAt: (0, import_mysql_core.timestamp)("createdAt").defaultNow().notNull()
+        outcome: (0, import_pg_core.varchar)("outcome", { length: 30 }).notNull().default("sent"),
+        createdAt: (0, import_pg_core.timestamp)("createdAt").defaultNow().notNull()
       },
       (t2) => ({
-        idxAuditEmailCreated: (0, import_mysql_core.index)("idx_audit_email_created").on(t2.email, t2.createdAt),
-        idxAuditIpCreated: (0, import_mysql_core.index)("idx_audit_ip_created").on(t2.ipAddress, t2.createdAt)
+        idxAuditEmailCreated: (0, import_pg_core.index)("idx_audit_email_created").on(t2.email, t2.createdAt),
+        idxAuditIpCreated: (0, import_pg_core.index)("idx_audit_ip_created").on(t2.ipAddress, t2.createdAt)
       })
     );
-    schedulerLocks = (0, import_mysql_core.mysqlTable)("scheduler_locks", {
+    schedulerLocks = (0, import_pg_core.pgTable)("scheduler_locks", {
       /** Unique job name (e.g., "otp-cleanup"). */
-      jobName: (0, import_mysql_core.varchar)("jobName", { length: 100 }).notNull().primaryKey(),
+      jobName: (0, import_pg_core.varchar)("jobName", { length: 100 }).notNull().primaryKey(),
       /** Instance identifier (hostname + PID). */
-      instanceId: (0, import_mysql_core.varchar)("instanceId", { length: 200 }).notNull(),
+      instanceId: (0, import_pg_core.varchar)("instanceId", { length: 200 }).notNull(),
       /** Lock expiry — stale locks older than this are ignored. */
-      expiresAt: (0, import_mysql_core.timestamp)("expiresAt").notNull(),
-      acquiredAt: (0, import_mysql_core.timestamp)("acquiredAt").defaultNow().notNull()
+      expiresAt: (0, import_pg_core.timestamp)("expiresAt").notNull(),
+      acquiredAt: (0, import_pg_core.timestamp)("acquiredAt").defaultNow().notNull()
     });
-    aireFeedback = (0, import_mysql_core.mysqlTable)(
+    aireFeedback = (0, import_pg_core.pgTable)(
       "aire_feedback",
       {
-        id: (0, import_mysql_core.int)("id").autoincrement().primaryKey(),
-        userId: (0, import_mysql_core.int)("userId").references(() => users.id, { onDelete: "cascade" }),
+        id: (0, import_pg_core.integer)("id").generatedAlwaysAsIdentity().primaryKey(),
+        userId: (0, import_pg_core.integer)("userId").references(() => users.id, { onDelete: "cascade" }),
         /** Difficulty tier: 1=trivial, 2=simple, 3=medium, 4=complex, 5=phd */
-        difficulty: (0, import_mysql_core.int)("difficulty").notNull(),
+        difficulty: (0, import_pg_core.integer)("difficulty").notNull(),
         /** Subject slug (e.g. "calculus", "algebra", "other") */
-        subject: (0, import_mysql_core.varchar)("subject", { length: 64 }).notNull().default("other"),
+        subject: (0, import_pg_core.varchar)("subject", { length: 64 }).notNull().default("other"),
         /** Number of steps in the response */
-        steps: (0, import_mysql_core.int)("steps").notNull().default(1),
+        steps: (0, import_pg_core.integer)("steps").notNull().default(1),
         /** User rating: -1 = too short, 0 = just right, 1 = too long */
-        rating: (0, import_mysql_core.int)("rating").notNull(),
-        createdAt: (0, import_mysql_core.timestamp)("createdAt").defaultNow().notNull()
+        rating: (0, import_pg_core.integer)("rating").notNull(),
+        createdAt: (0, import_pg_core.timestamp)("createdAt").defaultNow().notNull()
       },
-      (t2) => [(0, import_mysql_core.index)("aire_feedback_userId_idx").on(t2.userId)]
+      (t2) => [(0, import_pg_core.index)("aire_feedback_userId_idx").on(t2.userId)]
     );
-    aireSubjectCalibration = (0, import_mysql_core.mysqlTable)(
+    aireSubjectCalibration = (0, import_pg_core.pgTable)(
       "aire_subject_calibration",
       {
-        id: (0, import_mysql_core.int)("id").autoincrement().primaryKey(),
-        userId: (0, import_mysql_core.int)("userId").references(() => users.id, { onDelete: "cascade" }),
+        id: (0, import_pg_core.integer)("id").generatedAlwaysAsIdentity().primaryKey(),
+        userId: (0, import_pg_core.integer)("userId").references(() => users.id, { onDelete: "cascade" }),
         /** Subject slug matching aire_feedback.subject */
-        subject: (0, import_mysql_core.varchar)("subject", { length: 64 }).notNull().default("other"),
+        subject: (0, import_pg_core.varchar)("subject", { length: 64 }).notNull().default("other"),
         /** Computed multiplier: 0.7 | 1.0 | 1.3 */
-        multiplier: (0, import_mysql_core.varchar)("multiplier", { length: 8 }).notNull().default("1.0"),
+        multiplier: (0, import_pg_core.varchar)("multiplier", { length: 8 }).notNull().default("1.0"),
         /** Number of feedback samples used to compute this multiplier */
-        sampleCount: (0, import_mysql_core.int)("sampleCount").notNull().default(0),
+        sampleCount: (0, import_pg_core.integer)("sampleCount").notNull().default(0),
         /** Timestamp of the last feedback submission for this subject — used for 30-day decay */
-        lastFeedbackAt: (0, import_mysql_core.timestamp)("lastFeedbackAt").defaultNow().notNull(),
-        updatedAt: (0, import_mysql_core.timestamp)("updatedAt").defaultNow().onUpdateNow().notNull()
+        lastFeedbackAt: (0, import_pg_core.timestamp)("lastFeedbackAt").defaultNow().notNull(),
+        updatedAt: (0, import_pg_core.timestamp)("updatedAt").defaultNow().notNull()
       },
       (t2) => [
-        (0, import_mysql_core.index)("aire_calib_userId_subject_idx").on(t2.userId, t2.subject)
+        (0, import_pg_core.index)("aire_calib_userId_subject_idx").on(t2.userId, t2.subject)
       ]
     );
-    solveHistory = (0, import_mysql_core.mysqlTable)(
+    solveHistory = (0, import_pg_core.pgTable)(
       "solve_history",
       {
-        id: (0, import_mysql_core.int)("id").autoincrement().primaryKey(),
-        userId: (0, import_mysql_core.int)("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+        id: (0, import_pg_core.integer)("id").generatedAlwaysAsIdentity().primaryKey(),
+        userId: (0, import_pg_core.integer)("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
         /** The problem text (may be a question or image description). */
-        problem: (0, import_mysql_core.text)("problem").notNull(),
+        problem: (0, import_pg_core.text)("problem").notNull(),
         /** The AI-generated answer (short form). */
-        answer: (0, import_mysql_core.text)("answer"),
+        answer: (0, import_pg_core.text)("answer"),
         /** Subject slug (e.g. "algebra", "calculus"). */
-        subject: (0, import_mysql_core.varchar)("subject", { length: 64 }),
+        subject: (0, import_pg_core.varchar)("subject", { length: 64 }),
         /** Full solution JSON blob (steps, hints, etc.) — stored as TEXT. */
-        solutionJson: (0, import_mysql_core.text)("solutionJson"),
+        solutionJson: (0, import_pg_core.text)("solutionJson"),
         /** Whether the user bookmarked this solve. */
-        bookmarked: (0, import_mysql_core.boolean)("bookmarked").default(false).notNull(),
+        bookmarked: (0, import_pg_core.boolean)("bookmarked").default(false).notNull(),
         /** Client-side timestamp of when the solve happened. */
-        solvedAt: (0, import_mysql_core.timestamp)("solvedAt").notNull(),
-        createdAt: (0, import_mysql_core.timestamp)("createdAt").defaultNow().notNull()
+        solvedAt: (0, import_pg_core.timestamp)("solvedAt").notNull(),
+        createdAt: (0, import_pg_core.timestamp)("createdAt").defaultNow().notNull()
       },
-      (t2) => [(0, import_mysql_core.index)("solve_history_userId_idx").on(t2.userId, t2.solvedAt)]
+      (t2) => [(0, import_pg_core.index)("solve_history_userId_idx").on(t2.userId, t2.solvedAt)]
     );
-    chatSessions = (0, import_mysql_core.mysqlTable)(
+    chatSessions = (0, import_pg_core.pgTable)(
       "chat_sessions",
       {
-        id: (0, import_mysql_core.int)("id").autoincrement().primaryKey(),
-        userId: (0, import_mysql_core.int)("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+        id: (0, import_pg_core.integer)("id").generatedAlwaysAsIdentity().primaryKey(),
+        userId: (0, import_pg_core.integer)("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
         /** Client-generated session ID (e.g. "session_1234_abc"). */
-        sessionId: (0, import_mysql_core.varchar)("sessionId", { length: 64 }).notNull(),
-        title: (0, import_mysql_core.varchar)("title", { length: 255 }),
-        subject: (0, import_mysql_core.varchar)("subject", { length: 64 }),
-        gradeLevel: (0, import_mysql_core.varchar)("gradeLevel", { length: 32 }),
+        sessionId: (0, import_pg_core.varchar)("sessionId", { length: 64 }).notNull(),
+        title: (0, import_pg_core.varchar)("title", { length: 255 }),
+        subject: (0, import_pg_core.varchar)("subject", { length: 64 }),
+        gradeLevel: (0, import_pg_core.varchar)("gradeLevel", { length: 32 }),
         /** Full messages JSON array. */
-        messagesJson: (0, import_mysql_core.text)("messagesJson").notNull(),
+        messagesJson: (0, import_pg_core.text)("messagesJson").notNull(),
         /** Comma-separated tag strings. */
-        tags: (0, import_mysql_core.text)("tags"),
-        pinned: (0, import_mysql_core.boolean)("pinned").default(false).notNull(),
-        messageCount: (0, import_mysql_core.int)("messageCount").default(0).notNull(),
+        tags: (0, import_pg_core.text)("tags"),
+        pinned: (0, import_pg_core.boolean)("pinned").default(false).notNull(),
+        messageCount: (0, import_pg_core.integer)("messageCount").default(0).notNull(),
         /** Client-side timestamps. */
-        sessionCreatedAt: (0, import_mysql_core.timestamp)("sessionCreatedAt").notNull(),
-        sessionUpdatedAt: (0, import_mysql_core.timestamp)("sessionUpdatedAt").notNull(),
-        createdAt: (0, import_mysql_core.timestamp)("createdAt").defaultNow().notNull(),
-        updatedAt: (0, import_mysql_core.timestamp)("updatedAt").defaultNow().onUpdateNow().notNull()
+        sessionCreatedAt: (0, import_pg_core.timestamp)("sessionCreatedAt").notNull(),
+        sessionUpdatedAt: (0, import_pg_core.timestamp)("sessionUpdatedAt").notNull(),
+        createdAt: (0, import_pg_core.timestamp)("createdAt").defaultNow().notNull(),
+        updatedAt: (0, import_pg_core.timestamp)("updatedAt").defaultNow().notNull()
       },
       (t2) => [
-        (0, import_mysql_core.index)("chat_sessions_userId_idx").on(t2.userId),
-        (0, import_mysql_core.index)("chat_sessions_sessionId_idx").on(t2.userId, t2.sessionId)
+        (0, import_pg_core.index)("chat_sessions_userId_idx").on(t2.userId),
+        (0, import_pg_core.index)("chat_sessions_sessionId_idx").on(t2.userId, t2.sessionId)
       ]
     );
-    userProgress = (0, import_mysql_core.mysqlTable)("user_progress", {
-      id: (0, import_mysql_core.int)("id").autoincrement().primaryKey(),
-      userId: (0, import_mysql_core.int)("userId").notNull().references(() => users.id, { onDelete: "cascade" }).unique(),
+    userProgress = (0, import_pg_core.pgTable)("user_progress", {
+      id: (0, import_pg_core.integer)("id").generatedAlwaysAsIdentity().primaryKey(),
+      userId: (0, import_pg_core.integer)("userId").notNull().references(() => users.id, { onDelete: "cascade" }).unique(),
       /** Full ProgressData JSON blob. */
-      progressJson: (0, import_mysql_core.text)("progressJson").notNull(),
-      updatedAt: (0, import_mysql_core.timestamp)("updatedAt").defaultNow().onUpdateNow().notNull()
+      progressJson: (0, import_pg_core.text)("progressJson").notNull(),
+      updatedAt: (0, import_pg_core.timestamp)("updatedAt").defaultNow().notNull()
     });
-    userBookmarks = (0, import_mysql_core.mysqlTable)(
+    userBookmarks = (0, import_pg_core.pgTable)(
       "user_bookmarks",
       {
-        id: (0, import_mysql_core.int)("id").autoincrement().primaryKey(),
-        userId: (0, import_mysql_core.int)("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+        id: (0, import_pg_core.integer)("id").generatedAlwaysAsIdentity().primaryKey(),
+        userId: (0, import_pg_core.integer)("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
         /** Client-side bookmark ID (timestamp string). */
-        bookmarkId: (0, import_mysql_core.varchar)("bookmarkId", { length: 64 }).notNull(),
+        bookmarkId: (0, import_pg_core.varchar)("bookmarkId", { length: 64 }).notNull(),
         /** Full HistoryItem JSON blob. */
-        itemJson: (0, import_mysql_core.text)("itemJson").notNull(),
+        itemJson: (0, import_pg_core.text)("itemJson").notNull(),
         /** Subject slug for server-side filtering. */
-        subject: (0, import_mysql_core.varchar)("subject", { length: 64 }),
-        createdAt: (0, import_mysql_core.timestamp)("createdAt").defaultNow().notNull()
+        subject: (0, import_pg_core.varchar)("subject", { length: 64 }),
+        createdAt: (0, import_pg_core.timestamp)("createdAt").defaultNow().notNull()
       },
       (t2) => [
-        (0, import_mysql_core.index)("user_bookmarks_userId_idx").on(t2.userId),
-        (0, import_mysql_core.index)("user_bookmarks_bookmarkId_idx").on(t2.userId, t2.bookmarkId)
+        (0, import_pg_core.index)("user_bookmarks_userId_idx").on(t2.userId),
+        (0, import_pg_core.index)("user_bookmarks_bookmarkId_idx").on(t2.userId, t2.bookmarkId)
       ]
     );
-    userNotes = (0, import_mysql_core.mysqlTable)(
+    userNotes = (0, import_pg_core.pgTable)(
       "user_notes",
       {
-        id: (0, import_mysql_core.int)("id").autoincrement().primaryKey(),
-        userId: (0, import_mysql_core.int)("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+        id: (0, import_pg_core.integer)("id").generatedAlwaysAsIdentity().primaryKey(),
+        userId: (0, import_pg_core.integer)("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
         /** Client-side note ID. */
-        noteId: (0, import_mysql_core.varchar)("noteId", { length: 64 }).notNull(),
+        noteId: (0, import_pg_core.varchar)("noteId", { length: 64 }).notNull(),
         /** Full note JSON blob. */
-        noteJson: (0, import_mysql_core.text)("noteJson").notNull(),
-        createdAt: (0, import_mysql_core.timestamp)("createdAt").defaultNow().notNull(),
-        updatedAt: (0, import_mysql_core.timestamp)("updatedAt").defaultNow().onUpdateNow().notNull()
+        noteJson: (0, import_pg_core.text)("noteJson").notNull(),
+        createdAt: (0, import_pg_core.timestamp)("createdAt").defaultNow().notNull(),
+        updatedAt: (0, import_pg_core.timestamp)("updatedAt").defaultNow().notNull()
       },
       (t2) => [
-        (0, import_mysql_core.index)("user_notes_userId_idx").on(t2.userId),
-        (0, import_mysql_core.index)("user_notes_noteId_idx").on(t2.userId, t2.noteId)
+        (0, import_pg_core.index)("user_notes_userId_idx").on(t2.userId),
+        (0, import_pg_core.index)("user_notes_noteId_idx").on(t2.userId, t2.noteId)
       ]
     );
-    subscriptions = (0, import_mysql_core.mysqlTable)(
+    subscriptions = (0, import_pg_core.pgTable)(
       "subscriptions",
       {
-        id: (0, import_mysql_core.int)("id").autoincrement().primaryKey(),
+        id: (0, import_pg_core.integer)("id").generatedAlwaysAsIdentity().primaryKey(),
         /** FK to users.id — null if the RevenueCat user cannot be resolved to a local user. */
-        userId: (0, import_mysql_core.int)("userId").references(() => users.id, { onDelete: "set null" }),
+        userId: (0, import_pg_core.integer)("userId").references(() => users.id, { onDelete: "set null" }),
         /** RevenueCat app user ID (the `app_user_id` field in webhook payloads). */
-        revenueCatUserId: (0, import_mysql_core.varchar)("revenueCatUserId", { length: 255 }).notNull(),
+        revenueCatUserId: (0, import_pg_core.varchar)("revenueCatUserId", { length: 255 }).notNull(),
         /** Product ID, e.g. "tutorsnap_monthly" or "tutorsnap_annual". */
-        productId: (0, import_mysql_core.varchar)("productId", { length: 255 }).notNull(),
+        productId: (0, import_pg_core.varchar)("productId", { length: 255 }).notNull(),
         /** Current subscription status. */
-        status: (0, import_mysql_core.mysqlEnum)("status", ["active", "cancelled", "expired", "refunded"]).notNull().default("active"),
+        status: subscriptionStatusEnum("status").notNull().default("active"),
         /**
          * True when the subscription is in a billing grace period.
          * Set to true on BILLING_ISSUE / GRACE_PERIOD_START; cleared to false on all other events.
          * Replaces the fragile expiresAt-in-past heuristic used previously.
          */
-        isInGracePeriod: (0, import_mysql_core.boolean)("isInGracePeriod").notNull().default(false),
+        isInGracePeriod: (0, import_pg_core.boolean)("isInGracePeriod").notNull().default(false),
         /** Timestamp when the subscription expires (from RevenueCat expiration_at_ms). */
-        expiresAt: (0, import_mysql_core.timestamp)("expiresAt"),
-        createdAt: (0, import_mysql_core.timestamp)("createdAt").defaultNow().notNull(),
-        updatedAt: (0, import_mysql_core.timestamp)("updatedAt").defaultNow().onUpdateNow().notNull()
+        expiresAt: (0, import_pg_core.timestamp)("expiresAt"),
+        createdAt: (0, import_pg_core.timestamp)("createdAt").defaultNow().notNull(),
+        updatedAt: (0, import_pg_core.timestamp)("updatedAt").defaultNow().notNull()
       },
       (t2) => [
-        (0, import_mysql_core.index)("idx_subscriptions_userId").on(t2.userId),
-        (0, import_mysql_core.index)("idx_subscriptions_rcUserId").on(t2.revenueCatUserId)
+        (0, import_pg_core.index)("idx_subscriptions_userId").on(t2.userId),
+        (0, import_pg_core.index)("idx_subscriptions_rcUserId").on(t2.revenueCatUserId)
       ]
     );
-    classrooms = (0, import_mysql_core.mysqlTable)(
+    classrooms = (0, import_pg_core.pgTable)(
       "classrooms",
       {
-        id: (0, import_mysql_core.int)("id").autoincrement().primaryKey(),
-        publicId: (0, import_mysql_core.varchar)("publicId", { length: 36 }).notNull().unique(),
-        teacherId: (0, import_mysql_core.int)("teacherId").notNull().references(() => users.id, { onDelete: "cascade" }),
-        name: (0, import_mysql_core.varchar)("name", { length: 120 }).notNull(),
-        joinCode: (0, import_mysql_core.varchar)("joinCode", { length: 8 }).notNull().unique(),
-        subject: (0, import_mysql_core.varchar)("subject", { length: 64 }).notNull(),
-        gradeLevel: (0, import_mysql_core.varchar)("gradeLevel", { length: 32 }),
-        isActive: (0, import_mysql_core.boolean)("isActive").default(true).notNull(),
-        createdAt: (0, import_mysql_core.timestamp)("createdAt").defaultNow().notNull(),
-        updatedAt: (0, import_mysql_core.timestamp)("updatedAt").defaultNow().onUpdateNow().notNull()
+        id: (0, import_pg_core.integer)("id").generatedAlwaysAsIdentity().primaryKey(),
+        publicId: (0, import_pg_core.varchar)("publicId", { length: 36 }).notNull().unique(),
+        teacherId: (0, import_pg_core.integer)("teacherId").notNull().references(() => users.id, { onDelete: "cascade" }),
+        name: (0, import_pg_core.varchar)("name", { length: 120 }).notNull(),
+        joinCode: (0, import_pg_core.varchar)("joinCode", { length: 8 }).notNull().unique(),
+        subject: (0, import_pg_core.varchar)("subject", { length: 64 }).notNull(),
+        gradeLevel: (0, import_pg_core.varchar)("gradeLevel", { length: 32 }),
+        isActive: (0, import_pg_core.boolean)("isActive").default(true).notNull(),
+        createdAt: (0, import_pg_core.timestamp)("createdAt").defaultNow().notNull(),
+        updatedAt: (0, import_pg_core.timestamp)("updatedAt").defaultNow().notNull()
       },
       (t2) => [
-        (0, import_mysql_core.index)("classrooms_teacher_idx").on(t2.teacherId),
-        (0, import_mysql_core.index)("classrooms_active_updated_idx").on(t2.isActive, t2.updatedAt)
+        (0, import_pg_core.index)("classrooms_teacher_idx").on(t2.teacherId),
+        (0, import_pg_core.index)("classrooms_active_updated_idx").on(t2.isActive, t2.updatedAt)
       ]
     );
-    classroomMembers = (0, import_mysql_core.mysqlTable)(
+    classroomMembers = (0, import_pg_core.pgTable)(
       "classroom_members",
       {
-        id: (0, import_mysql_core.int)("id").autoincrement().primaryKey(),
-        classroomId: (0, import_mysql_core.int)("classroomId").notNull().references(() => classrooms.id, { onDelete: "cascade" }),
-        userId: (0, import_mysql_core.int)("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
-        role: (0, import_mysql_core.mysqlEnum)("role", ["teacher", "learner"]).notNull(),
-        joinedAt: (0, import_mysql_core.timestamp)("joinedAt").defaultNow().notNull()
+        id: (0, import_pg_core.integer)("id").generatedAlwaysAsIdentity().primaryKey(),
+        classroomId: (0, import_pg_core.integer)("classroomId").notNull().references(() => classrooms.id, { onDelete: "cascade" }),
+        userId: (0, import_pg_core.integer)("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+        role: classroomRoleEnum("role").notNull(),
+        joinedAt: (0, import_pg_core.timestamp)("joinedAt").defaultNow().notNull()
       },
       (t2) => [
-        (0, import_mysql_core.uniqueIndex)("classroom_members_class_user_uq").on(t2.classroomId, t2.userId),
-        (0, import_mysql_core.index)("classroom_members_user_joined_idx").on(t2.userId, t2.joinedAt),
-        (0, import_mysql_core.index)("classroom_members_class_role_idx").on(t2.classroomId, t2.role)
+        (0, import_pg_core.uniqueIndex)("classroom_members_class_user_uq").on(t2.classroomId, t2.userId),
+        (0, import_pg_core.index)("classroom_members_user_joined_idx").on(t2.userId, t2.joinedAt),
+        (0, import_pg_core.index)("classroom_members_class_role_idx").on(t2.classroomId, t2.role)
       ]
     );
-    assignments = (0, import_mysql_core.mysqlTable)(
+    assignments = (0, import_pg_core.pgTable)(
       "assignments",
       {
-        id: (0, import_mysql_core.int)("id").autoincrement().primaryKey(),
-        publicId: (0, import_mysql_core.varchar)("publicId", { length: 36 }).notNull().unique(),
-        classroomId: (0, import_mysql_core.int)("classroomId").notNull().references(() => classrooms.id, { onDelete: "cascade" }),
-        createdByUserId: (0, import_mysql_core.int)("createdByUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
-        title: (0, import_mysql_core.varchar)("title", { length: 160 }).notNull(),
-        instructions: (0, import_mysql_core.text)("instructions").notNull(),
-        subject: (0, import_mysql_core.varchar)("subject", { length: 64 }).notNull(),
-        dueAt: (0, import_mysql_core.timestamp)("dueAt"),
-        status: (0, import_mysql_core.mysqlEnum)("status", ["draft", "published"]).default("draft").notNull(),
-        publishedAt: (0, import_mysql_core.timestamp)("publishedAt"),
-        createdAt: (0, import_mysql_core.timestamp)("createdAt").defaultNow().notNull(),
-        updatedAt: (0, import_mysql_core.timestamp)("updatedAt").defaultNow().onUpdateNow().notNull()
+        id: (0, import_pg_core.integer)("id").generatedAlwaysAsIdentity().primaryKey(),
+        publicId: (0, import_pg_core.varchar)("publicId", { length: 36 }).notNull().unique(),
+        classroomId: (0, import_pg_core.integer)("classroomId").notNull().references(() => classrooms.id, { onDelete: "cascade" }),
+        createdByUserId: (0, import_pg_core.integer)("createdByUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+        title: (0, import_pg_core.varchar)("title", { length: 160 }).notNull(),
+        instructions: (0, import_pg_core.text)("instructions").notNull(),
+        subject: (0, import_pg_core.varchar)("subject", { length: 64 }).notNull(),
+        dueAt: (0, import_pg_core.timestamp)("dueAt"),
+        status: assignmentStatusEnum("status").default("draft").notNull(),
+        publishedAt: (0, import_pg_core.timestamp)("publishedAt"),
+        createdAt: (0, import_pg_core.timestamp)("createdAt").defaultNow().notNull(),
+        updatedAt: (0, import_pg_core.timestamp)("updatedAt").defaultNow().notNull()
       },
       (t2) => [
-        (0, import_mysql_core.index)("assignments_class_status_due_idx").on(t2.classroomId, t2.status, t2.dueAt),
-        (0, import_mysql_core.index)("assignments_class_updated_idx").on(t2.classroomId, t2.updatedAt)
+        (0, import_pg_core.index)("assignments_class_status_due_idx").on(t2.classroomId, t2.status, t2.dueAt),
+        (0, import_pg_core.index)("assignments_class_updated_idx").on(t2.classroomId, t2.updatedAt)
       ]
     );
-    assignmentSubmissions = (0, import_mysql_core.mysqlTable)(
+    assignmentSubmissions = (0, import_pg_core.pgTable)(
       "assignment_submissions",
       {
-        id: (0, import_mysql_core.int)("id").autoincrement().primaryKey(),
-        publicId: (0, import_mysql_core.varchar)("publicId", { length: 36 }).notNull().unique(),
-        assignmentId: (0, import_mysql_core.int)("assignmentId").notNull().references(() => assignments.id, { onDelete: "cascade" }),
-        userId: (0, import_mysql_core.int)("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
-        status: (0, import_mysql_core.mysqlEnum)("status", ["pending", "complete"]).default("pending").notNull(),
-        responseText: (0, import_mysql_core.text)("responseText"),
-        submittedAt: (0, import_mysql_core.timestamp)("submittedAt"),
-        createdAt: (0, import_mysql_core.timestamp)("createdAt").defaultNow().notNull(),
-        updatedAt: (0, import_mysql_core.timestamp)("updatedAt").defaultNow().onUpdateNow().notNull()
+        id: (0, import_pg_core.integer)("id").generatedAlwaysAsIdentity().primaryKey(),
+        publicId: (0, import_pg_core.varchar)("publicId", { length: 36 }).notNull().unique(),
+        assignmentId: (0, import_pg_core.integer)("assignmentId").notNull().references(() => assignments.id, { onDelete: "cascade" }),
+        userId: (0, import_pg_core.integer)("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+        status: submissionStatusEnum("status").default("pending").notNull(),
+        responseText: (0, import_pg_core.text)("responseText"),
+        submittedAt: (0, import_pg_core.timestamp)("submittedAt"),
+        createdAt: (0, import_pg_core.timestamp)("createdAt").defaultNow().notNull(),
+        updatedAt: (0, import_pg_core.timestamp)("updatedAt").defaultNow().notNull()
       },
       (t2) => [
-        (0, import_mysql_core.uniqueIndex)("assignment_submissions_assignment_user_uq").on(t2.assignmentId, t2.userId),
-        (0, import_mysql_core.index)("assignment_submissions_status_idx").on(t2.assignmentId, t2.status),
-        (0, import_mysql_core.index)("assignment_submissions_user_updated_idx").on(t2.userId, t2.updatedAt)
+        (0, import_pg_core.uniqueIndex)("assignment_submissions_assignment_user_uq").on(t2.assignmentId, t2.userId),
+        (0, import_pg_core.index)("assignment_submissions_status_idx").on(t2.assignmentId, t2.status),
+        (0, import_pg_core.index)("assignment_submissions_user_updated_idx").on(t2.userId, t2.updatedAt)
       ]
     );
-    assignmentComments = (0, import_mysql_core.mysqlTable)(
+    assignmentComments = (0, import_pg_core.pgTable)(
       "assignment_comments",
       {
-        id: (0, import_mysql_core.int)("id").autoincrement().primaryKey(),
-        publicId: (0, import_mysql_core.varchar)("publicId", { length: 36 }).notNull().unique(),
-        assignmentId: (0, import_mysql_core.int)("assignmentId").notNull().references(() => assignments.id, { onDelete: "cascade" }),
-        authorUserId: (0, import_mysql_core.int)("authorUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
-        body: (0, import_mysql_core.text)("body").notNull(),
-        isDeleted: (0, import_mysql_core.boolean)("isDeleted").default(false).notNull(),
-        deletedAt: (0, import_mysql_core.timestamp)("deletedAt"),
-        deletedByUserId: (0, import_mysql_core.int)("deletedByUserId").references(() => users.id, { onDelete: "set null" }),
-        moderationReason: (0, import_mysql_core.varchar)("moderationReason", { length: 64 }),
-        createdAt: (0, import_mysql_core.timestamp)("createdAt").defaultNow().notNull(),
-        updatedAt: (0, import_mysql_core.timestamp)("updatedAt").defaultNow().onUpdateNow().notNull()
+        id: (0, import_pg_core.integer)("id").generatedAlwaysAsIdentity().primaryKey(),
+        publicId: (0, import_pg_core.varchar)("publicId", { length: 36 }).notNull().unique(),
+        assignmentId: (0, import_pg_core.integer)("assignmentId").notNull().references(() => assignments.id, { onDelete: "cascade" }),
+        authorUserId: (0, import_pg_core.integer)("authorUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+        body: (0, import_pg_core.text)("body").notNull(),
+        isDeleted: (0, import_pg_core.boolean)("isDeleted").default(false).notNull(),
+        deletedAt: (0, import_pg_core.timestamp)("deletedAt"),
+        deletedByUserId: (0, import_pg_core.integer)("deletedByUserId").references(() => users.id, { onDelete: "set null" }),
+        moderationReason: (0, import_pg_core.varchar)("moderationReason", { length: 64 }),
+        createdAt: (0, import_pg_core.timestamp)("createdAt").defaultNow().notNull(),
+        updatedAt: (0, import_pg_core.timestamp)("updatedAt").defaultNow().notNull()
       },
       (t2) => [
-        (0, import_mysql_core.index)("assignment_comments_assignment_created_idx").on(t2.assignmentId, t2.createdAt, t2.id),
-        (0, import_mysql_core.index)("assignment_comments_author_created_idx").on(t2.authorUserId, t2.createdAt)
+        (0, import_pg_core.index)("assignment_comments_assignment_created_idx").on(t2.assignmentId, t2.createdAt, t2.id),
+        (0, import_pg_core.index)("assignment_comments_author_created_idx").on(t2.authorUserId, t2.createdAt)
       ]
     );
-    classroomJoinAttempts = (0, import_mysql_core.mysqlTable)(
+    classroomJoinAttempts = (0, import_pg_core.pgTable)(
       "classroom_join_attempts",
       {
-        id: (0, import_mysql_core.int)("id").autoincrement().primaryKey(),
-        userId: (0, import_mysql_core.int)("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
-        ipAddress: (0, import_mysql_core.varchar)("ipAddress", { length: 45 }),
-        codeHash: (0, import_mysql_core.varchar)("codeHash", { length: 64 }).notNull(),
-        outcome: (0, import_mysql_core.varchar)("outcome", { length: 32 }).notNull(),
-        createdAt: (0, import_mysql_core.timestamp)("createdAt").defaultNow().notNull()
+        id: (0, import_pg_core.integer)("id").generatedAlwaysAsIdentity().primaryKey(),
+        userId: (0, import_pg_core.integer)("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+        ipAddress: (0, import_pg_core.varchar)("ipAddress", { length: 45 }),
+        codeHash: (0, import_pg_core.varchar)("codeHash", { length: 64 }).notNull(),
+        outcome: (0, import_pg_core.varchar)("outcome", { length: 32 }).notNull(),
+        createdAt: (0, import_pg_core.timestamp)("createdAt").defaultNow().notNull()
       },
       (t2) => [
-        (0, import_mysql_core.index)("classroom_join_user_created_idx").on(t2.userId, t2.createdAt),
-        (0, import_mysql_core.index)("classroom_join_ip_created_idx").on(t2.ipAddress, t2.createdAt),
-        (0, import_mysql_core.index)("classroom_join_hash_created_idx").on(t2.codeHash, t2.createdAt)
+        (0, import_pg_core.index)("classroom_join_user_created_idx").on(t2.userId, t2.createdAt),
+        (0, import_pg_core.index)("classroom_join_ip_created_idx").on(t2.ipAddress, t2.createdAt),
+        (0, import_pg_core.index)("classroom_join_hash_created_idx").on(t2.codeHash, t2.createdAt)
       ]
     );
   }
@@ -470,6 +475,7 @@ var init_schema = __esm({
 // server/db.ts
 var db_exports = {};
 __export(db_exports, {
+  closeDb: () => closeDb,
   db: () => db,
   getAppearanceSettings: () => getAppearanceSettings,
   getDb: () => getDb,
@@ -480,13 +486,28 @@ __export(db_exports, {
 async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = (0, import_mysql2.drizzle)(process.env.DATABASE_URL);
+      _pool = new import_pg.Pool({
+        connectionString: process.env.DATABASE_URL,
+        max: Number(process.env.DATABASE_POOL_MAX ?? 10),
+        idleTimeoutMillis: 3e4,
+        connectionTimeoutMillis: 15e3,
+        ssl: process.env.DATABASE_SSL === "false" ? void 0 : { rejectUnauthorized: false }
+      });
+      _db = (0, import_node_postgres.drizzle)(_pool);
     } catch (error) {
-      console.warn("[Database] Failed to connect:", error);
+      console.warn("[Database] Failed to initialize PostgreSQL:", error);
+      _pool = null;
       _db = null;
     }
   }
   return _db;
+}
+async function closeDb() {
+  if (_pool) {
+    await _pool.end();
+    _pool = null;
+    _db = null;
+  }
 }
 async function upsertUser(user) {
   if (!user.openId) {
@@ -528,7 +549,8 @@ async function upsertUser(user) {
     if (Object.keys(updateSet).length === 0) {
       updateSet.lastSignedIn = /* @__PURE__ */ new Date();
     }
-    await db2.insert(users).values(values).onDuplicateKeyUpdate({
+    await db2.insert(users).values(values).onConflictDoUpdate({
+      target: users.openId,
       set: updateSet
     });
   } catch (error) {
@@ -556,14 +578,16 @@ async function saveAppearanceSettings(userId, settings) {
   if (!db2) return;
   await db2.update(users).set({ appearanceSettings: settings }).where((0, import_drizzle_orm.eq)(users.id, userId));
 }
-var import_drizzle_orm, import_mysql2, _db, db;
+var import_drizzle_orm, import_node_postgres, import_pg, _pool, _db, db;
 var init_db = __esm({
   "server/db.ts"() {
     "use strict";
     import_drizzle_orm = require("drizzle-orm");
-    import_mysql2 = require("drizzle-orm/mysql2");
+    import_node_postgres = require("drizzle-orm/node-postgres");
+    import_pg = require("pg");
     init_schema();
     init_env();
+    _pool = null;
     _db = null;
     db = {
       insert: async (table) => {
@@ -1772,14 +1796,14 @@ async function verifyOtpCode(email, code, purpose) {
         await tx.delete(otpCodes).where((0, import_drizzle_orm5.eq)(otpCodes.id, entry.id));
         return { ok: false, error: "Too many incorrect attempts. Please request a new code." };
       }
-      const incrementResult = await tx.update(otpCodes).set({ attempts: import_drizzle_orm5.sql`${otpCodes.attempts} + 1` }).where(
+      const incrementRows = await tx.update(otpCodes).set({ attempts: import_drizzle_orm5.sql`${otpCodes.attempts} + 1` }).where(
         (0, import_drizzle_orm5.and)(
           (0, import_drizzle_orm5.eq)(otpCodes.id, entry.id),
           (0, import_drizzle_orm5.lt)(otpCodes.attempts, MAX_ATTEMPTS),
           (0, import_drizzle_orm5.gt)(otpCodes.expiresAt, /* @__PURE__ */ new Date())
         )
-      );
-      const affected = incrementResult[0]?.affectedRows ?? 0;
+      ).returning({ id: otpCodes.id });
+      const affected = incrementRows.length;
       if (affected === 0) {
         return { ok: false, error: "Code is no longer valid. Please request a new one." };
       }
@@ -1795,8 +1819,8 @@ async function verifyOtpCode(email, code, purpose) {
           error: `Incorrect code. ${remaining} attempt${remaining === 1 ? "" : "s"} remaining.`
         };
       }
-      const deleteResult = await tx.delete(otpCodes).where((0, import_drizzle_orm5.and)((0, import_drizzle_orm5.eq)(otpCodes.id, entry.id), (0, import_drizzle_orm5.eq)(otpCodes.hashedCode, entry.hashedCode)));
-      const deleted = deleteResult[0]?.affectedRows ?? 0;
+      const deletedRows = await tx.delete(otpCodes).where((0, import_drizzle_orm5.and)((0, import_drizzle_orm5.eq)(otpCodes.id, entry.id), (0, import_drizzle_orm5.eq)(otpCodes.hashedCode, entry.hashedCode))).returning({ id: otpCodes.id });
+      const deleted = deletedRows.length;
       if (deleted === 0) {
         return { ok: false, error: "Code was already used. Please request a new one." };
       }
@@ -1815,23 +1839,24 @@ async function runCleanupIfLockAcquired() {
   const lockExpiry = new Date(now.getTime() + LOCK_TTL_MS);
   try {
     await db2.execute(
-      import_drizzle_orm5.sql`INSERT INTO scheduler_locks (jobName, instanceId, expiresAt, acquiredAt)
+      import_drizzle_orm5.sql`INSERT INTO scheduler_locks ("jobName", "instanceId", "expiresAt", "acquiredAt")
           VALUES ('otp-cleanup', ${INSTANCE_ID}, ${lockExpiry}, ${now})
-          ON DUPLICATE KEY UPDATE
-            instanceId = IF(expiresAt < ${now}, VALUES(instanceId), instanceId),
-            expiresAt  = IF(expiresAt < ${now}, VALUES(expiresAt), expiresAt),
-            acquiredAt = IF(expiresAt < ${now}, VALUES(acquiredAt), acquiredAt)`
+          ON CONFLICT ("jobName") DO UPDATE SET
+            "instanceId" = EXCLUDED."instanceId",
+            "expiresAt" = EXCLUDED."expiresAt",
+            "acquiredAt" = EXCLUDED."acquiredAt"
+          WHERE scheduler_locks."expiresAt" < EXCLUDED."acquiredAt"`
     );
     const lockRows = await db2.select().from((init_schema(), __toCommonJS(schema_exports)).schedulerLocks).where((0, import_drizzle_orm5.eq)((init_schema(), __toCommonJS(schema_exports)).schedulerLocks.jobName, "otp-cleanup")).limit(1);
     if (!lockRows[0] || lockRows[0].instanceId !== INSTANCE_ID) {
       return;
     }
     const cutoff = /* @__PURE__ */ new Date();
-    const result = await db2.delete(otpCodes).where((0, import_drizzle_orm5.lt)(otpCodes.expiresAt, cutoff));
-    const otpDeleted = result[0]?.affectedRows ?? 0;
+    const otpDeletedRows = await db2.delete(otpCodes).where((0, import_drizzle_orm5.lt)(otpCodes.expiresAt, cutoff)).returning({ id: otpCodes.id });
+    const otpDeleted = otpDeletedRows.length;
     const auditCutoff = new Date(now.getTime() - 24 * 60 * 60 * 1e3);
-    const auditResult = await db2.delete(otpAudit).where((0, import_drizzle_orm5.lt)(otpAudit.createdAt, auditCutoff));
-    const auditDeleted = auditResult[0]?.affectedRows ?? 0;
+    const auditDeletedRows = await db2.delete(otpAudit).where((0, import_drizzle_orm5.lt)(otpAudit.createdAt, auditCutoff)).returning({ id: otpAudit.id });
+    const auditDeleted = auditDeletedRows.length;
   } catch (err) {
     console.warn("[OTP Cleanup] Scheduler error (non-fatal):", err?.message ?? err);
   }
@@ -2350,12 +2375,13 @@ async function runClassroomCleanupIfLockAcquired() {
   const now = /* @__PURE__ */ new Date();
   const lockExpiry = new Date(now.getTime() + LOCK_TTL_MS2);
   try {
-    await database.execute(import_drizzle_orm6.sql`INSERT INTO scheduler_locks (jobName, instanceId, expiresAt, acquiredAt)
+    await database.execute(import_drizzle_orm6.sql`INSERT INTO scheduler_locks ("jobName", "instanceId", "expiresAt", "acquiredAt")
       VALUES ('classroom-security-cleanup', ${CLEANUP_INSTANCE_ID}, ${lockExpiry}, ${now})
-      ON DUPLICATE KEY UPDATE
-        instanceId = IF(expiresAt < ${now}, VALUES(instanceId), instanceId),
-        expiresAt = IF(expiresAt < ${now}, VALUES(expiresAt), expiresAt),
-        acquiredAt = IF(expiresAt < ${now}, VALUES(acquiredAt), acquiredAt)`);
+      ON CONFLICT ("jobName") DO UPDATE SET
+        "instanceId" = EXCLUDED."instanceId",
+        "expiresAt" = EXCLUDED."expiresAt",
+        "acquiredAt" = EXCLUDED."acquiredAt"
+      WHERE scheduler_locks."expiresAt" < EXCLUDED."acquiredAt"`);
     const lockRows = await database.select().from(schedulerLocks).where((0, import_drizzle_orm6.eq)(schedulerLocks.jobName, "classroom-security-cleanup")).limit(1);
     if (!lockRows[0] || lockRows[0].instanceId !== CLEANUP_INSTANCE_ID) return;
     await database.delete(classroomJoinAttempts).where(
@@ -2955,7 +2981,8 @@ var init_classroom = __esm({
             status: input.status,
             responseText: input.responseText ?? null,
             submittedAt
-          }).onDuplicateKeyUpdate({
+          }).onConflictDoUpdate({
+            target: [assignmentSubmissions.assignmentId, assignmentSubmissions.userId],
             set: {
               status: input.status,
               responseText: input.responseText ?? null,
@@ -3699,7 +3726,7 @@ var import_node_crypto2 = require("node:crypto");
 // server/_core/classroom-acceptance-core.ts
 var import_node_crypto = require("node:crypto");
 var import_client = require("@trpc/client");
-var import_promise = require("mysql2/promise");
+var import_pg2 = require("pg");
 var import_superjson = __toESM(require("superjson"));
 init_sdk();
 function assert(condition, message) {
@@ -3732,22 +3759,22 @@ async function expectCode(operation, expectedCode, label) {
   );
 }
 async function seedIdentity(pool, identity) {
-  await pool.execute(
-    `INSERT INTO users (openId, name, email, loginMethod, role, lastSignedIn)
-     VALUES (?, ?, ?, 'email', 'user', CURRENT_TIMESTAMP)
-     ON DUPLICATE KEY UPDATE
-       name = VALUES(name),
-       email = VALUES(email),
-       loginMethod = 'email',
+  await pool.query(
+    `INSERT INTO users ("openId", name, email, "loginMethod", role, "lastSignedIn")
+     VALUES ($1, $2, $3, 'email', 'user', CURRENT_TIMESTAMP)
+     ON CONFLICT ("openId") DO UPDATE SET
+       name = EXCLUDED.name,
+       email = EXCLUDED.email,
+       "loginMethod" = 'email',
        role = 'user',
-       lastSignedIn = CURRENT_TIMESTAMP`,
+       "lastSignedIn" = CURRENT_TIMESTAMP`,
     [identity.openId, identity.name, identity.email]
   );
 }
 async function removeIdentities(pool, identities) {
-  const placeholders = identities.map(() => "?").join(", ");
-  await pool.execute(
-    `DELETE FROM users WHERE openId IN (${placeholders})`,
+  const placeholders = identities.map((_, index2) => `$${index2 + 1}`).join(", ");
+  await pool.query(
+    `DELETE FROM users WHERE "openId" IN (${placeholders})`,
     identities.map((identity) => identity.openId)
   );
 }
@@ -3803,7 +3830,12 @@ async function runClassroomAcceptance() {
     startedAt: new Date(started).toISOString(),
     checks: {}
   };
-  const pool = (0, import_promise.createPool)({ uri: databaseUrl, connectionLimit: 2 });
+  const pool = new import_pg2.Pool({
+    connectionString: databaseUrl,
+    max: 2,
+    connectionTimeoutMillis: 15e3,
+    ssl: process.env.DATABASE_SSL === "false" ? void 0 : { rejectUnauthorized: false }
+  });
   let teacher = null;
   let classroomId = null;
   try {
@@ -6693,8 +6725,8 @@ async function startServer() {
         res.status(503).json({ ok: false, error: "DB unavailable" });
         return;
       }
-      const result = await db2.delete(otpCodes2).where(lt3(otpCodes2.expiresAt, /* @__PURE__ */ new Date()));
-      const deleted = result[0]?.affectedRows ?? 0;
+      const deletedRows = await db2.delete(otpCodes2).where(lt3(otpCodes2.expiresAt, /* @__PURE__ */ new Date())).returning({ id: otpCodes2.id });
+      const deleted = deletedRows.length;
       res.json({ ok: true, deleted });
     } catch (err) {
       console.error("[OTP Cleanup] Error:", err);

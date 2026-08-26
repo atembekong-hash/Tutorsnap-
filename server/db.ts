@@ -1,21 +1,39 @@
 import { eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
+import { users, type InsertUser } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
+let _pool: Pool | null = null;
 let _db: ReturnType<typeof drizzle> | null = null;
 
-// Lazily create the drizzle instance so local tooling can run without a DB.
+// Lazily create the PostgreSQL pool so local tooling can run without a DB.
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      _pool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        max: Number(process.env.DATABASE_POOL_MAX ?? 10),
+        idleTimeoutMillis: 30_000,
+        connectionTimeoutMillis: 15_000,
+        ssl: process.env.DATABASE_SSL === "false" ? undefined : { rejectUnauthorized: false },
+      });
+      _db = drizzle(_pool);
     } catch (error) {
-      console.warn("[Database] Failed to connect:", error);
+      console.warn("[Database] Failed to initialize PostgreSQL:", error);
+      _pool = null;
       _db = null;
     }
   }
   return _db;
+}
+
+export async function closeDb() {
+  if (_pool) {
+    await _pool.end();
+    _pool = null;
+    _db = null;
+  }
 }
 
 export async function upsertUser(user: InsertUser): Promise<void> {
@@ -68,7 +86,8 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       updateSet.lastSignedIn = new Date();
     }
 
-    await db.insert(users).values(values).onDuplicateKeyUpdate({
+    await db.insert(users).values(values).onConflictDoUpdate({
+      target: users.openId,
       set: updateSet,
     });
   } catch (error) {
@@ -102,7 +121,7 @@ export async function saveAppearanceSettings(userId: number, settings: string): 
   await db.update(users).set({ appearanceSettings: settings }).where(eq(users.id, userId));
 }
 
-// Export db instance for direct use in services
+// Export db instance for direct use in services.
 export const db = {
   insert: async (table: any) => {
     const database = await getDb();
@@ -125,5 +144,3 @@ export const db = {
     return database.delete(table);
   },
 };
-
-// TODO: add feature queries here as your schema grows.

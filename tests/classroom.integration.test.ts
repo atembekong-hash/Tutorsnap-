@@ -1,4 +1,4 @@
-import { createPool, type Pool, type RowDataPacket } from "mysql2/promise";
+import { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import type { TrpcContext } from "../server/_core/context";
@@ -11,7 +11,7 @@ type RouterModule = typeof import("../server/routers");
 
 function assertDedicatedLocalDatabase(url: string): void {
   const parsed = new URL(url);
-  const localHosts = new Set(["127.0.0.1", "localhost", "mysql"]);
+  const localHosts = new Set(["127.0.0.1", "localhost", "postgres"]);
   if (!localHosts.has(parsed.hostname) || !/test/i.test(parsed.pathname)) {
     throw new Error(
       "Classroom integration tests require a dedicated local database whose name contains 'test'.",
@@ -74,10 +74,14 @@ describeWithDatabase(
       process.env.CLASSROOM_MVP_ENABLED = "true";
       process.env.NODE_ENV = "test";
 
-      pool = createPool({ uri: databaseUrl!, connectionLimit: 4 });
+      pool = new Pool({
+        connectionString: databaseUrl!,
+        max: 4,
+        connectionTimeoutMillis: 15_000,
+        ssl: process.env.DATABASE_SSL === "false" ? undefined : { rejectUnauthorized: false },
+      });
       await pool.query("SELECT 1");
 
-      await pool.query("SET FOREIGN_KEY_CHECKS = 0");
       for (const table of [
         "assignment_comments",
         "assignment_submissions",
@@ -86,12 +90,11 @@ describeWithDatabase(
         "classroom_members",
         "classrooms",
       ]) {
-        await pool.query(`TRUNCATE TABLE \`${table}\``);
+        await pool.query(`TRUNCATE TABLE "${table}" RESTART IDENTITY CASCADE`);
       }
       await pool.query(
-        "DELETE FROM users WHERE openId LIKE 'classroom-test-%'",
+        "DELETE FROM users WHERE \"openId\" LIKE 'classroom-test-%'",
       );
-      await pool.query("SET FOREIGN_KEY_CHECKS = 1");
 
       const identities = [
         ["classroom-test-teacher-a", "Teacher Ada"],
@@ -104,14 +107,14 @@ describeWithDatabase(
       ] as const;
 
       for (const [openId, name] of identities) {
-        await pool.execute(
-          "INSERT INTO users (openId, name, email, loginMethod, role, createdAt, updatedAt, lastSignedIn) VALUES (?, ?, ?, 'test', 'user', NOW(), NOW(), NOW())",
+        await pool.query(
+          "INSERT INTO users (\"openId\", name, email, \"loginMethod\", role, \"createdAt\", \"updatedAt\", \"lastSignedIn\") VALUES ($1, $2, $3, 'test', 'user', NOW(), NOW(), NOW())",
           [openId, name, `${openId}@example.test`],
         );
       }
 
-      const [rows] = await pool.query<RowDataPacket[]>(
-        "SELECT id, openId, name FROM users WHERE openId LIKE 'classroom-test-%'",
+      const { rows } = await pool.query<{ id: number; openId: string; name: string }>(
+        "SELECT id, \"openId\", name FROM users WHERE \"openId\" LIKE 'classroom-test-%'",
       );
       const idByOpenId = new Map(
         rows.map((row) => [String(row.openId), Number(row.id)]),
@@ -157,7 +160,6 @@ describeWithDatabase(
 
     afterAll(async () => {
       if (!pool) return;
-      await pool.query("SET FOREIGN_KEY_CHECKS = 0");
       for (const table of [
         "assignment_comments",
         "assignment_submissions",
@@ -166,12 +168,11 @@ describeWithDatabase(
         "classroom_members",
         "classrooms",
       ]) {
-        await pool.query(`TRUNCATE TABLE \`${table}\``);
+        await pool.query(`TRUNCATE TABLE "${table}" RESTART IDENTITY CASCADE`);
       }
       await pool.query(
-        "DELETE FROM users WHERE openId LIKE 'classroom-test-%'",
+        "DELETE FROM users WHERE \"openId\" LIKE 'classroom-test-%'",
       );
-      await pool.query("SET FOREIGN_KEY_CHECKS = 1");
       await pool.end();
     });
 
@@ -194,8 +195,8 @@ describeWithDatabase(
       expect(classA.role).toBe("teacher");
       expect(classAJoinCode).toMatch(/^[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{8}$/);
 
-      const [rows] = await pool.query<RowDataPacket[]>(
-        "SELECT role FROM users WHERE id IN (?, ?)",
+      const { rows } = await pool.query<{ role: string }>(
+        "SELECT role FROM users WHERE id IN ($1, $2)",
         [teacherA.id, teacherB.id],
       );
       expect(rows.map((row) => row.role)).toEqual(["user", "user"]);
@@ -214,8 +215,8 @@ describeWithDatabase(
         duplicateResults.every((result) => result.role === "learner"),
       ).toBe(true);
 
-      const [rows] = await pool.query<RowDataPacket[]>(
-        "SELECT COUNT(*) AS count FROM classroom_members cm INNER JOIN classrooms c ON c.id = cm.classroomId WHERE c.publicId = ? AND cm.role = 'learner'",
+      const { rows } = await pool.query<{ count: string }>(
+        "SELECT COUNT(*) AS count FROM classroom_members cm INNER JOIN classrooms c ON c.id = cm.\"classroomId\" WHERE c.\"publicId\" = $1 AND cm.role = 'learner'",
         [classAId],
       );
       expect(Number(rows[0].count)).toBe(3);
@@ -306,8 +307,8 @@ describeWithDatabase(
         responseText: "3x = 15, so x = 5.",
       });
 
-      const [rows] = await pool.query<RowDataPacket[]>(
-        "SELECT COUNT(*) AS count FROM assignment_submissions s INNER JOIN assignments a ON a.id = s.assignmentId WHERE a.publicId = ? AND s.userId = ?",
+      const { rows } = await pool.query<{ count: string }>(
+        "SELECT COUNT(*) AS count FROM assignment_submissions s INNER JOIN assignments a ON a.id = s.\"assignmentId\" WHERE a.\"publicId\" = $1 AND s.\"userId\" = $2",
         [assignmentId, learnerA.id],
       );
       expect(Number(rows[0].count)).toBe(1);
@@ -439,8 +440,8 @@ describeWithDatabase(
         caller(rateLimitUser).classroom.getByCode({ code: "NOPE99" }),
       ).rejects.toMatchObject({ code: "TOO_MANY_REQUESTS" });
 
-      const [rows] = await pool.query<RowDataPacket[]>(
-        "SELECT codeHash FROM classroom_join_attempts WHERE userId = ?",
+      const { rows } = await pool.query<{ codeHash: string }>(
+        "SELECT \"codeHash\" FROM classroom_join_attempts WHERE \"userId\" = $1",
         [rateLimitUser.id],
       );
       expect(rows).toHaveLength(10);

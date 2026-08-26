@@ -45,7 +45,7 @@
  *   table). Multiple server instances cannot register duplicate workers — only
  *   the instance that wins the INSERT acquires the lock.
  *
- * DATABASE: MySQL (drizzle-orm/mysql-core, mysql2 driver)
+ * DATABASE: PostgreSQL via Drizzle ORM and node-postgres
  * Tables: otp_codes, otp_audit, scheduler_locks
  */
 
@@ -358,7 +358,7 @@ async function verifyOtpCode(
       }
 
       // ── Atomic attempt increment — concurrent requests see 0 affected rows ──
-      const incrementResult = await tx
+      const incrementRows = await tx
         .update(otpCodes)
         .set({ attempts: sql`${otpCodes.attempts} + 1` })
         .where(
@@ -367,8 +367,9 @@ async function verifyOtpCode(
             lt(otpCodes.attempts, MAX_ATTEMPTS),
             gt(otpCodes.expiresAt, new Date())
           )
-        );
-      const affected = (incrementResult as any)[0]?.affectedRows ?? 0;
+        )
+        .returning({ id: otpCodes.id });
+      const affected = incrementRows.length;
       if (affected === 0) {
         // Another concurrent request won the race, or the row expired mid-flight
         return { ok: false, error: "Code is no longer valid. Please request a new one." };
@@ -391,10 +392,11 @@ async function verifyOtpCode(
       // ── Valid: atomically consume (single-use) ──
       // DELETE WHERE id = ? AND hashedCode = ? — if another concurrent request
       // already consumed it, 0 rows are affected and we reject.
-      const deleteResult = await tx
+      const deletedRows = await tx
         .delete(otpCodes)
-        .where(and(eq(otpCodes.id, entry.id), eq(otpCodes.hashedCode, entry.hashedCode)));
-      const deleted = (deleteResult as any)[0]?.affectedRows ?? 0;
+        .where(and(eq(otpCodes.id, entry.id), eq(otpCodes.hashedCode, entry.hashedCode)))
+        .returning({ id: otpCodes.id });
+      const deleted = deletedRows.length;
       if (deleted === 0) {
         return { ok: false, error: "Code was already used. Please request a new one." };
       }
@@ -555,7 +557,7 @@ export const emailAuthRouter = router({
 // ─── Singleton cleanup scheduler ─────────────────────────────────────────────
 //
 // Uses the scheduler_locks table to ensure only ONE server instance runs the
-// cleanup job at a time. The lock is acquired by INSERT ... ON DUPLICATE KEY
+// cleanup job at a time. The lock is acquired by INSERT ... ON CONFLICT
 // UPDATE only if the existing lock is expired. If another instance holds a
 // fresh lock, this instance skips silently.
 
@@ -580,14 +582,15 @@ async function runCleanupIfLockAcquired(): Promise<void> {
   try {
     // Attempt to acquire the lock atomically.
     // INSERT succeeds if no row exists.
-    // ON DUPLICATE KEY UPDATE succeeds only if the existing lock is expired.
-    await (db as any).execute(
-      sql`INSERT INTO scheduler_locks (jobName, instanceId, expiresAt, acquiredAt)
+    // ON CONFLICT UPDATE succeeds only if the existing lock is expired.
+    await db.execute(
+      sql`INSERT INTO scheduler_locks ("jobName", "instanceId", "expiresAt", "acquiredAt")
           VALUES ('otp-cleanup', ${INSTANCE_ID}, ${lockExpiry}, ${now})
-          ON DUPLICATE KEY UPDATE
-            instanceId = IF(expiresAt < ${now}, VALUES(instanceId), instanceId),
-            expiresAt  = IF(expiresAt < ${now}, VALUES(expiresAt), expiresAt),
-            acquiredAt = IF(expiresAt < ${now}, VALUES(acquiredAt), acquiredAt)`
+          ON CONFLICT ("jobName") DO UPDATE SET
+            "instanceId" = EXCLUDED."instanceId",
+            "expiresAt" = EXCLUDED."expiresAt",
+            "acquiredAt" = EXCLUDED."acquiredAt"
+          WHERE scheduler_locks."expiresAt" < EXCLUDED."acquiredAt"`
     );
 
     // Verify we actually hold the lock (another instance may have won the race)
@@ -604,13 +607,19 @@ async function runCleanupIfLockAcquired(): Promise<void> {
 
     // We hold the lock — run cleanup
     const cutoff = new Date();
-    const result = await db.delete(otpCodes).where(lt(otpCodes.expiresAt, cutoff));
-    const otpDeleted = (result as any)[0]?.affectedRows ?? 0;
+    const otpDeletedRows = await db
+      .delete(otpCodes)
+      .where(lt(otpCodes.expiresAt, cutoff))
+      .returning({ id: otpCodes.id });
+    const otpDeleted = otpDeletedRows.length;
 
     // Also prune otp_audit rows older than 24 hours
     const auditCutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-    const auditResult = await db.delete(otpAudit).where(lt(otpAudit.createdAt, auditCutoff));
-    const auditDeleted = (auditResult as any)[0]?.affectedRows ?? 0;
+    const auditDeletedRows = await db
+      .delete(otpAudit)
+      .where(lt(otpAudit.createdAt, auditCutoff))
+      .returning({ id: otpAudit.id });
+    const auditDeleted = auditDeletedRows.length;
 
     // console.log(`[OTP Cleanup] Deleted ${otpDeleted} expired OTP rows, ${auditDeleted} audit rows older than 24h`);
   } catch (err: any) {

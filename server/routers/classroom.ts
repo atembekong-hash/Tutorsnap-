@@ -1309,7 +1309,8 @@ export const classroomRouter = router({
             responseText: input.responseText ?? null,
             submittedAt,
           })
-          .onDuplicateKeyUpdate({
+          .onConflictDoUpdate({
+            target: [assignmentSubmissions.assignmentId, assignmentSubmissions.userId],
             set: {
               status: input.status,
               responseText: input.responseText ?? null,
@@ -1756,12 +1757,13 @@ async function runClassroomCleanupIfLockAcquired(): Promise<void> {
   const now = new Date();
   const lockExpiry = new Date(now.getTime() + LOCK_TTL_MS);
   try {
-    await database.execute(sql`INSERT INTO scheduler_locks (jobName, instanceId, expiresAt, acquiredAt)
+    await database.execute(sql`INSERT INTO scheduler_locks ("jobName", "instanceId", "expiresAt", "acquiredAt")
       VALUES ('classroom-security-cleanup', ${CLEANUP_INSTANCE_ID}, ${lockExpiry}, ${now})
-      ON DUPLICATE KEY UPDATE
-        instanceId = IF(expiresAt < ${now}, VALUES(instanceId), instanceId),
-        expiresAt = IF(expiresAt < ${now}, VALUES(expiresAt), expiresAt),
-        acquiredAt = IF(expiresAt < ${now}, VALUES(acquiredAt), acquiredAt)`);
+      ON CONFLICT ("jobName") DO UPDATE SET
+        "instanceId" = EXCLUDED."instanceId",
+        "expiresAt" = EXCLUDED."expiresAt",
+        "acquiredAt" = EXCLUDED."acquiredAt"
+      WHERE scheduler_locks."expiresAt" < EXCLUDED."acquiredAt"`);
     const lockRows = await database
       .select()
       .from(schedulerLocks)

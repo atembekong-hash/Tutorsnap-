@@ -25,29 +25,33 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 // server/_core/migrate.ts
 var import_promises = require("node:fs/promises");
 var import_node_path = __toESM(require("node:path"));
-var import_mysql2 = require("drizzle-orm/mysql2");
-var import_migrator = require("drizzle-orm/mysql2/migrator");
-var import_promise = __toESM(require("mysql2/promise"));
+var import_node_postgres = require("drizzle-orm/node-postgres");
+var import_migrator = require("drizzle-orm/node-postgres/migrator");
+var import_pg = require("pg");
 async function runMigrations() {
   const databaseUrl = process.env.DATABASE_URL?.trim();
   if (!databaseUrl) {
     throw new Error("DATABASE_URL is required to run database migrations");
   }
   const migrationsFolder = import_node_path.default.resolve(
-    process.env.DRIZZLE_MIGRATIONS_DIR?.trim() || "drizzle"
+    process.env.DRIZZLE_MIGRATIONS_DIR?.trim() || "drizzle-pg"
   );
   await (0, import_promises.access)(import_node_path.default.join(migrationsFolder, "meta", "_journal.json"));
-  const pool = import_promise.default.createPool({
-    uri: databaseUrl,
-    connectionLimit: 2,
-    enableKeepAlive: true,
-    keepAliveInitialDelay: 0,
-    connectTimeout: 15e3
+  const pool = new import_pg.Pool({
+    connectionString: databaseUrl,
+    max: 2,
+    keepAlive: true,
+    connectionTimeoutMillis: 15e3,
+    ssl: process.env.DATABASE_SSL === "false" ? void 0 : { rejectUnauthorized: false }
   });
-  await pool.query("SELECT 1");
-  const db = (0, import_mysql2.drizzle)(pool);
-  await (0, import_migrator.migrate)(db, { migrationsFolder });
-  console.log("[Migrations] Committed migrations applied successfully");
+  try {
+    await pool.query("SELECT 1");
+    const db = (0, import_node_postgres.drizzle)(pool);
+    await (0, import_migrator.migrate)(db, { migrationsFolder });
+    console.log("[Migrations] Committed PostgreSQL migrations applied successfully");
+  } finally {
+    await pool.end();
+  }
 }
 runMigrations().then(() => process.exit(0)).catch((error) => {
   const message = error instanceof Error ? error.message : String(error);

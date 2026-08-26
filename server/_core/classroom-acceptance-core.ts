@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { createTRPCClient, httpBatchLink, TRPCClientError } from "@trpc/client";
-import { createPool, type Pool } from "mysql2/promise";
+import { Pool } from "pg";
 import superjson from "superjson";
 
 import type { AppRouter } from "../routers";
@@ -67,15 +67,15 @@ async function expectCode(
 }
 
 async function seedIdentity(pool: Pool, identity: TestIdentity): Promise<void> {
-  await pool.execute(
-    `INSERT INTO users (openId, name, email, loginMethod, role, lastSignedIn)
-     VALUES (?, ?, ?, 'email', 'user', CURRENT_TIMESTAMP)
-     ON DUPLICATE KEY UPDATE
-       name = VALUES(name),
-       email = VALUES(email),
-       loginMethod = 'email',
+  await pool.query(
+    `INSERT INTO users ("openId", name, email, "loginMethod", role, "lastSignedIn")
+     VALUES ($1, $2, $3, 'email', 'user', CURRENT_TIMESTAMP)
+     ON CONFLICT ("openId") DO UPDATE SET
+       name = EXCLUDED.name,
+       email = EXCLUDED.email,
+       "loginMethod" = 'email',
        role = 'user',
-       lastSignedIn = CURRENT_TIMESTAMP`,
+       "lastSignedIn" = CURRENT_TIMESTAMP`,
     [identity.openId, identity.name, identity.email],
   );
 }
@@ -84,9 +84,9 @@ async function removeIdentities(
   pool: Pool,
   identities: TestIdentity[],
 ): Promise<void> {
-  const placeholders = identities.map(() => "?").join(", ");
-  await pool.execute(
-    `DELETE FROM users WHERE openId IN (${placeholders})`,
+  const placeholders = identities.map((_, index) => `$${index + 1}`).join(", ");
+  await pool.query(
+    `DELETE FROM users WHERE "openId" IN (${placeholders})`,
     identities.map((identity) => identity.openId),
   );
 }
@@ -150,7 +150,12 @@ export async function runClassroomAcceptance(): Promise<AcceptanceEvidence> {
     checks: {},
   };
 
-  const pool = createPool({ uri: databaseUrl, connectionLimit: 2 });
+  const pool = new Pool({
+    connectionString: databaseUrl,
+    max: 2,
+    connectionTimeoutMillis: 15_000,
+    ssl: process.env.DATABASE_SSL === "false" ? undefined : { rejectUnauthorized: false },
+  });
   let teacher: Client | null = null;
   let classroomId: string | null = null;
 

@@ -139,8 +139,11 @@ async function startServer() {
       const { lt } = await import("drizzle-orm");
       const db = await getDb();
       if (!db) { res.status(503).json({ ok: false, error: "DB unavailable" }); return; }
-      const result = await db.delete(otpCodes).where(lt(otpCodes.expiresAt, new Date()));
-      const deleted = (result as any)[0]?.affectedRows ?? 0;
+      const deletedRows = await db
+        .delete(otpCodes)
+        .where(lt(otpCodes.expiresAt, new Date()))
+        .returning({ id: otpCodes.id });
+      const deleted = deletedRows.length;
       // console.log(`[OTP Cleanup] Manual cleanup: deleted ${deleted} expired rows`);
       res.json({ ok: true, deleted });
     } catch (err) {
