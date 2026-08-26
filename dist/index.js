@@ -1462,7 +1462,7 @@ For purely conversational messages (greetings, "thank you", meta-questions about
 });
 
 // server/_core/trpc.ts
-var import_server, import_superjson2, t, loggingMiddleware, router, publicProcedure, requireUser, protectedProcedure, adminProcedure;
+var import_server, import_superjson2, t, loggingMiddleware, router, publicProcedure, requireUser, protectedProcedure, AI_RATE_LIMIT_WINDOW_MS, AI_RATE_LIMIT_MAX_REQUESTS, aiRateLimitWindows, aiRateLimitMiddleware, aiProcedure, adminProcedure;
 var init_trpc = __esm({
   "server/_core/trpc.ts"() {
     "use strict";
@@ -1496,6 +1496,33 @@ var init_trpc = __esm({
       });
     });
     protectedProcedure = t.procedure.use(loggingMiddleware).use(requireUser);
+    AI_RATE_LIMIT_WINDOW_MS = 6e4;
+    AI_RATE_LIMIT_MAX_REQUESTS = 30;
+    aiRateLimitWindows = /* @__PURE__ */ new Map();
+    aiRateLimitMiddleware = t.middleware(async (opts) => {
+      const userId = opts.ctx.user?.id;
+      if (!userId) {
+        throw new import_server.TRPCError({ code: "UNAUTHORIZED", message: UNAUTHED_ERR_MSG });
+      }
+      const now = Date.now();
+      const key = `${userId}:${opts.path}`;
+      const current = aiRateLimitWindows.get(key);
+      if (!current || now - current.startedAt >= AI_RATE_LIMIT_WINDOW_MS) {
+        aiRateLimitWindows.set(key, { startedAt: now, count: 1 });
+      } else {
+        current.count += 1;
+        if (current.count > AI_RATE_LIMIT_MAX_REQUESTS) {
+          throw new import_server.TRPCError({ code: "TOO_MANY_REQUESTS", message: "AI request limit reached. Please try again shortly." });
+        }
+      }
+      if (aiRateLimitWindows.size > 1e4) {
+        for (const [windowKey, window] of aiRateLimitWindows) {
+          if (now - window.startedAt >= AI_RATE_LIMIT_WINDOW_MS) aiRateLimitWindows.delete(windowKey);
+        }
+      }
+      return opts.next();
+    });
+    aiProcedure = t.procedure.use(loggingMiddleware).use(requireUser).use(aiRateLimitMiddleware);
     adminProcedure = t.procedure.use(loggingMiddleware).use(
       t.middleware(async (opts) => {
         const { ctx, next } = opts;
@@ -3504,11 +3531,23 @@ function registerOAuthRoutes(app) {
 
 // server/_core/storageProxy.ts
 init_env();
+init_sdk();
 function registerStorageProxy(app) {
   app.get("/manus-storage/*", async (req, res) => {
+    let user;
+    try {
+      user = await sdk.authenticateRequest(req);
+    } catch {
+      res.status(401).send("Authentication required");
+      return;
+    }
     const key = req.params[0];
-    if (!key) {
-      res.status(400).send("Missing storage key");
+    if (!key || key.includes("..") || key.startsWith("/")) {
+      res.status(400).send("Invalid storage key");
+      return;
+    }
+    if (key.startsWith("voice/") && !key.startsWith(`voice/${user.id}/`)) {
+      res.status(403).send("Storage object does not belong to this user");
       return;
     }
     if (!ENV.forgeApiUrl || !ENV.forgeApiKey) {
@@ -3543,6 +3582,9 @@ function registerStorageProxy(app) {
     }
   });
 }
+
+// server/_core/voiceUpload.ts
+init_sdk();
 
 // server/storage.ts
 init_env();
@@ -3590,26 +3632,97 @@ async function storagePut(relKey, data, contentType = "application/octet-stream"
   }
   return { key, url: `/manus-storage/${key}` };
 }
+async function storageGetSignedUrl(relKey) {
+  const { forgeUrl, forgeKey } = getForgeConfig();
+  const key = normalizeKey(relKey);
+  const getUrl = new URL("v1/storage/presign/get", forgeUrl + "/");
+  getUrl.searchParams.set("path", key);
+  const resp = await fetch(getUrl, {
+    headers: { Authorization: `Bearer ${forgeKey}` }
+  });
+  if (!resp.ok) {
+    const msg = await resp.text().catch(() => resp.statusText);
+    throw new Error(`Storage signed URL failed (${resp.status}): ${msg}`);
+  }
+  const { url } = await resp.json();
+  return url;
+}
 
 // server/_core/voiceUpload.ts
+var MAX_AUDIO_BYTES = 16 * 1024 * 1024;
+var MAX_BASE64_LENGTH = Math.ceil(MAX_AUDIO_BYTES * 4 / 3) + 16;
+var ALLOWED_AUDIO_TYPES = /* @__PURE__ */ new Set([
+  "audio/m4a",
+  "audio/mp4",
+  "audio/mpeg",
+  "audio/mp3",
+  "audio/wav",
+  "audio/wave",
+  "audio/ogg",
+  "audio/webm"
+]);
+function parseAudioType(value) {
+  if (typeof value !== "string") return null;
+  const mimeType = value.split(";", 1)[0]?.trim().toLowerCase();
+  return mimeType && ALLOWED_AUDIO_TYPES.has(mimeType) ? mimeType : null;
+}
+function decodeBase64(value) {
+  const payload = value.replace(/^data:[^;]+;base64,/, "").trim();
+  if (!payload || payload.length > MAX_BASE64_LENGTH || payload.length % 4 === 1) {
+    return null;
+  }
+  if (!/^[A-Za-z0-9+/]*={0,2}$/.test(payload)) return null;
+  const buffer = Buffer.from(payload, "base64");
+  return buffer.length > 0 && buffer.length <= MAX_AUDIO_BYTES ? buffer : null;
+}
+function getExtension(mimeType) {
+  if (mimeType === "audio/mpeg" || mimeType === "audio/mp3") return "mp3";
+  if (mimeType === "audio/mp4" || mimeType === "audio/m4a") return "m4a";
+  if (mimeType === "audio/wav" || mimeType === "audio/wave") return "wav";
+  if (mimeType === "audio/ogg") return "ogg";
+  return "webm";
+}
+function getPublicOrigin(req) {
+  const configuredOrigin = process.env.PUBLIC_API_URL?.trim() || process.env.API_BASE_URL?.trim();
+  if (configuredOrigin) return configuredOrigin.replace(/\/+$/, "");
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("PUBLIC_API_URL is required in production");
+  }
+  const forwardedProto = String(req.headers["x-forwarded-proto"] || "https").split(",")[0]?.trim();
+  const protocol = forwardedProto === "http" ? "http" : "https";
+  return `${protocol}://${req.get("host") || "localhost:3000"}`;
+}
 function registerVoiceUploadRoute(app) {
   app.post("/api/voice/upload", async (req, res) => {
     try {
-      const { base64, mimeType = "audio/m4a" } = req.body;
-      if (!base64) {
+      let user;
+      try {
+        user = await sdk.authenticateRequest(req);
+      } catch {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+      const body = req.body;
+      if (typeof body?.base64 !== "string") {
         return res.status(400).json({ error: "Missing base64 audio data" });
       }
-      const buffer = Buffer.from(base64, "base64");
-      const ext = mimeType.split("/")[1]?.split(";")[0] || "m4a";
-      const filename = `voice_${Date.now()}.${ext}`;
-      const { url } = await storagePut(`voice/${filename}`, buffer, mimeType);
-      const host = req.headers.host || "localhost:3000";
-      const protocol = req.headers["x-forwarded-proto"] || "https";
-      const absoluteUrl = `${protocol}://${host}${url}`;
-      return res.json({ url: absoluteUrl });
+      if (body.base64.length > MAX_BASE64_LENGTH) {
+        return res.status(413).json({ error: "Audio file exceeds maximum size limit" });
+      }
+      const mimeType = parseAudioType(body.mimeType ?? "audio/m4a");
+      if (!mimeType) {
+        return res.status(415).json({ error: "Unsupported audio format" });
+      }
+      const buffer = decodeBase64(body.base64);
+      if (!buffer) {
+        return res.status(400).json({ error: "Invalid or oversized base64 audio data" });
+      }
+      const filename = `voice_${crypto.randomUUID()}.${getExtension(mimeType)}`;
+      const { url } = await storagePut(`voice/${user.id}/${filename}`, buffer, mimeType);
+      return res.json({ url: `${getPublicOrigin(req)}${url}` });
     } catch (err) {
-      console.error("[voice/upload]", err);
-      return res.status(500).json({ error: err?.message || "Upload failed" });
+      const message = err instanceof Error ? err.message : "Upload failed";
+      console.error("[voice/upload]", message);
+      return res.status(500).json({ error: "Upload failed" });
     }
   });
 }
@@ -4523,7 +4636,7 @@ var referralRouter = router({
   /**
    * Validate a referral code
    */
-  validateCode: publicProcedure.input(import_zod2.z.object({ code: import_zod2.z.string().min(5).max(20), userId: import_zod2.z.number(), ipAddress: import_zod2.z.string().optional(), deviceId: import_zod2.z.string().optional() })).mutation(async ({ input }) => {
+  validateCode: protectedProcedure.input(import_zod2.z.object({ code: import_zod2.z.string().trim().min(5).max(20), deviceId: import_zod2.z.string().trim().max(200).optional() })).mutation(async ({ ctx, input }) => {
     try {
       const db2 = await getDb();
       if (!db2) {
@@ -4535,16 +4648,16 @@ var referralRouter = router({
       }
       const codeUpper = input.code.toUpperCase().trim();
       const fraudCheck = await checkFraud({
-        userId: input.userId,
+        userId: ctx.user.id,
         code: codeUpper,
-        ipAddress: input.ipAddress,
+        ipAddress: ctx.req.ip,
         deviceId: input.deviceId
       });
       if (fraudCheck.shouldBlock) {
         await logRedemptionAttempt({
-          userId: input.userId,
+          userId: ctx.user.id,
           code: codeUpper,
-          ipAddress: input.ipAddress,
+          ipAddress: ctx.req.ip,
           deviceId: input.deviceId,
           success: false,
           failureReason: "Fraud detected"
@@ -4578,11 +4691,25 @@ var referralRouter = router({
           freeDaysReward: 0
         };
       }
-      await db2.update(referralCodes).set({ uses: code.uses + 1 }).where((0, import_drizzle_orm3.eq)(referralCodes.id, code.id));
+      const updateResult = await db2.update(referralCodes).set({ uses: import_drizzle_orm3.sql`${referralCodes.uses} + 1` }).where(
+        (0, import_drizzle_orm3.and)(
+          (0, import_drizzle_orm3.eq)(referralCodes.id, code.id),
+          (0, import_drizzle_orm3.lt)(referralCodes.uses, referralCodes.maxUses),
+          (0, import_drizzle_orm3.gt)(referralCodes.expiresAt, /* @__PURE__ */ new Date())
+        )
+      );
+      const affectedRows = updateResult[0]?.affectedRows ?? 0;
+      if (affectedRows !== 1) {
+        return {
+          valid: false,
+          message: "Referral code is no longer available",
+          freeDaysReward: 0
+        };
+      }
       await logRedemptionAttempt({
-        userId: input.userId,
+        userId: ctx.user.id,
         code: codeUpper,
-        ipAddress: input.ipAddress,
+        ipAddress: ctx.req.ip,
         deviceId: input.deviceId,
         success: true
       });
@@ -4603,7 +4730,7 @@ var referralRouter = router({
   /**
    * Generate a new referral code for a user
    */
-  generateCode: publicProcedure.input(import_zod2.z.object({ userId: import_zod2.z.number() })).mutation(async ({ input }) => {
+  generateCode: protectedProcedure.mutation(async ({ ctx }) => {
     try {
       const db2 = await getDb();
       if (!db2) {
@@ -4619,7 +4746,7 @@ var referralRouter = router({
       const expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1e3);
       await db2.insert(referralCodes).values({
         code,
-        userId: input.userId,
+        userId: ctx.user.id,
         uses: 0,
         maxUses: 999,
         expiresAt
@@ -4685,7 +4812,7 @@ var referralRouter = router({
   /**
    * Get user's referral codes
    */
-  getUserCodes: publicProcedure.input(import_zod2.z.object({ userId: import_zod2.z.number() })).query(async ({ input }) => {
+  getUserCodes: protectedProcedure.query(async ({ ctx }) => {
     try {
       const db2 = await getDb();
       if (!db2) {
@@ -4694,7 +4821,7 @@ var referralRouter = router({
           codes: []
         };
       }
-      const codes = await db2.select().from(referralCodes).where((0, import_drizzle_orm3.eq)(referralCodes.userId, input.userId));
+      const codes = await db2.select().from(referralCodes).where((0, import_drizzle_orm3.eq)(referralCodes.userId, ctx.user.id));
       return {
         success: true,
         codes: codes.map((c) => ({
@@ -4904,7 +5031,7 @@ var oauthRouter = router({
   /**
    * Get user profile
    */
-  getProfile: publicProcedure.input(import_zod3.z.object({ userId: import_zod3.z.number() })).query(async ({ input }) => {
+  getProfile: protectedProcedure.query(async ({ ctx }) => {
     try {
       const db2 = await getDb();
       if (!db2) {
@@ -4913,7 +5040,7 @@ var oauthRouter = router({
           error: "Database unavailable"
         };
       }
-      const user = await db2.select().from(users).where((0, import_drizzle_orm4.eq)(users.id, input.userId)).limit(1);
+      const user = await db2.select().from(users).where((0, import_drizzle_orm4.eq)(users.id, ctx.user.id)).limit(1);
       if (user.length === 0) {
         return {
           success: false,
@@ -4943,14 +5070,13 @@ var oauthRouter = router({
   /**
    * Update user profile
    */
-  updateProfile: publicProcedure.input(
+  updateProfile: protectedProcedure.input(
     import_zod3.z.object({
-      userId: import_zod3.z.number(),
-      name: import_zod3.z.string().optional(),
+      name: import_zod3.z.string().trim().min(1).max(120).optional(),
       email: import_zod3.z.string().email().optional(),
       photoUrl: import_zod3.z.string().url().optional()
     })
-  ).mutation(async ({ input }) => {
+  ).mutation(async ({ ctx, input }) => {
     try {
       const db2 = await getDb();
       if (!db2) {
@@ -4969,7 +5095,7 @@ var oauthRouter = router({
           error: "No updates provided"
         };
       }
-      await db2.update(users).set(updates).where((0, import_drizzle_orm4.eq)(users.id, input.userId));
+      await db2.update(users).set(updates).where((0, import_drizzle_orm4.eq)(users.id, ctx.user.id));
       return {
         success: true,
         message: "Profile updated successfully"
@@ -4991,6 +5117,8 @@ init_const();
 
 // server/_core/voiceTranscription.ts
 init_env();
+var MAX_AUDIO_BYTES2 = 16 * 1024 * 1024;
+var AUDIO_FETCH_TIMEOUT_MS = 2e4;
 async function transcribeAudio(options) {
   try {
     if (!ENV.forgeApiUrl) {
@@ -5010,7 +5138,14 @@ async function transcribeAudio(options) {
     let audioBuffer;
     let mimeType;
     try {
-      const response2 = await fetch(options.audioUrl);
+      const audioUrl = new URL(options.audioUrl);
+      if (audioUrl.protocol !== "https:" && !(process.env.NODE_ENV !== "production" && audioUrl.protocol === "http:")) {
+        return { error: "Audio URL must use HTTPS", code: "INVALID_FORMAT" };
+      }
+      const response2 = await fetch(audioUrl, {
+        redirect: "follow",
+        signal: AbortSignal.timeout(AUDIO_FETCH_TIMEOUT_MS)
+      });
       if (!response2.ok) {
         return {
           error: "Failed to download audio file",
@@ -5018,15 +5153,38 @@ async function transcribeAudio(options) {
           details: `HTTP ${response2.status}: ${response2.statusText}`
         };
       }
-      audioBuffer = Buffer.from(await response2.arrayBuffer());
-      mimeType = response2.headers.get("content-type") || "audio/mpeg";
-      const sizeMB = audioBuffer.length / (1024 * 1024);
-      if (sizeMB > 16) {
+      const declaredLength = Number(response2.headers.get("content-length") || 0);
+      if (declaredLength > MAX_AUDIO_BYTES2) {
         return {
           error: "Audio file exceeds maximum size limit",
           code: "FILE_TOO_LARGE",
-          details: `File size is ${sizeMB.toFixed(2)}MB, maximum allowed is 16MB`
+          details: "Declared file size exceeds 16MB"
         };
+      }
+      const chunks = [];
+      let totalBytes = 0;
+      if (response2.body) {
+        const reader = response2.body.getReader();
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          if (!value) continue;
+          totalBytes += value.byteLength;
+          if (totalBytes > MAX_AUDIO_BYTES2) {
+            await reader.cancel();
+            return {
+              error: "Audio file exceeds maximum size limit",
+              code: "FILE_TOO_LARGE",
+              details: "Downloaded file exceeds 16MB"
+            };
+          }
+          chunks.push(value);
+        }
+      }
+      audioBuffer = Buffer.concat(chunks.map((chunk) => Buffer.from(chunk)), totalBytes);
+      mimeType = (response2.headers.get("content-type") || "audio/mpeg").split(";", 1)[0].trim().toLowerCase();
+      if (audioBuffer.length === 0) {
+        return { error: "Audio file is empty", code: "INVALID_FORMAT" };
       }
     } catch (error) {
       return {
@@ -5547,7 +5705,7 @@ function truncateForSimpleTier(parsed, tokenBudget) {
   return out;
 }
 var academicRouter = router({
-  solve: protectedProcedure.input(import_zod6.z.object({
+  solve: aiProcedure.input(import_zod6.z.object({
     problem: import_zod6.z.string().min(1),
     subject: import_zod6.z.string().default("other"),
     gradeLevel: import_zod6.z.string().nullable().optional()
@@ -5626,7 +5784,7 @@ var academicRouter = router({
       throw new import_server4.TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err instanceof Error ? err.message : "Failed to solve problem. Please try again." });
     }
   }),
-  solveExplanation: protectedProcedure.input(import_zod6.z.object({
+  solveExplanation: aiProcedure.input(import_zod6.z.object({
     problem: import_zod6.z.string().min(1, "problem is required"),
     correctAnswer: import_zod6.z.string().min(1, "correctAnswer is required"),
     selectedAnswer: import_zod6.z.string().min(1, "selectedAnswer is required"),
@@ -5680,7 +5838,7 @@ Respond ONLY with this JSON (no extra text):
       return { explanation: text2.trim(), submissionReady: "" };
     }
   }),
-  solveFromImage: protectedProcedure.input(import_zod6.z.object({
+  solveFromImage: aiProcedure.input(import_zod6.z.object({
     imageBase64: import_zod6.z.string(),
     mimeType: import_zod6.z.string().default("image/jpeg"),
     subject: import_zod6.z.string().default("other"),
@@ -5715,10 +5873,10 @@ Respond ONLY with this JSON (no extra text):
       throw new import_server4.TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err instanceof Error ? err.message : "Failed to process image. Please try again." });
     }
   }),
-  generatePractice: protectedProcedure.input(import_zod6.z.object({
-    subject: import_zod6.z.string(),
+  generatePractice: aiProcedure.input(import_zod6.z.object({
+    subject: import_zod6.z.string().trim().min(1).max(100),
     difficulty: import_zod6.z.enum(["easy", "medium", "hard"]),
-    gradeLevel: import_zod6.z.string().optional()
+    gradeLevel: import_zod6.z.string().trim().max(50).optional()
   })).mutation(async ({ ctx, input }) => {
     const practiceTokens = input.difficulty === "easy" ? 700 : input.difficulty === "medium" ? 1100 : 1600;
     const practicePrompt = buildPracticePrompt(input.subject, input.difficulty) + gradeContext(input.gradeLevel);
@@ -5765,11 +5923,11 @@ Respond ONLY with this JSON (no extra text):
     if (!parsed.id) parsed.id = `p-${Date.now()}`;
     return parsed;
   }),
-  generateQuiz: protectedProcedure.input(import_zod6.z.object({
-    subject: import_zod6.z.string(),
+  generateQuiz: aiProcedure.input(import_zod6.z.object({
+    subject: import_zod6.z.string().trim().min(1).max(100),
     difficulty: import_zod6.z.enum(["easy", "medium", "hard"]),
-    count: import_zod6.z.number().min(3).max(10).default(5),
-    gradeLevel: import_zod6.z.string().optional()
+    count: import_zod6.z.number().int().min(3).max(10).default(5),
+    gradeLevel: import_zod6.z.string().trim().max(50).optional()
   })).mutation(async ({ ctx, input }) => {
     const quizPrompt = `You are TutorSnap, an expert academic tutor.${gradeContext(input.gradeLevel)}
 Generate exactly ${input.count} ${input.difficulty} multiple-choice questions for: ${input.subject}.
@@ -5799,9 +5957,9 @@ Respond ONLY with this JSON and no surrounding prose:
     }
     return parsed.questions ?? [];
   }),
-  studyTip: publicProcedure.input(import_zod6.z.object({
-    subject: import_zod6.z.string(),
-    gradeLevel: import_zod6.z.string().optional()
+  studyTip: aiProcedure.input(import_zod6.z.object({
+    subject: import_zod6.z.string().trim().min(1).max(100),
+    gradeLevel: import_zod6.z.string().trim().max(50).optional()
   })).mutation(async ({ input }) => {
     const gradeHint = input.gradeLevel && GRADE_LEVEL_DESCRIPTIONS2[input.gradeLevel] ? ` Tailor the tip for a ${GRADE_LEVEL_DESCRIPTIONS2[input.gradeLevel].split(":")[0]} student.` : "";
     const tipPrompt = `You are TutorSnap, a friendly academic tutor. Generate a single, practical, actionable study tip for a student studying ${input.subject}.${gradeHint} The tip should be specific, encouraging, and 1-2 sentences long. Respond with ONLY the tip text, no preamble, no quotes.`;
@@ -5818,13 +5976,13 @@ Respond ONLY with this JSON and no surrounding prose:
     const tip = typeof rawTip === "string" ? rawTip.trim() : "";
     return { tip: tip || `Practice ${input.subject} problems daily. Consistency is the key to mastery!` };
   }),
-  chat: publicProcedure.input(import_zod6.z.object({
+  chat: aiProcedure.input(import_zod6.z.object({
     messages: import_zod6.z.array(import_zod6.z.object({
       role: import_zod6.z.enum(["user", "assistant"]),
-      content: import_zod6.z.string()
-    })),
-    subject: import_zod6.z.string().optional(),
-    gradeLevel: import_zod6.z.string().optional(),
+      content: import_zod6.z.string().trim().min(1).max(4e3)
+    })).min(1).max(40),
+    subject: import_zod6.z.string().trim().max(100).optional(),
+    gradeLevel: import_zod6.z.string().trim().max(50).optional(),
     detailedMode: import_zod6.z.boolean().optional()
     // When true, use doubled token budgets
   })).mutation(async ({ input }) => {
@@ -5856,9 +6014,9 @@ ADAPT YOUR RESPONSE to this student's level: ${GRADE_LEVEL_DESCRIPTIONS2[input.g
     const text2 = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
     return { content: text2 || "I apologize, I couldn't process your request." };
   }),
-  suggestFollowUps: publicProcedure.input(import_zod6.z.object({
-    aiResponse: import_zod6.z.string(),
-    subject: import_zod6.z.string().optional()
+  suggestFollowUps: aiProcedure.input(import_zod6.z.object({
+    aiResponse: import_zod6.z.string().trim().min(1).max(1e4),
+    subject: import_zod6.z.string().trim().max(100).optional()
   })).mutation(async ({ input }) => {
     const prompt = `You are a helpful academic tutor assistant. Based on the following AI tutor response, generate exactly 3 short follow-up questions or prompts a student might want to ask next. Each should be 3-7 words, specific to the content of the response, and help deepen understanding.
 
@@ -5885,11 +6043,11 @@ Respond ONLY with valid JSON in this exact format:
       return { chips: ["Give me an example", "Explain differently", "Quiz me on this"] };
     }
   }),
-  explainDifferently: publicProcedure.input(import_zod6.z.object({
-    problem: import_zod6.z.string().min(1),
-    answer: import_zod6.z.string(),
-    subject: import_zod6.z.string().default("other"),
-    gradeLevel: import_zod6.z.string().optional(),
+  explainDifferently: aiProcedure.input(import_zod6.z.object({
+    problem: import_zod6.z.string().trim().min(1).max(400),
+    answer: import_zod6.z.string().trim().max(300),
+    subject: import_zod6.z.string().trim().min(1).max(100).default("other"),
+    gradeLevel: import_zod6.z.string().trim().max(50).optional(),
     style: import_zod6.z.enum(["analogy", "step-by-step", "visual"]).default("analogy")
   })).mutation(async ({ input }) => {
     const gradeCtx = gradeContext(input.gradeLevel);
@@ -5927,12 +6085,12 @@ Now re-explain this using the ${input.style} style.`;
     const explanation = typeof text2 === "string" ? text2.trim() : JSON.stringify(text2);
     return { explanation: explanation || "Could not generate an alternative explanation. Please try again." };
   }),
-  generateSimilar: publicProcedure.input(import_zod6.z.object({
-    problem: import_zod6.z.string(),
-    subject: import_zod6.z.string(),
+  generateSimilar: aiProcedure.input(import_zod6.z.object({
+    problem: import_zod6.z.string().trim().min(1).max(200),
+    subject: import_zod6.z.string().trim().min(1).max(100),
     difficulty: import_zod6.z.enum(["easy", "medium", "hard"]).default("medium"),
-    count: import_zod6.z.number().min(1).max(5).default(3),
-    gradeLevel: import_zod6.z.string().optional()
+    count: import_zod6.z.number().int().min(1).max(5).default(3),
+    gradeLevel: import_zod6.z.string().trim().max(50).optional()
   })).mutation(async ({ input }) => {
     const prompt = `You are TutorSnap, an expert academic tutor.${gradeContext(input.gradeLevel)}
 The student solved: "${input.problem.slice(0, 200)}"
@@ -5960,19 +6118,19 @@ Respond ONLY with this JSON:
       return JSON.parse(repaired);
     }
   }),
-  generateStudyBlocks: publicProcedure.input(import_zod6.z.object({
-    problem: import_zod6.z.string(),
-    answer: import_zod6.z.string(),
+  generateStudyBlocks: aiProcedure.input(import_zod6.z.object({
+    problem: import_zod6.z.string().trim().min(1).max(300),
+    answer: import_zod6.z.string().trim().max(4e3),
     steps: import_zod6.z.array(import_zod6.z.object({
-      stepNumber: import_zod6.z.number(),
-      title: import_zod6.z.string(),
-      explanation: import_zod6.z.string(),
-      expression: import_zod6.z.string().optional()
-    })).optional(),
-    conceptExplained: import_zod6.z.string().optional(),
-    tips: import_zod6.z.array(import_zod6.z.string()).optional(),
-    subject: import_zod6.z.string(),
-    gradeLevel: import_zod6.z.string().optional()
+      stepNumber: import_zod6.z.number().int().min(1).max(100),
+      title: import_zod6.z.string().trim().max(200),
+      explanation: import_zod6.z.string().trim().max(2e3),
+      expression: import_zod6.z.string().trim().max(500).optional()
+    })).max(30).optional(),
+    conceptExplained: import_zod6.z.string().trim().max(1e3).optional(),
+    tips: import_zod6.z.array(import_zod6.z.string().trim().max(500)).max(20).optional(),
+    subject: import_zod6.z.string().trim().min(1).max(100),
+    gradeLevel: import_zod6.z.string().trim().max(50).optional()
   })).mutation(async ({ input }) => {
     const stepsText = (input.steps ?? []).map(
       (s) => `Step ${s.stepNumber}: ${s.title}${s.expression ? ` [${s.expression}]` : ""} - ${s.explanation}`
@@ -6020,23 +6178,39 @@ Respond ONLY with this JSON:
 });
 var voiceRouter = router({
   /** Get a presigned PUT URL to upload audio directly from the client */
-  getUploadUrl: publicProcedure.input(import_zod6.z.object({ filename: import_zod6.z.string(), contentType: import_zod6.z.string() })).mutation(async ({ input }) => {
+  getUploadUrl: protectedProcedure.input(import_zod6.z.object({ filename: import_zod6.z.string().trim().min(1).max(120), contentType: import_zod6.z.string().trim().max(100) })).mutation(async ({ ctx, input }) => {
     const { key, url } = await storagePut(
-      `voice/${input.filename}`,
+      `voice/${ctx.user.id}/${input.filename.replace(/[^a-zA-Z0-9._-]/g, "_")}`,
       Buffer.alloc(0),
       input.contentType
     );
     return { key };
   }),
   /** Transcribe audio from a storage key */
-  transcribe: publicProcedure.input(
+  transcribe: protectedProcedure.input(
     import_zod6.z.object({
-      audioUrl: import_zod6.z.string(),
-      language: import_zod6.z.string().optional()
+      audioUrl: import_zod6.z.string().url().max(2048),
+      language: import_zod6.z.string().trim().min(2).max(16).regex(/^[a-zA-Z-]+$/).optional()
     })
-  ).mutation(async ({ input }) => {
+  ).mutation(async ({ ctx, input }) => {
+    let audioUrl;
+    try {
+      audioUrl = new URL(input.audioUrl);
+    } catch {
+      throw new import_server4.TRPCError({ code: "BAD_REQUEST", message: "Invalid audio URL" });
+    }
+    const configuredOrigin = process.env.PUBLIC_API_URL?.trim() || process.env.API_BASE_URL?.trim();
+    const expectedOrigin = configuredOrigin ? new URL(configuredOrigin).origin : `${ctx.req.protocol}://${ctx.req.get("host") || "localhost:3000"}`;
+    if (audioUrl.origin !== expectedOrigin || !audioUrl.pathname.startsWith("/manus-storage/") || audioUrl.protocol !== "https:" && !(process.env.NODE_ENV !== "production" && audioUrl.protocol === "http:")) {
+      throw new import_server4.TRPCError({ code: "BAD_REQUEST", message: "Audio URL is not a valid TutorSnap storage URL" });
+    }
+    const storageKey = decodeURIComponent(audioUrl.pathname.slice("/manus-storage/".length));
+    if (!storageKey.startsWith(`voice/${ctx.user.id}/`) || storageKey.includes("..")) {
+      throw new import_server4.TRPCError({ code: "FORBIDDEN", message: "Audio object does not belong to this user" });
+    }
+    const signedAudioUrl = await storageGetSignedUrl(storageKey);
     const result = await transcribeAudio({
-      audioUrl: input.audioUrl,
+      audioUrl: signedAudioUrl,
       language: input.language,
       prompt: "Transcribe the student's spoken academic question accurately."
     });
@@ -6091,13 +6265,13 @@ var aireRouter = router({
    * Stores up to 10 ratings per user; older ones are pruned.
    * rating: -1 = too short, 0 = just right, 1 = too long
    */
-  logFeedback: publicProcedure.input(import_zod6.z.object({
+  logFeedback: protectedProcedure.input(import_zod6.z.object({
     difficulty: import_zod6.z.number().int().min(1).max(5),
-    subject: import_zod6.z.string().default("other"),
-    steps: import_zod6.z.number().int().min(0).default(1),
+    subject: import_zod6.z.string().trim().min(1).max(64).default("other"),
+    steps: import_zod6.z.number().int().min(0).max(100).default(1),
     rating: import_zod6.z.number().int().min(-1).max(1)
   })).mutation(async ({ ctx, input }) => {
-    const userId = ctx.user?.id ?? null;
+    const userId = ctx.user.id;
     try {
       const db2 = await getDb();
       if (!db2) return { ok: false, reason: "db_unavailable" };
@@ -6654,13 +6828,13 @@ async function startServer() {
   app.get("/api/ready", async (_req, res) => {
     try {
       const { getDb: getDb2 } = await Promise.resolve().then(() => (init_db(), db_exports));
-      const { sql: sql4 } = await import("drizzle-orm");
+      const { sql: sql5 } = await import("drizzle-orm");
       const db2 = await getDb2();
       if (!db2) {
         res.status(503).json({ ok: false, database: "unavailable" });
         return;
       }
-      await db2.execute(sql4`select 1`);
+      await db2.execute(sql5`select 1`);
       res.json({
         ok: true,
         database: "ready",
@@ -6687,13 +6861,13 @@ async function startServer() {
     try {
       const { getDb: getDb2 } = await Promise.resolve().then(() => (init_db(), db_exports));
       const { otpCodes: otpCodes2 } = await Promise.resolve().then(() => (init_schema(), schema_exports));
-      const { lt: lt3 } = await import("drizzle-orm");
+      const { lt: lt4 } = await import("drizzle-orm");
       const db2 = await getDb2();
       if (!db2) {
         res.status(503).json({ ok: false, error: "DB unavailable" });
         return;
       }
-      const result = await db2.delete(otpCodes2).where(lt3(otpCodes2.expiresAt, /* @__PURE__ */ new Date()));
+      const result = await db2.delete(otpCodes2).where(lt4(otpCodes2.expiresAt, /* @__PURE__ */ new Date()));
       const deleted = result[0]?.affectedRows ?? 0;
       res.json({ ok: true, deleted });
     } catch (err) {
@@ -6755,6 +6929,11 @@ async function startServer() {
         const rcUserId = eventType === "TRANSFER" && event.transferred_to ? event.transferred_to : event.app_user_id ?? "";
         const productId = event.product_id ?? "";
         const expiresAtMs = event.expiration_at_ms ?? null;
+        if (!rcUserId || !productId) {
+          console.warn(`[RC Webhook] Missing required identity fields for ${eventType}`);
+          res.status(400).json({ ok: false, error: "Missing subscription identity" });
+          return;
+        }
         console.log(`[RC Webhook] event=${eventType} rcUser=${rcUserId} product=${productId}`);
         const NO_OP_EVENTS = /* @__PURE__ */ new Set(["SUBSCRIBER_ALIAS"]);
         const GRACE_PERIOD_EVENTS = /* @__PURE__ */ new Set(["BILLING_ISSUE", "GRACE_PERIOD_START"]);
@@ -6799,8 +6978,8 @@ async function startServer() {
         const { eq: eq8, and: and6 } = await import("drizzle-orm");
         const db2 = await getDb2();
         if (!db2) {
-          console.warn("[RC Webhook] DB unavailable \u2014 cannot persist subscription event");
-          res.json({ ok: true, persisted: false });
+          console.error("[RC Webhook] DB unavailable \u2014 requesting webhook retry");
+          res.status(503).json({ ok: false, error: "Database unavailable" });
           return;
         }
         let localUserId = null;
