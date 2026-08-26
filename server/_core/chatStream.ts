@@ -461,7 +461,7 @@ async function streamOnce(
 ): Promise<{ text: string; finishReason: string }> {
   const payload = {
     model: "gpt-5-mini",
-    stream: true,
+    stream: false,
     max_tokens: maxTokens,
     messages,
   };
@@ -517,6 +517,13 @@ async function streamOnce(
       if (text && emitTokens) res.write(`data: ${JSON.stringify({ token: text })}\n\n`);
       return { text, finishReason: "stop" };
     }
+
+    const content = body.choices?.[0]?.message?.content;
+    const text = Array.isArray(content)
+      ? content.map((part) => part.text ?? "").join("")
+      : content ?? "";
+    if (text && emitTokens) res.write(`data: ${JSON.stringify({ token: text })}\n\n`);
+    return { text, finishReason: "stop" };
   }
 
   const reader = upstream.body?.getReader();
