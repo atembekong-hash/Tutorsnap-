@@ -3,7 +3,7 @@
  * Handles OAuth token validation and account creation
  */
 
-import { router, publicProcedure } from "@/server/_core/trpc";
+import { router, publicProcedure, protectedProcedure } from "@/server/_core/trpc";
 import { z } from "zod";
 import { getDb } from "@/server/db";
 import { users } from "@/drizzle/schema";
@@ -282,9 +282,8 @@ export const oauthRouter = router({
   /**
    * Get user profile
    */
-  getProfile: publicProcedure
-    .input(z.object({ userId: z.number() }))
-    .query(async ({ input }) => {
+  getProfile: protectedProcedure
+    .query(async ({ ctx }) => {
       try {
         const db = await getDb();
         if (!db) {
@@ -297,7 +296,7 @@ export const oauthRouter = router({
         const user = await db
           .select()
           .from(users)
-          .where(eq(users.id, input.userId))
+          .where(eq(users.id, ctx.user.id))
           .limit(1);
 
         if (user.length === 0) {
@@ -331,16 +330,15 @@ export const oauthRouter = router({
   /**
    * Update user profile
    */
-  updateProfile: publicProcedure
+  updateProfile: protectedProcedure
     .input(
       z.object({
-        userId: z.number(),
-        name: z.string().optional(),
+        name: z.string().trim().min(1).max(120).optional(),
         email: z.string().email().optional(),
         photoUrl: z.string().url().optional(),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       try {
         const db = await getDb();
         if (!db) {
@@ -362,7 +360,7 @@ export const oauthRouter = router({
           };
         }
 
-        await db.update(users).set(updates).where(eq(users.id, input.userId));
+        await db.update(users).set(updates).where(eq(users.id, ctx.user.id));
 
         return {
           success: true,

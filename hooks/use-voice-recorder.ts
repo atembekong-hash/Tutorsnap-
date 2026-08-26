@@ -20,7 +20,7 @@ import {
 } from "expo-audio";
 import * as FileSystem from "expo-file-system/legacy";
 import { trpc } from "@/lib/trpc";
-import { getApiBaseUrl } from "@/constants/oauth";
+import { apiCall } from "@/lib/_core/api";
 
 export type VoiceRecorderStatus =
   | "idle"
@@ -109,19 +109,12 @@ export function useVoiceRecorder(
         encoding: FileSystem.EncodingType.Base64,
       });
 
-      // Upload via server API endpoint
-      const apiBase = getApiBaseUrl();
-      const uploadResp = await fetch(`${apiBase}/api/voice/upload`, {
+      // Upload through the shared client so native builds include Bearer auth
+      // and web builds preserve cookie-based authentication.
+      const { url } = await apiCall<{ url: string }>("/api/voice/upload", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ base64, mimeType: "audio/m4a" }),
       });
-
-      if (!uploadResp.ok) {
-        throw new Error(`Upload failed: ${uploadResp.status}`);
-      }
-
-      const { url } = await uploadResp.json();
       transcribeMutation.mutate({ audioUrl: url });
     } catch (e: any) {
       setError(e?.message || "Failed to process recording.");

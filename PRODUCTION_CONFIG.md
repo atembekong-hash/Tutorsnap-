@@ -18,7 +18,7 @@ This document outlines the production configuration for TutorSnap with tutorsnap
 | Field | Value |
 |-------|-------|
 | **Production Domain** | `tutorsnapai.tech` |
-| **Production API URL** | `https://api.tutorsnapai.tech` |
+| **Production API URL** | `https://api.tutorsnapai.tech` | Set this as `PUBLIC_API_URL` for the backend. The value must be the canonical HTTPS API origin. |
 | **Web OAuth Callback** | `https://tutorsnapai.tech/api/oauth/callback` |
 | **Privacy Policy** | `https://tutorsnapai.tech/privacy` |
 | **Terms of Service** | `https://tutorsnapai.tech/terms` |
@@ -32,6 +32,10 @@ This document outlines the production configuration for TutorSnap with tutorsnap
 | **Domain** | `tutorsnapai.tech` |
 | **Return URL** | `https://tutorsnapai.tech/api/oauth/callback` |
 | **Associated Domains** | `applinks:tutorsnapai.tech`, `applinks:www.tutorsnapai.tech`, `webcredentials:tutorsnapai.tech` |
+
+### Required backend environment variable
+
+Set `PUBLIC_API_URL=https://api.tutorsnapai.tech` in production. The voice upload and transcription flow rejects host-header-derived origins in production and accepts only first-party, HTTPS storage URLs. Keep all database, OAuth, AI, email, session, webhook, and scheduler secrets in the deployment secret store; do not place them in this file or in the repository.
 
 ## Development/Preview Configuration
 

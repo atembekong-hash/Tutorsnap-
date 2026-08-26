@@ -3,20 +3,20 @@
  * Handles server-side validation of referral codes with database persistence
  */
 
-import { router, publicProcedure } from "@/server/_core/trpc";
+import { router, publicProcedure, protectedProcedure } from "@/server/_core/trpc";
 import { z } from "zod";
 import { getDb } from "@/server/db";
 import { referralCodes } from "@/drizzle/schema";
-import { eq, and, gt } from "drizzle-orm";
+import { eq, and, gt, lt, sql } from "drizzle-orm";
 import { checkFraud, logRedemptionAttempt } from "@/server/services/fraud-detection";
 
 export const referralRouter = router({
   /**
    * Validate a referral code
    */
-  validateCode: publicProcedure
-    .input(z.object({ code: z.string().min(5).max(20), userId: z.number(), ipAddress: z.string().optional(), deviceId: z.string().optional() }))
-    .mutation(async ({ input }) => {
+  validateCode: protectedProcedure
+    .input(z.object({ code: z.string().trim().min(5).max(20), deviceId: z.string().trim().max(200).optional() }))
+    .mutation(async ({ ctx, input }) => {
       try {
         const db = await getDb();
         if (!db) {
@@ -31,17 +31,17 @@ export const referralRouter = router({
         
         // Check for fraud patterns
         const fraudCheck = await checkFraud({
-          userId: input.userId,
+          userId: ctx.user.id,
           code: codeUpper,
-          ipAddress: input.ipAddress,
+          ipAddress: ctx.req.ip,
           deviceId: input.deviceId,
         });
 
         if (fraudCheck.shouldBlock) {
           await logRedemptionAttempt({
-            userId: input.userId,
+            userId: ctx.user.id,
             code: codeUpper,
-            ipAddress: input.ipAddress,
+            ipAddress: ctx.req.ip,
             deviceId: input.deviceId,
             success: false,
             failureReason: "Fraud detected",
@@ -88,17 +88,32 @@ export const referralRouter = router({
           };
         }
 
-        // Code is valid - increment use count
-        await db
+        // Increment only while the code is still valid. The conditional update
+        // prevents concurrent requests from exceeding maxUses.
+        const updateResult = await db
           .update(referralCodes)
-          .set({ uses: code.uses + 1 })
-          .where(eq(referralCodes.id, code.id));
+          .set({ uses: sql`${referralCodes.uses} + 1` })
+          .where(
+            and(
+              eq(referralCodes.id, code.id),
+              lt(referralCodes.uses, referralCodes.maxUses),
+              gt(referralCodes.expiresAt, new Date()),
+            ),
+          );
+        const affectedRows = (updateResult as any)[0]?.affectedRows ?? 0;
+        if (affectedRows !== 1) {
+          return {
+            valid: false,
+            message: "Referral code is no longer available",
+            freeDaysReward: 0,
+          };
+        }
 
         // Log successful redemption
         await logRedemptionAttempt({
-          userId: input.userId,
+          userId: ctx.user.id,
           code: codeUpper,
-          ipAddress: input.ipAddress,
+          ipAddress: ctx.req.ip,
           deviceId: input.deviceId,
           success: true,
         });
@@ -121,9 +136,8 @@ export const referralRouter = router({
   /**
    * Generate a new referral code for a user
    */
-  generateCode: publicProcedure
-    .input(z.object({ userId: z.number() }))
-    .mutation(async ({ input }) => {
+  generateCode: protectedProcedure
+    .mutation(async ({ ctx }) => {
       try {
         const db = await getDb();
         if (!db) {
@@ -144,7 +158,7 @@ export const referralRouter = router({
         
         await db.insert(referralCodes).values({
           code,
-          userId: input.userId,
+          userId: ctx.user.id,
           uses: 0,
           maxUses: 999,
           expiresAt,
@@ -222,9 +236,8 @@ export const referralRouter = router({
   /**
    * Get user's referral codes
    */
-  getUserCodes: publicProcedure
-    .input(z.object({ userId: z.number() }))
-    .query(async ({ input }) => {
+  getUserCodes: protectedProcedure
+    .query(async ({ ctx }) => {
       try {
         const db = await getDb();
         if (!db) {
@@ -237,7 +250,7 @@ export const referralRouter = router({
         const codes = await db
           .select()
           .from(referralCodes)
-          .where(eq(referralCodes.userId, input.userId));
+          .where(eq(referralCodes.userId, ctx.user.id));
 
         return {
           success: true,
