@@ -111,7 +111,7 @@ function ContextualAssistantButton({
       style={[
         styles.anchor,
         {
-          top: Math.max(insets.top, 8) + 8,
+          bottom: Math.max(insets.bottom, 8) + 72,
         },
       ]}
     >

@@ -44,7 +44,7 @@ function ScanTabIcon({ color: _color, focused }: { color: string; focused: boole
           { backgroundColor: colors.primary, transform: [{ scale }] },
         ]}
       >
-        <IconSymbol size={26} name="camera.fill" color="#FFFFFF" />
+          <IconSymbol size={24} name="camera.fill" color="#FFFFFF" />
       </Animated.View>
     </View>
   );
@@ -247,6 +247,9 @@ export default function TabLayout() {
           fontWeight: "600",
           marginTop: 2,
         },
+        tabBarItemStyle: {
+          flex: 1,
+        },
       }}
     >
       <Tabs.Screen
@@ -276,6 +279,7 @@ export default function TabLayout() {
             borderTopColor: colors.border,
             borderTopWidth: 0.5,
           },
+          tabBarItemStyle: { flex: 1 },
         }}
       />
       <Tabs.Screen
@@ -343,21 +347,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#EF4444",
   },
   scanIconContainer: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 10,
-    elevation: 8,
-    ...Platform.select({
-      native: {
-        shadowColor: SchemeColors.light.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-      },
-      web: { boxShadow: "0 4px 8px rgba(79,70,229,0.3)" },
-    }),
+    elevation: 0,
   },
 });
