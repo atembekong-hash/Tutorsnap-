@@ -832,14 +832,58 @@ Do not use Markdown, LaTeX, dollar signs, or backslashes in text fields. Ensure 
         ];
         const params = {
           model: "claude-haiku-4-5" as const,
-          messages,
-          max_tokens: 1000,
-          temperature: 0.3,
+          messages: messages.map((message) => {
+            if (message.role !== "user" || !Array.isArray(message.content)) return message;
+            return {
+              ...message,
+              content: message.content.map((part) =>
+                part.type === "image_url"
+                  ? { ...part, image_url: { ...part.image_url, detail: "low" as const } }
+                  : part,
+              ),
+            };
+          }),
+          max_tokens: 700,
+          temperature: 0.2,
           response_format: { type: "json_object" as const },
         };
         const result = await invokeLLMJsonCompatible(params);
         const jsonStr = extractJsonFromContent(extractLLMContent(result));
-        return JSON.parse(jsonStr);
+        const raw = JSON.parse(jsonStr) as Record<string, unknown>;
+        const rawSteps = Array.isArray(raw.steps) ? raw.steps : [];
+        const steps = rawSteps.slice(0, 8).map((step, index) => {
+          const item = step && typeof step === "object" ? step as Record<string, unknown> : {};
+          return {
+            stepNumber: Number(item.stepNumber) || index + 1,
+            title: String(item.title || `Step ${index + 1}`),
+            explanation: String(item.explanation || "Apply the relevant rule carefully and simplify the result."),
+            expression: String(item.expression || ""),
+          };
+        });
+        const subject = String(raw.subject || input.subject || "other");
+        const answer = String(raw.answer || raw.submissionReady || "Review the numbered steps and verify the final result.");
+        const submissionReady = String(raw.submissionReady || answer);
+        const conceptExplained = String(raw.conceptExplained || `This problem is solved by identifying the relevant rule, applying it step by step, and checking the result against the original question. The key idea is to keep each transformation justified and preserve the meaning of the quantities involved.`);
+        const tips = (Array.isArray(raw.tips) ? raw.tips : []).map(String).filter(Boolean).slice(0, 3);
+        while (tips.length < 3) tips.push(["Write down the known information before calculating.", "Show one justified step at a time.", "Substitute the result back to check it."][tips.length]);
+        const relatedTopics = (Array.isArray(raw.relatedTopics) ? raw.relatedTopics : []).map(String).filter(Boolean).slice(0, 5);
+        while (relatedTopics.length < 3) relatedTopics.push([subject, "Checking your work", "Core principles"][relatedTopics.length]);
+        const example = raw.workedExample && typeof raw.workedExample === "object" ? raw.workedExample as Record<string, unknown> : {};
+        return {
+          problem: String(raw.problem || "Problem captured from the image"),
+          subject,
+          answer,
+          submissionReady,
+          steps,
+          workedExample: {
+            title: String(example.title || "Quick Check"),
+            problem: String(example.problem || "Use the same method with a similar example."),
+            solution: String(example.solution || "Identify the known values, apply the relevant rule, simplify carefully, and check the result in the original relationship."),
+          },
+          conceptExplained,
+          tips,
+          relatedTopics,
+        };
       } catch (err: unknown) {
         if (err instanceof TRPCError) throw err;
         captureServerError(err, { route: "academic.solveFromImage" });

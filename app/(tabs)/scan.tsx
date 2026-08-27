@@ -24,6 +24,7 @@ import { useOnboardingEntry } from "@/hooks/use-onboarding-transition";
 import { useTabFocusTransition } from "@/hooks/use-tab-focus-transition";
 import { useAppearance } from "@/lib/appearance-context";
 import * as ImagePicker from "expo-image-picker";
+import * as ImageManipulator from "expo-image-manipulator";
 import * as H from "@/lib/haptics";
 import * as FileSystem from "expo-file-system/legacy";
 import { ScreenContainer } from "@/components/screen-container";
@@ -260,7 +261,13 @@ function ScanScreenContent() {
           reader.readAsDataURL(blob);
         });
       } else {
-        base64 = await FileSystem.readAsStringAsync(imageUri, {
+        // Keep enough resolution for textbook text while reducing upload and vision-token cost.
+        const optimized = await ImageManipulator.manipulateAsync(
+          imageUri,
+          [{ resize: { width: 1280 } }],
+          { compress: 0.68, format: ImageManipulator.SaveFormat.JPEG, base64: true },
+        );
+        base64 = optimized.base64 ?? await FileSystem.readAsStringAsync(optimized.uri, {
           encoding: FileSystem.EncodingType.Base64,
         });
       }
