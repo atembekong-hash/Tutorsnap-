@@ -811,12 +811,11 @@ Respond ONLY with this JSON (no extra text):
     }))
     .mutation(async ({ ctx, input }) => {
       try {
-        // Use one fast supported multimodal request. Sequential fallback added avoidable latency.
-        const fastImagePrompt = `You are TutorSnap, an expert academic tutor. Read the problem in the image and solve it accurately.
-Return only valid JSON with these fields: problem, subject, answer, submissionReady, steps, workedExample, conceptExplained, tips, relatedTopics.
-Make the response polished and classroom-ready: clear reasoning, numbered steps, plain readable math, concise explanations, and no references to AI, models, prompts, or image generation.
-Use 3-6 steps unless the problem genuinely needs more. Keep answer to 3-5 sentences, conceptExplained to 4-6 sentences, workedExample optional and under 100 words, and tips to exactly 3 short actionable items.
-Do not use Markdown, LaTeX, dollar signs, or backslashes in text fields. Ensure submissionReady is an independent student-ready solution, not a summary.`;
+        // Use the low-latency vision model selected from direct proxy benchmarks.
+        const requestStartedAt = Date.now();
+        const fastImagePrompt = `You are TutorSnap, an expert academic tutor. Read and solve the problem in the image.
+Return only valid JSON with exactly these fields: problem, subject, answer, submissionReady, steps, workedExample, conceptExplained, tips, relatedTopics.
+Make it polished and classroom-ready with 2-4 numbered steps, a concise explanation, one short worked example, exactly 3 practical tips, and 3 related topics. Do not mention AI, models, prompts, or image generation. Do not use Markdown, LaTeX, dollar signs, or backslashes. submissionReady must be an independent student-ready solution, not a summary.`;
         const messages = [
           { role: "system" as const, content: fastImagePrompt + gradeContext(input.gradeLevel) },
           {
@@ -831,7 +830,7 @@ Do not use Markdown, LaTeX, dollar signs, or backslashes in text fields. Ensure 
           },
         ];
         const params = {
-          model: "claude-haiku-4-5" as const,
+          model: "gpt-4o-mini" as const,
           messages: messages.map((message) => {
             if (message.role !== "user" || !Array.isArray(message.content)) return message;
             return {
@@ -843,13 +842,14 @@ Do not use Markdown, LaTeX, dollar signs, or backslashes in text fields. Ensure 
               ),
             };
           }),
-          max_tokens: 700,
-          temperature: 0.2,
+          max_tokens: 480,
+          temperature: 0.1,
           response_format: { type: "json_object" as const },
         };
         const result = await invokeLLMJsonCompatible(params);
         const jsonStr = extractJsonFromContent(extractLLMContent(result));
         const raw = JSON.parse(jsonStr) as Record<string, unknown>;
+        console.info(JSON.stringify({ route: "academic.solveFromImage", model: "gpt-4o-mini", durationMs: Date.now() - requestStartedAt, imageBytes: input.imageBase64.length }));
         const rawSteps = Array.isArray(raw.steps) ? raw.steps : [];
         const steps = rawSteps.slice(0, 8).map((step, index) => {
           const item = step && typeof step === "object" ? step as Record<string, unknown> : {};
